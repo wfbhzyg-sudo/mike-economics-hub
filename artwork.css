@@ -1,0 +1,27 @@
+.book{position:absolute;width:180px;height:270px;background:var(--cover);box-shadow:2px 1px 0 #b9b7a4,6px 5px 0 #f8f4e7,9px 7px 0 #bbb9aa,14px 21px 22px #132e232b;border-radius:1px 4px 4px 1px;overflow:hidden;transform-origin:50% 90%}.book img{width:100%;height:100%;object-fit:cover}.book-title{position:absolute;inset:0 0 auto 0;padding:18px 17px 34px;background:linear-gradient(var(--cover) 0%,var(--cover) 65%,transparent);color:#fff3da}.book-title small{display:block;font-size:8px;letter-spacing:.12em;margin-bottom:12px}.book-title span{font:20px/1.12 Georgia,serif;display:block;letter-spacing:-.6px}.book-foot{position:absolute;bottom:0;left:0;right:0;padding:12px 15px;background:var(--cover);font:6px Arial;letter-spacing:1.2px;color:#fff5df}.book:after{content:'';position:absolute;inset:0 auto 0 0;width:9px;background:linear-gradient(90deg,#0004,transparent)}.book-one{left:61px;top:70px;transform:rotate(-13deg);z-index:2}.book-two{left:196px;top:29px;transform:rotate(5deg);z-index:3}.book-three{left:318px;top:77px;transform:rotate(15deg);z-index:1}.reader{position:absolute;left:305px;top:215px;width:330px;height:211px;z-index:5;border:6px solid #0b1f3a;border-radius:7px;box-shadow:5px 20px 35px #0b1f3a39;transform:rotate(-5deg);overflow:hidden;background:#000}.reader img{display:block;width:100%;height:100%;object-fit:cover}.reader:after{content:'';position:absolute;inset:0;border:1px solid #ffffff15;border-radius:2px}.book-scene:before{content:'';position:absolute;left:15px;right:0;top:350px;height:30px;background:#32493830;filter:blur(24px);border-radius:50%}
+.sprite{display:block;width:100%;height:100%;image-rendering:pixelated}
+.mike-character{position:relative;aspect-ratio:2/3;width:220px;height:330px;flex-shrink:0;transform-origin:50% 95%;image-rendering:pixelated}
+.mike-character>div{position:absolute}
+.mike-neck{left:40%;top:34%;width:20%;height:22%;z-index:3}
+.mike-head{left:25%;top:8%;width:50%;height:32%;z-index:6}
+.mike-hat{left:15%;top:-2%;width:70%;height:25%;z-index:8}
+.mike-face{left:29%;top:24%;width:42%;height:12%;z-index:7}
+.mike-torso{left:25%;top:39%;width:50%;height:31%;z-index:4;clip-path:inset(0 23% 0 23%);transform:scaleX(1.13)}
+.mike-arm{left:25%;top:39%;width:50%;height:31%;transform-origin:26% 13%;z-index:5}
+.right-arm{transform-origin:74% 13%}
+.arm-cloth{position:absolute;inset:0;clip-path:inset(0 73% 0 0);z-index:2}
+.right-arm .arm-cloth{clip-path:inset(0 0 0 73%)}
+.wrist-item{position:absolute;left:0;top:78%;width:43%;height:19%;clip-path:inset(0 50% 0 0);transform:translateX(10%);z-index:3}
+.right-arm .wrist-item{left:57%;clip-path:inset(0 0 0 50%);transform:translateX(-10%)}
+.rest-hand{position:absolute;left:2%;top:68%;width:23%;height:36%;z-index:0}
+.right-arm .rest-hand{left:75%}
+.mike-leg{left:28%;top:62%;width:44%;height:34%;transform-origin:28% 10%;z-index:2;clip-path:inset(0 49% 0 0)}
+.right-leg{clip-path:inset(0 0 0 49%);transform-origin:72% 10%}
+.leg-skin{position:absolute;left:18%;bottom:2%;width:26%;height:60%;z-index:0}
+.right-leg .leg-skin{left:56%}
+.pants-layer{position:absolute;inset:0 0 15%;z-index:2}
+.short-trousers .pants-layer{left:10%;right:10%;bottom:40%}
+.shoes-layer{position:absolute;left:15%;bottom:0;width:32%;height:45%;z-index:1}
+.right-leg .shoes-layer{left:53%}
+
+.party .mike-character{width:176px;height:264px}
