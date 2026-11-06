@@ -9,6 +9,6 @@
 @media(hover:hover) and (pointer:fine){.app-nav button:hover{color:white}.app-nav button:hover:after{transform:scaleX(1)}.entry-link:hover svg{transform:translate(2px,-2px);background:#203d36;color:#fff}.econquest .entry-link:hover svg,.resources .entry-link:hover svg{background:#eee7d6;color:#14283a}.nebs .entry-link:hover svg{background:#ffedbd;color:#66160b}}
 @media(max-width:1100px){.app-nav{display:none}.group-nav{margin-left:auto}.topbar{padding:0 32px}}
 @media(max-width:767px){:root{--header:78px}.topbar{padding:0 20px;gap:13px}.hub-mark{width:32px;height:32px}.portal-name h1{font-size:18px;letter-spacing:.015em}.portal-name>span{font-size:11px;letter-spacing:.10em}.gallery{min-height:0}.entry-link{height:48px;min-width:216px;padding-bottom:8px;font-size:14px;gap:24px}.entry-link svg{width:17px;height:17px;padding:9px}.panel-caption{font-size:13px;letter-spacing:.1em}.resource-brand h2{font-size:58px}.resource-edition{font-size:16px}.nebs-heading>span{font-size:16px}.resource-year{font-size:280px;top:28%}}
-@media(prefers-reduced-motion:reduce){.archive-volume,.panel-caption,.nebs-heading,.app-nav button:after{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.panel-art{transition:filter 80ms linear}.entry-link svg{transition:none}.archive-volume,.panel-caption,.nebs-heading,.app-nav button:after{transition:none!important}}
 
 .group-nav button{display:grid;place-items:center}
