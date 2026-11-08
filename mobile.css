@@ -1,0 +1,26 @@
+/* Mobile keeps the same diagonal gallery with smaller composited scene bounds. */
+html{-webkit-text-size-adjust:100%}
+button{user-select:none;-webkit-user-select:none}
+@media(max-width:767px){
+  :root{--header:104px;--move:420ms;--return:320ms}
+  .topbar{position:sticky;top:0;height:calc(var(--header) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));display:grid;grid-template-columns:30px minmax(0,1fr);grid-template-rows:58px 46px;gap:0 12px}
+  .hub-mark{width:30px;height:30px}
+  .portal-name h1{font-size:18px;white-space:nowrap}
+  .portal-name>span{display:none}
+  .app-nav{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(64px,1fr);grid-column:1 / -1;width:100%;margin:0;gap:0;height:46px;overflow-x:auto;scrollbar-width:none}
+  .app-nav button{font-size:12px;min-width:0;min-height:44px;padding:0 4px;color:#c5d0dd}
+  .app-nav button:after{inset:auto 12px 5px}
+  .app-nav button:active{color:#fff;background:#ffffff0c}
+  .app-nav button:focus-visible{outline-offset:-3px}
+  .group-nav{display:none!important}
+  .gallery{overflow-anchor:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .panel{transition:transform var(--move) var(--ease),clip-path var(--move) var(--ease)}
+  .panel-art{transition:filter 240ms ease}
+  .question,.ropes,.party{transition:transform var(--move) var(--ease),opacity 160ms ease}
+  .select-panel{touch-action:pan-y pinch-zoom}
+  .entry-link{min-height:48px;scroll-margin-top:calc(var(--header) + env(safe-area-inset-top,0px) + 16px)}
+  .book-scene:before{filter:blur(12px)}
+  .panel-caption{letter-spacing:.08em}
+}
+@media(max-width:359px){.portal-name h1{font-size:17px}.topbar{column-gap:10px}.app-nav button{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.panel,.panel-art,.entry-link,.entry-link svg{transition:none!important}html{scroll-behavior:auto}}

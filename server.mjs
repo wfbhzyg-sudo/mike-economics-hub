@@ -1,12 +1,14 @@
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, readFile } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import { resolve, dirname, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(process.env.STATIC_DIR || dirname(fileURLToPath(import.meta.url)));
 const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.webp':'image/webp', '.jpg':'image/jpeg', '.png':'image/png', '.woff2':'font/woff2', '.ttf':'font/ttf', '.txt':'text/plain; charset=utf-8' };
-const pages = new Set(['index.html','apps.js','hub.js','hub.css','premium.css','artwork.css','使用说明.txt']);
+const pages = new Set(['index.html','apps.js','hub.js','hub.css','premium.css','mobile.css','artwork.css','使用说明.txt']);
+const compressed = new Map();
 const server = createServer(async (request, response) => {
   response.setHeader('X-Content-Type-Options','nosniff');
   response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
@@ -21,8 +23,21 @@ const server = createServer(async (request, response) => {
     if(!info.isFile()) { response.writeHead(404).end(); return; }
     const etag = `W/"${info.size.toString(16)}-${Math.trunc(info.mtimeMs).toString(16)}"`;
     response.setHeader('ETag',etag);
-    response.setHeader('Cache-Control',relative.startsWith('assets/')?'public, max-age=300, must-revalidate':'no-cache');
+    response.setHeader('Cache-Control',/-[a-f0-9]{8}\.webp$/.test(relative)?'public, max-age=31536000, immutable':relative.startsWith('assets/')?'public, max-age=300, must-revalidate':'no-cache');
+    const compressible=/\.(html|css|js|svg|txt)$/.test(file)&&info.size>512;
+    if(compressible)response.setHeader('Vary','Accept-Encoding');
     if(request.headers['if-none-match']===etag) { response.writeHead(304).end(); return; }
+    const acceptsGzip=(request.headers['accept-encoding']||'').split(',').some(value=>{
+      const [encoding,...params]=value.trim().toLowerCase().split(';');
+      const quality=params.find(param=>param.trim().startsWith('q='));
+      return encoding==='gzip'&&(!quality||Number(quality.trim().slice(2))>0);
+    });
+    if(compressible&&acceptsGzip){
+      let cached=compressed.get(file);
+      if(cached?.etag!==etag){cached={etag,body:gzipSync(await readFile(file))};compressed.set(file,cached);}
+      response.writeHead(200,{'Content-Type':types[extname(file)],'Content-Encoding':'gzip','Content-Length':cached.body.length});
+      response.end(request.method==='HEAD'?undefined:cached.body);return;
+    }
     response.writeHead(200,{'Content-Type':types[extname(file)],'Content-Length':info.size});
     if(request.method==='HEAD') response.end();
     else createReadStream(file).on('error',()=>response.destroy()).pipe(response);
