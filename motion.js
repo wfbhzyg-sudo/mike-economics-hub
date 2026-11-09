@@ -12,6 +12,11 @@
     const next=clamp(position+velocity*260*(1-decay),min,max);
     return {position:next,velocity:next===min||next===max?0:velocity*decay};
   }
+  function wheelStep(position,target,dt){
+    const next=position+(target-position)*(1-Math.exp(-dt/70));
+    const settled=Math.abs(target-next)<.5;
+    return {position:settled?target:next,settled};
+  }
   function progressAt(position,anchors){
     if(!anchors.length||position<=anchors[0])return 0;
     for(let i=1;i<anchors.length;i++)if(position<=anchors[i])return i-1+clamp((position-anchors[i-1])/Math.max(1,anchors[i]-anchors[i-1]),0,1);
@@ -27,9 +32,29 @@
     }
     return 1-Math.pow(1-u,3);
   }
+  const influence=distance=>{const t=clamp(1-Math.abs(distance),0,1);return t*t*(3-2*t);};
+  // One critically damped state drives position, shape, fusion and title scale.
+  // It keeps its velocity when retargeted; endpoints never overshoot or retain energy.
+  function indicatorStep(state,target,dt,max,instant=false){
+    target=clamp(target,0,max);
+    if(instant)return {position:target,velocity:0,settled:true};
+    const omega=2/65,d=state.position-target,c=state.velocity+omega*d,e=Math.exp(-omega*dt);
+    let p=target+(d+c*dt)*e,v=(state.velocity-omega*c*dt)*e;
+    if(p<=0){p=0;if(v<0)v=0;}if(p>=max){p=max;if(v>0)v=0;}
+    const settled=Math.abs(p-target)<.0005&&Math.abs(v)<.00002;
+    return {position:settled?target:p,velocity:settled?0:v,settled};
+  }
+  function liquidState(position,velocity,max,spacing){
+    const p=clamp(position,0,max),lo=Math.floor(p),hi=Math.min(max,lo+1),fraction=p-lo;
+    const speed=velocity*spacing,direction=speed<0?-1:1;
+    const travelled=(direction>0?fraction:1-fraction)*spacing;
+    const t=clamp(Math.abs(speed)/.5,0,1),stretch=t*t*(3-2*t);
+    const overlap=clamp(Math.min(fraction,1-fraction)*spacing/8,0,1);
+    return {lo,hi,fraction,direction,strain:Math.min(24,Math.abs(speed)*30),tail:travelled*stretch,opacity:overlap*overlap*(3-2*overlap),visible:lo!==hi&&fraction>.0005&&fraction<.9995};
+  }
   // A neutral guide line rounds into a circle as the travelling selection reaches it.
   function liquidLine(distance,strain=0,vertical=false,direction=1){
-    const near=clamp(1-Math.abs(distance),0,1),m=near*near*(3-2*near);
+    const m=influence(distance);
     const flow=Math.min(5,strain*.3)*m*(1-m);
     const w=22-14*m+(vertical?0:flow*2),h=2+6*m+(vertical?flow*2:0),r=Math.min(w,h)/2;
     const x=w/2,y=h/2,k=.55228475*r,shift=flow*.25*direction;
@@ -41,5 +66,5 @@
     const neck=Math.max(4,tail),r=4+Math.min(1,strain/24),n=v=>Number(v.toFixed(3));
     return `M 0 ${n(-r)} C 3 ${n(-r)} 4.5 -2 4.5 0 C 4.5 2 3 ${n(r)} 0 ${n(r)} C -5 ${n(r)} ${n(-neck*.35)} 1.1 ${n(-neck)} 0 C ${n(-neck*.35)} -1.1 -5 ${n(-r)} 0 ${n(-r)} Z`;
   }
-  window.HubMotion={clamp,releaseVelocity,coastStep,progressAt,ease,liquidLine,liquidTransfer};
+  window.HubMotion={clamp,releaseVelocity,coastStep,wheelStep,progressAt,ease,influence,indicatorStep,liquidState,liquidLine,liquidTransfer};
 })();

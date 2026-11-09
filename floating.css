@@ -6,9 +6,9 @@ html,body{background:#e6e3d8;scrollbar-color:auto;overflow-x:clip;overscroll-beh
 .portal-name h1{font-size:25px;color:#fff;line-height:1.5;text-shadow:var(--control-shadow);-webkit-text-stroke:.25px #0b1f3a70;white-space:nowrap}
 .portal-name>span{display:none}
 .app-nav{position:fixed;inset:auto auto calc(22px + env(safe-area-inset-bottom,0px)) 50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;width:min(1120px,calc(100% - 48px));height:70px;margin:0;padding:0;gap:0;overflow:visible;background:transparent;border:0;box-shadow:none;z-index:30;touch-action:none;user-select:none;-webkit-user-select:none}
-.app-nav button{flex:1;min-width:0;min-height:60px;padding:9px 5px 6px;border:0;background:transparent;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:12px;color:var(--nav-gray);font:500 13px/1.2 Arial,'PingFang SC',sans-serif;letter-spacing:0;white-space:nowrap;text-shadow:0 1px 3px #fffffffa,0 3px 12px #fff9;touch-action:none}
+.app-nav button{flex:1;min-width:0;min-height:60px;padding:9px 5px 6px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--nav-gray);font:500 13px/1.2 Arial,'PingFang SC',sans-serif;letter-spacing:0;white-space:nowrap;text-shadow:0 1px 3px #fffffffa,0 3px 12px #fff9;touch-action:none}
 .app-nav button:after{display:none}
-.nav-label{display:block;flex:0 0 70px;width:70px;text-align:right;transform-origin:right center;will-change:transform}
+.nav-label{display:block;flex:none;width:90px;text-align:center;transform-origin:center bottom;will-change:transform}
 .app-nav button{position:relative;z-index:1}
 .app-nav button[data-surface=light]{color:var(--nav-gray)}
 .app-nav button[data-surface=dark]{color:var(--nav-gray-light);text-shadow:var(--control-shadow)}
@@ -40,6 +40,7 @@ html,body{background:#e6e3d8;scrollbar-color:auto;overflow-x:clip;overscroll-beh
   .hub-mark{width:25px;height:25px}.portal-name h1{font-size:18px;line-height:1.4}
   .app-nav{inset:50% max(12px,env(safe-area-inset-right,0px)) auto auto;transform:translateY(-50%);width:120px;height:auto;max-height:calc(100svh - 144px);display:flex;flex-direction:column;justify-content:flex-start;overflow:visible;gap:0;padding:0}
   .app-nav button{flex:none;width:120px;height:44px;min-height:44px;display:flex;flex-direction:row;justify-content:flex-end;gap:12px;padding:0;font-size:12px}
+  .nav-label{flex:0 0 70px;width:70px;text-align:right;transform-origin:right center}
   .nav-tick{flex:0 0 22px;width:22px;height:2px}
   .app-nav button:active{background:transparent}
   .gallery{min-height:0;height:auto;overflow:clip;cursor:auto;padding:0;touch-action:pan-y pinch-zoom;overflow-anchor:none}
@@ -49,7 +50,7 @@ html,body{background:#e6e3d8;scrollbar-color:auto;overflow-x:clip;overscroll-beh
   .entry-link svg{width:16px;height:16px;padding:8px}
   .panel-caption{font-size:12px;letter-spacing:.06em}
 }
-@media(min-width:768px) and (max-width:1000px) and (min-height:520px){.app-nav button{gap:7px;padding-inline:2px}.nav-label{flex-basis:60px;width:60px}.nav-tick{width:18px}}
+@media(min-width:768px) and (max-width:1000px) and (min-height:520px){.app-nav button{gap:14px;padding-inline:2px}.nav-label{width:82px}.nav-tick{width:22px}}
 @media(max-width:359px){.portal-name h1{font-size:17px}.hub-mark{width:23px;height:23px}.topbar{gap:8px}.app-nav{right:8px;width:110px}.app-nav button{width:110px;font-size:12px;gap:10px;padding:0}}
 @media(max-height:519px) and (max-width:1023px){.app-nav{top:78px;bottom:20px;transform:none;max-height:none;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}.app-nav::-webkit-scrollbar{display:none}}
 @media(prefers-reduced-motion:reduce){.liquid-transfer{display:none!important}.nav-tick,.panel-art{transition:none!important}.gallery{scroll-behavior:auto}}
