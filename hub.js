@@ -32,11 +32,19 @@
     if (preview && !visible.some(app => app.id === preview)) preview = null;
     gallery.replaceChildren(); panels = [];
     visible.forEach(app => {
-      const panel = document.createElement('section'); panel.className = 'panel ' + (['bookself','econquest','resources','nebs'].includes(app.theme) ? app.theme : 'generic'); panel.dataset.app = app.id;
+      const panel = document.createElement('section'); panel.className = 'panel ' + (['bookself','econquest','resources','nebs','course'].includes(app.theme) ? app.theme : 'generic'); panel.dataset.app = app.id;
       const art = document.createElement('div'); art.className = 'panel-art'; art.setAttribute('aria-hidden','true');
       const template = document.getElementById(app.template);
       if (template?.tagName === 'TEMPLATE') art.append(template.content.cloneNode(true));
       else { if (safeURL(app.image)) { const image = document.createElement('img'); image.className='generic-image'; image.src=app.image; image.alt=''; art.append(image); } const name = document.createElement('h2'); name.className='generic-name'; name.textContent=app.name; art.append(name); }
+      if(app.theme==='course'){
+        const macro=app.subject==='macro', homework=app.kind==='homework';
+        panel.classList.add(macro?'course-macro':'course-micro',homework?'course-homework':'course-materials');
+        const labels={subject:macro?'AP 宏观':'AP 微观',kind:homework?'作业':'学习材料',english:macro?'AP MACROECONOMICS':'AP MICROECONOMICS',wordmark:macro?'Macro.':'Micro.','book-kind':homework?'Practice':'Study notes',companion:homework?'PDF':'CED',note:homework?'作业 · 答案':'课程与考试说明'};
+        art.querySelectorAll('[data-course]').forEach(el=>{if(labels[el.dataset.course])el.textContent=labels[el.dataset.course];});
+        const contents=art.querySelector('[data-course="contents"]');
+        (homework?['开学—月考','月考—期中','期中—期末','第二学期']:['白皮书','课程与考试说明','Unit PPT 及大纲','复习笔记']).forEach(text=>{const row=document.createElement('span');row.textContent=text;contents.append(row);});
+      }
       if(app.caption){const caption=document.createElement('p');caption.className='panel-caption';caption.textContent=app.caption;art.append(caption);}
       const select = document.createElement('button'); select.className='select-panel'; select.type='button'; select.setAttribute('aria-label',`选择 ${app.name}${app.description ? '，'+app.description : ''}`); select.setAttribute('aria-pressed','false'); select.setAttribute('aria-controls',`entry-${app.id}`);
       const link = document.createElement('a'); link.className='entry-link'; link.id=`entry-${app.id}`; link.tabIndex=-1; link.setAttribute('aria-hidden','true');
@@ -57,7 +65,7 @@
     if(!stacked&&gallery.style.height)gallery.style.height='';
     // Read intrinsic sizes before any layout writes; never reflow once per panel.
     const sizes=panels.map(({art,link})=>({link:link.offsetWidth,heading:art.querySelector('.nebs-heading')?.offsetHeight||0}));
-    const H=stacked?mobileOpen+(N-1)*mobileClosed:gallery.clientHeight;
+    const H=stacked?Math.max(mobileOpen+(N-1)*mobileClosed,N*259):gallery.clientHeight;
     gallery.style.height=stacked?`${H}px`:'';
     let offset=0;
     gallery.classList.toggle('is-resting',!active); gallery.dataset.active=active||''; gallery.dataset.selected=pinned||'';
@@ -65,7 +73,7 @@
     panels.forEach(({app,panel,art,select,link},i)=>{
       const on=active===app.id;let share=!active?1/N:(N===1?1:(on?.6:.4/(N-1)));
       if(mobile && N===2 && active){const book=panels.find(p=>p.app.id===active)?.app.theme==='bookself';share=on?(book?.66:.63):(book?.34:.37);}
-      if(stacked && active) share=(on ? mobileOpen : mobileClosed)/H;
+      if(stacked && active) share=(on ? mobileOpen : (H-mobileOpen)/(N-1))/H;
       const length=(mobile?H:W)*share,start=offset,end=offset+length;offset=end;
       bounds.set(app.id,{start,end});
       const slant=mobile?mobileSlant:Math.min(N>2?28:72,(W/N)*.12);
@@ -108,6 +116,15 @@
         const ss=Math.max(.1,Math.min(mobile?.62:1.12,(regionW+(mobile?15:90))/640,availableHeight/460));
         move(sheet,center-320*ss,sheetY,ss);
         sheet.style.opacity=compact?'0':'1';
+      } else if(app.theme==='course') {
+        const compact=stacked&&collapsed;
+        const ts=Math.min(mobile?.8:1.1,(regionW-24)/430);
+        move(art.querySelector('.course-title'),center-215*ts,top+(mobile?32:65*v),ts);
+        const sceneY=top+(mobile?(on?172:130):235*v);
+        const available=(on?linkY-26:bottom-55)-sceneY;
+        const ss=Math.max(.1,Math.min(mobile?.64:1.12,(regionW+35)/640,available/460));
+        move(art.querySelector('.course-scene'),center-320*ss,sceneY,ss);
+        art.querySelector('.course-scene').style.opacity=compact?'0':'1';
       } else if(app.theme==='nebs') {
         const compact=mobile&&N>2&&collapsed;
         const bs=mobile?(compact?.65:.72):Math.min(on?1.05:.88,(regionW-28)/350,v);
@@ -128,8 +145,14 @@
       move(link,center-linkW/2,linkY+(on?0:8));
     });
   }
+  function revealShortcut(id,keyboard=false){
+    const button=[...(appNav?.querySelectorAll('button')||[])].find(button=>button.dataset.app===id);if(!button)return;
+    const left=button.offsetLeft,right=left+button.offsetWidth,current=appNav.scrollLeft;
+    const target=left<current?left:right>current+appNav.clientWidth?right-appNav.clientWidth:current;
+    if(target!==current)appNav.scrollTo({left:target,behavior:keyboard||reduced.matches?'instant':'smooth'});
+  }
   function update(keyboard=false) {if(keyboard)gallery.classList.add('no-motion');layout();if(keyboard)requestAnimationFrame(()=>requestAnimationFrame(()=>gallery.classList.remove('no-motion')));}
-  function choose(id,keyboard=false){clearTimeout(hoverTimer);clearTimeout(leaveTimer);pinned=pinned===id?null:id;preview=null;lastIntent=null;update(keyboard);if(innerWidth<768&&pinned){window.scrollTo({top:Math.max(0,bounds.get(id)?.start||0),behavior:reduced.matches||keyboard?'instant':'smooth'});}status.textContent=pinned?`已选择 ${apps.find(a=>a.id===pinned)?.name}`:'已收起，选择一个网页';}
+  function choose(id,keyboard=false){clearTimeout(hoverTimer);clearTimeout(leaveTimer);pinned=pinned===id?null:id;preview=null;lastIntent=null;update(keyboard);if(innerWidth<768&&pinned){window.scrollTo({top:Math.max(0,bounds.get(id)?.start||0),behavior:reduced.matches||keyboard?'instant':'smooth'});}if(pinned)revealShortcut(pinned,keyboard);status.textContent=pinned?`已选择 ${apps.find(a=>a.id===pinned)?.name}`:'已收起，选择一个网页';}
   appNav?.addEventListener('click',event=>{const id=event.target.closest('button')?.dataset.app;if(!id)return;if(!visible.some(app=>app.id===id)){pinned=id;preview=null;clearTimeout(hoverTimer);rebuild();status.textContent=`已选择 ${apps.find(app=>app.id===id)?.name}`;}else choose(id,event.detail===0);});
   gallery.addEventListener('click',event=>{
     const panel=event.target.closest('.panel');if(!panel)return;
