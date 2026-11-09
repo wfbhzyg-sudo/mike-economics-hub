@@ -19,7 +19,7 @@ button{user-select:none;-webkit-user-select:none}
   .gallery{overflow-anchor:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#e6e3d8}
   /* One pixel of horizontal bleed stays clipped by the gallery, not the viewport. */
   .panel{left:-1px;right:-1px;transition:none}
-  .panel-art{transition:filter 240ms ease}
+  .panel-art{background:inherit;transition:filter 240ms ease}
   .question,.ropes,.party{transition:transform var(--move) var(--ease),opacity 160ms ease}
   .select-panel{touch-action:pan-y pinch-zoom}
   .entry-link{min-height:48px;scroll-margin-top:calc(var(--header) + env(safe-area-inset-top,0px) + 16px)}
