@@ -3,6 +3,7 @@
   const gallery = document.querySelector('.gallery');
   const status = document.querySelector('#selection-status');
   const bounds = new Map();
+  const panelMotions = new WeakMap();
   const nav = document.querySelector('.group-nav');
   const appNav = document.querySelector('.app-nav');
   const next = document.querySelector('#next-group');
@@ -10,6 +11,8 @@
   const fine = matchMedia('(hover: hover) and (pointer: fine)');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const mobileOpen = 520, mobileClosed = 172, mobileSlant = 16;
+  // Paint past shared edges: fractional rasterization must never expose the canvas.
+  const mobileGutter = 2, mobileSeam = 1;
   const arrow = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.8"/></svg>';
   let apps = [], visible = [], panels = [], pinned = null, preview = null, group = 0, capacity = 2;
   let hoverTimer, leaveTimer, lastPoint, lastIntent, resizeFrame, layoutWidth = innerWidth;
@@ -23,6 +26,7 @@
   }
   function rebuild() {
     gallery.classList.add('is-initializing');
+    panels.forEach(({panel})=>panelMotions.get(panel)?.cancel());
     const mobile = innerWidth < 768;
     capacity = mobile ? Math.max(1, apps.length) : Math.max(2, Math.min(4, Math.floor(innerWidth * .4 / 160) + 1));
     const pinnedIndex = apps.findIndex(app => app.id === pinned);
@@ -60,33 +64,47 @@
   }
   function move(el,x,y,scale=1) { if(el) el.style.transform=`translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) scale(${scale.toFixed(4)})`; }
   function layout() {
-    const active=pinned || preview, mobile=innerWidth<768, W=gallery.clientWidth;
+    const active=pinned || preview, mobile=innerWidth<768, W=gallery.clientWidth+(mobile?2:0);
     const N=visible.length, stacked=mobile&&N>2;
     if(!stacked&&gallery.style.height)gallery.style.height='';
     // Read intrinsic sizes before any layout writes; never reflow once per panel.
-    const sizes=panels.map(({art,link})=>({link:link.offsetWidth,heading:art.querySelector('.nebs-heading')?.offsetHeight||0}));
+    const animatePanels=mobile&&!reduced.matches&&!gallery.matches('.is-initializing,.no-motion');
+    const motionStyle=animatePanels?getComputedStyle(gallery):null;
+    const duration=animatePanels?parseFloat(motionStyle.getPropertyValue(active?'--move':'--return')):0;
+    const easing=motionStyle?.getPropertyValue('--ease').trim();
+    const sizes=panels.map(({panel,art,link})=>{const pose=animatePanels?getComputedStyle(panel):null;return {link:link.offsetWidth,heading:art.querySelector('.nebs-heading')?.offsetHeight||0,pose:pose?{transform:pose.transform,clipPath:pose.clipPath}:null};});
     const H=stacked?Math.max(mobileOpen+(N-1)*mobileClosed,N*259):gallery.clientHeight;
     gallery.style.height=stacked?`${H}px`:'';
     let offset=0;
     gallery.classList.toggle('is-resting',!active); gallery.dataset.active=active||''; gallery.dataset.selected=pinned||'';
     appNav?.querySelectorAll('button').forEach(button=>{button.dataset.current=String(button.dataset.app===active);button.setAttribute('aria-pressed',String(button.dataset.app===pinned));});
+    const motionStart=document.timeline.currentTime;
     panels.forEach(({app,panel,art,select,link},i)=>{
+      panelMotions.get(panel)?.cancel();
       const on=active===app.id;let share=!active?1/N:(N===1?1:(on?.6:.4/(N-1)));
       if(mobile && N===2 && active){const book=panels.find(p=>p.app.id===active)?.app.theme==='bookself';share=on?(book?.66:.63):(book?.34:.37);}
       if(stacked && active) share=(on ? mobileOpen : (H-mobileOpen)/(N-1))/H;
       const length=(mobile?H:W)*share,start=offset,end=offset+length;offset=end;
       bounds.set(app.id,{start,end});
       const slant=mobile?mobileSlant:Math.min(N>2?28:72,(W/N)*.12);
-      const startTop=i?start+slant:0,endTop=i===N-1?(mobile?H:W):end+slant;
-      const startBottom=i?start-slant:0,endBottom=i===N-1?(mobile?H:W):end-slant;
-      const localTop=stacked?slant:0;
-      panel.style.height=stacked?`${mobileOpen+slant*2}px`:'';
-      panel.style.transform=stacked?`translate3d(0,${start-slant}px,0)`:'';
-      panel.style.clipPath=stacked?`polygon(0 ${i?slant*2:slant}px,100% ${i?0:slant}px,100% ${length+(i===N-1?slant:0)}px,0 ${length+(i===N-1?slant:slant*2)}px)`:mobile?`polygon(0 ${startTop}px,100% ${startBottom}px,100% ${endBottom}px,0 ${endTop}px)`:`polygon(${startTop}px 0,${endTop}px 0,${endBottom}px 100%,${startBottom}px 100%)`;
+      const seam=mobile&&i?mobileSeam:0;
+      const startTop=i?start+slant-seam:0,endTop=i===N-1?(mobile?H:W):end+slant;
+      const startBottom=i?start-slant-seam:0,endBottom=i===N-1?(mobile?H:W):end-slant;
+      const localTop=stacked?slant+mobileGutter:0;
+      panel.style.height=stacked?`${mobileOpen+slant*2+mobileGutter*2}px`:'';
+      panel.style.transform=stacked?`translate3d(0,${start-slant-mobileGutter}px,0)`:'';
+      panel.style.clipPath=stacked?`polygon(0 ${mobileGutter+(i?slant*2-seam:slant)}px,100% ${mobileGutter+(i?-seam:slant)}px,100% ${mobileGutter+length+(i===N-1?slant:0)}px,0 ${mobileGutter+length+(i===N-1?slant:slant*2)}px)`:mobile?`polygon(0 ${startTop}px,100% ${startBottom}px,100% ${endBottom}px,0 ${endTop}px)`:`polygon(${startTop}px 0,${endTop}px 0,${endBottom}px 100%,${startBottom}px 100%)`;
+      // CSS reverses transform and clip-path independently. Restart every panel
+      // from its painted pose on one clock so shared edges stay joined on reversal.
+      if(animatePanels){
+        const animation=panel.animate([sizes[i].pose,{transform:panel.style.transform||'none',clipPath:panel.style.clipPath}],{duration,easing});
+        animation.startTime=motionStart;panelMotions.set(panel,animation);
+        animation.onfinish=()=>{if(panelMotions.get(panel)===animation)panelMotions.delete(panel);};
+      }
       panel.classList.toggle('is-active',on);select.setAttribute('aria-pressed',String(pinned===app.id));link.tabIndex=on&&app.url?0:-1;link.setAttribute('aria-hidden',String(!on));
       const center=mobile?W/2:(start+end)/2,top=stacked?localTop:mobile?start:0,bottom=stacked?localTop+length:mobile?end:H,regionH=mobile?length:H,regionW=mobile?W:length,v=Math.min(1,H/824);
       const linkY=bottom-(mobile?(app.theme==='bookself'?58:22):52*v)-(mobile?48:54);
-      const bg=art.querySelector('.backdrop');if(bg){const bw=mobile?W:W*.6+slant*2;bg.style.width=bw+'px';bg.style.height=(stacked?mobileOpen+slant*2:mobile?Math.max(regionH,480)+slant*2:H)+'px';move(bg,center-bw/2,mobile?top-slant:0);}
+      const bg=art.querySelector('.backdrop');if(bg){const bw=mobile?W:W*.6+slant*2;bg.style.width=bw+'px';bg.style.height=(stacked?mobileOpen+slant*2+mobileGutter*2:mobile?Math.max(regionH,480)+slant*2:H)+'px';move(bg,center-bw/2,stacked?0:mobile?top-slant:0);}
       const collapsed=active&&!on;
       panel.classList.toggle('is-compressed',!!collapsed);
       const caption=art.querySelector('.panel-caption');if(caption){const cs=Math.min(1,(regionW-32)/300);move(caption,center-150*cs,bottom-(mobile?34:58),cs);}
@@ -171,6 +189,7 @@
   gallery.addEventListener('focusout',()=>{queueMicrotask(()=>{if(!gallery.contains(document.activeElement)&&!pinned){preview=null;update(true);}});});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&(pinned||preview)){const current=panels.find(p=>p.app.id===(pinned||preview));current?.select.focus({preventScroll:true});pinned=preview=null;lastIntent=null;clearTimeout(hoverTimer);update(true);status.textContent='已收起，选择一个网页';}});
   fine.addEventListener('change',()=>{clearTimeout(hoverTimer);preview=null;update();});
+  reduced.addEventListener('change',()=>update(true));
   function page(delta){group+=delta;pinned=preview=null;clearTimeout(hoverTimer);rebuild();status.textContent=`第 ${group+1} 组应用`;}
   previous.addEventListener('click',()=>page(-1));next.addEventListener('click',()=>page(1));
   window.addEventListener('resize',()=>{if(innerWidth<768&&innerWidth===layoutWidth)return;layoutWidth=innerWidth;cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{const cap=innerWidth<768?Math.max(1,apps.length):Math.max(2,Math.min(4,Math.floor(innerWidth*.4/160)+1));if(cap!==capacity)rebuild();else{gallery.classList.add('no-motion');layout();requestAnimationFrame(()=>gallery.classList.remove('no-motion'));}});});

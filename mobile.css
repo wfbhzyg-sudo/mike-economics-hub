@@ -2,7 +2,9 @@
 html{-webkit-text-size-adjust:100%}
 button{user-select:none;-webkit-user-select:none}
 @media(max-width:767px){
-  :root{--header:104px;--move:420ms;--return:320ms}
+  :root{--header:104px;--move:420ms;--return:320ms;background:#e6e3d8}
+  /* Keep native overlay scrollbars; the desktop navy track reads as a blue edge. */
+  html,body{scrollbar-color:auto;background:#e6e3d8;overflow-x:clip}
   .topbar{position:sticky;top:0;height:calc(var(--header) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));display:grid;grid-template-columns:30px minmax(0,1fr);grid-template-rows:58px 46px;gap:0 12px}
   .hub-mark{width:30px;height:30px}
   .portal-name h1{font-size:18px;white-space:nowrap}
@@ -12,9 +14,11 @@ button{user-select:none;-webkit-user-select:none}
   .app-nav button:after{inset:auto 12px 5px}
   .app-nav button:active{color:#fff;background:#ffffff0c}
   .app-nav button:focus-visible{outline-offset:-3px}
+  .app-nav::-webkit-scrollbar{display:none}
   .group-nav{display:none!important}
-  .gallery{overflow-anchor:none;padding-bottom:env(safe-area-inset-bottom,0px)}
-  .panel{transition:transform var(--move) var(--ease),clip-path var(--move) var(--ease)}
+  .gallery{overflow-anchor:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#e6e3d8}
+  /* One pixel of horizontal bleed stays clipped by the gallery, not the viewport. */
+  .panel{left:-1px;right:-1px;transition:none}
   .panel-art{transition:filter 240ms ease}
   .question,.ropes,.party{transition:transform var(--move) var(--ease),opacity 160ms ease}
   .select-panel{touch-action:pan-y pinch-zoom}
