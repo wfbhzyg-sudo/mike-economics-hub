@@ -53,7 +53,10 @@
     layout(true);measureNav();setPosition(0);wake();
   }
   function layout(instant=false){
-    const active=selected||preview,N=apps.length;mobile=isMobile();W=gallery.clientWidth;H=mobile?innerHeight:gallery.clientHeight;
+    const active=selected||preview,N=apps.length;mobile=isMobile();
+    // Discard the tall phone canvas before measuring the desktop viewport.
+    if(!mobile&&gallery.style.height)gallery.style.height='';
+    W=gallery.clientWidth;H=mobile?innerHeight:gallery.clientHeight;
     openSize=mobile?Math.min(540,Math.max(440,H-130)):W*.6;
     const rest=mobile?300:clamp(W*.42,320,680);total=Math.max(mobile?H:W,N*rest);tail=mobile?Math.max(0,H-openSize-78):0;
     const slant=mobile?16:28,gutter=2,seam=1,layer= Math.max(openSize,total/Math.max(1,N))+slant*2+gutter*2+tail;
