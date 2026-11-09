@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(process.env.STATIC_DIR || dirname(fileURLToPath(import.meta.url)));
 const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.webp':'image/webp', '.jpg':'image/jpeg', '.png':'image/png', '.woff2':'font/woff2', '.ttf':'font/ttf', '.txt':'text/plain; charset=utf-8' };
-const pages = new Set(['index.html','apps.js','hub.js','hub.css','premium.css','mobile.css','courses.css','artwork.css','使用说明.txt']);
+const pages = new Set(['index.html','apps.js','hub.js','hub.css','premium.css','mobile.css','courses.css','floating.css','motion.js','artwork.css','使用说明.txt']);
 const compressed = new Map();
 const server = createServer(async (request, response) => {
   response.setHeader('X-Content-Type-Options','nosniff');

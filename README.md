@@ -2,18 +2,18 @@
 
 [访问网站](https://mike-economics-hub-production.up.railway.app/)
 
-Bookself、Econquest、资料库与 NEBS 模拟股票大赛的统一入口。原有品牌素材、黑白到彩色切换、60% 展开、桌面悬停、手机点选均保留。
+Bookself、Econquest、资料库、NEBS 模拟股票大赛与四个 AP 宏观／微观作业和学习材料入口。八个真实场景组成连续画廊，保留原始字体、品牌素材、黑白转彩色及桌面 60% 展开。
+
+## 浏览方式
+
+电脑横向拖动、滚轮或触控板连续浏览，松手逐渐减速；手机使用原生纵向滚动。透明悬浮标题位于顶部中央；菜单在桌面底部、手机右侧，可点击或按住拖选。标记在标题右侧，同色液态细颈连续连接入口，最终融入圆点；标题按 Dock 式距离连续放大／缩小，当前标题变蓝。选择与“进入网页”分开，支持键盘和减少动态效果。
 
 ## 运行与发布
 
-Node.js 22，执行 `npm start`，默认端口 8080，也支持 `PORT` 环境变量。无需前端构建或额外依赖。
+Node.js 22，执行 `npm start`，默认端口 8080，支持 `PORT` 环境变量。无需前端构建或额外依赖。
 
-Railway 连接本仓库 `main` 分支，推送自动部署。服务设置：健康检查 `/health`，超时 60 秒，失败重启最多 3 次。设置保存在 Railway 控制台；没有使用已弃用的 `railway.json` 配置方式。
+Railway 连接本仓库 `main` 分支，推送自动部署。健康检查 `/health`，超时 60 秒，失败重启最多 3 次。设置保存在 Railway 控制台。
 
-编辑 `apps.js` 可更新入口。页面通过 `index.html`、`hub.css`、`premium.css`、`mobile.css`、`artwork.css` 与 `hub.js` 组成，字体及品牌素材位于 `assets/`。
+`apps.js` 配置入口，`hub.js` 控制画廊与导航，`motion.js` 提供惯性与液态形变数学；`floating.css` 是最终响应式布局，其他样式保留原有场景。字体与品牌素材位于 `assets/`。Dockerfile 仅复制公开网页与运行文件，以 node 普通用户启动无依赖静态服务。
 
 Noto Serif SC 和 Instrument Serif 按 SIL OFL 许可自托管，许可原文在 `assets/`。NEBS 地址来自用户提供海报的二维码；此页仅导航，不执行报名。
-
-Dockerfile 使用官方 Node 22 镜像，直接启动无依赖静态服务；无需 Railpack 下载构建工具。构建仅复制公开成品与运行文件，以 node 普通用户运行。
-
-新增独立入口：AP 宏观作业、AP 微观作业、AP 微观学习材料、AP 宏观学习材料。顶部可直达；桌面每组最多四项，手机快捷标签可横向滑动。资料库总入口与原四个地址均保留。课程条幅样式位于 courses.css，沿用同一套展开和减少动态效果设置。
