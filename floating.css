@@ -54,3 +54,6 @@ html,body{background:#e6e3d8;scrollbar-color:auto;overflow-x:clip;overscroll-beh
 @media(max-width:359px){.portal-name h1{font-size:17px}.hub-mark{width:23px;height:23px}.topbar{gap:8px}.app-nav{right:8px;width:110px}.app-nav button{width:110px;font-size:12px;gap:10px;padding:0}}
 @media(max-height:519px) and (max-width:1023px){.app-nav{top:78px;bottom:20px;transform:none;max-height:none;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}.app-nav::-webkit-scrollbar{display:none}}
 @media(prefers-reduced-motion:reduce){.liquid-transfer{display:none!important}.nav-tick,.panel-art{transition:none!important}.gallery{scroll-behavior:auto}}
+
+/* One physical settle drives scene, entry and navigation, without trailing CSS clocks. */
+.gallery.is-settling *{transition:none!important}

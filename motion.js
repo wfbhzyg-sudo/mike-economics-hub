@@ -17,6 +17,17 @@
     const settled=Math.abs(target-next)<.5;
     return {position:settled?target:next,settled};
   }
+  // Exact critically damped solution; handoffs retain velocity, never restart an ease.
+  function snapFrequency(position,velocity,target){return Math.max(1/130,Math.abs(target-position)>.01?velocity/(target-position):0);}
+  function snapStep(state,target,dt,epsilon=.2,omega=1/130){
+    const d=state.position-target,c=state.velocity+omega*d,e=Math.exp(-omega*dt);
+    const position=target+(d+c*dt)*e,velocity=(state.velocity-omega*c*dt)*e;
+    const settled=Math.abs(position-target)<epsilon&&Math.abs(velocity)<epsilon/130;
+    return {position:settled?target:position,velocity:settled?0:velocity,settled};
+  }
+  function landingIndex(position,velocity,anchors,limit,projected){
+    return Math.round(progressAt(clamp(projected??position+velocity*260,0,limit),anchors));
+  }
   function progressAt(position,anchors){
     if(!anchors.length||position<=anchors[0])return 0;
     for(let i=1;i<anchors.length;i++)if(position<=anchors[i])return i-1+clamp((position-anchors[i-1])/Math.max(1,anchors[i]-anchors[i-1]),0,1);
@@ -66,5 +77,5 @@
     const neck=Math.max(4,tail),r=4+Math.min(1,strain/24),n=v=>Number(v.toFixed(3));
     return `M 0 ${n(-r)} C 3 ${n(-r)} 4.5 -2 4.5 0 C 4.5 2 3 ${n(r)} 0 ${n(r)} C -5 ${n(r)} ${n(-neck*.35)} 1.1 ${n(-neck)} 0 C ${n(-neck*.35)} -1.1 -5 ${n(-r)} 0 ${n(-r)} Z`;
   }
-  window.HubMotion={clamp,releaseVelocity,coastStep,wheelStep,progressAt,ease,influence,indicatorStep,liquidState,liquidLine,liquidTransfer};
+  window.HubMotion={clamp,releaseVelocity,coastStep,wheelStep,snapStep,snapFrequency,landingIndex,progressAt,ease,influence,indicatorStep,liquidState,liquidLine,liquidTransfer};
 })();
