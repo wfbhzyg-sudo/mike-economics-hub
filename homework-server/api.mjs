@@ -14,7 +14,7 @@ import {
   passwordMatches,
 } from "./store.mjs";
 import { createFiles, readBody, MAX_FILE } from "./files.mjs";
-import { HttpError, assert, text, rubric, grade } from "./validation.mjs";
+import { HttpError, assert, text, boundedText, rubric, grade } from "./validation.mjs";
 const safeUser = (u) => ({
   id: u.id,
   name: u.name,
@@ -88,14 +88,14 @@ export async function createHomework({externalAuth} = {}) {
       throw new HttpError(400, "内容格式不正确");
     }
   };
-  const rate = (req, kind, maximum) => {
+  const rate = (req, kind, maximum, accountId) => {
     const ip = String(
         req.headers["x-forwarded-for"] || req.socket.remoteAddress,
       )
         .split(",")
         .at(-1)
         .trim(),
-      key = `${kind}:${ip}`,
+      key = `${kind}:${accountId || ip}`,
       time = Date.now();
     const entry = limited.get(key) || { count: 0, until: time + 600000 };
     if (time > entry.until) {
@@ -597,9 +597,14 @@ export async function createHomework({externalAuth} = {}) {
             (x) => x.invite === text(b.invite, 40).toUpperCase() && !x.archived,
           );
         assert(cls, "班级邀请码不正确");
-        user.classIds = [...new Set([...user.classIds, cls.id])];
-        await db.put("user", user);
-        return (json(res, { user: safeUser(user) }), true);
+        const joined = await db.tx(async (c) => {
+          const current = await db.get(user.id, c);
+          assert(current, "账号不存在", 401);
+          current.classIds = [...new Set([...(current.classIds || []), cls.id])];
+          await db.put("user", current, c);
+          return { ...user, classIds: current.classIds };
+        });
+        return (json(res, { user: safeUser(joined) }), true);
       }
       if (route[0] === "files") {
         if (method === "POST" && route[1] && route[2] === "rotate") {
@@ -609,11 +614,11 @@ export async function createHomework({externalAuth} = {}) {
             "不能旋转此附件",
             403,
           );
-          rate(req, "rotate", 60);
+          rate(req, "rotate", 60, user.id);
           return (json(res, { file: await files.rotate(f) }), true);
         }
         if (method === "POST") {
-          rate(req, "upload", 100);
+          rate(req, "upload", 100, user.id);
           const purpose = url.searchParams.get("purpose");
           assert(
             ["answer", "question", "submission"].includes(purpose),
@@ -723,8 +728,8 @@ export async function createHomework({externalAuth} = {}) {
               );
               current.answerFiles = b.answerFiles || [];
               current.questionFiles = b.questionFiles || [];
-              current.answerText = text(b.answerText, 40000);
-              current.instructions = text(b.instructions, 20000);
+              current.answerText = boundedText(b.answerText, 40000, "参考答案");
+              current.instructions = boundedText(b.instructions, 20000, "作业说明");
               current.sourceRevision = (current.sourceRevision || 0) + 1;
               current.draftRubric = null;
               current.status = "draft";
@@ -848,7 +853,7 @@ export async function createHomework({externalAuth} = {}) {
             const previous = await db.get(submissionId, c);
             if (previous && previous.status !== "draft") return previous;
             await files.validate(b.files || [], user.id, "submission", c);
-            const content = text(b.text, 40000);
+            const content = boundedText(b.text, 40000, "作业文字");
             assert(
               b.draft || content || (b.files || []).length,
               "请上传附件或填写答案",

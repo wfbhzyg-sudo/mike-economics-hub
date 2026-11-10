@@ -10,6 +10,14 @@ export const assert = (condition, message, status = 400) => {
 export function text(value, max = 10000) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
+// Submitted work must never be silently truncated before grading.
+export function boundedText(value, max, label = "文字") {
+  assert(value == null || typeof value === "string", `${label}格式不正确`);
+  assert((value || "").length <= max, `${label}超过 ${max} 字，请改用 PDF 附件或拆分提交`);
+  return (value || "").trim();
+}
+const numeric = (value) =>
+  typeof value === "number" || (typeof value === "string" && value.trim() !== "");
 export function rubric(input) {
   assert(
     Array.isArray(input) && input.length > 0 && input.length <= 40,
@@ -20,6 +28,7 @@ export function rubric(input) {
     const key = text(q.id, 30) || String(i + 1);
     assert(!seen.has(key), "题号不能重复");
     seen.add(key);
+    assert(numeric(q.maxPoints), "满分必须是数字");
     const maxPoints = Number(q.maxPoints);
     assert(
       Number.isFinite(maxPoints) && maxPoints > 0 && maxPoints <= 100,
@@ -50,6 +59,7 @@ export function grade(input, questions) {
     const ref = questions.find((r) => r.id === String(q.id));
     assert(ref && !seen.has(ref.id), "批改题号不完整或重复");
     seen.add(ref.id);
+    assert(q.score === null || numeric(q.score), "批改分数必须是数字或待复核");
     const score = q.score === null ? null : Number(q.score);
     assert(
       score === null ||

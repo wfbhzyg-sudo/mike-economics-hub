@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { rubric, grade } from "../homework-server/validation.mjs";
+import { rubric, grade, boundedText } from "../homework-server/validation.mjs";
 import { passwordHash, passwordMatches } from "../homework-server/store.mjs";
 const reference = [
   {
@@ -74,4 +74,16 @@ test("passwords use a unique salt and reject incorrect values", () => {
   assert.ok(passwordMatches("a-strong-test-password", a));
   assert.equal(passwordMatches("incorrect", a), false);
   assert.equal(passwordMatches("a-strong-test-password", "invalid"), false);
+});
+
+test("work text is rejected at the limit instead of silently truncated", () => {
+  assert.equal(boundedText("x".repeat(40000), 40000).length, 40000);
+  assert.throws(() => boundedText("x".repeat(40001), 40000));
+  assert.throws(() => boundedText({text:"answer"}, 40000));
+  assert.equal(boundedText(undefined, 40000), "");
+});
+test("malformed scores cannot become an invented zero or one", () => {
+  for (const score of ["", " ", true, false, [], {}, undefined, NaN, Infinity, -1]) {
+    assert.throws(() => grade({questions:[{id:"1", score, evidence:"x", feedback:"x"}]}, reference));
+  }
 });
