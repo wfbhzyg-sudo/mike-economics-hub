@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "check": "Retired session logout waits for the live family user lock and revokes all surviving sessions",
+  "environment": "isolated local restore only"
+}
