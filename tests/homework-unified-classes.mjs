@@ -48,8 +48,8 @@ try{
   await api(teachers[0],'classes','POST',{name:'Must not create'},409);
   await api(student,'join','POST',{invite:a.code},409);
  });
- await check('An incorrect legacy credential does not invalidate the valid Bookself session',async()=>{
-  await api(teachers[0],'link-account','POST',{username:'nonexistent_legacy_'+suffix,password:'incorrect-password'},403);
+ await check('The removed legacy-link endpoint cannot attach an old identity',async()=>{
+  await api(teachers[0],'link-account','POST',{username:'nonexistent_legacy_'+suffix,password:'incorrect-password'},409);
   assert.equal((await api(teachers[0],'me')).user.role,'teacher');
  });
  await check('Teacher publishes to the registered class; another teacher cannot target it',async()=>{

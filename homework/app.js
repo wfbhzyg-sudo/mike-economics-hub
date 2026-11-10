@@ -148,7 +148,7 @@ function installNavigation() {
     ? [
         { label: "作业", route: "assignments" },
         { label: "待复核", route: "reviews" },
-        ...(state.user.unified&&!state.user.linkedLegacy?[]:[{ label: "设备", route: "device" }]),
+        ...(!state.user.canManageGrading?[]:[{ label: "批改设置", route: "device" }]),
       ]
     : [
         { label: "作业", route: "assignments" },
@@ -766,8 +766,8 @@ function accountPage() {
   const teacher = state.user.role === "teacher";
   main.innerHTML = `<section class="paper">${head("ACCOUNT / 账户与班级", state.user.name, teacher ? "教师账户" : "学生账户", `<button id="logout" class="secondary">退出登录</button>`)}<div class="split"><section><h2>我的班级</h2><div class="class-list">${state.classes.map((c) => `<div class="class-line"><span>${h(c.name)}</span>${teacher ? `<div><span class="hint">${c.source === "bookself" ? "注册班级码" : "原作业班级码"}</span><code>${h(c.invite)}</code></div>` : ""}</div>`).join("") || `<p class="muted">${state.user.unified ? (teacher ? '尚无可用班级，请在 Bookself 教师端确认。' : '暂未关联到班级，请联系老师核对注册信息。') : '尚未加入班级'}</p>`}</div>${state.user.unified ? `<p class="hint">${teacher ? "与 Bookself 共用班级和注册班级码。班级调整请在 Bookself 教师端完成。" : "已沿用注册时的班级，无需再次加入。需要转班时，请联系老师。"}</p>` : `<hr class="rule"><form id="class-form" class="stack">${field(teacher ? "新班级名称" : "加入另一个班级", "value", "", "text", `required placeholder="${teacher ? "例如：AP 宏观 2026 A 班" : "输入班级邀请码"}"`)}<p class="form-error" role="alert"></p><button type="submit" class="primary">${teacher ? "创建班级" : "加入班级"}</button></form>${teacher ? '<p class="hint" style="margin-top:20px">学生使用 Bookself 账号登录，再通过此邀请码加入作业班级。</p>' : ""}`}</section><section><h2>修改密码</h2><form id="password-form" class="stack" style="margin-top:24px">${field("当前密码", "current", "", "password", 'required autocomplete="current-password"')}${field("新密码", "password", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}${field("确认新密码", "confirm", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}<p class="hint">使用至少 10 位密码。修改后，其他设备需要重新登录。</p><p class="form-error" role="alert"></p><button type="submit" class="secondary">更新密码</button></form></section></div></section>`;
   if(state.user.unified){
-    const passwordForm=$('#password-form');passwordForm.parentElement.innerHTML='<h2>统一账号</h2><p class="muted">使用 Bookself 账号，阅读与学习进度保持同步。</p><a class="secondary" href="/?account=password">修改 Bookself 密码</a>'+(state.user.linkedLegacy?'<p class="hint">已关联旧作业账号，历史记录保留。</p>':'<details class="legacy-link"><summary>关联已有作业账号</summary><p class="hint">仅在以前单独使用过作业账户时需要。验证后保留原来的作业与成绩。</p><form id="link-account-form" class="stack">'+field('旧作业用户名','username','','text','required autocomplete="username"')+field('旧作业密码','password','','password','required autocomplete="current-password"')+'<p class="form-error" role="alert"></p><button class="secondary" type="submit">验证并关联</button></form></details>');
-    if($('#link-account-form'))formHandler($('#link-account-form'),async b=>{await loginResult(await post('link-account',b));toast('旧作业账号已关联');});
+    const passwordForm=$('#password-form');
+    passwordForm.parentElement.innerHTML='<h2>统一账号</h2><p class="muted">使用 Bookself 账号，班级与学习进度保持同步。</p><p class="hint">新作业、提交记录与成绩直接保存到当前账号。</p><a class="secondary" href="/?account=password">修改 Bookself 密码</a>';
   }
   click("#logout", async () => {
     await post("logout");

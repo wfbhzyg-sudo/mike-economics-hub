@@ -22,7 +22,7 @@ const safeUser = (u) => ({
   role: u.role,
   classIds: u.classIds || [],
   unified: Boolean(u.unified),
-  linkedLegacy: Boolean(u.linkedLegacy),
+  canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
 const publicAssignment = (a) => ({
   id: a.id,
@@ -133,14 +133,14 @@ export async function createHomework({externalAuth} = {}) {
       const signed=await externalAuth.session(req);if(!signed)return null;
       const registeredClasses=await externalAuth.classrooms(signed);
       const user=await db.tx(async c=>{
-        const mapping=await db.get('identity:bookself:'+signed.id,c);
-        let u=mapping?await db.get(mapping.userId,c):await db.get('bookself:'+signed.id,c);
+        let u=await db.get('bookself:'+signed.id,c);
         if(!u){u={id:'bookself:'+signed.id,bookselfId:signed.id,username:signed.username,name:signed.name,role:signed.role,classIds:[],createdAt:now()};await db.put('user',u,c);}
         assert(u && ['student','teacher'].includes(u.role),'账号关联异常，请联系老师',409);
-        // Keep legacy records intact; current registered membership is read live.
-        // A transfer must not leave a persisted copy granting access to the old class.
-        const classIds=[...new Set([...(u.classIds||[]).filter(x=>!x.startsWith('bookself-class:')),...registeredClasses.map(x=>x.id)])];
-        return {...u,classIds,name:signed.name,role:signed.role,unified:true,linkedLegacy:!!mapping};
+        // New homework belongs only to the signed-in Bookself identity.
+        // Legacy records and mappings remain untouched in storage.
+        const classIds=registeredClasses.map(x=>x.id);
+        const canManageGrading=signed.role==='teacher'&&signed.id===process.env.HOMEWORK_OWNER_BOOKSELF_ID;
+        return {...u,classIds,name:signed.name,role:signed.role,unified:true,canManageGrading};
       });
       return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed,registeredClasses};
     }
@@ -512,11 +512,10 @@ export async function createHomework({externalAuth} = {}) {
       const auth = await sessionFor(req);
       assert(auth, "请先登录", 401);
       const user = auth.user;
-      const availableClasses = async () => [
-        ...(auth.registeredClasses||[]).map(c=>({...c,...(user.role==='teacher'?{teacherId:user.id}:{})})),
-        ...(await db.list('class')).filter(c=>user.role==='teacher'?c.teacherId===user.id:user.classIds.includes(c.id)),
-      ];
-      if(externalAuth && route[0]==="device")assert(user.role==="teacher"&&user.linkedLegacy,"设备管理仅对已关联原教师账号开放",403);
+      const availableClasses = async () => externalAuth
+        ? auth.registeredClasses.map(c=>({...c,...(user.role==='teacher'?{teacherId:user.id}:{})}))
+        : (await db.list('class')).filter(c=>user.role==='teacher'?c.teacherId===user.id:user.classIds.includes(c.id));
+      if(externalAuth && route[0]==="device")assert(user.canManageGrading,"批改引擎仅由平台管理员配置",403);
       if (method !== "GET")
         assert(
           req.headers["x-csrf-token"] === auth.session.csrf,
@@ -531,24 +530,7 @@ export async function createHomework({externalAuth} = {}) {
           true
         );
       if(route[0]==='link-account'&&method==='POST'&&externalAuth){
-        rate(req,'link-account',10);const b=await body(req);
-        await db.tx(async c=>{
-          const old=(await db.list('user',c)).find(u=>u.username===text(b.username,64).toLowerCase()&&u.password);
-          // The Bookself session is valid; failure to prove the legacy identity
-          // must not sign the user out of their current account.
-          assert(old&&passwordMatches(String(b.password||''),old.password),'旧作业账号或密码不正确',403);
-          assert(old.role===auth.signed.role,'两个账号的身份不一致，请联系老师',409);
-          const mappings=await db.list('identity',c);
-          assert(!mappings.some(m=>m.userId===old.id&&m.subject!==auth.signed.id),'该作业账号已关联其他 Bookself 账号',409);
-          assert(!mappings.some(m=>m.subject===auth.signed.id&&m.userId!==old.id),'此 Bookself 账号已关联旧作业账号',409);
-          if(user.id!==old.id){
-            for(const kind of ['class','assignment','submission','file'])
-              assert(!(await db.list(kind,c)).some(r=>r.owner===user.id||r.teacherId===user.id||r.studentId===user.id),'新账户已有记录，请联系老师核对后再关联',409);
-          }
-          await db.put('identity',{id:'identity:bookself:'+auth.signed.id,subject:auth.signed.id,userId:old.id,createdAt:now()},c);
-          await db.audit(auth.signed.id,'link_existing_homework_account',old.id,c);
-        });
-        const linked=await sessionFor(req);return (json(res,{user:safeUser(linked.user),csrf:linked.session.csrf}),true);
+        throw new HttpError(409,'现在直接使用 Bookself 账号，无需关联旧作业账号');
       }
       if (route[0] === "logout" && method === "POST") {
         if(externalAuth){await externalAuth.revoke(externalAuth.token(req));res.setHeader('Set-Cookie',[externalAuth.cookie(externalAuth.cookieName,'',0),encodeCookie('',0)]);return (json(res,{ok:true}),true);}
