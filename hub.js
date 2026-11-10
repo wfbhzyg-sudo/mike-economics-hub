@@ -52,8 +52,9 @@
       if(app.theme==='course'){
         const macro=app.subject==='macro',homework=app.kind==='homework';panel.classList.add(macro?'course-macro':'course-micro',homework?'course-homework':'course-materials');
         const labels={subject:macro?'AP 宏观':'AP 微观',kind:homework?'作业':'学习材料',english:macro?'AP MACROECONOMICS':'AP MICROECONOMICS',wordmark:macro?'Macro.':'Micro.','book-kind':homework?'Practice':'Study notes',companion:homework?'PDF':'CED',note:homework?'作业 · 答案':'课程与考试说明'};
+        Object.assign(labels,app.artLabels||{});
         art.querySelectorAll('[data-course]').forEach(e=>{if(labels[e.dataset.course])e.textContent=labels[e.dataset.course];});
-        for(const text of homework?['开学—月考','月考—期中','期中—期末','第二学期']:['白皮书','课程与考试说明','Unit PPT 及大纲','复习笔记']){const row=document.createElement('span');row.textContent=text;art.querySelector('[data-course="contents"]').append(row);}
+        for(const text of app.contents||(homework?['开学—月考','月考—期中','期中—期末','第二学期']:['白皮书','课程与考试说明','Unit PPT 及大纲','复习笔记'])){const row=document.createElement('span');row.textContent=text;art.querySelector('[data-course="contents"]').append(row);}
       }
       const caption=document.createElement('p');caption.className='panel-caption';caption.textContent=app.caption||'';art.append(caption);
       const select=document.createElement('button');select.type='button';select.className='select-panel';select.setAttribute('aria-label',`选择 ${app.name}，${app.description||''}`);select.setAttribute('aria-pressed','false');select.setAttribute('aria-controls',`entry-${app.id}`);

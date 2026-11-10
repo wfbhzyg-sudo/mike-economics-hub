@@ -2,7 +2,7 @@
 
 [访问网站](https://mike-economics-hub-production.up.railway.app/)
 
-Bookself、Econquest、资料库、NEBS 模拟股票大赛与四个 AP 宏观／微观作业和学习材料入口。八个真实场景组成连续画廊，保留原始字体、品牌素材、黑白转彩色及桌面 60% 展开。
+Bookself、Econquest、资料库、NEBS 模拟股票大赛与四个 AP 宏观／微观作业和学习材料入口。新增电子作业工作台，九个真实场景组成连续画廊，保留原始字体、品牌素材、黑白转彩色及桌面 60% 展开。
 
 ## 浏览方式
 
@@ -10,10 +10,14 @@ Bookself、Econquest、资料库、NEBS 模拟股票大赛与四个 AP 宏观／
 
 ## 运行与发布
 
-Node.js 22，执行 `npm start`，默认端口 8080，支持 `PORT` 环境变量。无需前端构建或额外依赖。
+Node.js 22，执行 `npm start`，默认端口 8080，支持 `PORT` 环境变量。执行 `npm ci` 安装服务依赖，无需前端构建。
 
 Railway 连接本仓库 `main` 分支，推送自动部署。健康检查 `/health`，超时 60 秒，失败重启最多 3 次。设置保存在 Railway 控制台。
 
-`apps.js` 配置入口，`hub.js` 控制画廊与导航，`motion.js` 提供惯性与液态形变数学；`floating.css` 是最终响应式布局，其他样式保留原有场景。字体与品牌素材位于 `assets/`。Dockerfile 仅复制公开网页与运行文件，以 node 普通用户启动无依赖静态服务。
+`apps.js` 配置入口，`hub.js` 控制画廊与导航，`motion.js` 提供惯性与液态形变数学；`floating.css` 是最终响应式布局，其他样式保留原有场景。字体与品牌素材位于 `assets/`。Dockerfile 仅复制公开网页与运行文件，以 node 普通用户启动网页与作业服务。
 
 Noto Serif SC 和 Instrument Serif 按 SIL OFL 许可自托管，许可原文在 `assets/`。NEBS 地址来自用户提供海报的二维码；此页仅导航，不执行报名。
+
+## 电子作业
+
+[打开作业工作台](https://mike-economics-hub-production.up.railway.app/homework/)。教师参考答案确认、学生图片/PDF/文字提交、本地 Mac 初批与教师复核发布；使用及部署细节见 [HOMEWORK.md](HOMEWORK.md)。生产需要 PostgreSQL 和私有 S3，凭据只通过环境变量配置。

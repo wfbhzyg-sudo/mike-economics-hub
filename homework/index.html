@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1f3a" />
+    <meta name="color-scheme" content="light" />
+    <title>作业工作台 · Mike 的经济一页通</title>
+    <link rel="icon" href="/assets/mike-hub-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/homework/style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <header class="brand">
+      <a href="/" class="back"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg> <span>一页通</span></a
+      ><a href="/homework/" class="brand-title"
+        ><img
+          src="/assets/mike-hub-mark.svg"
+          width="40"
+          height="40"
+          alt=""
+        />Mike 的经济一页通</a
+      ><button id="account" class="account" hidden></button>
+    </header>
+    <main id="main" tabindex="-1" aria-busy="true">
+      <section class="paper loading"><p>正在打开作业工作台…</p></section>
+    </main>
+    <nav id="dock" aria-label="工作台导航" hidden></nav>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <dialog id="preview">
+      <button class="close" aria-label="关闭预览">关闭</button>
+      <div class="preview-content"></div>
+    </dialog>
+    <script src="/motion.js"></script>
+    <script type="module" src="/homework/app.js"></script>
+  </body>
+</html>

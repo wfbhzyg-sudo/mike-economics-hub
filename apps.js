@@ -1,5 +1,6 @@
 // Add an item here to add another application. A custom app may provide logo and image.
 window.HUB_APPS = [
+  { id: 'homework-submit', shortName: '作业提交', name: '电子作业工作台', entryLabel: '进入作业工作台', url: '/homework/', theme: 'course', template: 'course-art', subject: 'macro', kind: 'homework', caption: '图片 · PDF · 文字', description: '提交作业、查看教师反馈', artLabels: { subject: '电子作业', kind: '工作台', english: 'MIKE HOMEWORK', wordmark: 'Review.', 'book-kind': 'Every thought matters', companion: 'AI', note: '本地批改 · 教师复核' }, contents: ['图片与 PDF 提交', '文字作答', '逐题反馈', '学习记录'] },
   { id: 'bookself', caption: '阅读 · 思考 · 推演', shortName: 'Bookself', name: 'Bookself', url: 'https://econ.up.railway.app/', template: 'bookself-art', theme: 'bookself', description: '阅读、解释与经济学模型' },
   { id: 'econquest', caption: '在冒险中理解经济学', shortName: 'Econquest', name: 'Econquest', url: 'https://econ.up.railway.app/quest/', template: 'econquest-art', theme: 'econquest', description: '三绳推导与经济学探索' },
   { id: 'resources', caption: '课程 · 真题 · 竞赛', shortName: '资料库', name: '资料库', entryLabel: '进入资料库', url: 'https://www.wolai.com/onHKAyrYS27ZWDVfHAUna1', template: 'resources-art', theme: 'resources', description: 'AP、IGCSE、历年真题与经济竞赛资料' },

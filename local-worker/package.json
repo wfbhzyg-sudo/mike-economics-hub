@@ -1,0 +1,18 @@
+{
+  "name": "mike-homework-worker",
+  "version": "1.0.0",
+  "description": "Private outbound homework grading worker",
+  "scripts": {
+    "start": "node worker.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@napi-rs/canvas": "^1.1.0",
+    "pdfjs-dist": "^6.5.438",
+    "sharp": "^0.35.5"
+  },
+  "private": true
+}

@@ -4,3 +4,9 @@ node_modules
 .env
 .env.*
 README.md
+
+local-worker
+tests
+test-results
+**/node_modules
+*.log
