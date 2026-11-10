@@ -131,14 +131,18 @@ export async function createHomework({externalAuth} = {}) {
   const sessionFor = async (req) => {
     if(externalAuth){
       const signed=await externalAuth.session(req);if(!signed)return null;
+      const registeredClasses=await externalAuth.classrooms(signed);
       const user=await db.tx(async c=>{
         const mapping=await db.get('identity:bookself:'+signed.id,c);
         let u=mapping?await db.get(mapping.userId,c):await db.get('bookself:'+signed.id,c);
         if(!u){u={id:'bookself:'+signed.id,bookselfId:signed.id,username:signed.username,name:signed.name,role:signed.role,classIds:[],createdAt:now()};await db.put('user',u,c);}
         assert(u && ['student','teacher'].includes(u.role),'账号关联异常，请联系老师',409);
-        return {...u,name:signed.name,role:signed.role,unified:true,linkedLegacy:!!mapping};
+        // Keep legacy records intact; current registered membership is read live.
+        // A transfer must not leave a persisted copy granting access to the old class.
+        const classIds=[...new Set([...(u.classIds||[]).filter(x=>!x.startsWith('bookself-class:')),...registeredClasses.map(x=>x.id)])];
+        return {...u,classIds,name:signed.name,role:signed.role,unified:true,linkedLegacy:!!mapping};
       });
-      return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed};
+      return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed,registeredClasses};
     }
     const raw = (req.headers.cookie || "")
       .split(";")
@@ -508,6 +512,10 @@ export async function createHomework({externalAuth} = {}) {
       const auth = await sessionFor(req);
       assert(auth, "请先登录", 401);
       const user = auth.user;
+      const availableClasses = async () => [
+        ...(auth.registeredClasses||[]).map(c=>({...c,...(user.role==='teacher'?{teacherId:user.id}:{})})),
+        ...(await db.list('class')).filter(c=>user.role==='teacher'?c.teacherId===user.id:user.classIds.includes(c.id)),
+      ];
       if(externalAuth && route[0]==="device")assert(user.role==="teacher"&&user.linkedLegacy,"设备管理仅对已关联原教师账号开放",403);
       if (method !== "GET")
         assert(
@@ -526,7 +534,9 @@ export async function createHomework({externalAuth} = {}) {
         rate(req,'link-account',10);const b=await body(req);
         await db.tx(async c=>{
           const old=(await db.list('user',c)).find(u=>u.username===text(b.username,64).toLowerCase()&&u.password);
-          assert(old&&passwordMatches(String(b.password||''),old.password),'旧作业账号或密码不正确',401);
+          // The Bookself session is valid; failure to prove the legacy identity
+          // must not sign the user out of their current account.
+          assert(old&&passwordMatches(String(b.password||''),old.password),'旧作业账号或密码不正确',403);
           assert(old.role===auth.signed.role,'两个账号的身份不一致，请联系老师',409);
           const mappings=await db.list('identity',c);
           assert(!mappings.some(m=>m.userId===old.id&&m.subject!==auth.signed.id),'该作业账号已关联其他 Bookself 账号',409);
@@ -570,12 +580,7 @@ export async function createHomework({externalAuth} = {}) {
         if (method === "GET")
           return (
             json(res, {
-              classes: (await db.list("class"))
-                .filter((x) =>
-                  user.role === "teacher"
-                    ? x.teacherId === user.id
-                    : user.classIds.includes(x.id),
-                )
+              classes: (await availableClasses())
                 .map((x) =>
                   user.role === "teacher" ? x : { id: x.id, name: x.name },
                 ),
@@ -584,6 +589,7 @@ export async function createHomework({externalAuth} = {}) {
           );
         teacher();
         if (method === "POST") {
+          assert(!externalAuth,"班级统一在 Bookself 管理，作业工作台会自动同步",409);
           const b = await body(req);
           assert(text(b.name, 80), "请填写班级名称");
           const cls = {
@@ -598,6 +604,7 @@ export async function createHomework({externalAuth} = {}) {
         }
       }
       if (route[0] === "join" && method === "POST") {
+        assert(!externalAuth,"已沿用注册时的班级，无需再次加入；转班请联系老师",409);
         assert(user.role === "student", "请使用学生账号");
         const b = await body(req),
           cls = (await db.list("class")).find(
@@ -677,9 +684,7 @@ export async function createHomework({externalAuth} = {}) {
           teacher();
           const b = await body(req);
           assert(text(b.title, 120), "请填写作业标题");
-          const classes = (await db.list("class")).filter(
-            (x) => x.teacherId === user.id,
-          );
+          const classes = await availableClasses();
           assert(
             Array.isArray(b.classIds) &&
               b.classIds.length &&

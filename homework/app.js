@@ -74,25 +74,35 @@ function toast(message) {
   );
 }
 async function api(path, options = {}) {
-  const response = await fetch("/api/homework/" + path, {
-    credentials: "same-origin",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": state.csrf,
-      ...options.headers,
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
-  const value = await response.json();
-  if (!response.ok) {
-    if (response.status === 401 && state.user) {
-      state.user = null;
-      showLogin();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch("/api/homework/" + path, {
+      credentials: "same-origin",
+      ...options,
+      signal: options.signal || controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": state.csrf,
+        ...options.headers,
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+    const value = await response.json();
+    if (!response.ok) {
+      if (response.status === 401 && state.user) {
+        state.user = null;
+        showLogin();
+      }
+      throw new Error(value.error || "暂时无法完成操作");
     }
-    throw new Error(value.error || "暂时无法完成操作");
+    return value;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("连接超时，请稍后重试。已保存的内容不会丢失。");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return value;
 }
 const post = (path, body = {}) => api(path, { method: "POST", body });
 const put = (path, body) => api(path, { method: "PUT", body });
@@ -206,12 +216,12 @@ function row(a) {
 }
 function assignments() {
   const teacher = state.user.role === "teacher";
-  main.innerHTML = `<section class="paper">${head("HOMEWORK / 作业工作台", teacher ? "布置与批改" : "我的作业", teacher ? "你的答案，决定每一次批改的标准。" : "图片、PDF 或文字，选择适合你的提交方式。", teacher ? link("account", "班级管理") + link("new", "布置作业", "primary") : "")}${state.assignments.length ? state.assignments.map(row).join("") : empty(teacher ? "从一份作业开始" : "还没有待完成的作业", teacher ? "创建班级，上传你的参考答案，确认评分点后即可接收作业。" : "教师发布作业后，会显示在这里。", link(teacher ? (state.classes.length ? "new" : "account") : "account", teacher ? (state.classes.length ? "布置第一份作业" : "创建班级") : "查看我的班级", "primary"))}</section>`;
+  main.innerHTML = `<section class="paper">${head("HOMEWORK / 作业工作台", teacher ? "布置与批改" : "我的作业", teacher ? "你的答案，决定每一次批改的标准。" : "图片、PDF 或文字，选择适合你的提交方式。", teacher ? link("account", state.user.unified ? "我的班级" : "班级管理") + link("new", "布置作业", "primary") : "")}${state.assignments.length ? state.assignments.map(row).join("") : empty(teacher ? "从一份作业开始" : "还没有待完成的作业", teacher ? (state.user.unified ? "选择已有班级，上传参考答案，确认评分点后即可接收作业。" : "创建班级，上传你的参考答案，确认评分点后即可接收作业。") : "教师发布作业后，会显示在这里。", link(teacher ? (state.classes.length ? "new" : "account") : "account", teacher ? (state.classes.length ? "布置第一份作业" : state.user.unified ? "查看班级" : "创建班级") : "查看我的班级", "primary"))}</section>`;
 }
 function newAssignment() {
   if (!state.classes.length) {
     go("account");
-    toast("先创建一个班级，即可布置作业");
+    toast(state.user.unified ? "请先在 Bookself 教师端确认班级，作业工作台会自动同步" : "先创建一个班级，即可布置作业");
     return;
   }
   main.innerHTML = `<section class="paper">${head("NEW ASSIGNMENT", "布置一份作业", "下一步上传参考答案，核对评分点。", link("assignments", "返回作业"))}<form id="new-assignment" class="stack small-form">${field("作业标题", "title", "", "text", 'required maxlength="120" placeholder="例如：AD–AS 图像与政策分析"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field("截止时间（可选）", "dueAt", "", "datetime-local")}</div><fieldset><legend>布置给</legend>${state.classes.map((c) => `<label class="check"><input type="checkbox" name="classId" value="${c.id}" checked>${h(c.name)}</label>`).join("")}</fieldset>${area("题目与作业要求", "instructions", "", 'placeholder="填写题目、需要画图的要求、提交说明…"')}<p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 上传参考答案</button></form></section>`;
@@ -754,7 +764,7 @@ async function devicePage() {
 }
 function accountPage() {
   const teacher = state.user.role === "teacher";
-  main.innerHTML = `<section class="paper">${head("ACCOUNT / 账户与班级", state.user.name, teacher ? "教师账户" : "学生账户", `<button id="logout" class="secondary">退出登录</button>`)}<div class="split"><section><h2>我的班级</h2><div class="class-list">${state.classes.map((c) => `<div class="class-line"><span>${h(c.name)}</span>${teacher ? `<div><span class="hint">学生邀请码</span><code>${h(c.invite)}</code></div>` : ""}</div>`).join("") || '<p class="muted">尚未加入班级</p>'}</div><hr class="rule"><form id="class-form" class="stack">${field(teacher ? "新班级名称" : "加入另一个班级", "value", "", "text", `required placeholder="${teacher ? "例如：AP 宏观 2026 A 班" : "输入班级邀请码"}"`)}<p class="form-error" role="alert"></p><button type="submit" class="primary">${teacher ? "创建班级" : "加入班级"}</button></form>${teacher ? '<p class="hint" style="margin-top:20px">学生使用 Bookself 账号登录，再通过此邀请码加入作业班级。</p>' : ""}</section><section><h2>修改密码</h2><form id="password-form" class="stack" style="margin-top:24px">${field("当前密码", "current", "", "password", 'required autocomplete="current-password"')}${field("新密码", "password", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}${field("确认新密码", "confirm", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}<p class="hint">使用至少 10 位密码。修改后，其他设备需要重新登录。</p><p class="form-error" role="alert"></p><button type="submit" class="secondary">更新密码</button></form></section></div></section>`;
+  main.innerHTML = `<section class="paper">${head("ACCOUNT / 账户与班级", state.user.name, teacher ? "教师账户" : "学生账户", `<button id="logout" class="secondary">退出登录</button>`)}<div class="split"><section><h2>我的班级</h2><div class="class-list">${state.classes.map((c) => `<div class="class-line"><span>${h(c.name)}</span>${teacher ? `<div><span class="hint">${c.source === "bookself" ? "注册班级码" : "原作业班级码"}</span><code>${h(c.invite)}</code></div>` : ""}</div>`).join("") || `<p class="muted">${state.user.unified ? (teacher ? '尚无可用班级，请在 Bookself 教师端确认。' : '暂未关联到班级，请联系老师核对注册信息。') : '尚未加入班级'}</p>`}</div>${state.user.unified ? `<p class="hint">${teacher ? "与 Bookself 共用班级和注册班级码。班级调整请在 Bookself 教师端完成。" : "已沿用注册时的班级，无需再次加入。需要转班时，请联系老师。"}</p>` : `<hr class="rule"><form id="class-form" class="stack">${field(teacher ? "新班级名称" : "加入另一个班级", "value", "", "text", `required placeholder="${teacher ? "例如：AP 宏观 2026 A 班" : "输入班级邀请码"}"`)}<p class="form-error" role="alert"></p><button type="submit" class="primary">${teacher ? "创建班级" : "加入班级"}</button></form>${teacher ? '<p class="hint" style="margin-top:20px">学生使用 Bookself 账号登录，再通过此邀请码加入作业班级。</p>' : ""}`}</section><section><h2>修改密码</h2><form id="password-form" class="stack" style="margin-top:24px">${field("当前密码", "current", "", "password", 'required autocomplete="current-password"')}${field("新密码", "password", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}${field("确认新密码", "confirm", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}<p class="hint">使用至少 10 位密码。修改后，其他设备需要重新登录。</p><p class="form-error" role="alert"></p><button type="submit" class="secondary">更新密码</button></form></section></div></section>`;
   if(state.user.unified){
     const passwordForm=$('#password-form');passwordForm.parentElement.innerHTML='<h2>统一账号</h2><p class="muted">使用 Bookself 账号，阅读与学习进度保持同步。</p><a class="secondary" href="/?account=password">修改 Bookself 密码</a>'+(state.user.linkedLegacy?'<p class="hint">已关联旧作业账号，历史记录保留。</p>':'<details class="legacy-link"><summary>关联已有作业账号</summary><p class="hint">仅在以前单独使用过作业账户时需要。验证后保留原来的作业与成绩。</p><form id="link-account-form" class="stack">'+field('旧作业用户名','username','','text','required autocomplete="username"')+field('旧作业密码','password','','password','required autocomplete="current-password"')+'<p class="form-error" role="alert"></p><button class="secondary" type="submit">验证并关联</button></form></details>');
     if($('#link-account-form'))formHandler($('#link-account-form'),async b=>{await loginResult(await post('link-account',b));toast('旧作业账号已关联');});
@@ -765,7 +775,7 @@ function accountPage() {
     location.hash = "login";
     showLogin();
   });
-  formHandler($("#class-form"), async (b) => {
+  if($("#class-form"))formHandler($("#class-form"), async (b) => {
     if (teacher) await post("classes", { name: b.value });
     else {
       const data = await post("join", { invite: b.value });

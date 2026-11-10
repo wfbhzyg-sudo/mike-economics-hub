@@ -702,6 +702,7 @@ progress {
   gap: 20px;
 }
 .class-line code {
+  margin-inline-start: 8px;
   font-size: 15px;
   letter-spacing: 0.1em;
   user-select: all;
@@ -1119,6 +1120,7 @@ dialog::backdrop {
   }
   .class-line code {
     display: block;
+    margin-inline-start: 0;
     margin-top: 8px;
   }
   .status-line {

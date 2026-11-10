@@ -4,6 +4,15 @@ import {readBody} from '../homework-server/files.mjs';
 export async function createPortalAuth(env=process.env){
  const pool=new pg.Pool({connectionString:env.IDENTITY_DATABASE_URL,max:6,connectionTimeoutMillis:10000});
  const auth=sharedAuth({pool,env});await auth.init();
+ // Classroom membership remains authoritative in Bookself. Never create a
+ // second roster or accept a class ID supplied by the homework browser.
+ async function classrooms(user){
+  const teacher=user.role==='teacher';
+  const rows=(await pool.query(teacher
+   ? 'SELECT c.id,c.name,c.code FROM econquest.classes c WHERE c.teacher_id=$1 ORDER BY c.created_at,c.id'
+   : "SELECT c.id,c.name FROM econquest.users u JOIN econquest.classes c ON c.id=u.class_id WHERE u.id=$1 AND u.role='student'",[user.id])).rows;
+  return rows.map(c=>({id:'bookself-class:'+c.id,name:c.name,source:'bookself',...(teacher?{invite:c.code}:{})}));
+ }
  const json=(res,value,status=200)=>res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}).end(JSON.stringify(value));
  async function handle(req,res){
   if(await auth.handle(req,res,'portal'))return true;
@@ -27,5 +36,5 @@ export async function createPortalAuth(env=process.env){
    json(res,{error:'没有这个接口'},404);
   }catch(e){json(res,{error:e.status?e.message:'账号服务暂时不可用，请稍后重试'},e.status||503);}return true;
  }
- return {...auth,handle,close:()=>pool.end()};
+ return {...auth,classrooms,handle,close:()=>pool.end()};
 }
