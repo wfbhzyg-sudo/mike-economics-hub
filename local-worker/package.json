@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Private outbound homework grading worker",
   "scripts": {
-    "start": "node worker.mjs"
+    "start": "node worker.mjs",
+    "test": "node --test *.test.mjs"
   },
   "keywords": [],
   "author": "",

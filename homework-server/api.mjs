@@ -252,8 +252,12 @@ export async function createHomework({externalAuth} = {}) {
           "设备未配对或已停用",
           401,
         );
+        const workerMode = req.headers["x-worker-mode"] === "cloud" ? "cloud" : "local";
         if (route[1] === "heartbeat" && method === "POST") {
           const b = await body(req);
+          const settings = await db.get("model-settings");
+          if ((settings.execution || "local") !== workerMode) return (json(res, { ok: true, standby: true }), true);
+          device.execution = workerMode;
           device.lastSeen = now();
           device.modelReady = Boolean(b.modelReady);
           device.model = text(b.model, 100);
@@ -275,6 +279,9 @@ export async function createHomework({externalAuth} = {}) {
         }
         if (route[1] === "claim" && method === "POST") {
           const job = await db.tx(async (c) => {
+            const settings = await db.get("model-settings", c);
+            if ((settings.execution || "local") !== workerMode ||
+                (settings.provider === "openai" && (!settings.apiKeyEncrypted || !settings.cloudConsent))) return null;
             await c.query(
               `UPDATE ${db.jobs} SET status=CASE WHEN attempts>=3 THEN 'failed' ELSE 'queued' END,lease=NULL,lease_until=NULL,error='设备中断，等待重试' WHERE status='running' AND lease_until<now()`,
             );
@@ -955,10 +962,11 @@ export async function createHomework({externalAuth} = {}) {
             json(res, {
               device: d
                 ? {
-                    name: d.name,
+                    name: settings.execution === "cloud" ? "DeepSeek 云端批改" : d.name,
+                    execution: settings.execution || "local",
                     lastSeen: d.lastSeen,
                     online:
-                      !d.revoked && Date.now() - Date.parse(d.lastSeen) < 45000,
+                      !d.revoked && (d.execution || "local") === (settings.execution || "local") && Date.now() - Date.parse(d.lastSeen) < 45000,
                     modelReady: d.modelReady,
                     model: d.model,
                     busy: d.busy,
@@ -970,6 +978,7 @@ export async function createHomework({externalAuth} = {}) {
                 ...settings,
                 apiKeyEncrypted: undefined,
                 hasApiKey: Boolean(settings.apiKeyEncrypted),
+                hasDeepSeekKey: Boolean((await db.get("model-profile:deepseek"))?.apiKeyEncrypted),
               },
             }),
             true
@@ -977,37 +986,39 @@ export async function createHomework({externalAuth} = {}) {
         }
         const b = await body(req);
         if (route[1] === "settings" && method === "PUT") {
-          const old = await db.get("model-settings"),
-            provider = b.provider === "openai" ? "openai" : "ollama",
-            u = new URL(text(b.baseUrl, 500));
-          assert(
-            provider === "ollama"
-              ? ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname) &&
-                  u.protocol === "http:"
-              : u.protocol === "https:" && b.cloudConsent === true,
-            "本地模型只允许本机地址；外部 API 需使用 HTTPS 并确认传送资料",
-          );
-          assert(
-            !u.username && !u.password && !u.search && !u.hash,
-            "模型地址不能包含凭据或查询参数",
-          );
+          const old = await db.get("model-settings");
+          const savedDeepSeek = await db.get("model-profile:deepseek");
+          const deepseek = b.provider === "deepseek";
+          const provider = deepseek || b.provider === "openai" ? "openai" : "ollama";
+          const u = new URL(deepseek ? "https://api.deepseek.com" : text(b.baseUrl, 500));
+          assert(provider === "ollama"
+            ? ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname) && u.protocol === "http:"
+            : u.protocol === "https:" && b.cloudConsent === true,
+            "本地模型仅使用本机地址；外部 API 需确认传送资料");
+          assert(!u.username && !u.password && !u.search && !u.hash, "模型地址不能包含凭据或查询参数");
+          const baseUrl = u.toString().replace(/\/$/, "");
+          const sameProvider = old.provider === provider && old.baseUrl === baseUrl;
+          const apiKeyEncrypted = b.apiKey ? encrypt(text(b.apiKey, 2000)) : sameProvider ? old.apiKeyEncrypted : deepseek ? savedDeepSeek?.apiKeyEncrypted || "" : "";
+          assert(provider === "ollama" || apiKeyEncrypted, "请填写此服务商的 API Key");
           const settings = {
-            id: "model-settings",
-            provider,
-            baseUrl: u.toString().replace(/\/$/, ""),
-            model: text(b.model, 120),
-            apiKeyEncrypted: b.apiKey
-              ? encrypt(text(b.apiKey, 2000))
-              : old.apiKeyEncrypted,
-            cloudConsent: provider === "openai",
-            updatedAt: now(),
+            id: "model-settings", provider, baseUrl,
+            execution: deepseek ? "cloud" : "local",
+            model: deepseek ? "deepseek-flash" : text(b.model, 120),
+            apiKeyEncrypted, cloudConsent: provider === "openai", updatedAt: now(),
           };
           assert(settings.model, "请填写模型名称");
-          await db.put("settings", settings);
-          await db.audit(user.id, "model_settings", "device");
+          await db.tx(async c => {
+            const running = (await c.query(`SELECT count(*)::int n FROM ${db.jobs} WHERE status='running' AND lease_until>now()`)).rows[0].n;
+            assert(!running, "当前批改尚未完成，请稍后切换引擎", 409);
+            if (deepseek) await db.put("settings", { id: "model-profile:deepseek", apiKeyEncrypted, updatedAt: now() }, c);
+            await db.put("settings", settings, c);
+            await db.audit(user.id, "model_settings", "device", c);
+          });
           return (json(res, { ok: true }), true);
         }
         if (route[1] === "test" && method === "POST") {
+          const settings = await db.get("model-settings");
+          assert(settings.provider !== "openai" || (settings.apiKeyEncrypted && settings.cloudConsent), "请先保存 API Key 并确认传送资料");
           const jobId = await db.enqueue("test", "device-test", {});
           return (json(res, { jobId }), true);
         }

@@ -34,7 +34,7 @@ function clearPDFs(root) {
 }
 const labels = {
   draft: "草稿",
-  queued: "等待本地设备",
+  queued: "等待批改",
   parsing: "正在整理答案",
   answer_review: "待确认评分点",
   ready: "已启用",
@@ -620,7 +620,7 @@ async function resultPage(id) {
   await metadata(s.files);
   if (renderId !== state.routeVersion) return;
   const g = s.publishedGrade;
-  main.innerHTML = `<section class="paper">${head("SUBMISSION / 提交记录", a?.title || "作业提交", "提交于 " + date(s.submittedAt), badge(s.status) + link("history", "返回记录"))}<div class="split"><section><h2>你的提交</h2><div class="file-list">${fileMarkup(s.files)}</div><div class="instructions">${h(s.text || "本次答案见附件。")}</div><p class="hint">提交凭证 ${h(s.id.slice(0, 12).toUpperCase())}</p></section><section>${g ? `<div class="section-head"><h2>教师反馈</h2><div class="score-box">${g.total}<span> / ${g.maxPoints}</span></div></div>${g.questions.map((q) => `<article class="published-question"><h3>第 ${h(q.id)} 题 <span>${q.score} / ${q.maxPoints}</span></h3><p>${h(q.feedback)}</p><p class="hint">依据：${h(q.evidence)}</p></article>`).join("")}<div class="instructions">${h(g.teacherNote || "")}</div><p class="hint">发布于 ${date(g.publishedAt)} · 评分标准 v${g.answerVersion}</p>` : empty(s.status === "returned" ? "请调整后重新提交" : s.status === "needs_review" ? "等待教师复核" : s.status === "grading" ? "正在阅读你的作业" : "提交已收到", s.status === "returned" ? s.returnedReason : s.status === "needs_review" ? "初批建议会由教师检查，发布后即可在这里查看。" : "作业已经安全保存。Mac 在线时会依次处理，关闭此页也不会影响提交。", s.status === "returned" ? link("submit/" + s.assignmentId, "返回作业", "primary") : "")}${g && s.status !== "published" ? '<p class="status-line">上方保留此前发布的成绩；新的批改尚未发布。</p>' : ""}</section></div></section>`;
+  main.innerHTML = `<section class="paper">${head("SUBMISSION / 提交记录", a?.title || "作业提交", "提交于 " + date(s.submittedAt), badge(s.status) + link("history", "返回记录"))}<div class="split"><section><h2>你的提交</h2><div class="file-list">${fileMarkup(s.files)}</div><div class="instructions">${h(s.text || "本次答案见附件。")}</div><p class="hint">提交凭证 ${h(s.id.slice(0, 12).toUpperCase())}</p></section><section>${g ? `<div class="section-head"><h2>教师反馈</h2><div class="score-box">${g.total}<span> / ${g.maxPoints}</span></div></div>${g.questions.map((q) => `<article class="published-question"><h3>第 ${h(q.id)} 题 <span>${q.score} / ${q.maxPoints}</span></h3><p>${h(q.feedback)}</p><p class="hint">依据：${h(q.evidence)}</p></article>`).join("")}<div class="instructions">${h(g.teacherNote || "")}</div><p class="hint">发布于 ${date(g.publishedAt)} · 评分标准 v${g.answerVersion}</p>` : empty(s.status === "returned" ? "请调整后重新提交" : s.status === "needs_review" ? "等待教师复核" : s.status === "grading" ? "正在阅读你的作业" : "提交已收到", s.status === "returned" ? s.returnedReason : s.status === "needs_review" ? "初批建议会由教师检查，发布后即可在这里查看。" : "作业已经安全保存，会按队列依次处理。关闭此页不影响提交。", s.status === "returned" ? link("submit/" + s.assignmentId, "返回作业", "primary") : "")}${g && s.status !== "published" ? '<p class="status-line">上方保留此前发布的成绩；新的批改尚未发布。</p>' : ""}</section></div></section>`;
   bindPreviews();
   if (["queued", "grading", "needs_review"].includes(s.status))
     pollTimer = setTimeout(() => render(false), 15000);
@@ -643,7 +643,7 @@ async function reviewPage(id) {
       needsReview: true,
     })) ||
     [];
-  main.innerHTML = `<section class="paper">${head("REVIEW / " + h(a?.title || "作业复核"), name + "的作业", "提交于 " + date(s.submittedAt) + " · 使用评分标准 v" + s.version, badge(s.status) + link("reviews", "返回待复核"))}<div class="review-layout"><section class="review-source"><div class="section-head"><h2>原始作答</h2></div><div class="file-list">${fileMarkup(s.files)}</div>${s.files[0] ? (state.files.get(s.files[0]).mime === "application/pdf" ? `<div class="pdf-preview" data-pdf="${s.files[0]}"></div>` : `<img class="original-preview" src="/api/homework/files/${s.files[0]}" alt="学生原始答案">`) : ""}<div class="instructions">${h(s.text)}</div>${s.error ? `<p class="error">${h(s.error)}</p>` : ""}<div class="actions"><button class="secondary" id="regrade">按最新标准重新批改</button><button class="quiet" id="return-work">退回重交</button></div><form id="return-form" hidden class="stack">${area("退回原因", "reason", "", "required")}<p class="form-error" role="alert"></p><button type="submit" class="danger">确认退回</button></form></section><section><div class="section-head"><h2>逐题复核</h2><span class="answer-private">发布前仅教师可见</span></div>${["queued", "grading"].includes(s.status) ? '<div class="status-line">本地批改正在排队或进行中。完成后会自动更新。</div>' : ""}<form id="review-form">${suggestions
+  main.innerHTML = `<section class="paper">${head("REVIEW / " + h(a?.title || "作业复核"), name + "的作业", "提交于 " + date(s.submittedAt) + " · 使用评分标准 v" + s.version, badge(s.status) + link("reviews", "返回待复核"))}<div class="review-layout"><section class="review-source"><div class="section-head"><h2>原始作答</h2></div><div class="file-list">${fileMarkup(s.files)}</div>${s.files[0] ? (state.files.get(s.files[0]).mime === "application/pdf" ? `<div class="pdf-preview" data-pdf="${s.files[0]}"></div>` : `<img class="original-preview" src="/api/homework/files/${s.files[0]}" alt="学生原始答案">`) : ""}<div class="instructions">${h(s.text)}</div>${s.error ? `<p class="error">${h(s.error)}</p>` : ""}<div class="actions"><button class="secondary" id="regrade">按最新标准重新批改</button><button class="quiet" id="return-work">退回重交</button></div><form id="return-form" hidden class="stack">${area("退回原因", "reason", "", "required")}<p class="form-error" role="alert"></p><button type="submit" class="danger">确认退回</button></form></section><section><div class="section-head"><h2>逐题复核</h2><span class="answer-private">发布前仅教师可见</span></div>${["queued", "grading"].includes(s.status) ? '<div class="status-line">批改正在排队或进行中。完成后会自动更新。</div>' : ""}<form id="review-form">${suggestions
     .map((q) => {
       const ref = s.rubricSnapshot.find((r) => r.id === q.id);
       return `<article class="rubric-question" data-grade data-qid="${h(q.id)}"><div class="question-bar"><h3>第 ${h(q.id)} 题</h3><label>得分<input name="score" type="number" min="0" max="${q.maxPoints}" step="0.5" value="${q.score ?? ""}" required aria-label="第 ${h(q.id)} 题得分"></label><span class="hint">/ ${q.maxPoints}</span></div><details><summary>查看本次评分标准</summary><div class="instructions">${h(ref.answer)}<br><br>${h(ref.criteria)}</div></details><div class="stack">${area("学生作答依据", "evidence", q.evidence, "required")}${area("给学生的反馈", "feedback", q.feedback, "required")}<label class="check"><input type="checkbox" name="checked" required>我已核对原始作答与本题得分</label></div></article>`;
@@ -689,47 +689,65 @@ async function reviewPage(id) {
     pollTimer = setTimeout(() => render(false), 15000);
 }
 async function devicePage() {
-  const renderId = state.routeVersion;
   const { device: d, settings: s } = await api("device");
-  if (renderId !== state.routeVersion) return;
-  main.innerHTML = `<section class="paper">${head("LOCAL INTELLIGENCE / 本地批改设备", "你的 Mac，就是批改工作站", "作业进入队列，设备在线时依次处理。")}<div class="device-grid"><section><h2 class="device-title">${h(d?.name || "本地设备")}</h2><p class="device-status"><span class="device-dot ${d?.online ? "online" : ""}"></span>${d?.revoked ? "已暂停" : d?.online ? (d.busy ? "正在批改" : d.modelReady ? "在线 · 可以批改" : "在线 · 正在准备模型") : "离线 · 作业会继续排队"}</p><dl class="device-detail"><div><dt>当前模型</dt><dd>${h(d?.model || s.model)}</dd></div><div><dt>最近连接</dt><dd>${d?.lastSeen ? date(d.lastSeen) : "等待首次连接"}</dd></div><div><dt>处理方式</dt><dd>逐份批改 · 教师复核后发布</dd></div></dl>${d?.lastError ? `<p class="error">${h(d.lastError)}</p>` : ""}<hr class="rule"><p class="hint">本地模式下，资料由这台 Mac 处理。设备休眠或断网后任务仍保留，重新连接会继续。外部 API 也由此设备调用。</p><div class="form-actions"><button id="device-test" class="secondary">测试连接与图片识别</button><button id="device-pause" class="quiet">${d?.revoked ? "恢复批改" : "暂停批改"}</button></div><p id="test-status" class="status-line" hidden role="status"></p></section><section><h2>模型连接</h2><form id="settings-form" class="stack" style="margin-top:24px"><label class="field"><span>处理方式</span><select name="provider"><option value="ollama" ${s.provider === "ollama" ? "selected" : ""}>本地 Ollama</option><option value="openai" ${s.provider === "openai" ? "selected" : ""}>外部兼容 API（由本机调用）</option></select></label>${field("接口地址", "baseUrl", s.baseUrl, "url", "required")}${field("模型名称", "model", s.model, "text", "required")}<div id="cloud-fields" ${s.provider === "ollama" ? "hidden" : ""}>${field("API Key", "apiKey", "", "password", `autocomplete="off" placeholder="${s.hasApiKey ? "已保存；留空保持原密钥" : "输入服务商提供的密钥"}"`)}<label class="check"><input type="checkbox" name="cloudConsent" ${s.cloudConsent ? "checked" : ""}>我同意将作业和参考答案发送到填写的外部服务商</label></div><p class="hint">本地地址仅在 Mac 上访问，不对公网开放。API 密钥加密保存，不会出现在学生页面中。</p><p class="form-error" role="alert"></p><button type="submit" class="primary">保存连接设置</button></form></section></div></section>`;
-  const form = $("#settings-form");
-  $("[name=provider]").onchange = (e) => {
-    const cloud = e.target.value === "openai";
-    $("#cloud-fields").hidden = !cloud;
-    $("[name=baseUrl]").value = cloud ? "" : "http://127.0.0.1:11434";
-  };
-  formHandler(form, async (b) => {
-    b.cloudConsent = $("[name=cloudConsent]").checked;
+  const cloud = s.execution === "cloud";
+  const selected = cloud ? "deepseek" : s.provider;
+  const status = d?.revoked ? "已暂停" : cloud && !s.hasApiKey ? "待填写 API Key" : d?.online ? d.busy ? "正在批改" : d.modelReady ? "已连接 · 可以批改" : "已连接 · 待配置模型" : "未连接 · 作业会继续排队";
+  main.innerHTML = `<section class="paper">${head("", "批改引擎", "云端持续处理，本机随时备用。")}
+    <div class="device-grid"><section>
+      <h2 class="device-title">${cloud ? "DeepSeek 云端" : "本机批改"}</h2>
+      <p class="device-status" role="status"><span class="device-dot ${d?.online ? "online" : ""}"></span>${status}</p>
+      <dl class="device-detail"><div><dt>当前模型</dt><dd>${h(s.model)}</dd></div><div><dt>运行位置</dt><dd>${cloud ? "Railway · Mac 关机仍可处理" : "你的 Mac · 开机联网时处理"}</dd></div><div><dt>成绩发布</dt><dd>逐题提供依据，教师复核后发布</dd></div></dl>
+      ${d?.lastError ? `<p class="error" role="alert">${h(d.lastError)}</p>` : ""}
+      <hr class="rule"><p class="hint">${cloud ? "图片和 PDF 会与教师答案一起发送给 DeepSeek，按实际调用计费。连接中断时，作业保留在队列中。" : "本地模式由这台 Mac 处理。休眠或断网后作业仍保留，重新连接会继续。"}</p>
+      <div class="form-actions"><button id="device-test" class="secondary">测试连接与图片识别</button><button id="device-pause" class="quiet">${d?.revoked ? "恢复批改" : "暂停批改"}</button></div>
+      <p id="test-status" class="status-line" hidden role="status"></p>
+    </section><section><h2>连接设置</h2>
+      <form id="settings-form" class="stack" style="margin-top:24px">
+      <label class="field"><span>批改方式</span><select name="provider"><option value="deepseek" ${selected === "deepseek" ? "selected" : ""}>DeepSeek 云端</option><option value="ollama" ${selected === "ollama" ? "selected" : ""}>本机备用 · Ollama</option><option value="openai" ${selected === "openai" ? "selected" : ""}>其他兼容 API · 本机调用</option></select></label>
+      <p id="provider-note" class="hint"></p>
+      <div id="model-fields" class="stack">${field("接口地址", "baseUrl", s.baseUrl, "url", "required")}${field("模型名称", "model", s.model, "text", "required")}</div>
+      <div id="cloud-fields" class="stack" ${s.provider === "ollama" ? "hidden" : ""}>
+      ${field("API Key", "apiKey", "", "password", `autocomplete="off" spellcheck="false" maxlength="2000" placeholder="${s.hasApiKey ? "已加密保存；留空保持原密钥" : "在此填写密钥"}"`)}
+      <label class="check"><input type="checkbox" name="cloudConsent" ${s.cloudConsent ? "checked" : ""}>我同意将作业和参考答案发送到所选服务商</label></div>
+      <p class="hint">密钥加密保存，学生无法查看。切回本机时会保留 DeepSeek 配置。</p>
+      <p class="form-error" role="alert"></p><button type="submit" class="primary">保存批改设置</button></form>
+    </section></div></section>`;
+  const form = $("#settings-form"), provider = $("[name=provider]", form);
+  function updateProvider(reset) {
+    const kind = provider.value, deepseek = kind === "deepseek", local = kind === "ollama";
+    $("#cloud-fields").hidden = local;
+    $("#model-fields").hidden = deepseek;
+    $("#provider-note").textContent = deepseek ? "使用 deepseek-flash，支持文字、图片和 PDF。由 Railway 处理，无需保持 Mac 开机。" : local ? "本机模型保留作备用。需要保持 Mac 开机并联网。" : "由你的 Mac 调用填写的兼容接口。";
+    if (reset) {
+      $("[name=baseUrl]", form).value = deepseek ? "https://api.deepseek.com" : local ? "http://127.0.0.1:11434" : "";
+      $("[name=model]", form).value = deepseek ? "deepseek-flash" : local ? "qwen3-vl:8b-instruct" : "";
+      $("[name=apiKey]", form).value = "";
+      $("[name=cloudConsent]", form).checked = false;
+    }
+    $("[name=apiKey]", form).placeholder = (deepseek ? s.hasDeepSeekKey || (cloud && s.hasApiKey) : kind === selected && s.hasApiKey) ? "已加密保存；留空保持原密钥" : "在此填写密钥";
+  }
+  provider.onchange = () => updateProvider(true);
+  updateProvider(false);
+  formHandler(form, async b => {
+    b.cloudConsent = $("[name=cloudConsent]", form).checked;
     await put("device/settings", b);
-    toast("连接设置已保存，下个任务开始生效");
+    $("[name=apiKey]", form).value = "";
+    toast("批改设置已保存");
+    await render();
   });
-  click("#device-pause", async () => {
-    await post("device/pause", { paused: !d?.revoked });
-    render();
-  });
+  click("#device-pause", async () => { await post("device/pause", { paused: !d?.revoked }); render(); });
   click("#device-test", async () => {
     const { jobId } = await post("device/test");
-    const el = $("#test-status");
-    el.hidden = false;
-    el.textContent = "测试已排队，等待本地设备运行…";
+    const el = $("#test-status"); el.hidden = false;
+    el.textContent = "测试已排队，等待批改引擎…";
     async function poll() {
       try {
         const { job } = await api("jobs/" + jobId);
-        if (!$("#test-status")) return;
-        el.textContent =
-          job.status === "complete"
-            ? job.result.message
-            : job.status === "failed"
-              ? job.error
-              : job.status === "running"
-                ? "正在测试真实图片识别…"
-                : "等待本地设备…";
-        if (!["complete", "failed"].includes(job.status))
-          pollTimer = setTimeout(poll, 4000);
-      } catch (e) {
-        el.textContent = e.message;
-      }
+        if (!el.isConnected) return;
+        el.textContent = job.status === "complete" ? job.result.message : job.status === "failed" ? job.error : job.status === "running" ? "正在测试真实图片识别…" : "等待批改引擎…";
+        if (!["complete", "failed"].includes(job.status)) pollTimer = setTimeout(poll, 4000);
+      } catch (e) { el.textContent = e.message; }
     }
     pollTimer = setTimeout(poll, 3000);
   });
