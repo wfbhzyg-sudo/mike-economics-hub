@@ -1,0 +1,35 @@
+# Student homework flow refinement
+
+Mode: Operate. Preserve the approved navy and ivory workbench, Mike identity, floating heading and liquid navigation.
+
+Scope: prioritize actionable assignments, retain list search and course filters, retry incomplete uploads without repeating successful files, protect private correction drafts, and keep the phone submission action within reach.
+
+Requirements: existing Bookself identity and class assignment; original accounts, grades, files, URLs and projects retained. Closed assignments remain accessible but separate from actionable work. Upload recovery must never silently omit pending pages. Correction drafts belong only to their student, restore across devices, and do not modify published grades or correction history until explicitly saved. Concurrent changes must surface a conflict.
+
+## Implemented extension — 2026-11-10
+
+This is an ordinary extension of `.impeccable/homework-v3-brief.md`, documented from the final local source and supplied acceptance artifacts. `PRODUCT.md`, `DESIGN.md` and `.impeccable/design.json` remain unchanged. The existing visual system and shared Bookself identity/classes remain authoritative.
+
+- **Assignment entry:** actionable work comes first, then processing, published grades and closed work; due dates order each group. Returned work and an eligible newer draft remain actionable. A deadline alone does not close work when late submission is allowed. Closed work stays accessible for viewing. Search, course and status choices survive route navigation within the open page; the course selector appears when more than one course is available. Status counts reflect the current course/search scope, and the empty result provides a reset action. Filters are not claimed to survive a full reload.
+- **Upload recovery:** successful attachments remain added; the queue retries only unfinished items and retains pending file objects while navigating within the same open page. Students can retry or explicitly choose “不添加” for a pending file. Pending files block final submission and final correction saving, while text and successfully uploaded attachment IDs can still be saved as a draft. An unload warning protects active/pending work. **Pending file objects do not survive refresh or page closure and must then be selected again.** Account drafts contain uploaded IDs only; they do not contain the pending local files.
+- **Phone submission:** at widths up to 640 px, a fixed action footer shows the page count, pending count and save status and submits the same native form. It preserves the existing right navigation lane; at up to 360 px its action wraps below the status. Submission errors receive focus and scroll into view. The existing desktop submission action remains in the form.
+- **Private correction drafts:** correction text, review notes, review state and uploaded attachment IDs autosave to the student's account, with a local session recovery copy for unsynced text/IDs. Account drafts can resume on another device; local recovery is limited to the current browser session. Saving a draft does not add correction history or change the published grade. The mistake list exposes “继续订正草稿” when an account draft exists. “保存订正与笔记” explicitly creates the correction record and clears the private draft.
+- **Concurrent correction edits:** revision mismatches show both recovery choices. “继续编辑本页版本” adopts the current revisions before saving the local content. “载入账户版本” is blocked during active attachment processing, discards the route's local pending queue and loads the account version's own attachments. The conflict message states that unuploaded local files must be selected again; the previous text/uploaded-ID snapshot is retained separately in session storage. This is not a recovery copy of the pending file bytes.
+- **Final-save recovery:** an unchanged retry retains its operation ID. Editing content or explicitly continuing the local version rotates that ID. The server compares the accepted payload hash before treating an operation as an idempotent retry, preventing changed content from being silently treated as the earlier save. Original grades and earlier correction records remain intact.
+- **Correction history:** native disclosure keeps previous records available; it starts collapsed at route render for widths up to 760 px and open above that width, leaving the phone editing fields closer to the current task.
+
+## Scoped visual behavior
+
+Retain the Mike SVG, HubSerif task headings, system-sans native fields, navy surround, ivory paper, transparent title, bottom desktop dock and right phone liquid rail. This extension adds no replacement identity, new global token scale or decorative imagery.
+
+Recovery and conflict panels reuse the existing selected-row fill with 16 px padding and 12 px corners. Pending filenames wrap, and their dismiss controls have a 44 px minimum height. Course selection uses a native control; counts use tabular numerals. These are observed task components, not new global primitives.
+
+The phone footer uses the existing paper color, 14 px corners, a soft shadow and safe-area-aware bottom placement, with an 83 px right offset protecting the rail. Extra bottom space keeps the end of the form reachable. Existing 16 px field text, visible keyboard focus, native scrolling and reduced-motion behavior remain in place. The footer and disclosure are task-specific adaptations, not replacements for the shared navigation.
+
+## Verification and delivery limits
+
+From the checkout root, `../../../operations/homework-student-flow-20261110/results/acceptance-summary.json` records **70 passing grouped checks**: 20 app/unit, 11 API baseline, 9 draft API, 15 browser, 9 final QA, 3 conflict QA and 3 reviewer fixes. The browser report records no page errors or horizontal overflow; the final layout cases include 1440×1000, 768×900, 390×844, 320×740 and 390×440. Coverage includes ownership, concurrent edits, lost acknowledgements, upload retry after navigation, pending-file submission blocking, refresh recovery for draft text/uploaded IDs, keyboard recovery and reduced motion.
+
+`.impeccable/review/student-flow-review.md` gives **ship for the scored fixes**, resolving account-version attachment mixing and finalization after a lost acknowledgement followed by editing. That verdict is not a whole-product certification. The supplied detector output contains zero primary findings and 57 advisory findings; advisory color/type/radius differences do not authorize changing the incumbent system.
+
+Evidence uses isolated synthetic accounts and grading fixtures with Chrome viewport/touch and short-height simulations. No physical-device testing, new real-model accuracy result or AI-provider change is claimed. Automatic photo-quality classification and scheduled release of the full reference answer remain unimplemented; manual photo guidance remains. A recoverable backup is verified by the release owner. Deployment is pending at this documentation handoff.

@@ -1605,3 +1605,50 @@ input,textarea {caret-color:var(--ink);}
 /* The route container receives focus for screen readers without framing the whole page. */
 main:focus,main:focus-visible {outline:none;}
 .grade-row .meta {display:flex;gap:8px;flex-wrap:wrap;}
+
+/* Student task recovery keeps the existing paper and navigation hierarchy. */
+.assignment-search-controls {display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.course-filter select {max-width:240px;min-height:44px;}
+.filter-count {margin-left:6px;font-size:12px;font-variant-numeric:tabular-nums;opacity:.8;}
+.assignment-toolbar .filter-tabs {flex-wrap:wrap;}
+#assignment-count {margin:14px 0 4px;}
+.upload-recovery,.draft-conflict {padding:16px;background:var(--work-selected);border-radius:12px;}
+.upload-recovery[hidden],.draft-conflict[hidden] {display:none;}
+.upload-recovery>p,.draft-conflict>p {margin-bottom:12px;font-size:14px;}
+.upload-recovery>.hint {margin:12px 0 0;font-size:12px;}
+.pending-upload {display:flex;gap:14px;align-items:center;justify-content:space-between;padding:8px 0;}
+.pending-upload>span {min-width:0;overflow-wrap:anywhere;font-size:14px;}
+.pending-upload small {display:block;color:var(--muted);margin-top:4px;}
+.pending-upload button {flex-shrink:0;min-height:44px;}
+.retry-upload {margin-top:8px;}
+.draft-conflict details {margin:12px 0;}
+.draft-conflict .actions {gap:10px;flex-wrap:wrap;}
+.mobile-submit-bar {display:none;}
+@media(max-width:640px){
+ .assignment-search-controls {width:100%;gap:8px;}
+ .assignment-search-controls>* {flex:1 1 160px;min-width:0;}
+ .assignment-search-controls input,.assignment-search-controls select {width:100%;max-width:none;}
+ .assignment-toolbar .filter-tabs {gap:4px 8px;}
+ .assignment-toolbar .filter-tabs button {padding-inline:7px;}
+ .submit-paper {padding-bottom:180px;}
+ .submit-actions .desktop-submit {display:none;}
+ .mobile-submit-bar {display:flex;position:fixed;z-index:8;left:12px;right:83px;bottom:calc(12px + env(safe-area-inset-bottom));gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--paper);box-shadow:0 6px 26px rgba(9,28,48,.2);border-radius:14px;}
+ .mobile-submit-bar>div {min-width:0;flex:1;}
+ .mobile-submit-bar p {margin:0;font-size:13px;line-height:1.5;}
+ .mobile-submit-bar .hint {margin-top:3px;font-size:11px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+ .mobile-submit-bar .primary {flex-shrink:0;padding:12px 15px;min-height:46px;font-size:14px;}
+}
+@media(max-width:360px){
+ .mobile-submit-bar {flex-wrap:wrap;padding:12px;gap:8px;}
+ .mobile-submit-bar>div,.mobile-submit-bar .primary {width:100%;flex-basis:100%;}
+ .submit-paper {padding-bottom:210px;}
+}
+
+.correction-history {margin-top:26px;}
+.correction-history>summary {min-height:44px;font-size:18px;font-weight:500;}
+#correction-form {margin-top:16px;}
+@media(max-width:640px){
+ main:has(.submit-paper) {scroll-padding-bottom:170px;}
+ body:has(.submit-paper) #notice {bottom:calc(165px + env(safe-area-inset-bottom));left:12px;max-width:calc(100% - 110px);transform:translateY(20px);}
+ body:has(.submit-paper) #notice.visible {transform:translateY(0);}
+}

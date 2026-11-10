@@ -24,6 +24,8 @@ const state = {
   files: new Map(),
   routeVersion: 0,
   assignmentFilter: "all",
+  assignmentSearch: "",
+  assignmentCourse: "",
   viewCleanup:null,
 };
 let nav, pollTimer, noticeTimer, pdfModule;
@@ -98,11 +100,11 @@ async function api(path, options = {}) {
         state.user = null;
         showLogin();
       }
-      throw new Error(value.error || "暂时无法完成操作");
+      const error=new Error(value.error || "暂时无法完成操作");error.status=response.status;throw error;
     }
     return value;
   } catch (error) {
-    if (controller.signal.aborted) throw new Error("连接超时，请稍后重试。已保存的内容不会丢失。");
+    if (controller.signal.aborted) {const error=new Error("连接超时，请稍后重试。已保存的内容不会丢失。");error.retryable=true;throw error;}
     if(error instanceof TypeError){const networkError=new Error(navigator.onLine?"连接暂时中断，请重试。已上传文件仍保留。":"网络已断开，请联网后继续。当前草稿会暂存。");networkError.retryable=true;throw networkError;}
     throw error;
   } finally {
@@ -113,19 +115,21 @@ const post = (path, body = {}) => api(path, { method: "POST", body });
 const put = (path, body) => api(path, { method: "PUT", body });
 const formData = (form) => Object.fromEntries(new FormData(form));
 function formHandler(form, fn) {
+  let submitting=false;
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if(submitting)return;submitting=true;
     const error = $(".form-error", form);
     if (error) error.textContent = "";
-    const buttons = $$("button[type=submit]", form),disabledBefore=buttons.map(b=>b.disabled);
+    const buttons = [...form.elements].filter(el=>el.type==="submit"),disabledBefore=buttons.map(b=>b.disabled);
     buttons.forEach((b) => (b.disabled = true));
     try {
       await fn(formData(form));
     } catch (e) {
-      if (error) error.textContent = e.message;
+      if (error) {error.textContent=e.message;error.tabIndex=-1;error.scrollIntoView({block:"center"});error.focus({preventScroll:true});}
       else toast(e.message);
     } finally {
-      buttons.forEach((b,i) => (b.disabled = disabledBefore[i]));
+      submitting=false;buttons.forEach((b,i) => (b.disabled = disabledBefore[i]));
     }
   });
 }
@@ -211,20 +215,28 @@ function row(a) {
   const teacher=state.user.role==='teacher', info=assignmentState(a,state.submissions);
   const questions=teacher?a.rubric:a.questions, max=(questions||[]).reduce((n,q)=>n+q.maxPoints,0);
   const choice=(questions||[]).filter(q=>q.type==='choice').length;
-  const target=teacher?(a.published?'overview/':'answer/')+a.id:info.latest&&info.latest.status!=='returned'?'result/'+info.latest.id:'submit/'+a.id;
-  const action=teacher?(a.published?'查看提交':'继续发布'):info.latest&&info.latest.status!=='returned'?(info.key==='done'?'查看成绩':'查看进度'):info.draft?'继续草稿':info.latest?.status==='returned'?'补充作业':'开始作业';
+  const target=teacher?(a.published?'overview/':'answer/')+a.id:info.latest&&info.latest.status!=='returned'&&!(info.draft&&info.canSubmit)?'result/'+info.latest.id:'submit/'+a.id;
+  const action=teacher?(a.published?'查看提交':'继续发布'):info.latest&&info.latest.status!=='returned'&&!(info.draft&&info.canSubmit)?(info.key==='done'?'查看成绩':'查看进度'):info.draft?'继续草稿':info.latest?.status==='returned'?'补充作业':info.key==='closed'?'查看作业':'开始作业';
   const urgent=!teacher&&info.key==='todo'&&a.dueAt&&Date.parse(a.dueAt)>Date.now()&&Date.parse(a.dueAt)-Date.now()<86400000;
   return `<article class="assignment-row ${urgent?'due-soon':''}"><div><a href="#${target}" class="text-button"><h2>${h(a.title)}</h2></a><div class="meta"><span>${h(a.course)}</span><span>${a.classIds.map(x=>h(state.classes.find(c=>c.id===x)?.name||'班级')).join(' · ')}</span><span>${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span>${urgent?'<strong>即将截止</strong>':''}</div>${max?`<p class="assignment-types">${choice?`选择题 ${choice} 道 · `:''}${questions.length-choice?`简答题 ${questions.length-choice} 道 · `:''}满分 ${max} 分</p>`:''}</div><div class="actions">${teacher?badge(a.status):`<span class="badge" data-state="${info.latest?.status||'todo'}">${h(info.label)}</span>`}${link(target,action,'primary')}</div></article>`;
 }
 function assignments() {
- const teacher=state.user.role==='teacher';
- main.innerHTML=`<section class="paper">${head('',teacher?'我的作业':'今天从哪份作业开始',teacher?'发布到已有班级，查看提交与批阅情况。':'先完成待交作业，提交后可以离开页面。',teacher?link('account','我的班级')+link('new','发布作业','primary'):'')}
- <div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${(teacher?[['all','全部'],['published','已发布'],['draft','待发布']]:[['all','全部'],['todo','待完成'],['processing','批阅中'],['done','已出成绩']]).map(([v,t])=>`<button type="button" data-assignment-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${t}</button>`).join('')}</div><label class="search-field"><span class="sr-only">查找作业</span><input type="search" id="assignment-search" placeholder="查找作业" autocomplete="off"></label></div><div id="assignment-list"></div></section>`;
- const draw=()=>{const term=$('#assignment-search').value.trim();let rows=state.assignments.filter(a=>a.title.includes(term)&&(state.assignmentFilter==='all'||(teacher?(state.assignmentFilter==='published'?a.published:!a.published):assignmentState(a,state.submissions).key===state.assignmentFilter)));
-  rows.sort((a,b)=>{if(teacher)return (b.createdAt||'').localeCompare(a.createdAt||'');const ai=assignmentState(a,state.submissions),bi=assignmentState(b,state.submissions);return (ai.key==='todo'?0:1)-(bi.key==='todo'?0:1)||(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity);});
-  $('#assignment-list').innerHTML=rows.length?rows.map(row).join(''):empty(state.assignments.length?'这个分类已经清空':teacher?'从一份作业开始':'老师发布后，作业会出现在这里',state.assignments.length?'可以切换分类或调整搜索词。':teacher?'选择已有班级，上传答案并核对评分点。':'已沿用你的注册班级，无需再次加入。',state.assignments.length?'':link(teacher?'new':'account',teacher?'发布第一份作业':'查看我的班级','primary'));
+ const teacher=state.user.role==='teacher', courses=[...new Set(state.assignments.map(a=>a.course).filter(Boolean))];
+ if(!courses.includes(state.assignmentCourse))state.assignmentCourse='';
+ const filters=teacher?[['all','全部'],['published','已发布'],['draft','待发布']]:[['all','全部'],['todo','待完成'],['processing','批阅中'],['done','已出成绩'],['closed','已截止']];
+ if(!filters.some(([key])=>key===state.assignmentFilter))state.assignmentFilter='all';
+ main.innerHTML=`<section class="paper">${head('',teacher?'我的作业':'今天从哪份作业开始',teacher?'发布到已有班级，查看提交与批阅情况。':'待完成的作业按截止时间排列，草稿可以接着写。',teacher?link('account','我的班级')+link('new','发布作业','primary'):'')}
+ <div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.map(([v,t])=>`<button type="button" data-assignment-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${t}<span class="filter-count" data-count="${v}"></span></button>`).join('')}</div><div class="assignment-search-controls">${courses.length>1?`<label class="course-filter"><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map(c=>`<option ${state.assignmentCourse===c?'selected':''}>${h(c)}</option>`).join('')}</select></label>`:''}<label class="search-field"><span class="sr-only">查找作业</span><input type="search" id="assignment-search" placeholder="查找作业" value="${h(state.assignmentSearch)}" autocomplete="off"></label></div></div><p id="assignment-count" class="hint" role="status"></p><div id="assignment-list"></div></section>`;
+ const draw=()=>{state.assignmentSearch=$('#assignment-search').value;const term=state.assignmentSearch.trim().toLocaleLowerCase(),base=state.assignments.filter(a=>(!state.assignmentCourse||a.course===state.assignmentCourse)&&a.title.toLocaleLowerCase().includes(term));
+  const matches=(a,key)=>key==='all'||(teacher?(key==='published'?a.published:!a.published):assignmentState(a,state.submissions).key===key);
+  $$('[data-count]').forEach(el=>el.textContent=base.filter(a=>matches(a,el.dataset.count)).length);
+  const rows=base.filter(a=>matches(a,state.assignmentFilter));
+  rows.sort((a,b)=>{if(teacher)return (b.createdAt||'').localeCompare(a.createdAt||'');const ai=assignmentState(a,state.submissions),bi=assignmentState(b,state.submissions),order={todo:0,processing:1,done:2,closed:3};return order[ai.key]-order[bi.key]||(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity);});
+  $('#assignment-count').textContent=rows.length?`${state.assignmentCourse||'全部课程'} · ${rows.length} 份作业`:'';
+  $('#assignment-list').innerHTML=rows.length?rows.map(row).join(''):empty(state.assignments.length?'没有符合条件的作业':teacher?'从一份作业开始':'老师发布后，作业会出现在这里',state.assignments.length?'可以切换分类、课程或调整搜索词。':teacher?'选择已有班级，上传答案并核对评分点。':'已沿用你的注册班级，无需再次加入。',state.assignments.length?'<button type="button" class="secondary" id="reset-assignment-filters">显示全部作业</button>':link(teacher?'new':'account',teacher?'发布第一份作业':'查看我的班级','primary'));
+  $('#reset-assignment-filters')?.addEventListener('click',()=>{state.assignmentFilter='all';state.assignmentCourse='';state.assignmentSearch='';assignments();});
  };
- $$('[data-assignment-filter]').forEach(b=>b.onclick=()=>{state.assignmentFilter=b.dataset.assignmentFilter;$$('[data-assignment-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});$('#assignment-search').oninput=draw;draw();
+ $$('[data-assignment-filter]').forEach(b=>b.onclick=()=>{state.assignmentFilter=b.dataset.assignmentFilter;$$('[data-assignment-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});$('#assignment-search').oninput=draw;$('#assignment-course')?.addEventListener('change',e=>{state.assignmentCourse=e.target.value;draw();});draw();
 }
 function newAssignment() {
   if (!state.classes.length) {
@@ -285,140 +297,62 @@ function bindPreviews(root = document) {
   );
   renderPDFs(root);
 }
+const uploadQueues = new Map();
+window.addEventListener("beforeunload",e=>{if([...uploadQueues.values()].some(q=>q.busy||q.pending.length)){e.preventDefault();e.returnValue="";}});
 function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
-  let ids = [...initial],
-    uploading = false;
-  root.innerHTML = `${purpose==="submission"?'<div class="capture-actions"><label class="capture-button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v15H4Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg><span>拍照添加</span><input type="file" class="camera-input" accept="image/*" capture="environment" aria-label="拍照添加作业"></label></div>':""}<div class="file-list"></div>${purpose === "answer" ? '<div class="answer-inline-preview"></div>' : ""}<label class="upload"><span class="upload-icon" aria-hidden="true">${icon("up")}</span><strong>${purpose==="submission"?"从相册或文件添加":"点击上传，或将文件拖到这里"}</strong><small class="muted">JPG / PNG / WebP / PDF · 单文件 20 MB</small><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple aria-label="上传${purpose === "answer" ? "参考答案" : purpose === "question" ? "题目" : "作业"}"></label><progress value="0" max="100" hidden aria-label="文件上传进度"></progress><p class="hint upload-status" role="status">最多 20 页，合计 50 MB。HEIC 请先转为 JPG。</p>`;
-  const list = $(".file-list", root),
-    status = $(".upload-status", root),
-    progress = $("progress", root),
-    input = $(".upload input", root),
-    zone = $(".upload", root);
-  function draw() {
-    list.innerHTML = fileMarkup(ids, true);
-    if (purpose === "answer") {
-      const f = state.files.get(ids[0]);
-      $(".answer-inline-preview", root).innerHTML = !f
-        ? ""
-        : f.mime === "application/pdf"
-          ? `<div class="pdf-preview" data-pdf="${f.id}"></div>`
-          : `<img class="original-preview" src="/api/homework/files/${f.id}" alt="参考答案预览">`;
-    }
-    $$(".file-tools button",list).forEach(b=>{if(uploading)b.disabled=true;});
-    bindPreviews(list);
-    renderPDFs(root);
-    $$("[data-rotate]", list).forEach(
-      (b) =>
-        (b.onclick = async () => {
-          if(uploading)return;uploading=true;input.disabled=true;draw();onChange(ids);
-          try {
-            const i = Number(b.dataset.rotate),
-              { file } = await post("files/" + ids[i] + "/rotate");
-            state.files.set(file.id, file);
-            ids[i] = file.id;
-            draw();
-            onChange(ids);
-          } catch (e) {
-            toast(e.message);
-          } finally {uploading=false;input.disabled=false;draw();onChange(ids);}
-        }),
-    );
-    $$("[data-remove]", list).forEach(
-      (b) =>
-        (b.onclick = () => {
-          if(uploading)return;ids.splice(Number(b.dataset.remove), 1);
-          draw();
-          onChange(ids);
-        }),
-    );
-    $$("[data-up]", list).forEach(
-      (b) =>
-        (b.onclick = () => {
-          if(uploading)return;const i = Number(b.dataset.up);
-          [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
-          draw();
-          onChange(ids);
-        }),
-    );
+  const key=[state.user.id,location.hash,root.id,purpose].join(':');
+  const queue=uploadQueues.get(key)||{ids:[...initial],pending:[],busy:false};
+  const ids=queue.ids;
+  root.innerHTML = `${purpose==='submission'?'<div class="capture-actions"><label class="capture-button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v15H4Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg><span>拍照添加</span><input type="file" class="camera-input" accept="image/*" capture="environment" aria-label="拍照添加作业"></label></div>':''}<div class="file-list"></div>${purpose==='answer'?'<div class="answer-inline-preview"></div>':''}<label class="upload"><span class="upload-icon" aria-hidden="true">${icon('up')}</span><strong>${purpose==='submission'?'从相册或文件添加':'点击上传，或将文件拖到这里'}</strong><small class="muted">JPG / PNG / WebP / PDF · 单文件 20 MB</small><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple aria-label="上传${purpose==='answer'?'参考答案':purpose==='question'?'题目':'作业'}"></label><progress value="0" max="100" hidden aria-label="文件上传进度"></progress><p class="hint upload-status" role="status">最多 20 页，合计 50 MB。HEIC 请先转为 JPG。</p><div class="upload-recovery" hidden></div>`;
+  const list=$('.file-list',root),status=$('.upload-status',root),progress=$('progress',root),input=$('.upload input',root),camera=$('.camera-input',root),zone=$('.upload',root),recovery=$('.upload-recovery',root);
+  const notify=()=>queue.notify?.();
+  function draw(){
+    list.innerHTML=fileMarkup(ids,true);
+    if(purpose==='answer'){const f=state.files.get(ids[0]);$('.answer-inline-preview',root).innerHTML=!f?'':f.mime==='application/pdf'?`<div class="pdf-preview" data-pdf="${f.id}"></div>`:`<img class="original-preview" src="/api/homework/files/${f.id}" alt="参考答案预览">`;}
+    input.disabled=queue.busy;if(camera)camera.disabled=queue.busy;progress.hidden=!queue.busy;
+    $$('.file-tools button',list).forEach(b=>{if(queue.busy)b.disabled=true;});
+    recovery.hidden=!queue.pending.length||queue.busy;
+    recovery.innerHTML=queue.pending.length?`<p>还有 ${queue.pending.length} 个文件未添加。已成功添加的页面会保留。</p>${queue.pending.map((item,i)=>`<div class="pending-upload"><span>${h(item.file.name)}${item.error?`<small>${h(item.error)}</small>`:''}</span><button type="button" class="text-button" data-dismiss="${i}" aria-label="不添加 ${h(item.file.name)}">不添加</button></div>`).join('')}<button type="button" class="secondary retry-upload">重试未完成文件</button><p class="hint">文件暂存在此页面，刷新前请重试或选择不添加。</p>`:'';
+    $$('.pending-upload button',recovery).forEach(b=>b.onclick=()=>{if(queue.busy)return;queue.pending.splice(Number(b.dataset.dismiss),1);if(!queue.pending.length)uploadQueues.delete(key);draw();notify();});
+    $('.retry-upload',recovery)?.addEventListener('click',()=>upload([]));
+    bindPreviews(list);renderPDFs(root);
+    $$('[data-rotate]',list).forEach(b=>b.onclick=async()=>{if(queue.busy)return;queue.busy=true;uploadQueues.set(key,queue);draw();notify();try{const i=Number(b.dataset.rotate),{file}=await post('files/'+ids[i]+'/rotate');state.files.set(file.id,file);ids[i]=file.id;}catch(e){toast(e.message);}finally{queue.busy=false;if(!queue.pending.length)uploadQueues.delete(key);queue.draw?.();notify();}});
+    $$('[data-remove]',list).forEach(b=>b.onclick=()=>{if(queue.busy)return;ids.splice(Number(b.dataset.remove),1);draw();notify();});
+    $$('[data-up]',list).forEach(b=>b.onclick=()=>{if(queue.busy)return;const i=Number(b.dataset.up);[ids[i-1],ids[i]]=[ids[i],ids[i-1]];draw();notify();});
   }
-  async function upload(selected) {
-    if (uploading) return;
-    uploading = true;
-    input.disabled = true;
-    if($(".camera-input",root))$(".camera-input",root).disabled=true;
-    progress.hidden = false;
-    draw();onChange(ids);
-    try {
-      for (const file of selected) {
-        if (ids.length >= 20) throw new Error("最多上传 20 个附件");
-        if (file.size > 20 * 1024 * 1024)
-          throw new Error(file.name + " 超过 20 MB");
-        if (
-          ids.reduce((n, x) => n + (state.files.get(x)?.originalSize || state.files.get(x)?.size || 0), 0) +
-            file.size >
-          50 * 1024 * 1024
-        )
-          throw new Error("附件合计超过 50 MB");
-        status.textContent = "正在上传 " + file.name;
-        const uploaded = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open(
-            "POST",
-            `/api/homework/files?purpose=${purpose}&name=${encodeURIComponent(file.name)}`,
-          );
-          xhr.setRequestHeader("X-CSRF-Token", state.csrf);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) progress.value = (e.loaded / e.total) * 100;
-          };
-          xhr.onload = () => {
-            let result;
-            try {
-              result = JSON.parse(xhr.responseText);
-            } catch {
-              return reject(new Error("上传响应不完整"));
-            }
-            xhr.status < 300
-              ? resolve(result.file)
-              : reject(new Error(result.error || "上传失败"));
-          };
-          xhr.onerror = () => reject(new Error("网络中断，请重新上传"));
-          xhr.timeout = 180000;
-          xhr.ontimeout = () => reject(new Error("上传超时，请重试"));
-          xhr.send(file);
-        });
-        state.files.set(uploaded.id, uploaded);
-        if(ids.reduce((n,x)=>n+(state.files.get(x)?.pages||0),0)+uploaded.pages>20)throw new Error("附件合计超过 20 页。前面已添加的文件仍保留。");
-        ids.push(uploaded.id);
-        draw();
-        onChange(ids);
+  async function upload(selected){
+    if(queue.busy)return;
+    queue.pending.push(...selected.map(file=>({file})));if(!queue.pending.length)return;
+    uploadQueues.set(key,queue);queue.busy=true;queue.draw?.();notify();
+    try{
+      while(queue.pending.length){
+        const item=queue.pending[0],file=item.file;
+        try{
+          if(ids.length>=20)throw Error('最多添加 20 个附件，请先移除多余附件。');
+          if(file.size>20*1024*1024)throw Error('超过 20 MB，请压缩后重新选择。');
+          if(ids.reduce((n,x)=>n+(state.files.get(x)?.originalSize||state.files.get(x)?.size||0),0)+file.size>50*1024*1024)throw Error('附件合计超过 50 MB，请先移除多余附件。');
+          queue.message='正在上传 '+file.name;queue.progress=0;queue.draw?.();
+          const uploaded=item.uploaded||await new Promise((resolve,reject)=>{
+            const xhr=new XMLHttpRequest();xhr.open('POST',`/api/homework/files?purpose=${purpose}&name=${encodeURIComponent(file.name)}`);xhr.setRequestHeader('X-CSRF-Token',state.csrf);
+            xhr.upload.onprogress=e=>{if(e.lengthComputable){queue.progress=e.loaded/e.total*100;queue.progressChanged?.();}};
+            xhr.onload=()=>{let result;try{result=JSON.parse(xhr.responseText);}catch{return reject(Error('上传响应不完整，请重试。'));}xhr.status>=200&&xhr.status<300?resolve(result.file):reject(Error(result.error||'上传失败，请重试。'));};
+            xhr.onerror=()=>reject(Error('网络中断，请联网后重试。'));xhr.timeout=180000;xhr.ontimeout=()=>reject(Error('上传超时，请重试。'));xhr.send(file);
+          });
+          item.uploaded=uploaded;state.files.set(uploaded.id,uploaded);
+          if(ids.reduce((n,x)=>n+(state.files.get(x)?.pages||0),0)+uploaded.pages>20)throw Error('附件合计超过 20 页，请先移除多余页面。');
+          ids.push(uploaded.id);queue.pending.shift();queue.draw?.();notify();
+        }catch(e){item.error=e.message;throw e;}
       }
-      status.textContent = "上传完成，可以预览、排序或移除附件。";
-    } catch (e) {
-      status.textContent = e.message;
-      toast(e.message);
-    } finally {
-      uploading = false;
-      input.disabled = false;
-      if($(".camera-input",root)){$(".camera-input",root).disabled=false;$(".camera-input",root).value="";}
-      input.value = "";
-      onChange(ids);
-      progress.hidden = true;draw();
-    }
+      queue.message='上传完成，可以预览、排序或移除附件。';
+    }catch(e){queue.message=e.message;}
+    finally{queue.busy=false;if(!queue.pending.length)uploadQueues.delete(key);input.value='';if(camera)camera.value='';queue.draw?.();notify();}
   }
-  input.onchange = () => upload([...input.files]);
-  if($(".camera-input",root))$(".camera-input",root).onchange=e=>upload([...e.target.files]);
-  zone.ondragover = (e) => {
-    e.preventDefault();
-    zone.classList.add("dragging");
-  };
-  zone.ondragleave = () => zone.classList.remove("dragging");
-  zone.ondrop = (e) => {
-    e.preventDefault();
-    zone.classList.remove("dragging");
-    upload([...e.dataTransfer.files]);
-  };
-  draw();
-  return { ids: () => ids, busy: () => uploading };
+  queue.draw=()=>{draw();if(queue.message)status.textContent=queue.message;progress.value=queue.progress||0;};
+  queue.progressChanged=()=>{progress.value=queue.progress||0;};queue.notify=()=>onChange(ids);
+  input.onchange=()=>upload([...input.files]);if(camera)camera.onchange=()=>upload([...camera.files]);
+  zone.ondragover=e=>{e.preventDefault();zone.classList.add('dragging');};zone.ondragleave=()=>zone.classList.remove('dragging');zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');upload([...e.dataTransfer.files]);};
+  queue.draw();
+  return {ids:()=>ids,busy:()=>queue.busy,pending:()=>queue.pending.length,discardQueue:()=>{if(queue.busy)throw Error('请等待附件处理完成后再切换版本。');queue.pending=[];uploadQueues.delete(key);}};
 }
 function pointEditor(points=[]){return points.map(p=>`<div class="scoring-point" data-point><label class="field"><span>得分条件</span><input name="criterion" value="${h(p.criterion)}" maxlength="3000" required></label><label class="field"><span>分值</span><input name="pointMax" type="number" min="0.5" max="100" step="0.5" value="${h(p.maxPoints)}" required></label><button type="button" class="icon-btn remove-point" aria-label="移除此评分点">${icon('close')}</button></div>`).join('');}
 function rubricEditor(questions){return questions.map((q,i)=>`<article class="rubric-question" data-question><div class="question-bar"><h3>第 ${i+1} 题</h3><label>题号<input name="qid" value="${h(q.id)}" required maxlength="30" aria-label="第 ${i+1} 题题号"></label><label>满分<input name="points" type="number" min="0.5" max="100" step="0.5" value="${h(q.maxPoints)}" required aria-label="第 ${i+1} 题满分"></label><button type="button" class="icon-btn remove-question" aria-label="删除第 ${i+1} 题">${icon('close')}</button></div><div class="stack"><label class="field"><span>题型</span><select name="questionType"><option value="short" ${q.type!=='choice'?'selected':''}>简答题</option><option value="choice" ${q.type==='choice'?'selected':''}>选择题</option></select></label>${area('题目（学生可见）','prompt',q.prompt)}${area('参考答案','answer',q.answer,'required')}<div class="choice-settings stack" ${q.type==='choice'?'':'hidden'}><div class="field-row"><label class="field"><span>选择方式</span><select name="choiceMode"><option value="single" ${q.choiceMode!=='multiple'?'selected':''}>单选</option><option value="multiple" ${q.choiceMode==='multiple'?'selected':''}>多选</option></select></label>${field('正确选项','correctOptions',(Array.isArray(q.correctOptions)?q.correctOptions.join(', '):q.correctOptions||''),'text','placeholder="例如 B 或 A, C"')}</div><p class="hint">选项完全一致得满分，多选漏选或错选不得分。</p></div>${area('评分说明与可接受的表达','criteria',q.criteria,'required')}<div class="short-settings" ${q.type==='choice'?'hidden':''}><h4>逐点评分</h4><div class="point-list">${pointEditor(q.scoringPoints)}</div><button type="button" class="secondary add-point">添加评分点</button><p class="hint">各评分点分值之和须等于本题满分。未确认逐点评分的题目会进入教师复核。</p></div>${field('知识点（可选）','knowledge',q.knowledge||'')}${field('答案出处','sourcePages',q.sourcePages||'文字答案')}</div></article>`).join('');}
@@ -539,7 +473,7 @@ async function answerPage(id) {
 }
 async function submitPage(id) {
  const version=state.routeVersion,{assignment:a}=await api('assignments/'+id);
- const all=state.submissions.filter(s=>s.assignmentId===id),draft=all.find(s=>s.status==='draft'),record=assignmentRecords(all,[a])[0],latest=record?.latest;
+ const all=state.submissions.filter(s=>s.assignmentId===id),draft=assignmentState(a,all).draft,record=assignmentRecords(all,[a])[0],latest=record?.latest;
  const cacheKey=`hw-work:${state.user.id}:${id}`;let cached;
  try{cached=JSON.parse(sessionStorage.getItem(cacheKey)||'null');}catch{}
  if(cached&&all.some(s=>s.status!=='draft'&&s.clientId===cached.clientId))cached=null;
@@ -550,24 +484,26 @@ async function submitPage(id) {
  const expired=a.dueAt&&Date.parse(a.dueAt)<Date.now()&&!a.allowLate&&latest?.status!=='returned';
  const locked=expired||(a.allowResubmit===false&&latest&&latest.status!=='returned');
  const max=(a.questions||[]).reduce((n,q)=>n+q.maxPoints,0);
- main.innerHTML=`<section class="paper submit-paper">${head('',a.title,`${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}${max?' · 满分 '+max+' 分':''}`,link('assignments','返回作业'))}<div class="submission-layout"><section class="assignment-reading"><details class="assignment-brief" ${innerWidth>760?'open':''}><summary>查看题目与要求</summary><p class="instructions">${h(a.instructions||'根据题目完成作答，照片请包含完整题号。')}</p>${(a.questions||[]).map(q=>`<div class="published-question"><h3>第 ${h(q.id)} 题 <span class="hint">${q.maxPoints} 分</span></h3><p>${h(q.prompt)}</p></div>`).join('')}<div class="file-list">${fileMarkup(a.questionFiles)}</div></details><a class="secondary" href="/api/homework/assignments/${id}/pdf" download>保存题目 PDF</a>${latest?`<div class="previous-submission"><p>上次提交 ${date(latest.submittedAt)}</p>${badge(latest.status)}${link('result/'+latest.id,'查看上次提交')}${record.grade?`<p class="hint">已有成绩 ${record.grade.total}/${record.grade.maxPoints}，新结果出来前会保留。</p>`:''}</div>`:''}</section><section class="submission-compose"><div class="section-head"><h2>${latest?'补充或重新提交':'提交你的作业'}</h2><span class="hint">账号与班级已带入</span></div>${locked?`<p class="status-line" role="status">${expired?'已过截止时间。你可以继续保存草稿，请联系老师开放补交。':'老师已关闭重新提交。原作答和成绩仍可查看。'}</p>`:''}<form id="submit-form" class="stack"><div class="input-modes" role="group" aria-label="添加作答"><button type="button" data-mode="photo" aria-pressed="true">拍照</button><button type="button" data-mode="pdf" aria-pressed="false">PDF</button><button type="button" data-mode="text" aria-pressed="false">文字</button></div><div id="student-upload"></div><details id="typed-answer" ${initialText?'open':''}><summary>补充文字答案</summary>${area('按题号填写答案','answer',initialText,'maxlength="40000" placeholder="例如：第 1 题… 第 2 题…"')}</details><div class="submit-check"><p id="page-summary"></p><p class="hint">提交前确认：题号完整、文字清楚、没有漏页。</p></div><p class="draft-feedback" id="draft-status" role="status">${useCache?'已恢复这台设备上未完成的草稿。':draft?'已恢复账户草稿。':latest?'已带入上次作答。请保留正确页面，只替换或补充需要修改的部分。':'填写后会自动保存草稿。'}</p><p class="form-error" role="alert"></p><div class="actions submit-actions"><button type="button" id="save-draft" class="secondary">保存草稿</button><button type="submit" class="primary" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div><p class="hint">提交后可以关闭页面，批阅结果会自动保留。</p></form></section></div></section>`;
- const form=$('#submit-form'),textArea=$('[name=answer]',form),status=$('#draft-status'),pageSummary=$('#page-summary');
+ main.innerHTML=`<section class="paper submit-paper">${head('',a.title,`${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}${max?' · 满分 '+max+' 分':''}`,link('assignments','返回作业'))}<div class="submission-layout"><section class="assignment-reading"><details class="assignment-brief" ${innerWidth>760?'open':''}><summary>查看题目与要求</summary><p class="instructions">${h(a.instructions||'根据题目完成作答，照片请包含完整题号。')}</p>${(a.questions||[]).map(q=>`<div class="published-question"><h3>第 ${h(q.id)} 题 <span class="hint">${q.maxPoints} 分</span></h3><p>${h(q.prompt)}</p></div>`).join('')}<div class="file-list">${fileMarkup(a.questionFiles)}</div><a class="secondary" href="/api/homework/assignments/${id}/pdf" download>保存题目 PDF</a></details>${latest?`<div class="previous-submission"><p>上次提交 ${date(latest.submittedAt)}</p>${badge(latest.status)}${link('result/'+latest.id,'查看上次提交')}${record.grade?`<p class="hint">已有成绩 ${record.grade.total}/${record.grade.maxPoints}，新结果出来前会保留。</p>`:''}</div>`:''}</section><section class="submission-compose"><div class="section-head"><h2>${latest?'补充或重新提交':'提交你的作业'}</h2><span class="hint">账号与班级已带入</span></div>${locked?`<p class="status-line" role="status">${expired?'已过截止时间。你可以继续保存草稿，请联系老师开放补交。':'老师已关闭重新提交。原作答和成绩仍可查看。'}</p>`:''}<form id="submit-form" class="stack"><div class="input-modes" role="group" aria-label="添加作答"><button type="button" data-mode="photo" aria-pressed="true">拍照</button><button type="button" data-mode="pdf" aria-pressed="false">PDF</button><button type="button" data-mode="text" aria-pressed="false">文字</button></div><div id="student-upload"></div><details id="typed-answer" ${initialText?'open':''}><summary>补充文字答案</summary>${area('按题号填写答案','answer',initialText,'maxlength="40000" placeholder="例如：第 1 题… 第 2 题…"')}</details><div class="submit-check"><p id="page-summary"></p><p class="hint">提交前确认：题号完整、文字清楚、没有漏页。</p></div><p class="draft-feedback" id="draft-status" role="status">${useCache?'已恢复这台设备上未完成的草稿。':draft?'已恢复账户草稿。':latest?'已带入上次作答。请保留正确页面，只替换或补充需要修改的部分。':'填写后会自动保存草稿。'}</p><p class="form-error" role="alert"></p><div class="actions submit-actions"><button type="button" id="save-draft" class="secondary">保存草稿</button><button type="submit" class="primary desktop-submit" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div><p class="hint">提交后可以关闭页面，批阅结果会自动保留。</p></form></section></div><div class="mobile-submit-bar"><div><p id="mobile-page-summary"></p><p id="mobile-save-status" class="hint"></p></div><button type="submit" form="submit-form" class="primary" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div></section>`;
+ const form=$('#submit-form'),textArea=$('[name=answer]',form),status=$('#draft-status'),pageSummary=$('#page-summary'),mobileSummary=$('#mobile-page-summary'),mobileStatus=$('#mobile-save-status');
  let submitted=false,autosave,dirty=Boolean(useCache||(!draft&&latest)),writing=Promise.resolve(),localSaved=true,revision=0;
  const widget=uploadWidget($('#student-upload'),'submission',initialFiles,changed);
  const snapshot=()=>({assignmentId:id,text:textArea.value,files:[...widget.ids()],clientId});
  function cache(){try{sessionStorage.setItem(cacheKey,JSON.stringify({...snapshot(),updatedAt:Date.now()}));localSaved=true;}catch{localSaved=false;}}
- function summary(){const pages=widget.ids().reduce((n,x)=>n+(state.files.get(x)?.pages||0),0);pageSummary.textContent=pages?`已添加 ${pages} 页${textArea.value.trim()?'，另有文字答案':''}`:textArea.value.trim()?'已填写文字答案':'还没有添加作答';}
- function changed(){dirty=true;revision++;cache();summary();clearTimeout(autosave);if(!widget.busy())autosave=setTimeout(()=>{if(!submitted)save(true).catch(e=>{status.textContent=e.message+(localSaved?' 当前内容已在此页面暂存。':' 请暂时不要关闭页面。');if(e.retryable&&form.isConnected)autosave=setTimeout(online,3000);});},1000);}
+ function setStatus(message){status.textContent=message;mobileStatus.textContent=message;}
+ function summary(){const pages=widget.ids().reduce((n,x)=>n+(state.files.get(x)?.pages||0),0);pageSummary.textContent=pages?`已添加 ${pages} 页${textArea.value.trim()?'，另有文字答案':''}`:textArea.value.trim()?'已填写文字答案':'还没有添加作答';mobileSummary.textContent=pageSummary.textContent+(widget.pending()?` · ${widget.pending()} 个待重试`:'');}
+ function changed(){dirty=true;revision++;cache();summary();setStatus(widget.busy()?'正在添加附件…':widget.pending()?'部分文件未添加，请重试或选择不添加。':'有更改，正在保存草稿…');clearTimeout(autosave);if(!widget.busy())autosave=setTimeout(()=>{if(!submitted)save(true).catch(e=>{setStatus(e.message+(localSaved?' 当前内容已在此页面暂存。':' 请暂时不要关闭页面。'));if(e.retryable&&form.isConnected)autosave=setTimeout(online,3000);});},1000);}
  function save(isDraft){
   if(widget.busy())return Promise.reject(Error('附件仍在上传，请稍等。已经添加的页面会保留。'));
+  if(!isDraft&&widget.pending())return Promise.reject(Error('还有文件未添加。请重试，或选择不添加后再提交。'));
   const body={...snapshot(),draft:isDraft},captured=revision;
-  writing=writing.catch(()=>{}).then(()=>post('submissions',body)).then(value=>{if(captured===revision)dirty=false;if(form.isConnected&&isDraft)status.textContent='草稿已保存到账户 · '+date(new Date());return value;});return writing;
+  writing=writing.catch(()=>{}).then(()=>post('submissions',body)).then(value=>{if(captured===revision)dirty=false;if(form.isConnected&&isDraft&&captured===revision)setStatus(widget.pending()?'已添加的作答已保存，仍有文件待重试。':'草稿已保存到账户 · '+date(new Date()));return value;});return writing;
  }
- function beforeUnload(e){cache();if(widget.busy()||dirty){e.preventDefault();e.returnValue='';}}
- const online=()=>{clearTimeout(autosave);let attempts=0;const retry=async()=>{if(!form.isConnected||!dirty||submitted)return;try{await save(true);}catch(e){status.textContent=e.message+(localSaved?' 当前内容已在此页面暂存。':' 请暂时不要关闭页面。');if(e.retryable&&form.isConnected)autosave=setTimeout(retry,Math.min(5000,1500*++attempts));}};autosave=setTimeout(retry,300);};
+ function beforeUnload(e){cache();if(widget.busy()||widget.pending()||dirty){e.preventDefault();e.returnValue='';}}
+ const online=()=>{clearTimeout(autosave);let attempts=0;const retry=async()=>{if(!form.isConnected||!dirty||submitted)return;try{await save(true);}catch(e){setStatus(e.message+(localSaved?' 当前内容已在此页面暂存。':' 请暂时不要关闭页面。'));if(e.retryable&&form.isConnected)autosave=setTimeout(retry,Math.min(5000,1500*++attempts));}};autosave=setTimeout(retry,300);};
  window.addEventListener('beforeunload',beforeUnload);window.addEventListener('online',online);
  state.viewCleanup=()=>{clearTimeout(autosave);window.removeEventListener('beforeunload',beforeUnload);window.removeEventListener('online',online);if(!submitted){cache();if(dirty&&!widget.busy())void save(true).catch(()=>{});}};
- textArea.addEventListener('input',changed);summary();if(dirty){cache();online();}
+ textArea.addEventListener('input',changed);summary();setStatus(status.textContent);if(dirty){cache();online();}
  $$('[data-mode]',form).forEach(b=>b.onclick=()=>{$$('[data-mode]',form).forEach(x=>x.setAttribute('aria-pressed',x===b));if(b.dataset.mode==='text'){$('#typed-answer').open=true;textArea.focus();}else if(b.dataset.mode==='pdf'){const input=$('.upload input',form);input.accept='application/pdf';input.click();input.accept='image/jpeg,image/png,image/webp,application/pdf';}else $('.camera-input',form).click();});
  click('#save-draft',async()=>{clearTimeout(autosave);await save(true);toast('草稿已保存，稍后可以继续');});
  formHandler(form,async()=>{if(locked)throw Error('请联系老师开放提交');clearTimeout(autosave);const controls=$$('input,textarea,button',form).map(el=>({el,disabled:el.disabled}));controls.forEach(({el})=>el.disabled=true);try{const {submission}=await save(false);submitted=true;sessionStorage.removeItem(cacheKey);toast('提交成功，原件已保存');if(form.isConnected)go('result/'+submission.id);}finally{controls.forEach(({el,disabled})=>el.disabled=disabled);}});
@@ -773,6 +709,7 @@ function accountPage() {
   });
 }
 async function render(scroll = true) {
+  clearTimeout(noticeTimer);$("#notice").classList.remove("visible");
   state.viewCleanup?.();state.viewCleanup=null;
   clearPDFs();
   if (!state.user) return showLogin();

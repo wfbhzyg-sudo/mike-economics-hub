@@ -31,10 +31,15 @@ export function questionTotals(grade, questions=[]) {
 }
 export function assignmentState(a, submissions, time=Date.now()) {
   const attempts=submissions.filter(s=>s.assignmentId===a.id);
-  const draft=attempts.find(s=>s.status==='draft');
   const latest=assignmentRecords(attempts,[a])[0]?.latest;
-  if(latest?.status==='returned')return {key:'todo',label:'需补充',latest,draft};
-  if(latest?.status==='published')return {key:'done',label:'已出成绩',latest,draft};
-  if(latest)return {key:'processing',label:latest.status==='needs_review'?'待教师确认':latest.status==='grading'?'正在批阅':'已提交',latest,draft};
-  return {key:'todo',label:draft?'草稿待提交':a.dueAt&&Date.parse(a.dueAt)<time?'已截止':'待完成',latest,draft};
+  const draft=attempts.filter(s=>s.status==='draft'&&(!latest||Date.parse(s.updatedAt||s.createdAt)>Date.parse(latest.submittedAt||latest.createdAt))).sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];
+  const closed=Boolean(a.dueAt&&Date.parse(a.dueAt)<time&&!a.allowLate&&latest?.status!=='returned');
+  const canSubmit=!closed&&(!latest||latest.status==='returned'||a.allowResubmit!==false);
+  const base={latest,draft,canSubmit};
+  if(latest?.status==='returned')return {...base,key:'todo',label:'需补充'};
+  if(draft&&canSubmit)return {...base,key:'todo',label:'草稿待提交'};
+  if(latest?.status==='published')return {...base,key:'done',label:'已出成绩'};
+  if(latest)return {...base,key:'processing',label:latest.status==='needs_review'?'待教师确认':latest.status==='grading'?'正在批阅':'已提交'};
+  if(closed)return {...base,key:'closed',label:'已截止'};
+  return {...base,key:'todo',label:draft?'草稿待提交':a.dueAt&&Date.parse(a.dueAt)<time?'可补交':'待完成'};
 }
