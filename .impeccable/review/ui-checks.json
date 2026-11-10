@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "open EconQuest and homework tabs revalidate and redirect after central logout",
+    "desktop login / registration / recovery / gallery / homework layout and login passed",
+    "mobile login / registration / recovery / gallery / homework layout and login passed",
+    "user-320 login / registration / recovery / gallery / homework layout and login passed",
+    "user-844 login / registration / recovery / gallery / homework layout and login passed"
+  ],
+  "errors": [],
+  "environment": "Chrome desktop and touch/viewport emulation, not physical devices"
+}

@@ -1,0 +1,1544 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-10T06:33:54.564197+00:00",
+  "title": "Design System: Mike 的经济一页通",
+  "extensions": {
+    "colorMeta": {
+      "navy": {
+        "role": "primary",
+        "displayName": "Portal Navy",
+        "tonalRamp": [
+          "oklch(15.00% 0.05811 256.66)",
+          "oklch(26.43% 0.05811 256.66)",
+          "oklch(37.86% 0.05811 256.66)",
+          "oklch(49.29% 0.05811 256.66)",
+          "oklch(60.71% 0.05811 256.66)",
+          "oklch(72.14% 0.05811 256.66)",
+          "oklch(83.57% 0.05811 256.66)",
+          "oklch(95.00% 0.05811 256.66)"
+        ]
+      },
+      "ink": {
+        "role": "secondary",
+        "displayName": "Bookself Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.03744 176.62)",
+          "oklch(26.43% 0.03744 176.62)",
+          "oklch(37.86% 0.03744 176.62)",
+          "oklch(49.29% 0.03744 176.62)",
+          "oklch(60.71% 0.03744 176.62)",
+          "oklch(72.14% 0.03744 176.62)",
+          "oklch(83.57% 0.03744 176.62)",
+          "oklch(95.00% 0.03744 176.62)"
+        ]
+      },
+      "cream": {
+        "role": "secondary",
+        "displayName": "Archive Cream",
+        "tonalRamp": [
+          "oklch(15.00% 0.02385 88.24)",
+          "oklch(26.43% 0.02385 88.24)",
+          "oklch(37.86% 0.02385 88.24)",
+          "oklch(49.29% 0.02385 88.24)",
+          "oklch(60.71% 0.02385 88.24)",
+          "oklch(72.14% 0.02385 88.24)",
+          "oklch(83.57% 0.02385 88.24)",
+          "oklch(95.00% 0.02385 88.24)"
+        ]
+      },
+      "archive": {
+        "role": "primary",
+        "displayName": "Archive Navy",
+        "tonalRamp": [
+          "oklch(15.00% 0.04690 240.80)",
+          "oklch(26.43% 0.04690 240.80)",
+          "oklch(37.86% 0.04690 240.80)",
+          "oklch(49.29% 0.04690 240.80)",
+          "oklch(60.71% 0.04690 240.80)",
+          "oklch(72.14% 0.04690 240.80)",
+          "oklch(83.57% 0.04690 240.80)",
+          "oklch(95.00% 0.04690 240.80)"
+        ]
+      },
+      "archive-ink": {
+        "role": "secondary",
+        "displayName": "Archive Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.05068 234.59)",
+          "oklch(26.43% 0.05068 234.59)",
+          "oklch(37.86% 0.05068 234.59)",
+          "oklch(49.29% 0.05068 234.59)",
+          "oklch(60.71% 0.05068 234.59)",
+          "oklch(72.14% 0.05068 234.59)",
+          "oklch(83.57% 0.05068 234.59)",
+          "oklch(95.00% 0.05068 234.59)"
+        ]
+      },
+      "book-ground": {
+        "role": "neutral",
+        "displayName": "Book Ground",
+        "tonalRamp": [
+          "oklch(15.00% 0.01509 94.21)",
+          "oklch(26.43% 0.01509 94.21)",
+          "oklch(37.86% 0.01509 94.21)",
+          "oklch(49.29% 0.01509 94.21)",
+          "oklch(60.71% 0.01509 94.21)",
+          "oklch(72.14% 0.01509 94.21)",
+          "oklch(83.57% 0.01509 94.21)",
+          "oklch(95.00% 0.01509 94.21)"
+        ]
+      },
+      "quest-night": {
+        "role": "tertiary",
+        "displayName": "Quest Night",
+        "tonalRamp": [
+          "oklch(15.00% 0.07057 297.89)",
+          "oklch(26.43% 0.07057 297.89)",
+          "oklch(37.86% 0.07057 297.89)",
+          "oklch(49.29% 0.07057 297.89)",
+          "oklch(60.71% 0.07057 297.89)",
+          "oklch(72.14% 0.07057 297.89)",
+          "oklch(83.57% 0.07057 297.89)",
+          "oklch(95.00% 0.07057 297.89)"
+        ]
+      },
+      "quest-gold": {
+        "role": "secondary",
+        "displayName": "Quest Gold",
+        "tonalRamp": [
+          "oklch(15.00% 0.04761 90.06)",
+          "oklch(26.43% 0.04761 90.06)",
+          "oklch(37.86% 0.04761 90.06)",
+          "oklch(49.29% 0.04761 90.06)",
+          "oklch(60.71% 0.04761 90.06)",
+          "oklch(72.14% 0.04761 90.06)",
+          "oklch(83.57% 0.04761 90.06)",
+          "oklch(95.00% 0.04761 90.06)"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "focus": {
+        "role": "tertiary",
+        "displayName": "Focus Blue",
+        "tonalRamp": [
+          "oklch(15.00% 0.10092 247.48)",
+          "oklch(26.43% 0.10092 247.48)",
+          "oklch(37.86% 0.10092 247.48)",
+          "oklch(49.29% 0.10092 247.48)",
+          "oklch(60.71% 0.10092 247.48)",
+          "oklch(72.14% 0.10092 247.48)",
+          "oklch(83.57% 0.10092 247.48)",
+          "oklch(95.00% 0.10092 247.48)"
+        ]
+      },
+      "archive-muted": {
+        "role": "neutral",
+        "displayName": "Archive Muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.01644 227.00)",
+          "oklch(26.43% 0.01644 227.00)",
+          "oklch(37.86% 0.01644 227.00)",
+          "oklch(49.29% 0.01644 227.00)",
+          "oklch(60.71% 0.01644 227.00)",
+          "oklch(72.14% 0.01644 227.00)",
+          "oklch(83.57% 0.01644 227.00)",
+          "oklch(95.00% 0.01644 227.00)"
+        ]
+      },
+      "folio-slate": {
+        "role": "secondary",
+        "displayName": "Folio Slate",
+        "tonalRamp": [
+          "oklch(15.00% 0.01813 219.70)",
+          "oklch(26.43% 0.01813 219.70)",
+          "oklch(37.86% 0.01813 219.70)",
+          "oklch(49.29% 0.01813 219.70)",
+          "oklch(60.71% 0.01813 219.70)",
+          "oklch(72.14% 0.01813 219.70)",
+          "oklch(83.57% 0.01813 219.70)",
+          "oklch(95.00% 0.01813 219.70)"
+        ]
+      },
+      "folio-tan": {
+        "role": "secondary",
+        "displayName": "Folio Tan",
+        "tonalRamp": [
+          "oklch(15.00% 0.04403 78.84)",
+          "oklch(26.43% 0.04403 78.84)",
+          "oklch(37.86% 0.04403 78.84)",
+          "oklch(49.29% 0.04403 78.84)",
+          "oklch(60.71% 0.04403 78.84)",
+          "oklch(72.14% 0.04403 78.84)",
+          "oklch(83.57% 0.04403 78.84)",
+          "oklch(95.00% 0.04403 78.84)"
+        ]
+      },
+      "chart-copper": {
+        "role": "secondary",
+        "displayName": "Chart Copper",
+        "tonalRamp": [
+          "oklch(15.00% 0.09106 58.86)",
+          "oklch(26.43% 0.09106 58.86)",
+          "oklch(37.86% 0.09106 58.86)",
+          "oklch(49.29% 0.09106 58.86)",
+          "oklch(60.71% 0.09106 58.86)",
+          "oklch(72.14% 0.09106 58.86)",
+          "oklch(83.57% 0.09106 58.86)",
+          "oklch(95.00% 0.09106 58.86)"
+        ]
+      },
+      "nebs-crimson": {
+        "role": "secondary",
+        "displayName": "NEBS Crimson",
+        "tonalRamp": [
+          "oklch(15.00% 0.09127 27.48)",
+          "oklch(26.43% 0.09127 27.48)",
+          "oklch(37.86% 0.09127 27.48)",
+          "oklch(49.29% 0.09127 27.48)",
+          "oklch(60.71% 0.09127 27.48)",
+          "oklch(72.14% 0.09127 27.48)",
+          "oklch(83.57% 0.09127 27.48)",
+          "oklch(95.00% 0.09127 27.48)"
+        ]
+      },
+      "nebs-gold": {
+        "role": "secondary",
+        "displayName": "NEBS Gold",
+        "tonalRamp": [
+          "oklch(15.00% 0.06481 89.92)",
+          "oklch(26.43% 0.06481 89.92)",
+          "oklch(37.86% 0.06481 89.92)",
+          "oklch(49.29% 0.06481 89.92)",
+          "oklch(60.71% 0.06481 89.92)",
+          "oklch(72.14% 0.06481 89.92)",
+          "oklch(83.57% 0.06481 89.92)",
+          "oklch(95.00% 0.06481 89.92)"
+        ]
+      },
+      "nebs-hover-ink": {
+        "role": "secondary",
+        "displayName": "NEBS Hover Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.11487 31.15)",
+          "oklch(26.43% 0.11487 31.15)",
+          "oklch(37.86% 0.11487 31.15)",
+          "oklch(49.29% 0.11487 31.15)",
+          "oklch(60.71% 0.11487 31.15)",
+          "oklch(72.14% 0.11487 31.15)",
+          "oklch(83.57% 0.11487 31.15)",
+          "oklch(95.00% 0.11487 31.15)"
+        ]
+      },
+      "nav-blue": {
+        "role": "primary",
+        "displayName": "Nav Blue",
+        "tonalRamp": [
+          "oklch(15.00% 0.21521 262.88)",
+          "oklch(26.43% 0.21521 262.88)",
+          "oklch(37.86% 0.21521 262.88)",
+          "oklch(49.29% 0.21521 262.88)",
+          "oklch(60.71% 0.21521 262.88)",
+          "oklch(72.14% 0.21521 262.88)",
+          "oklch(83.57% 0.21521 262.88)",
+          "oklch(95.00% 0.21521 262.88)"
+        ]
+      },
+      "nav-blue-light": {
+        "role": "primary",
+        "displayName": "Nav Blue Light",
+        "tonalRamp": [
+          "oklch(15.00% 0.10092 247.48)",
+          "oklch(26.43% 0.10092 247.48)",
+          "oklch(37.86% 0.10092 247.48)",
+          "oklch(49.29% 0.10092 247.48)",
+          "oklch(60.71% 0.10092 247.48)",
+          "oklch(72.14% 0.10092 247.48)",
+          "oklch(83.57% 0.10092 247.48)",
+          "oklch(95.00% 0.10092 247.48)"
+        ]
+      },
+      "nav-gray": {
+        "role": "neutral",
+        "displayName": "Nav Gray",
+        "tonalRamp": [
+          "oklch(15.00% 0.02241 255.63)",
+          "oklch(26.43% 0.02241 255.63)",
+          "oklch(37.86% 0.02241 255.63)",
+          "oklch(49.29% 0.02241 255.63)",
+          "oklch(60.71% 0.02241 255.63)",
+          "oklch(72.14% 0.02241 255.63)",
+          "oklch(83.57% 0.02241 255.63)",
+          "oklch(95.00% 0.02241 255.63)"
+        ]
+      },
+      "nav-gray-light": {
+        "role": "neutral",
+        "displayName": "Nav Gray Light",
+        "tonalRamp": [
+          "oklch(15.00% 0.01115 256.70)",
+          "oklch(26.43% 0.01115 256.70)",
+          "oklch(37.86% 0.01115 256.70)",
+          "oklch(49.29% 0.01115 256.70)",
+          "oklch(60.71% 0.01115 256.70)",
+          "oklch(72.14% 0.01115 256.70)",
+          "oklch(83.57% 0.01115 256.70)",
+          "oklch(95.00% 0.01115 256.70)"
+        ]
+      },
+      "course-entry": {
+        "role": "secondary",
+        "displayName": "Course Entry",
+        "tonalRamp": [
+          "oklch(15.00% 0.01967 87.51)",
+          "oklch(26.43% 0.01967 87.51)",
+          "oklch(37.86% 0.01967 87.51)",
+          "oklch(49.29% 0.01967 87.51)",
+          "oklch(60.71% 0.01967 87.51)",
+          "oklch(72.14% 0.01967 87.51)",
+          "oklch(83.57% 0.01967 87.51)",
+          "oklch(95.00% 0.01967 87.51)"
+        ]
+      },
+      "course-macro": {
+        "role": "secondary",
+        "displayName": "Course Macro",
+        "tonalRamp": [
+          "oklch(15.00% 0.04825 248.28)",
+          "oklch(26.43% 0.04825 248.28)",
+          "oklch(37.86% 0.04825 248.28)",
+          "oklch(49.29% 0.04825 248.28)",
+          "oklch(60.71% 0.04825 248.28)",
+          "oklch(72.14% 0.04825 248.28)",
+          "oklch(83.57% 0.04825 248.28)",
+          "oklch(95.00% 0.04825 248.28)"
+        ]
+      },
+      "course-micro": {
+        "role": "secondary",
+        "displayName": "Course Micro",
+        "tonalRamp": [
+          "oklch(15.00% 0.04247 176.85)",
+          "oklch(26.43% 0.04247 176.85)",
+          "oklch(37.86% 0.04247 176.85)",
+          "oklch(49.29% 0.04247 176.85)",
+          "oklch(60.71% 0.04247 176.85)",
+          "oklch(72.14% 0.04247 176.85)",
+          "oklch(83.57% 0.04247 176.85)",
+          "oklch(95.00% 0.04247 176.85)"
+        ]
+      },
+      "course-homework-macro": {
+        "role": "secondary",
+        "displayName": "Course Homework Macro",
+        "tonalRamp": [
+          "oklch(15.00% 0.04830 43.64)",
+          "oklch(26.43% 0.04830 43.64)",
+          "oklch(37.86% 0.04830 43.64)",
+          "oklch(49.29% 0.04830 43.64)",
+          "oklch(60.71% 0.04830 43.64)",
+          "oklch(72.14% 0.04830 43.64)",
+          "oklch(83.57% 0.04830 43.64)",
+          "oklch(95.00% 0.04830 43.64)"
+        ]
+      },
+      "course-homework-micro": {
+        "role": "secondary",
+        "displayName": "Course Homework Micro",
+        "tonalRamp": [
+          "oklch(15.00% 0.04170 175.10)",
+          "oklch(26.43% 0.04170 175.10)",
+          "oklch(37.86% 0.04170 175.10)",
+          "oklch(49.29% 0.04170 175.10)",
+          "oklch(60.71% 0.04170 175.10)",
+          "oklch(72.14% 0.04170 175.10)",
+          "oklch(83.57% 0.04170 175.10)",
+          "oklch(95.00% 0.04170 175.10)"
+        ]
+      },
+      "course-paper-rule": {
+        "role": "secondary",
+        "displayName": "Course Paper Rule",
+        "tonalRamp": [
+          "oklch(15.00% 0.03742 206.32)",
+          "oklch(26.43% 0.03742 206.32)",
+          "oklch(37.86% 0.03742 206.32)",
+          "oklch(49.29% 0.03742 206.32)",
+          "oklch(60.71% 0.03742 206.32)",
+          "oklch(72.14% 0.03742 206.32)",
+          "oklch(83.57% 0.03742 206.32)",
+          "oklch(95.00% 0.03742 206.32)"
+        ]
+      },
+      "course-paper-divider": {
+        "role": "secondary",
+        "displayName": "Course Paper Divider",
+        "tonalRamp": [
+          "oklch(15.00% 0.03742 206.32)",
+          "oklch(26.43% 0.03742 206.32)",
+          "oklch(37.86% 0.03742 206.32)",
+          "oklch(49.29% 0.03742 206.32)",
+          "oklch(60.71% 0.03742 206.32)",
+          "oklch(72.14% 0.03742 206.32)",
+          "oklch(83.57% 0.03742 206.32)",
+          "oklch(95.00% 0.03742 206.32)"
+        ]
+      },
+      "course-companion": {
+        "role": "secondary",
+        "displayName": "Course Companion",
+        "tonalRamp": [
+          "oklch(15.00% 0.01384 179.37)",
+          "oklch(26.43% 0.01384 179.37)",
+          "oklch(37.86% 0.01384 179.37)",
+          "oklch(49.29% 0.01384 179.37)",
+          "oklch(60.71% 0.01384 179.37)",
+          "oklch(72.14% 0.01384 179.37)",
+          "oklch(83.57% 0.01384 179.37)",
+          "oklch(95.00% 0.01384 179.37)"
+        ]
+      },
+      "course-page-edge": {
+        "role": "secondary",
+        "displayName": "Course Page Edge",
+        "tonalRamp": [
+          "oklch(15.00% 0.02178 115.47)",
+          "oklch(26.43% 0.02178 115.47)",
+          "oklch(37.86% 0.02178 115.47)",
+          "oklch(49.29% 0.02178 115.47)",
+          "oklch(60.71% 0.02178 115.47)",
+          "oklch(72.14% 0.02178 115.47)",
+          "oklch(83.57% 0.02178 115.47)",
+          "oklch(95.00% 0.02178 115.47)"
+        ]
+      },
+      "course-companion-rule": {
+        "role": "secondary",
+        "displayName": "Course Companion Rule",
+        "tonalRamp": [
+          "oklch(15.00% 0.03742 206.32)",
+          "oklch(26.43% 0.03742 206.32)",
+          "oklch(37.86% 0.03742 206.32)",
+          "oklch(49.29% 0.03742 206.32)",
+          "oklch(60.71% 0.03742 206.32)",
+          "oklch(72.14% 0.03742 206.32)",
+          "oklch(83.57% 0.03742 206.32)",
+          "oklch(95.00% 0.03742 206.32)"
+        ]
+      },
+      "course-homework-folder": {
+        "role": "secondary",
+        "displayName": "Course Homework Folder",
+        "tonalRamp": [
+          "oklch(15.00% 0.04769 83.23)",
+          "oklch(26.43% 0.04769 83.23)",
+          "oklch(37.86% 0.04769 83.23)",
+          "oklch(49.29% 0.04769 83.23)",
+          "oklch(60.71% 0.04769 83.23)",
+          "oklch(72.14% 0.04769 83.23)",
+          "oklch(83.57% 0.04769 83.23)",
+          "oklch(95.00% 0.04769 83.23)"
+        ]
+      },
+      "homework-ink": {
+        "role": "neutral",
+        "displayName": "Homework Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.04846 254.41)",
+          "oklch(26.43% 0.04846 254.41)",
+          "oklch(37.86% 0.04846 254.41)",
+          "oklch(49.29% 0.04846 254.41)",
+          "oklch(60.71% 0.04846 254.41)",
+          "oklch(72.14% 0.04846 254.41)",
+          "oklch(83.57% 0.04846 254.41)",
+          "oklch(95.00% 0.04846 254.41)"
+        ]
+      },
+      "homework-muted": {
+        "role": "neutral",
+        "displayName": "Homework Muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.01008 248.03)",
+          "oklch(26.43% 0.01008 248.03)",
+          "oklch(37.86% 0.01008 248.03)",
+          "oklch(49.29% 0.01008 248.03)",
+          "oklch(60.71% 0.01008 248.03)",
+          "oklch(72.14% 0.01008 248.03)",
+          "oklch(83.57% 0.01008 248.03)",
+          "oklch(95.00% 0.01008 248.03)"
+        ]
+      },
+      "homework-line": {
+        "role": "neutral",
+        "displayName": "Homework Line",
+        "tonalRamp": [
+          "oklch(15.00% 0.01451 88.70)",
+          "oklch(26.43% 0.01451 88.70)",
+          "oklch(37.86% 0.01451 88.70)",
+          "oklch(49.29% 0.01451 88.70)",
+          "oklch(60.71% 0.01451 88.70)",
+          "oklch(72.14% 0.01451 88.70)",
+          "oklch(83.57% 0.01451 88.70)",
+          "oklch(95.00% 0.01451 88.70)"
+        ]
+      },
+      "homework-accent": {
+        "role": "secondary",
+        "displayName": "Homework Accent",
+        "tonalRamp": [
+          "oklch(15.00% 0.08852 247.07)",
+          "oklch(26.43% 0.08852 247.07)",
+          "oklch(37.86% 0.08852 247.07)",
+          "oklch(49.29% 0.08852 247.07)",
+          "oklch(60.71% 0.08852 247.07)",
+          "oklch(72.14% 0.08852 247.07)",
+          "oklch(83.57% 0.08852 247.07)",
+          "oklch(95.00% 0.08852 247.07)"
+        ]
+      },
+      "homework-guide": {
+        "role": "neutral",
+        "displayName": "Homework Guide",
+        "tonalRamp": [
+          "oklch(15.00% 0.01184 252.11)",
+          "oklch(26.43% 0.01184 252.11)",
+          "oklch(37.86% 0.01184 252.11)",
+          "oklch(49.29% 0.01184 252.11)",
+          "oklch(60.71% 0.01184 252.11)",
+          "oklch(72.14% 0.01184 252.11)",
+          "oklch(83.57% 0.01184 252.11)",
+          "oklch(95.00% 0.01184 252.11)"
+        ]
+      },
+      "homework-nav-text": {
+        "role": "neutral",
+        "displayName": "Homework Nav Text",
+        "tonalRamp": [
+          "oklch(15.00% 0.01640 257.21)",
+          "oklch(26.43% 0.01640 257.21)",
+          "oklch(37.86% 0.01640 257.21)",
+          "oklch(49.29% 0.01640 257.21)",
+          "oklch(60.71% 0.01640 257.21)",
+          "oklch(72.14% 0.01640 257.21)",
+          "oklch(83.57% 0.01640 257.21)",
+          "oklch(95.00% 0.01640 257.21)"
+        ]
+      },
+      "homework-focus": {
+        "role": "secondary",
+        "displayName": "Homework Focus",
+        "tonalRamp": [
+          "oklch(15.00% 0.10692 247.17)",
+          "oklch(26.43% 0.10692 247.17)",
+          "oklch(37.86% 0.10692 247.17)",
+          "oklch(49.29% 0.10692 247.17)",
+          "oklch(60.71% 0.10692 247.17)",
+          "oklch(72.14% 0.10692 247.17)",
+          "oklch(83.57% 0.10692 247.17)",
+          "oklch(95.00% 0.10692 247.17)"
+        ]
+      },
+      "homework-primary-hover": {
+        "role": "secondary",
+        "displayName": "Homework Primary Hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.06631 248.70)",
+          "oklch(26.43% 0.06631 248.70)",
+          "oklch(37.86% 0.06631 248.70)",
+          "oklch(49.29% 0.06631 248.70)",
+          "oklch(60.71% 0.06631 248.70)",
+          "oklch(72.14% 0.06631 248.70)",
+          "oklch(83.57% 0.06631 248.70)",
+          "oklch(95.00% 0.06631 248.70)"
+        ]
+      },
+      "homework-control-border": {
+        "role": "neutral",
+        "displayName": "Homework Control Border",
+        "tonalRamp": [
+          "oklch(15.00% 0.01325 248.03)",
+          "oklch(26.43% 0.01325 248.03)",
+          "oklch(37.86% 0.01325 248.03)",
+          "oklch(49.29% 0.01325 248.03)",
+          "oklch(60.71% 0.01325 248.03)",
+          "oklch(72.14% 0.01325 248.03)",
+          "oklch(83.57% 0.01325 248.03)",
+          "oklch(95.00% 0.01325 248.03)"
+        ]
+      },
+      "homework-field": {
+        "role": "neutral",
+        "displayName": "Homework Field",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "homework-field-focus": {
+        "role": "neutral",
+        "displayName": "Homework Field Focus",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "homework-field-border": {
+        "role": "neutral",
+        "displayName": "Homework Field Border",
+        "tonalRamp": [
+          "oklch(15.00% 0.00578 117.96)",
+          "oklch(26.43% 0.00578 117.96)",
+          "oklch(37.86% 0.00578 117.96)",
+          "oklch(49.29% 0.00578 117.96)",
+          "oklch(60.71% 0.00578 117.96)",
+          "oklch(72.14% 0.00578 117.96)",
+          "oklch(83.57% 0.00578 117.96)",
+          "oklch(95.00% 0.00578 117.96)"
+        ]
+      },
+      "homework-status": {
+        "role": "neutral",
+        "displayName": "Homework Status",
+        "tonalRamp": [
+          "oklch(15.00% 0.01864 86.15)",
+          "oklch(26.43% 0.01864 86.15)",
+          "oklch(37.86% 0.01864 86.15)",
+          "oklch(49.29% 0.01864 86.15)",
+          "oklch(60.71% 0.01864 86.15)",
+          "oklch(72.14% 0.01864 86.15)",
+          "oklch(83.57% 0.01864 86.15)",
+          "oklch(95.00% 0.01864 86.15)"
+        ]
+      },
+      "homework-published": {
+        "role": "secondary",
+        "displayName": "Homework Published",
+        "tonalRamp": [
+          "oklch(15.00% 0.01989 143.03)",
+          "oklch(26.43% 0.01989 143.03)",
+          "oklch(37.86% 0.01989 143.03)",
+          "oklch(49.29% 0.01989 143.03)",
+          "oklch(60.71% 0.01989 143.03)",
+          "oklch(72.14% 0.01989 143.03)",
+          "oklch(83.57% 0.01989 143.03)",
+          "oklch(95.00% 0.01989 143.03)"
+        ]
+      },
+      "homework-published-ink": {
+        "role": "neutral",
+        "displayName": "Homework Published Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.05104 149.29)",
+          "oklch(26.43% 0.05104 149.29)",
+          "oklch(37.86% 0.05104 149.29)",
+          "oklch(49.29% 0.05104 149.29)",
+          "oklch(60.71% 0.05104 149.29)",
+          "oklch(72.14% 0.05104 149.29)",
+          "oklch(83.57% 0.05104 149.29)",
+          "oklch(95.00% 0.05104 149.29)"
+        ]
+      },
+      "homework-review": {
+        "role": "secondary",
+        "displayName": "Homework Review",
+        "tonalRamp": [
+          "oklch(15.00% 0.03492 82.91)",
+          "oklch(26.43% 0.03492 82.91)",
+          "oklch(37.86% 0.03492 82.91)",
+          "oklch(49.29% 0.03492 82.91)",
+          "oklch(60.71% 0.03492 82.91)",
+          "oklch(72.14% 0.03492 82.91)",
+          "oklch(83.57% 0.03492 82.91)",
+          "oklch(95.00% 0.03492 82.91)"
+        ]
+      },
+      "homework-review-ink": {
+        "role": "neutral",
+        "displayName": "Homework Review Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.07590 77.95)",
+          "oklch(26.43% 0.07590 77.95)",
+          "oklch(37.86% 0.07590 77.95)",
+          "oklch(49.29% 0.07590 77.95)",
+          "oklch(60.71% 0.07590 77.95)",
+          "oklch(72.14% 0.07590 77.95)",
+          "oklch(83.57% 0.07590 77.95)",
+          "oklch(95.00% 0.07590 77.95)"
+        ]
+      },
+      "homework-danger": {
+        "role": "secondary",
+        "displayName": "Homework Danger",
+        "tonalRamp": [
+          "oklch(15.00% 0.02096 43.85)",
+          "oklch(26.43% 0.02096 43.85)",
+          "oklch(37.86% 0.02096 43.85)",
+          "oklch(49.29% 0.02096 43.85)",
+          "oklch(60.71% 0.02096 43.85)",
+          "oklch(72.14% 0.02096 43.85)",
+          "oklch(83.57% 0.02096 43.85)",
+          "oklch(95.00% 0.02096 43.85)"
+        ]
+      },
+      "homework-danger-ink": {
+        "role": "neutral",
+        "displayName": "Homework Danger Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.09971 32.06)",
+          "oklch(26.43% 0.09971 32.06)",
+          "oklch(37.86% 0.09971 32.06)",
+          "oklch(49.29% 0.09971 32.06)",
+          "oklch(60.71% 0.09971 32.06)",
+          "oklch(72.14% 0.09971 32.06)",
+          "oklch(83.57% 0.09971 32.06)",
+          "oklch(95.00% 0.09971 32.06)"
+        ]
+      },
+      "login-navy": {
+        "role": "primary",
+        "displayName": "Login Navy",
+        "canonical": "#0b2139",
+        "tonalRamp": [
+          "oklch(15% 0.0539 252.61)",
+          "oklch(27% 0.0539 252.61)",
+          "oklch(39% 0.0539 252.61)",
+          "oklch(51% 0.0539 252.61)",
+          "oklch(63% 0.0539 252.61)",
+          "oklch(75% 0.0539 252.61)",
+          "oklch(87% 0.0539 252.61)",
+          "oklch(95% 0.0539 252.61)"
+        ]
+      },
+      "login-paper": {
+        "role": "neutral",
+        "displayName": "Login Paper",
+        "canonical": "#f2eadf",
+        "tonalRamp": [
+          "oklch(15% 0.0170 76.11)",
+          "oklch(27% 0.0170 76.11)",
+          "oklch(39% 0.0170 76.11)",
+          "oklch(51% 0.0170 76.11)",
+          "oklch(63% 0.0170 76.11)",
+          "oklch(75% 0.0170 76.11)",
+          "oklch(87% 0.0170 76.11)",
+          "oklch(95% 0.0170 76.11)"
+        ]
+      },
+      "login-ink": {
+        "role": "primary",
+        "displayName": "Login Ink",
+        "canonical": "#102d47",
+        "tonalRamp": [
+          "oklch(15% 0.0591 248.39)",
+          "oklch(27% 0.0591 248.39)",
+          "oklch(39% 0.0591 248.39)",
+          "oklch(51% 0.0591 248.39)",
+          "oklch(63% 0.0591 248.39)",
+          "oklch(75% 0.0591 248.39)",
+          "oklch(87% 0.0591 248.39)",
+          "oklch(95% 0.0591 248.39)"
+        ]
+      },
+      "login-muted": {
+        "role": "neutral",
+        "displayName": "Login Muted",
+        "canonical": "#54626b",
+        "tonalRamp": [
+          "oklch(15% 0.0225 236.15)",
+          "oklch(27% 0.0225 236.15)",
+          "oklch(39% 0.0225 236.15)",
+          "oklch(51% 0.0225 236.15)",
+          "oklch(63% 0.0225 236.15)",
+          "oklch(75% 0.0225 236.15)",
+          "oklch(87% 0.0225 236.15)",
+          "oklch(95% 0.0225 236.15)"
+        ]
+      },
+      "login-focus": {
+        "role": "primary",
+        "displayName": "Login Focus",
+        "canonical": "#397aa3",
+        "tonalRamp": [
+          "oklch(15% 0.0920 239.13)",
+          "oklch(27% 0.0920 239.13)",
+          "oklch(39% 0.0920 239.13)",
+          "oklch(51% 0.0920 239.13)",
+          "oklch(63% 0.0920 239.13)",
+          "oklch(75% 0.0920 239.13)",
+          "oklch(87% 0.0920 239.13)",
+          "oklch(95% 0.0920 239.13)"
+        ]
+      },
+      "login-field": {
+        "role": "neutral",
+        "displayName": "Login Field",
+        "canonical": "#ffffff46",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(27% 0.0000 89.88)",
+          "oklch(39% 0.0000 89.88)",
+          "oklch(51% 0.0000 89.88)",
+          "oklch(63% 0.0000 89.88)",
+          "oklch(75% 0.0000 89.88)",
+          "oklch(87% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "login-field-focus": {
+        "role": "neutral",
+        "displayName": "Login Field Focus",
+        "canonical": "#fff8",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(27% 0.0000 89.88)",
+          "oklch(39% 0.0000 89.88)",
+          "oklch(51% 0.0000 89.88)",
+          "oklch(63% 0.0000 89.88)",
+          "oklch(75% 0.0000 89.88)",
+          "oklch(87% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "login-field-border": {
+        "role": "neutral",
+        "displayName": "Login Field Border",
+        "canonical": "#b5b3ab",
+        "tonalRamp": [
+          "oklch(15% 0.0114 95.20)",
+          "oklch(27% 0.0114 95.20)",
+          "oklch(39% 0.0114 95.20)",
+          "oklch(51% 0.0114 95.20)",
+          "oklch(63% 0.0114 95.20)",
+          "oklch(75% 0.0114 95.20)",
+          "oklch(87% 0.0114 95.20)",
+          "oklch(95% 0.0114 95.20)"
+        ]
+      },
+      "login-placeholder": {
+        "role": "neutral",
+        "displayName": "Login Placeholder",
+        "canonical": "#59656e",
+        "tonalRamp": [
+          "oklch(15% 0.0206 240.33)",
+          "oklch(27% 0.0206 240.33)",
+          "oklch(39% 0.0206 240.33)",
+          "oklch(51% 0.0206 240.33)",
+          "oklch(63% 0.0206 240.33)",
+          "oklch(75% 0.0206 240.33)",
+          "oklch(87% 0.0206 240.33)",
+          "oklch(95% 0.0206 240.33)"
+        ]
+      },
+      "login-primary-hover": {
+        "role": "neutral",
+        "displayName": "Login Primary Hover",
+        "canonical": "#173b56",
+        "tonalRamp": [
+          "oklch(15% 0.0630 243.94)",
+          "oklch(27% 0.0630 243.94)",
+          "oklch(39% 0.0630 243.94)",
+          "oklch(51% 0.0630 243.94)",
+          "oklch(63% 0.0630 243.94)",
+          "oklch(75% 0.0630 243.94)",
+          "oklch(87% 0.0630 243.94)",
+          "oklch(95% 0.0630 243.94)"
+        ]
+      },
+      "login-error": {
+        "role": "neutral",
+        "displayName": "Login Error",
+        "canonical": "#9f322e",
+        "tonalRamp": [
+          "oklch(15% 0.1451 26.28)",
+          "oklch(27% 0.1451 26.28)",
+          "oklch(39% 0.1451 26.28)",
+          "oklch(51% 0.1451 26.28)",
+          "oklch(63% 0.1451 26.28)",
+          "oklch(75% 0.1451 26.28)",
+          "oklch(87% 0.1451 26.28)",
+          "oklch(95% 0.1451 26.28)"
+        ]
+      },
+      "login-footer-rule": {
+        "role": "neutral",
+        "displayName": "Login Footer Rule",
+        "canonical": "#d2c9bb",
+        "tonalRamp": [
+          "oklch(15% 0.0216 79.08)",
+          "oklch(27% 0.0216 79.08)",
+          "oklch(39% 0.0216 79.08)",
+          "oklch(51% 0.0216 79.08)",
+          "oklch(63% 0.0216 79.08)",
+          "oklch(75% 0.0216 79.08)",
+          "oklch(87% 0.0216 79.08)",
+          "oklch(95% 0.0216 79.08)"
+        ]
+      },
+      "account-trigger": {
+        "role": "neutral",
+        "displayName": "Account Trigger",
+        "canonical": "#f9f6efdd",
+        "tonalRamp": [
+          "oklch(15% 0.0098 87.47)",
+          "oklch(27% 0.0098 87.47)",
+          "oklch(39% 0.0098 87.47)",
+          "oklch(51% 0.0098 87.47)",
+          "oklch(63% 0.0098 87.47)",
+          "oklch(75% 0.0098 87.47)",
+          "oklch(87% 0.0098 87.47)",
+          "oklch(95% 0.0098 87.47)"
+        ]
+      },
+      "account-paper": {
+        "role": "neutral",
+        "displayName": "Account Paper",
+        "canonical": "#f5f0e7",
+        "tonalRamp": [
+          "oklch(15% 0.0131 82.40)",
+          "oklch(27% 0.0131 82.40)",
+          "oklch(39% 0.0131 82.40)",
+          "oklch(51% 0.0131 82.40)",
+          "oklch(63% 0.0131 82.40)",
+          "oklch(75% 0.0131 82.40)",
+          "oklch(87% 0.0131 82.40)",
+          "oklch(95% 0.0131 82.40)"
+        ]
+      },
+      "account-border": {
+        "role": "neutral",
+        "displayName": "Account Border",
+        "canonical": "#d2d1c9",
+        "tonalRamp": [
+          "oklch(15% 0.0109 100.85)",
+          "oklch(27% 0.0109 100.85)",
+          "oklch(39% 0.0109 100.85)",
+          "oklch(51% 0.0109 100.85)",
+          "oklch(63% 0.0109 100.85)",
+          "oklch(75% 0.0109 100.85)",
+          "oklch(87% 0.0109 100.85)",
+          "oklch(95% 0.0109 100.85)"
+        ]
+      },
+      "account-divider": {
+        "role": "neutral",
+        "displayName": "Account Divider",
+        "canonical": "#cfd0ca",
+        "tonalRamp": [
+          "oklch(15% 0.0082 114.25)",
+          "oklch(27% 0.0082 114.25)",
+          "oklch(39% 0.0082 114.25)",
+          "oklch(51% 0.0082 114.25)",
+          "oklch(63% 0.0082 114.25)",
+          "oklch(75% 0.0082 114.25)",
+          "oklch(87% 0.0082 114.25)",
+          "oklch(95% 0.0082 114.25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "White floating Chinese title with transparent background and navy shadow."
+      },
+      "headline-mobile": {
+        "displayName": "Headline Mobile",
+        "purpose": "Floating mobile Chinese title; 18 px, 17 px below 360 px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Shared interface family and Chinese platform fallback."
+      },
+      "navigation": {
+        "displayName": "Navigation",
+        "purpose": "13 px desktop fixed-target labels; continuous distance-based text scaling from .92 to 1.18."
+      },
+      "entry": {
+        "displayName": "Entry",
+        "purpose": "Main desktop entry label."
+      },
+      "entry-mobile": {
+        "displayName": "Entry Mobile",
+        "purpose": "Main mobile entry label."
+      },
+      "quest-entry": {
+        "displayName": "Quest Entry",
+        "purpose": "Original QuestDisplay family in the entry action."
+      },
+      "quest-prompt": {
+        "displayName": "Quest Prompt",
+        "purpose": "Decorative question within original Quest assembly."
+      },
+      "plaque": {
+        "displayName": "Plaque",
+        "purpose": "Decorative answer plaques."
+      },
+      "cover-title": {
+        "displayName": "Cover Title",
+        "purpose": "Bookself miniature cover titles."
+      },
+      "resource-title": {
+        "displayName": "Resource Title",
+        "purpose": "Resource identity at base scene size."
+      },
+      "resource-edition": {
+        "displayName": "Resource Edition",
+        "purpose": "Observed author and edition line."
+      },
+      "folio-title": {
+        "displayName": "Folio Title",
+        "purpose": "Printed AP cover title at base artwork size."
+      },
+      "folio-label": {
+        "displayName": "Folio Label",
+        "purpose": "Decorative archive cover label."
+      },
+      "nebs-title": {
+        "displayName": "Nebs Title",
+        "purpose": "NEBS competition heading at base scene size."
+      },
+      "navigation-mobile": {
+        "displayName": "Mobile Navigation",
+        "purpose": "12 px labels on the right rail; fixed 44 px high target; same size below 360 px."
+      },
+      "course-title": {
+        "displayName": "Course Title",
+        "purpose": "Incumbent course-scene title before proportional artwork scaling."
+      },
+      "course-title-mobile": {
+        "displayName": "Course Title Mobile",
+        "purpose": "Incumbent course-scene title before proportional artwork scaling."
+      },
+      "homework-heading": {
+        "displayName": "Homework Heading",
+        "purpose": "Task heading in the electronic homework sheet; serif, with 28 px mobile override."
+      },
+      "homework-section": {
+        "displayName": "Homework Section",
+        "purpose": "Source, rubric, review and assignment section headings; 22 px on phones."
+      },
+      "homework-body": {
+        "displayName": "Homework Body",
+        "purpose": "Scoped system-sans body and control family within homework; never a display face."
+      },
+      "homework-field": {
+        "displayName": "Homework Field",
+        "purpose": "Editable fields retain 16 px text on phones."
+      },
+      "homework-hint": {
+        "displayName": "Homework Hint",
+        "purpose": "Muted instructional text; 12 px mobile override."
+      },
+      "login-brand": {
+        "displayName": "Login Brand",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "login-heading": {
+        "displayName": "Login Heading",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "login-field": {
+        "displayName": "Login Field",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "login-field-mobile": {
+        "displayName": "Login Field Mobile",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "login-submit": {
+        "displayName": "Login Submit",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "account": {
+        "displayName": "Account",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "login-secondary": {
+        "displayName": "Login Secondary",
+        "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      }
+    },
+    "shadows": [
+      {
+        "name": "book-construction",
+        "value": "2px 1px 0 #b9b7a4,6px 5px 0 #f8f4e7,9px 7px 0 #bbb9aa,12px 30px 35px #132e2340",
+        "purpose": "Physical cover edges and cast shadow."
+      },
+      {
+        "name": "reader-frame",
+        "value": "5px 24px 38px #0b1f3a42",
+        "purpose": "Real model screenshot above the cover assembly."
+      },
+      {
+        "name": "archive-folio",
+        "value": "3px 3px 0 #d5cdbb,7px 7px 0 #f7f3e9,12px 25px 34px #030d1870",
+        "purpose": "Archive cover page edges and depth."
+      },
+      {
+        "name": "quest-logo",
+        "value": "drop-shadow(0 5px 12px #120b3055)",
+        "purpose": "Original logo separation from the canyon."
+      },
+      {
+        "name": "teacher-group",
+        "value": "drop-shadow(0 10px 10px #110c2660)",
+        "purpose": "Original teacher group contact with the scene."
+      },
+      {
+        "name": "floating-control-dark",
+        "value": "0 1px 3px #0b1f3ad9,0 5px 18px #0b1f3a80",
+        "purpose": "White floating title and labels over dark clipped scenes; --control-shadow."
+      },
+      {
+        "name": "floating-control-light",
+        "value": "0 1px 3px #fffffffa,0 3px 12px #fff9",
+        "purpose": "Neutral gray labels over the light Bookself scene."
+      },
+      {
+        "name": "floating-title-mark",
+        "value": "drop-shadow(0 2px 4px #0b1f3ac9)",
+        "purpose": "White mark contrast without background fill."
+      },
+      {
+        "name": "guide-light",
+        "value": "drop-shadow(0 1px 3px #fff9)",
+        "purpose": "Neutral line/circle over a light scene."
+      },
+      {
+        "name": "guide-dark",
+        "value": "drop-shadow(0 2px 3px #0b1f3ab3)",
+        "purpose": "Neutral line/circle over a dark scene."
+      },
+      {
+        "name": "transfer-light",
+        "value": "drop-shadow(0 1px 3px #fff6)",
+        "purpose": "Liquid connection over a light scene."
+      },
+      {
+        "name": "transfer-dark",
+        "value": "drop-shadow(0 2px 3px #0b1f3a80)",
+        "purpose": "Liquid connection over a dark scene."
+      },
+      {
+        "name": "homework-paper",
+        "value": "0 16px 60px #03112026",
+        "purpose": "Ivory sheet on navy; phone override 0 8px 30px #03112021."
+      },
+      {
+        "name": "homework-brand",
+        "value": "0 3px 18px #001b3c99",
+        "purpose": "Observed soft navy text shadow on the transparent workspace identity."
+      },
+      {
+        "name": "homework-dock",
+        "value": "drop-shadow(0 3px 9px #00102088)",
+        "purpose": "Transparent dock on navy; phone override drop-shadow(0 3px 7px #00102099)."
+      },
+      {
+        "name": "login-paper",
+        "value": "0 18px 48px #00000030",
+        "purpose": "Neutral ambient lift of login paper."
+      },
+      {
+        "name": "login-title",
+        "value": "0 4px 14px #0006",
+        "purpose": "White login title separation."
+      },
+      {
+        "name": "account-summary",
+        "value": "0 5px 20px #0b213922",
+        "purpose": "Small paper-backed account control."
+      },
+      {
+        "name": "account-menu",
+        "value": "0 12px 30px #0b213930",
+        "purpose": "Dropdown separation above gallery artwork."
+      }
+    ],
+    "motion": [
+      {
+        "name": "move",
+        "value": "420ms",
+        "purpose": "Fallback hover/collapse CSS timing only; selection uses the coordinated spring clock for scene, color and entry opacity."
+      },
+      {
+        "name": "return",
+        "value": "320ms",
+        "purpose": "Return panel geometry and artwork to rest."
+      },
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.22,1,.36,1)",
+        "purpose": "Fallback hover/collapse CSS timing only; selection uses the coordinated spring clock for scene, color and entry opacity."
+      },
+      {
+        "name": "art-color",
+        "value": "240ms ease",
+        "purpose": "Fallback hover/collapse CSS timing only; selection uses the coordinated spring clock for scene, color and entry opacity."
+      },
+      {
+        "name": "entry-reveal",
+        "value": "220ms ease 120ms",
+        "purpose": "Fallback hover/collapse CSS timing only; selection uses the coordinated spring clock for scene, color and entry opacity."
+      },
+      {
+        "name": "entry-hide",
+        "value": "120ms ease",
+        "purpose": "Inactive entry fade."
+      },
+      {
+        "name": "arrow-feedback",
+        "value": "180ms cubic-bezier(.22,1,.36,1)",
+        "purpose": "Arrow transform; background and color use 180ms ease."
+      },
+      {
+        "name": "hover-intent",
+        "value": "160ms",
+        "purpose": "Idle unpinned fine-pointer preview."
+      },
+      {
+        "name": "leave-intent",
+        "value": "140ms",
+        "purpose": "Clear unpinned preview after pointer leave."
+      },
+      {
+        "name": "coordinated-settlement",
+        "value": "critical damping; base omega 1/130 per ms, adaptive to incoming velocity",
+        "purpose": "Same rate for scrolling, scene expansion and navigation. Paused linear WAAPI scene effects use shared expansion progress; interrupted geometry is captured before retargeting."
+      },
+      {
+        "name": "landing-projection",
+        "value": "260ms velocity projection",
+        "purpose": "Predict nearest anchor on release; this is not a separate coast animation or a waiting phase."
+      },
+      {
+        "name": "wheel-filter",
+        "value": "70ms exponential time constant",
+        "purpose": "Fractional 70 ms tracking while input is active; 60 ms silence hands current velocity into settlement before stopping."
+      },
+      {
+        "name": "shared-liquid-state",
+        "value": "critically damped; omega = 2 / 65 per ms",
+        "purpose": "During selection shares settlement rate; while browsing/scrubbing uses omega 2/65. Liquid and .92–1.18 title scale use the same position/velocity and clear exactly at rest."
+      },
+      {
+        "name": "scrub-hold",
+        "value": "180ms",
+        "purpose": "Hold threshold; moving 6 px starts scrub earlier."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0ms",
+        "purpose": "Immediate geometry, color, travel and label response; traveling liquid hidden."
+      },
+      {
+        "name": "homework-controls",
+        "value": "180ms",
+        "purpose": "Background, opacity and transform feedback; disabled under reduced motion."
+      },
+      {
+        "name": "homework-liquid",
+        "value": "HubMotion.indicatorStep; omega = 2 / 65 per ms",
+        "purpose": "Shared incumbent solver, influence, line and connector geometry; .92–1.18 label scaling, retained state on running retargets, 5 px drag threshold, release-coordinate choice. Mobile geometry scale .75."
+      },
+      {
+        "name": "login-control",
+        "value": "180ms ease-out",
+        "purpose": "Primary button background/press feedback; disabled under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "vertical-width-max",
+        "value": "767px"
+      },
+      {
+        "name": "short-landscape-width-max",
+        "value": "1023px",
+        "heightMax": "519px"
+      },
+      {
+        "name": "narrow-phone-max",
+        "value": "359px"
+      },
+      {
+        "name": "compact-desktop-max",
+        "value": "1100px"
+      },
+      {
+        "name": "compact-gallery-desktop",
+        "value": "1000px",
+        "min": "768px",
+        "heightMin": "520px"
+      },
+      {
+        "name": "homework-tablet-max",
+        "value": "900px"
+      },
+      {
+        "name": "homework-mobile-max",
+        "value": "640px"
+      },
+      {
+        "name": "login-wide-min",
+        "value": "1450px"
+      },
+      {
+        "name": "login-compact-max",
+        "value": "1050px"
+      },
+      {
+        "name": "login-phone-max",
+        "value": "760px"
+      },
+      {
+        "name": "login-short-desktop",
+        "value": "761px",
+        "heightMax": "640px"
+      },
+      {
+        "name": "account-phone-max",
+        "value": "767px"
+      }
+    ],
+    "courseEntries": {
+      "count": 2,
+      "totalDestinations": 7,
+      "artwork": "Incumbent printed course folios with source-observed categories; decorative representations, not downloadable cover reproductions.",
+      "homeworkWorkspaceEntry": "The first-position electronic homework folio is the single homework entry; the superseded Macro and Micro homework links are removed."
+    },
+    "galleryLayout": {
+      "destinations": 7,
+      "groupPagination": false,
+      "desktopRestingScene": "clamp(0.42 * W, 320, 680)",
+      "desktopSelectedScene": "0.60 * W",
+      "desktopSlant": 28,
+      "phoneRestingScene": 300,
+      "phoneSelectedScene": "min(540, max(440, H - 130))",
+      "phoneTail": "max(0, H - openSize - 78)",
+      "phoneSlant": 16,
+      "paintGutter": 2,
+      "seamOverlap": 1,
+      "phoneContentLane": "W - 148; W - 136 below 360 px",
+      "phoneNavigationWidth": "120px; 110px below 360 px",
+      "phoneTapHeight": 44,
+      "shortLandscape": "width < 1024 and height < 520; vertical gallery with scrollable right menu",
+      "toneSampling": "elementsFromPoint at label center; respects current animated panel clip",
+      "heightResize": "Preserve gallery geometry on unchanged-width mobile viewport-height changes.",
+      "desktopSettle": "Release predicts nearest landing; wheel hands off after 60 ms input silence before stopping. Velocity-preserving critical damping coordinates scroll, expansion and navigation, with anchor compensation and edge clamps.",
+      "phoneSettle": "Native held/fast touch scrolling; released momentum below 0.6 px/ms transfers measured velocity into coordinated settlement. Event-gap fallback 60 ms; no settlement while touch is held."
+    },
+    "navigationGeometry": {
+      "markerPlacement": "Below the title in the desktop bottom dock; right of the title in the mobile right rail.",
+      "line": "22 × 2 px",
+      "circle": "8 × 8 px",
+      "labelSlot": "Desktop: 90 px centered, 82 px at 768–1000 px and height >= 520 px, center-bottom transform origin. Mobile: 70 px right-aligned, right-center origin.",
+      "markerGap": "Desktop 14 px; mobile 12 px, 10 px below 360 px.",
+      "labelScale": ".92 + .26 * influence(position - index); influence(d) = t*t*(3 - 2*t), t = clamp(1 - abs(d), 0, 1)",
+      "idleLabelScale": 1,
+      "sharedState": "Browse/scrub: omega 2/65 per ms. During settlement: same adaptive critically damped rate as scroll and scene expansion, base omega 1/130 per ms; no extra indicator delay. Title scale and liquid geometry share position/velocity.",
+      "retargeting": "Preserve liquid position and velocity when click, drag, wheel, or scrub changes target; clamp position to entry range.",
+      "markerTone": "Same neutral gray for line, circle and connecting head; only current label blue.",
+      "transfer": "Strictly horizontal on desktop and vertical on phone. Neck length uses traveled marker distance times velocity-based smoothstep, contracting as velocity falls. No arc; visible SVG overflow.",
+      "scrubHysteresis": "8 px beyond midpoint for preview label only",
+      "releaseSelection": "Recompute progress from actual pointer-up coordinate and round to nearest entry, independent of animated position.",
+      "previewLimit": "Static snippets show final states; actual gallery transfer is driven by hub.js and motion.js, with workspace adaptation in homework/nav.js.",
+      "compactDesktop": "82 px centered label, 22 × 2 px marker layout box, 14 px gap; 768–1000 px wide and height >= 520 px",
+      "transferCleanup": "Settled endpoints: exact zero velocity, opacity 0, empty path. Invisible frames empty path. Retargeting retains velocity; lost capture cancels toward retained state. Visibility/layout resets clear transfer and initialize settled state."
+    },
+    "homeworkWorkspace": {
+      "route": "/homework/",
+      "galleryId": "homework-submit",
+      "entryPosition": 1,
+      "source": "homework/style.css, nav.js, app.js and index.html; product scope in PRODUCT.md.",
+      "desktopLayout": "Navy surround; fixed transparent 88 px brand; main min(1500px, 100% - 64px), height calc(100dvh - 188px), native overflow auto; paper padding 32px 40px.",
+      "tabletLayout": "At max-width 900px: 82 px top space, width calc(100% - 36px), sheet height calc(100dvh - 182px), paper padding 26px.",
+      "mobileLayout": "At max-width 640px: body top 84 px; main margins 0 83px 0 12px; height calc(100dvh - 100px - env(safe-area-inset-bottom, 0px)); paper padding 23px 18px (20px 14px below 360px). No-auth margins 14px.",
+      "columns": "Equal source/rubric columns with 42 px ruled gap; review .75fr/1.25fr with 40 px gap; stack at 640 px.",
+      "navigation": "Teacher: 作业 / 待复核 / 设备; student: 作业 / 提交记录 / 账户. Desktop bottom, phone right rail. Marker below desktop label and right of phone label.",
+      "navigationGeometry": "Desktop min-width 92px, min-height 56px, 17px label, 44px item gap. Mobile 68px rail, 7px right inset, min-height 48px, 11px label, 19px item gap; guide/transfer geometry scale .75.",
+      "stateSemantics": "Private reference material, AI rubric draft, confirmed rubric version, teacher review and published feedback remain visibly distinct. Status labels include text.",
+      "icons": "Authored inline SVG, 20px square and 1.6px round stroke; 32px upload icon.",
+      "scope": "Inherited paper workspace, account controls and gallery assets/physics preserved. The current gallery has seven entries after removal of the two superseded Macro and Micro homework links."
+    },
+    "unifiedEntry": {
+      "sources": [
+        "login.html",
+        "login.css",
+        "login.js",
+        "portal-nav.js",
+        "floating.css",
+        "homework/app.js"
+      ],
+      "authority": [
+        "PRODUCT.md",
+        ".impeccable/unified-login-brief.md",
+        "../../../design/unified-login-20261110/01-主登录页桌面.png"
+      ],
+      "desktop": "Navy surround; centered white title; monochrome diagonal product preview beside a warm paper form. Max layout 1680px, 1.35fr / minmax(360px,1fr), gap 36px; paper max 610px.",
+      "mobile": "At max-width 760px: single column, 18px side gutters, 160px preview, -14px overlap, paper max 480px, padding 27px 25px 23px.",
+      "account": "Fixed native disclosure above the gallery, paper-backed summary and dropdown; distinct from the transparent gallery destination dock.",
+      "recovery": "Inline account-service failure state exposes same-tab reconnect, disables logout, and restores the account on success.",
+      "snippetPolicy": "Scoped login custom properties retain their actual route values inside previews because generic --navy/--ink names differ between gallery, login and homework.",
+      "validation": "Chrome desktop and viewport/touch emulation; not physical-device verification. See .impeccable/review/documentation-review.md."
+    }
+  },
+  "components": [
+    {
+      "name": "Bookself Entry",
+      "kind": "button",
+      "refersTo": "entry-bookself",
+      "description": "Active-state thin entry rule with outlined circular arrow; visibility is managed by panel selection.",
+      "html": "<a class=\"ds-entry-bookself\" href=\"#\"><span>进入 Bookself</span><svg viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M5 19 19 5M5 5h14v14\" stroke=\"currentColor\" stroke-width=\"1.8\"/></svg></a>",
+      "css": ".ds-entry-bookself{display:flex;align-items:center;justify-content:space-between;gap:32px;min-width:242px;height:58px;padding:0 0 10px;border:0;border-bottom:1px solid currentColor;border-radius:0;background:transparent;color:var(--ink,#203d36);font-family:Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:15px;font-weight:500;letter-spacing:.06em;text-decoration:none;white-space:nowrap;cursor:pointer}.ds-entry-bookself svg{box-sizing:content-box;width:21px;height:21px;padding:12px;border:1px solid currentColor;border-radius:50%;flex:none;transition:transform 180ms var(--ease,cubic-bezier(.22,1,.36,1)),background 180ms ease,color 180ms ease}.ds-entry-bookself:hover svg{transform:translate(2px,-2px);background:var(--ink,#203d36);color:#fff}.ds-entry-bookself:focus-visible{outline:3px solid #8bc7ff;outline-offset:5px}.ds-entry-bookself:active svg{transform:scale(.94)}@media(max-width:767px),(max-height:519px) and (max-width:1023px){.ds-entry-bookself{height:48px;min-width:0;width:min(216px,100%);padding-bottom:8px;gap:10px;font-size:14px}.ds-entry-bookself svg{width:16px;height:16px;padding:8px}}@media(prefers-reduced-motion:reduce){.ds-entry-bookself svg{transition:none}}"
+    },
+    {
+      "name": "Neutral Liquid Destination Menu",
+      "kind": "nav",
+      "refersTo": "destination-navigation",
+      "description": "Seven fixed targets: marker below centered desktop label and right of mobile label. Static endpoint preview; only current label is blue. Runtime JS shares liquid position/velocity across fusion, .92–1.18 scaling, and contracting neck; retargeting retains velocity and settled endpoints clear the path.",
+      "html": "<nav class=\"ds-liquid-nav\" aria-label=\"快速选择网页\"><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">作业提交</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">Bookself</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"true\"><span class=\"ds-label\">Econquest</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><circle cx=\"0\" cy=\"0\" r=\"4\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">资料库</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">NEBS</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">宏观作业</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">微观作业</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">微观材料</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button><button type=\"button\" aria-pressed=\"false\"><span class=\"ds-label\">宏观材料</span><span class=\"ds-guide\"><svg viewBox=\"-11 -9 22 18\" aria-hidden=\"true\"><rect x=\"-11\" y=\"-1\" width=\"22\" height=\"2\" rx=\"1\" fill=\"currentColor\"/></svg></span></button></nav>",
+      "css": ".ds-liquid-nav{display:flex;align-items:center;justify-content:center;width:100%;max-width:1120px;height:70px;padding:0;gap:0;background:transparent;border:0;box-shadow:none}.ds-liquid-nav button{flex:1;min-width:0;min-height:60px;padding:9px 5px 6px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--nav-gray,#555e6a);font:500 13px/1.2 Arial,\"PingFang SC\",sans-serif;text-shadow:0 1px 3px #fffffffa,0 3px 12px #fff9;white-space:nowrap;cursor:pointer}.ds-label{display:block;flex:none;width:90px;text-align:center;transform-origin:center bottom}.ds-guide{position:relative;display:block;flex:none;width:22px;height:2px;color:var(--nav-gray,#555e6a)}.ds-guide svg{position:absolute;left:50%;top:50%;width:22px;height:18px;transform:translate(-50%,-50%);overflow:visible;filter:drop-shadow(0 1px 3px #fff9)}.ds-liquid-nav button[aria-pressed=true]{color:var(--nav-blue,#2563eb);font-weight:700}.ds-liquid-nav button[aria-pressed=true] .ds-label{transform:scale(1.18)}.ds-liquid-nav button:not([aria-pressed=true]) .ds-label{transform:scale(.92)}.ds-liquid-nav button:hover,.ds-liquid-nav button:active{background:transparent}.ds-liquid-nav button:focus-visible{outline:2px solid currentColor;outline-offset:0;border-radius:3px}@media(max-width:1100px){.ds-liquid-nav button{font-size:12px}}@media(min-width:768px) and (max-width:1000px) and (min-height:520px){.ds-liquid-nav button{padding-inline:2px}.ds-label{width:82px}}@media(max-width:767px),(max-height:519px) and (max-width:1023px){.ds-liquid-nav{flex-direction:column;width:120px;height:auto;align-items:flex-end}.ds-liquid-nav button{flex:none;flex-direction:row;width:120px;height:44px;min-height:44px;padding:0;justify-content:flex-end;gap:12px;font-size:12px}.ds-label{flex:0 0 70px;width:70px;text-align:right;transform-origin:right center}}@media(max-width:359px){.ds-liquid-nav,.ds-liquid-nav button{width:110px}.ds-liquid-nav button{gap:10px}}"
+    },
+    {
+      "name": "Homework Primary Action",
+      "kind": "button",
+      "refersTo": "homework-primary",
+      "description": "Observed homework form action; fixed minimum target and explicit keyboard focus.",
+      "html": "<button type=\"button\" class=\"ds-hw-btn\">确认并发布成绩</button>",
+      "css": ".ds-hw-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:9px 22px;border:0;border-radius:5px;font:500 16px/1.6 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif;cursor:pointer;transition:background .18s,opacity .18s,transform .18s}.ds-hw-btn:focus-visible{outline:3px solid #4281b8;outline-offset:4px}.ds-hw-btn:disabled{cursor:wait;opacity:.55}@media(max-width:640px){.ds-hw-btn{padding:10px 14px;font-size:14px}}@media(prefers-reduced-motion:reduce){.ds-hw-btn{transition:none}}.ds-hw-btn{background:#0b1f3a;color:#fff}@media(hover:hover) and (pointer:fine){.ds-hw-btn:hover{background:#214261}}"
+    },
+    {
+      "name": "Homework Secondary Action",
+      "kind": "button",
+      "refersTo": "homework-secondary",
+      "description": "Observed homework form action; fixed minimum target and explicit keyboard focus.",
+      "html": "<button type=\"button\" class=\"ds-hw-btn\">保存草稿</button>",
+      "css": ".ds-hw-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:9px 22px;border:0;border-radius:5px;font:500 16px/1.6 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif;cursor:pointer;transition:background .18s,opacity .18s,transform .18s}.ds-hw-btn:focus-visible{outline:3px solid #4281b8;outline-offset:4px}.ds-hw-btn:disabled{cursor:wait;opacity:.55}@media(max-width:640px){.ds-hw-btn{padding:10px 14px;font-size:14px}}@media(prefers-reduced-motion:reduce){.ds-hw-btn{transition:none}}.ds-hw-btn{background:transparent;color:#102238;border:1px solid #899097}@media(hover:hover) and (pointer:fine){.ds-hw-btn:hover{background:#e6e1d5}}"
+    },
+    {
+      "name": "Homework Field",
+      "kind": "input",
+      "refersTo": "homework-field",
+      "description": "Editable work and rubric fields remain 16 px on phones; focus adds a white wash and explicit blue outline.",
+      "html": "<label class=\"ds-hw-field\"><span>教师反馈</span><textarea placeholder=\"填写逐题反馈\"></textarea></label>",
+      "css": ".ds-hw-field{display:block;color:#102238;font:500 16px/1.6 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif}.ds-hw-field span{display:block;margin-bottom:8px}.ds-hw-field textarea{width:100%;min-height:128px;padding:11px 13px;resize:vertical;border:1px solid #a7a8a4;border-radius:5px;background:#fff5;color:#102238;font:400 16px/1.5 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif}.ds-hw-field textarea:focus{background:#fff9}.ds-hw-field textarea:focus-visible{outline:3px solid #4281b8;outline-offset:4px}"
+    },
+    {
+      "name": "Homework Status",
+      "kind": "chip",
+      "refersTo": "homework-status",
+      "description": "Text-bearing neutral, needs-review and published/ready states; these are informative labels, not filter buttons.",
+      "html": "<div class=\"ds-hw-states\"><span class=\"ds-hw-state\">草稿</span><span class=\"ds-hw-state\" data-state=\"needs_review\">等待教师复核</span><span class=\"ds-hw-state\" data-state=\"published\">已发布</span></div>",
+      "css": ".ds-hw-states{display:flex;gap:10px;flex-wrap:wrap;font:13px/1.6 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif}.ds-hw-state{padding:4px 10px;background:#e5dfd2;color:#102238;border-radius:3px;white-space:nowrap}.ds-hw-state[data-state=needs_review]{background:#ede0c8;color:#705322}.ds-hw-state[data-state=published]{background:#dce7db;color:#36523b}@media(max-width:640px){.ds-hw-states{font-size:11px}}"
+    },
+    {
+      "name": "Homework Paper",
+      "kind": "card",
+      "refersTo": "homework-paper",
+      "description": "The single ivory workspace sheet on navy; source/assessment pairing is a responsive task layout, not decorative cards. Preview omits viewport-fixed placement.",
+      "html": "<div class=\"ds-hw-surround\"><section class=\"ds-hw-paper\"><div class=\"ds-hw-head\"><h1>待复核作业</h1><p>核对原始作答后，确认并发布成绩。</p></div><div class=\"ds-hw-split\"><section><h2>原始作答</h2><p>图片 · PDF · 文字</p></section><section><h2>评分与反馈</h2><p>成绩由教师确认后发布。</p></section></div></section></div>",
+      "css": ".ds-hw-surround{background:#0b1f3a;padding:24px}.ds-hw-paper{background:#f3eddf;color:#102238;border-radius:9px;padding:32px 40px;box-shadow:0 16px 60px #03112026;font:16px/1.6 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif}.ds-hw-head{border-bottom:1px solid #c5c1b7;padding-bottom:23px;margin-bottom:28px}.ds-hw-paper h1,.ds-hw-paper h2{margin:0;font-family:HubSerif,\"Songti SC\",\"Noto Serif SC\",Georgia,serif;font-weight:600;line-height:1.25}.ds-hw-paper h1{font-size:clamp(28px,3.1vw,46px);letter-spacing:-.03em}.ds-hw-paper h2{font-size:25px}.ds-hw-paper p{color:#60656a;margin:8px 0 0}.ds-hw-split{display:grid;grid-template-columns:1fr 1fr;gap:42px}.ds-hw-split>section+section{border-left:1px solid #c5c1b7;padding-left:42px}@media(max-width:640px){.ds-hw-paper{padding:23px 18px;border-radius:7px;box-shadow:0 8px 30px #03112021}.ds-hw-split{grid-template-columns:1fr;gap:30px}.ds-hw-split>section+section{border-left:0;border-top:1px solid #c5c1b7;padding:28px 0 0}.ds-hw-paper h1{font-size:28px}.ds-hw-paper h2{font-size:22px}}"
+    },
+    {
+      "name": "Unified Login Primary Action",
+      "kind": "button",
+      "refersTo": "login-primary",
+      "description": "Navy primary action on the login paper; hover, press and explicit focus.",
+      "html": "<button class=\"ds-login-primary\">登录并进入</button>",
+      "css": ".ds-login-primary{--navy:#0b2139;--focus:#397aa3;display:flex;align-items:center;justify-content:center;width:100%;min-height:58px;padding:12px 18px;border:1px solid var(--navy);border-radius:7px;background:var(--navy);color:#fff;font:24px \"Songti SC\",serif;cursor:pointer;transition:background .18s ease-out,transform .18s ease-out}.ds-login-primary:hover{background:#173b56}.ds-login-primary:active{transform:translateY(1px)}.ds-login-primary:focus-visible{outline:2px solid var(--focus);outline-offset:5px}.ds-login-primary:disabled{opacity:.65;cursor:wait}@media(prefers-reduced-motion:reduce){.ds-login-primary{transition:none}}"
+    },
+    {
+      "name": "Unified Login Secondary Action",
+      "kind": "button",
+      "refersTo": "login-secondary",
+      "description": "Underlined registration or recovery control within the paper form.",
+      "html": "<button class=\"ds-login-secondary\">忘记密码</button>",
+      "css": ".ds-login-secondary{--ink:#102d47;--navy:#0b2139;--focus:#397aa3;border:0;padding:9px 0;min-height:40px;background:none;color:var(--ink);font:14px -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif;text-decoration:underline;text-underline-offset:5px;text-decoration-color:#82909b;cursor:pointer}.ds-login-secondary:hover{text-decoration-color:var(--navy)}.ds-login-secondary:focus-visible{outline:2px solid var(--focus);outline-offset:5px}"
+    },
+    {
+      "name": "Unified Login Field",
+      "kind": "input",
+      "refersTo": "login-field",
+      "description": "Labeled translucent field with a visible keyboard focus state.",
+      "html": "<label class=\"ds-login-field\">用户名<input placeholder=\"Bookself 用户名\" autocomplete=\"username\"></label>",
+      "css": ".ds-login-field{--ink:#102d47;--focus:#397aa3;display:flex;flex-direction:column;gap:10px;color:var(--ink);font:600 16px -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif}.ds-login-field input{width:100%;min-width:0;height:51px;border:1px solid #b5b3ab;border-radius:7px;padding:0 15px;color:var(--ink);background:#ffffff46;font:400 17px -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif;box-shadow:none}.ds-login-field input::placeholder{color:#59656e;opacity:1}.ds-login-field input:focus{border-color:var(--focus);background:#fff8}.ds-login-field input:focus-visible{outline:2px solid var(--focus);outline-offset:5px}"
+    },
+    {
+      "name": "Unified Login Paper",
+      "kind": "card",
+      "refersTo": "login-paper",
+      "description": "The approved warm form surface inside the navy entry.",
+      "html": "<section class=\"ds-login-paper\"><h1>登录一页通</h1><p>使用现有 Bookself 账号</p></section>",
+      "css": ".ds-login-paper{--paper:#f2eadf;--ink:#102d47;background:var(--paper);color:var(--ink);padding:clamp(28px,4.1vw,62px);border-radius:20px;box-shadow:0 18px 48px #00000030;max-width:610px}.ds-login-paper h1{font-family:\"Songti SC\",\"Noto Serif CJK SC\",serif;font-size:clamp(34px,3.4vw,54px);font-weight:700;letter-spacing:.02em;line-height:1.15;margin:0 0 14px}.ds-login-paper p{margin:0;font:17px/1.5 -apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif;letter-spacing:.025em;color:#4a5962}"
+    },
+    {
+      "name": "Signed-in Account Disclosure",
+      "kind": "nav",
+      "refersTo": "account-menu",
+      "description": "Paper-backed account control; native disclosure interaction, separate from destination navigation.",
+      "html": "<details class=\"ds-account\" open><summary>账户</summary><div class=\"ds-account-menu\"><span class=\"ds-account-name\">账户名称</span><a href=\"/?account=password\">修改密码</a><a href=\"/homework/#account\">作业账户与班级</a><button type=\"button\">退出登录</button></div></details>",
+      "css": ".ds-account{font:14px -apple-system,BlinkMacSystemFont,\"PingFang SC\",sans-serif;color:#102d47}.ds-account summary{cursor:pointer;list-style:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:12px 16px;border-radius:24px;background:#f9f6efdd;box-shadow:0 5px 20px #0b213922;width:max-content}.ds-account summary::-webkit-details-marker{display:none}.ds-account-menu{width:204px;margin-top:8px;padding:14px 18px;background:#f5f0e7;border:1px solid #d2d1c9;border-radius:12px;box-shadow:0 12px 30px #0b213930;display:flex;flex-direction:column}.ds-account-menu a,.ds-account-menu button{padding:12px 0;text-align:left;background:none;border:0;color:#102d47;text-decoration:none;font:inherit;cursor:pointer;min-height:44px}.ds-account-name{padding:8px 0 12px;border-bottom:1px solid #cfd0ca;overflow-wrap:anywhere;font-weight:600}.ds-account :focus-visible{outline:2px solid #397aa3;outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Original Worlds, One Editorial Frame",
+    "overview": "Seven authentic economic learning destinations share one continuous diagonal gallery. Physical paper, the original pixel canyon, academic folios, and the NEBS competition artwork retain their recognizable material character. A transparent floating title and transparent destination menu let these worlds supply the full page surface.\n\nChinese serif headings and restrained Latin display type establish hierarchy without extra explanatory copy. Selection expands a scene and restores its color; entering remains a separate action. A neutral liquid guide connects the fixed navigation items, while their labels scale gently around the traveling focus. This is an approved interaction extension of the incumbent visual world, recorded from the final stylesheet cascade: artwork.css, hub.css, premium.css, mobile.css, courses.css, then floating.css; geometry and interaction come from hub.js and motion.js.\n\nThe electronic homework workspace is an ordinary extension of this frame. Its first gallery entry reuses the course folio; inside `/homework/`, a navy surround supports an ivory paper sheet, Chinese serif task headings, restrained system-sans forms, and a transparent shared-motion dock. Uploaded work and editable assessment content supply the detail. The workspace adds only scoped tokens from `homework/style.css`; its original-motion adapter is `homework/nav.js`.\n\nThe approved unified entry extends this world with a navy page, a warm paper form, a white Chinese title and a compact preview of Bookself, EconQuest and electronic homework. The desktop preview occupies diagonal monochrome panels beside the form; on phones it becomes a short branded strip above the form. These are the implemented expressions of the user-approved login composition, not a replacement identity. The signed-in account menu uses a small paper-backed disclosure at the top right.",
+    "keyCharacteristics": [
+      "Original wordmarks, book covers, model interface, pixel teachers, Wolai icon, and NEBS poster remain the visual evidence.",
+      "The unified entry places a navy primary action on warm paper; registration, recovery and form errors remain in the same surface.",
+      "A white Chinese serif title and M/book-page mark float over the gallery with soft navy shadows and a fully transparent background.",
+      "Seven fixed shortcuts use neutral line/circle guides below desktop titles and to the right of phone titles; only the current label uses blue.",
+      "Physical books and archive folios retain visible page edges and restrained cast shadows.",
+      "The homework workspace pairs real answer artifacts with editable fields on a single native-scrolling ivory sheet, keeping private references distinct from published feedback.",
+      "Continuous diagonal expansion, native phone scrolling, separate entry links, keyboard access, and instant reduced-motion states preserve clear navigation."
+    ],
+    "rules": [],
+    "dos": [
+      "Do preserve the navy-and-paper login hierarchy, visible field labels and same-surface error/recovery states.",
+      "Do retain a reachable account reconnection action after a temporary session-service failure.",
+      "Do preserve the original assets, licensed fonts, URLs, and provenance, including the Wolai 🤯 icon as observed brand truth.",
+      "Do keep the gallery title and destination-menu backgrounds transparent, with the documented shadows providing contrast; retain the approved paper-backed account control.",
+      "Do keep neutral markers below desktop titles and to the right of phone titles, with blue only on the current label.",
+      "Do scale labels continuously around traveling focus while keeping gallery phone hit targets fixed at 44 px high; homework phone targets remain at least 48 px high.",
+      "Do maintain proportional artwork, continuous diagonal seams, and separate selection and entry actions.",
+      "Do preserve native phone scrolling, keyboard access, immediate interruption, and instant reduced-motion states.",
+      "Do keep homework scrolling inside the paper sheet, preserving its right-side mobile dock lane and legible 16 px form fields.",
+      "Do distinguish private reference material, rubric versions, teacher review and published feedback with clear text and states."
+    ],
+    "donts": [
+      "Don’t treat the filled account disclosure as part of the transparent destination dock.",
+      "Don’t replace inherited gallery motion or identity artwork as part of authentication work.",
+      "Don’t restore group pagination, a sticky navy masthead, or a horizontal phone shortcut row from older files.",
+      "Don’t use an independent blue droplet, blue guide fill, filled pill, or translucent backing in the gallery destination dock.",
+      "Don’t recolor, stretch, or replace original assets with generic substitutes.",
+      "Don’t describe decorative folio compositions as existing downloadable books or NEBS gradient crops as organic cutouts.",
+      "Don’t let pointer hover override a pinned selection or expose a hidden entry link to interaction.",
+      "Don’t add autoplay decoration, a second phone momentum engine, an entrance blocker, or a cursor replacement.",
+      "Don’t introduce repeated uppercase eyebrows, Unicode action glyphs or synthetic document decoration into the homework form hierarchy."
+    ]
+  }
+}

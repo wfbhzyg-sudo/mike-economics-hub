@@ -30,6 +30,11 @@ export function createStore(connectionString, schema = "homework") {
     throw new Error("Invalid database schema");
   const pool = new pg.Pool({
     connectionString,
+    ...(process.env.HOMEWORK_DB_TLS_CERT ? {ssl:{
+      ca:Buffer.from(process.env.HOMEWORK_DB_TLS_CERT,'base64').toString(),
+      rejectUnauthorized:true,
+      checkServerIdentity:(_host,cert)=>cert.fingerprint256===process.env.HOMEWORK_DB_TLS_FINGERPRINT?undefined:new Error('Database TLS certificate changed; connection refused'),
+    }} : {}),
     max: 8,
     connectionTimeoutMillis: 10000,
   });

@@ -21,6 +21,8 @@ const safeUser = (u) => ({
   username: u.username,
   role: u.role,
   classIds: u.classIds || [],
+  unified: Boolean(u.unified),
+  linkedLegacy: Boolean(u.linkedLegacy),
 });
 const publicAssignment = (a) => ({
   id: a.id,
@@ -53,7 +55,7 @@ const publicSubmission = (s) => ({
 });
 const encodeCookie = (value, age) =>
   `hw_session=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
-export async function createHomework() {
+export async function createHomework({externalAuth} = {}) {
   if (!process.env.DATABASE_URL)
     return async (req, res) => {
       if (req.url.startsWith("/api/homework/")) {
@@ -127,6 +129,17 @@ export async function createHomework() {
     return Buffer.concat([d.update(b.subarray(12, -16)), d.final()]).toString();
   };
   const sessionFor = async (req) => {
+    if(externalAuth){
+      const signed=await externalAuth.session(req);if(!signed)return null;
+      const user=await db.tx(async c=>{
+        const mapping=await db.get('identity:bookself:'+signed.id,c);
+        let u=mapping?await db.get(mapping.userId,c):await db.get('bookself:'+signed.id,c);
+        if(!u){u={id:'bookself:'+signed.id,bookselfId:signed.id,username:signed.username,name:signed.name,role:signed.role,classIds:[],createdAt:now()};await db.put('user',u,c);}
+        assert(u && ['student','teacher'].includes(u.role),'账号关联异常，请联系老师',409);
+        return {...u,name:signed.name,role:signed.role,unified:true,linkedLegacy:!!mapping};
+      });
+      return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed};
+    }
     const raw = (req.headers.cookie || "")
       .split(";")
       .map((x) => x.trim())
@@ -429,6 +442,8 @@ export async function createHomework() {
           403,
         );
       }
+      if (externalAuth && ['login','register'].includes(route[0]))
+        throw new HttpError(409,'请使用经济一页通的 Bookself 账号登录');
       if (route[0] === "login" && method === "POST") {
         rate(req, "login", 30);
         const b = await body(req);
@@ -486,6 +501,7 @@ export async function createHomework() {
       const auth = await sessionFor(req);
       assert(auth, "请先登录", 401);
       const user = auth.user;
+      if(externalAuth && route[0]==="device")assert(user.role==="teacher"&&user.linkedLegacy,"设备管理仅对已关联原教师账号开放",403);
       if (method !== "GET")
         assert(
           req.headers["x-csrf-token"] === auth.session.csrf,
@@ -499,12 +515,32 @@ export async function createHomework() {
           json(res, { user: safeUser(user), csrf: auth.session.csrf }),
           true
         );
+      if(route[0]==='link-account'&&method==='POST'&&externalAuth){
+        rate(req,'link-account',10);const b=await body(req);
+        await db.tx(async c=>{
+          const old=(await db.list('user',c)).find(u=>u.username===text(b.username,64).toLowerCase()&&u.password);
+          assert(old&&passwordMatches(String(b.password||''),old.password),'旧作业账号或密码不正确',401);
+          assert(old.role===auth.signed.role,'两个账号的身份不一致，请联系老师',409);
+          const mappings=await db.list('identity',c);
+          assert(!mappings.some(m=>m.userId===old.id&&m.subject!==auth.signed.id),'该作业账号已关联其他 Bookself 账号',409);
+          assert(!mappings.some(m=>m.subject===auth.signed.id&&m.userId!==old.id),'此 Bookself 账号已关联旧作业账号',409);
+          if(user.id!==old.id){
+            for(const kind of ['class','assignment','submission','file'])
+              assert(!(await db.list(kind,c)).some(r=>r.owner===user.id||r.teacherId===user.id||r.studentId===user.id),'新账户已有记录，请联系老师核对后再关联',409);
+          }
+          await db.put('identity',{id:'identity:bookself:'+auth.signed.id,subject:auth.signed.id,userId:old.id,createdAt:now()},c);
+          await db.audit(auth.signed.id,'link_existing_homework_account',old.id,c);
+        });
+        const linked=await sessionFor(req);return (json(res,{user:safeUser(linked.user),csrf:linked.session.csrf}),true);
+      }
       if (route[0] === "logout" && method === "POST") {
+        if(externalAuth){await externalAuth.revoke(externalAuth.token(req));res.setHeader('Set-Cookie',[externalAuth.cookie(externalAuth.cookieName,'',0),encodeCookie('',0)]);return (json(res,{ok:true}),true);}
         await db.remove(auth.session.id);
         res.setHeader("Set-Cookie", encodeCookie("", 0));
         return (json(res, { ok: true }), true);
       }
       if (route[0] === "password" && method === "POST") {
+        if(externalAuth)throw new HttpError(409,'请在经济一页通的账户设置中修改 Bookself 密码');
         const b = await body(req);
         assert(
           passwordMatches(String(b.current || ""), user.password),

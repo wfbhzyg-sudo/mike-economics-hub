@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "desktop: same-tab retry succeeded with keyboard",
+    "mobile: same-tab retry succeeded with pointer",
+    "user-320: same-tab retry succeeded with pointer",
+    "user-844: same-tab retry succeeded with pointer"
+  ]
+}

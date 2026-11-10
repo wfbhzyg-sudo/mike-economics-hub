@@ -1,0 +1,24 @@
+{
+  "passed": 18,
+  "checks": [
+    "anonymous private portal content is denied",
+    "direct pages redirect to unified login; protected data and cached URLs remain denied",
+    "cross-origin credential posts rejected",
+    "Bookself role preserved; matching usernames are not automatically merged",
+    "new teachers do not inherit old device administration; students cannot elevate role",
+    "legacy teacher account linked only after proving both accounts",
+    "legacy student keeps its stable homework ID after explicit linking",
+    "one homework identity cannot be claimed by a second Bookself account",
+    "homework writes require session-bound CSRF token",
+    "class isolation and private teacher answers survive account integration",
+    "image and PDF upload, retrieval and ownership checks pass",
+    "text, image and PDF submissions persist",
+    "isolated worker queue and teacher-reviewed publication work; grades are private until published",
+    "browser enters original Bookself URL without entering credentials again",
+    "browser enters EconQuest with the same Bookself identity",
+    "authorization state and PKCE cookies enforced; authorization code is single-use",
+    "unified logout revokes portal, homework and core sessions",
+    "logging out from Bookself also revokes the portal session"
+  ],
+  "mode": "Isolated restored databases, local object storage and simulated worker result; no production student data writes"
+}

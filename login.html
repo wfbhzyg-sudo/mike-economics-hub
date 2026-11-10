@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b2139"><meta name="description" content="使用 Bookself 账号登录 Mike 的经济一页通，进入阅读、经济学探索与电子作业工作台。"><title>登录 · Mike 的经济一页通</title><link rel="icon" href="/assets/mike-hub-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/login.css"><script type="module" src="/login.js"></script></head>
+<body class="login-page">
+<header class="portal-title"><img src="/assets/mike-hub-mark.svg" alt="" width="32" height="32"><span>Mike 的经济一页通</span></header>
+<main class="login-layout">
+ <section class="product-preview" aria-label="Bookself、EconQuest 与电子作业工作台">
+  <div class="preview-book"><strong class="bookself-wordmark">bookself</strong><div class="cover-stack"><div class="cover micro"><img src="/assets/micro-v1-640-1ed9d14e.webp" alt="" width="640" height="960"><span>bookself<strong>Intro to<br>Microeconomics</strong></span></div><div class="cover macro"><img src="/assets/macro-v1-640-dba44291.webp" alt="" width="640" height="960"><span>bookself<strong>Intro to<br>Macroeconomics</strong></span></div></div><span class="preview-label">阅读与推演</span></div>
+  <div class="preview-quest"><img class="quest-scene" src="/assets/scene-mobile-1db46873.webp" alt="" width="800" height="1000"><img class="quest-wordmark" src="/assets/econ-quest-logo-816e8870.webp" alt="EconQuest" width="440" height="180"><img class="quest-party" src="/assets/teachers-34cadd1a.webp" alt="" width="340" height="250"><span class="preview-label">在探索中理解</span></div>
+  <div class="preview-homework"><div class="folio-back"><span>AP ECONOMICS</span><br><strong>AI</strong></div><div class="folio-front"><span>MIKE HOMEWORK</span><strong>Review.</strong><p>Every thought<br>matters.</p><div class="folio-lines"><span>图片与 PDF 提交</span><span>文字作答</span><span>逐题反馈</span></div><img src="/assets/mike-hub-mark.svg" alt="" width="24" height="24"></div><span class="preview-label">让思考得到回应</span></div>
+ </section>
+ <section class="login-paper" aria-labelledby="form-title">
+  <div class="form-heading"><h1 id="form-title">登录一页通</h1><p id="form-description">使用现有 Bookself 账号</p></div>
+  <form id="login-form" novalidate>
+   <div id="registration-fields" hidden><label class="field">姓名<input name="name" autocomplete="name" maxlength="32"></label><label class="field">Bookself 班级码<input name="classCode" autocomplete="off" autocapitalize="characters" maxlength="40"></label></div>
+   <label class="field" id="username-field">用户名<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Bookself 用户名" minlength="3" maxlength="32" required></label>
+   <label class="field" id="current-field" hidden>当前密码<input name="currentPassword" type="password" autocomplete="current-password" maxlength="128"></label>
+   <label class="field" id="recovery-field" hidden>恢复码<input name="recoveryCode" autocomplete="off" spellcheck="false" maxlength="100" placeholder="注册或上次改密时保存的恢复码"></label>
+   <label class="field"><span id="password-label">密码</span><span class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" placeholder="输入密码" maxlength="128" required><button type="button" id="reveal-password" class="reveal" aria-label="显示密码" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label>
+   <div class="form-options" id="login-options"><label class="check"><input type="checkbox" name="remember">保持登录</label><button class="text-button" id="recover" type="button">忘记密码</button></div>
+   <label class="check consent" id="consent-field" hidden><input name="consent" type="checkbox">同意将学习进度保存到账号，并加入对应班级</label>
+   <p class="form-error" id="form-error" role="alert" aria-live="polite"></p>
+   <button class="submit" type="submit" id="submit">登录并进入<span aria-hidden="true">↗</span></button>
+  </form>
+  <section id="recovery-result" hidden aria-live="polite"><h2>请保存你的恢复码</h2><p>忘记密码时需要它。请保存在自己能找到的地方。</p><code id="new-recovery-code"></code><button type="button" class="submit" id="save-code">下载恢复码</button><button type="button" class="text-button" id="finish-recovery">已保存，继续</button></section>
+  <div class="form-bottom"><button id="register" class="text-button" type="button">首次使用 · 加入班级</button><button id="back-login" class="text-button" type="button" hidden>返回登录</button><span>Bookself · EconQuest · 作业工作台</span></div>
+ </section>
+</main>
+</body></html>

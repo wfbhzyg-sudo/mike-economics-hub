@@ -4,3 +4,5 @@ node_modules/
 *.log
 test-results/
 local-data/
+
+.impeccable/review/*.png

@@ -1,0 +1,19 @@
+统一入口部署说明（2026-11-10）
+
+网页：Bookself（econ.up.railway.app/）、EconQuest（/quest/）、电子作业（原一页通网址 /homework/）、经济一页通（原一页通网址 /）。
+目标 Railway 项目：in_class_econ_practice。
+
+部署结构：原 EconQuest 服务继续提供 Bookself 与 EconQuest。新增 Mike-Portal-Homework 服务提供一页通与作业。旧 mike-economics-hub 服务仅转接原网址，请勿删除。两个原数据库和 homework-private 附件桶继续保留原位，没有搬表或改写用户编号。
+
+入口规则：一页通使用原 Bookself 的用户名、密码、恢复码、教师/学生身份。首次使用须填写 Bookself 班级码。登录后选取网站，Bookself 与 EconQuest 使用一次性授权码完成进入，不再输入密码。
+
+旧作业账号：已使用过独立作业账户的人，请在作业工作台“账户 → 关联已有作业账号”验证旧用户名和密码。验证后继续使用原作业身份和历史记录；同名账户不会自动合并。已经用新账户创建作业记录时，系统拒绝自动关联，须先人工核对。原作业教师账号关联后可以继续管理原批改设备。
+
+环境配置（值由 Railway 私密变量保存）：
+核心服务：PORTAL_ORIGIN、CORE_PUBLIC_ORIGIN、SSO_SIGNING_KEY；UNIFIED_LOGIN_GATE=1 时启用统一入口。
+新入口服务：UNIFIED_AUTH=1，IDENTITY_DATABASE_URL 指向原 Bookself 数据库，DATABASE_URL 指向原作业数据库；原作业加密密钥、附件桶和设备密钥保持不变；HOMEWORK_DB_TLS_CERT 与 HOMEWORK_DB_TLS_FINGERPRINT 验证跨项目数据库连接。
+原入口服务：GATEWAY_TARGET 指向新入口服务的 HTTPS 地址。原项目和所有原私密变量保留。
+
+回退：先将核心服务 UNIFIED_LOGIN_GATE 设为 0 并重新部署，再将原入口服务回退至 188f2f82245ea754164ace3ed354a7ca8d780710（旧版本不使用 GATEWAY_TARGET）。原数据库始终是唯一数据源；不要导入旧快照覆盖上线后的新作业。新建 portal_sso 表可以保留，禁止通过删除数据库来回退。
+
+测试：隔离恢复数据库上通过 18 组登录/角色/班级/旧账号关联/文字与图片和 PDF 提交/教师发布/单次授权/跨站退出检查；图像与 PDF 上传真实执行，批改结果使用模拟设备返回。既有核心账户与服务器测试 43 项通过，门户动效及批改校验 10 项通过。Chrome 1440×960、390×844、320×740、844×390 布局和输入、同页网络重连检查通过。移动端为浏览器模拟，并非实体手机测试。

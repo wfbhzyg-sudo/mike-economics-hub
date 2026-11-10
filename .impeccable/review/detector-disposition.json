@@ -1,0 +1,13 @@
+{
+  "fixed": [
+    "Input placeholders have stronger contrast",
+    "Neutral login-paper shadow",
+    "Desktop illustration labels minimum 11px; tiny mobile decorative labels hidden"
+  ],
+  "remaining": [
+    "White book titles sit over dark cover artwork, not inherited pale backdrop",
+    "Preview panels intentionally use edge-to-edge artwork inside diagonal clipping",
+    "11px footer line carries secondary product names; primary controls 14–24px"
+  ],
+  "note": "No detector rerun; reviewer should check screenshots."
+}

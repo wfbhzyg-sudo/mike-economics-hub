@@ -10,3 +10,8 @@ tests
 test-results
 **/node_modules
 *.log
+
+.impeccable
+DESIGN.md
+PRODUCT.md
+UNIFIED-DEPLOYMENT.txt
