@@ -1,0 +1,5 @@
+Noto Sans SC Regular, obtained from Google Fonts on 2026-11-10.
+https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400
+https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf
+SIL Open Font License 1.1 (see LICENSE).
+Server-side PDF export only; never loaded by the web page.

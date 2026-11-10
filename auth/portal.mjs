@@ -13,6 +13,11 @@ export async function createPortalAuth(env=process.env){
    : "SELECT c.id,c.name FROM econquest.users u JOIN econquest.classes c ON c.id=u.class_id WHERE u.id=$1 AND u.role='student'",[user.id])).rows;
   return rows.map(c=>({id:'bookself-class:'+c.id,name:c.name,source:'bookself',...(teacher?{invite:c.code}:{})}));
  }
+ async function students(user){
+  if(user.role!=='teacher')return [];
+  const rows=(await pool.query("SELECT u.id,u.name,u.class_id FROM econquest.users u JOIN econquest.classes c ON c.id=u.class_id WHERE c.teacher_id=$1 AND u.role='student' ORDER BY u.name,u.id",[user.id])).rows;
+  return rows.map(u=>({id:'bookself:'+u.id,name:u.name,classIds:['bookself-class:'+u.class_id]}));
+ }
  const json=(res,value,status=200)=>res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}).end(JSON.stringify(value));
  async function handle(req,res){
   if(await auth.handle(req,res,'portal'))return true;
@@ -36,5 +41,5 @@ export async function createPortalAuth(env=process.env){
    json(res,{error:'没有这个接口'},404);
   }catch(e){json(res,{error:e.status?e.message:'账号服务暂时不可用，请稍后重试'},e.status||503);}return true;
  }
- return {...auth,classrooms,handle,close:()=>pool.end()};
+ return {...auth,classrooms,students,handle,close:()=>pool.end()};
 }

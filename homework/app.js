@@ -1,4 +1,6 @@
 import { setupDock } from "./nav.js";
+import {assignmentRecords,assignmentState,questionTotals} from "./learning-model.js";
+import {createLearningUI} from "./learning-ui.js";
 const $ = (q, root = document) => root.querySelector(q),
   $$ = (q, root = document) => [...root.querySelectorAll(q)],
   main = $("#main"),
@@ -21,6 +23,8 @@ const state = {
   submissions: [],
   files: new Map(),
   routeVersion: 0,
+  assignmentFilter: "all",
+  viewCleanup:null,
 };
 let nav, pollTimer, noticeTimer, pdfModule;
 const pdfTasks = new Map();
@@ -34,13 +38,13 @@ function clearPDFs(root) {
 }
 const labels = {
   draft: "草稿",
-  queued: "等待批改",
+  queued: "排队等待批阅",
   parsing: "正在整理答案",
   answer_review: "待确认评分点",
   ready: "已启用",
-  grading: "正在批改",
-  needs_review: "等待教师复核",
-  published: "已发布",
+  grading: "正在批阅",
+  needs_review: "待教师确认",
+  published: "已出成绩",
   returned: "已退回",
 };
 const date = (value) =>
@@ -99,6 +103,7 @@ async function api(path, options = {}) {
     return value;
   } catch (error) {
     if (controller.signal.aborted) throw new Error("连接超时，请稍后重试。已保存的内容不会丢失。");
+    if(error instanceof TypeError){const networkError=new Error(navigator.onLine?"连接暂时中断，请重试。已上传文件仍保留。":"网络已断开，请联网后继续。当前草稿会暂存。");networkError.retryable=true;throw networkError;}
     throw error;
   } finally {
     clearTimeout(timeout);
@@ -112,7 +117,7 @@ function formHandler(form, fn) {
     e.preventDefault();
     const error = $(".form-error", form);
     if (error) error.textContent = "";
-    const buttons = $$("button[type=submit]", form);
+    const buttons = $$("button[type=submit]", form),disabledBefore=buttons.map(b=>b.disabled);
     buttons.forEach((b) => (b.disabled = true));
     try {
       await fn(formData(form));
@@ -120,7 +125,7 @@ function formHandler(form, fn) {
       if (error) error.textContent = e.message;
       else toast(e.message);
     } finally {
-      buttons.forEach((b) => (b.disabled = false));
+      buttons.forEach((b,i) => (b.disabled = disabledBefore[i]));
     }
   });
 }
@@ -148,12 +153,12 @@ function installNavigation() {
     ? [
         { label: "作业", route: "assignments" },
         { label: "待复核", route: "reviews" },
-        ...(!state.user.canManageGrading?[]:[{ label: "批改设置", route: "device" }]),
+        { label: "学情", route: "gradebook" },
       ]
     : [
         { label: "作业", route: "assignments" },
-        { label: "提交记录", route: "history" },
-        { label: "账户", route: "account" },
+        { label: "成绩", route: "grades" },
+        { label: "错题", route: "mistakes" },
       ];
   dock.hidden = false;
   nav = setupDock(dock, items, 0, (route) => go(route));
@@ -203,20 +208,23 @@ async function refresh() {
   state.classes = c.classes;
 }
 function row(a) {
-  const teacher = state.user.role === "teacher",
-    latest = state.submissions
-      .filter((s) => s.assignmentId === a.id && s.status !== "draft")
-      .sort((a, b) =>
-        (b.submittedAt || "").localeCompare(a.submittedAt || ""),
-      )[0],
-    count = state.submissions.filter(
-      (s) => s.assignmentId === a.id && s.status === "needs_review",
-    ).length;
-  return `<article class="assignment-row"><div><a href="#${teacher ? "answer" : "submit"}/${a.id}" class="text-button"><h2>${h(a.title)}</h2></a><div class="meta"><span>${h(a.course)}</span><span>${a.classIds.map((x) => h(state.classes.find((c) => c.id === x)?.name || "班级")).join(" · ")}</span><span>截止 ${date(a.dueAt)}</span>${a.version ? `<span>评分标准 v${a.version}</span>` : ""}</div></div><div class="actions">${badge(teacher ? a.status : latest?.status || "待提交")}${teacher ? link("reviews/" + a.id, `复核${count ? " · " + count : ""}`) + link("answer/" + a.id, "管理答案", "primary") : link("submit/" + a.id, latest ? "查看作业" : "开始提交", "primary")}</div></article>`;
+  const teacher=state.user.role==='teacher', info=assignmentState(a,state.submissions);
+  const questions=teacher?a.rubric:a.questions, max=(questions||[]).reduce((n,q)=>n+q.maxPoints,0);
+  const choice=(questions||[]).filter(q=>q.type==='choice').length;
+  const target=teacher?(a.published?'overview/':'answer/')+a.id:info.latest&&info.latest.status!=='returned'?'result/'+info.latest.id:'submit/'+a.id;
+  const action=teacher?(a.published?'查看提交':'继续发布'):info.latest&&info.latest.status!=='returned'?(info.key==='done'?'查看成绩':'查看进度'):info.draft?'继续草稿':info.latest?.status==='returned'?'补充作业':'开始作业';
+  const urgent=!teacher&&info.key==='todo'&&a.dueAt&&Date.parse(a.dueAt)>Date.now()&&Date.parse(a.dueAt)-Date.now()<86400000;
+  return `<article class="assignment-row ${urgent?'due-soon':''}"><div><a href="#${target}" class="text-button"><h2>${h(a.title)}</h2></a><div class="meta"><span>${h(a.course)}</span><span>${a.classIds.map(x=>h(state.classes.find(c=>c.id===x)?.name||'班级')).join(' · ')}</span><span>${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span>${urgent?'<strong>即将截止</strong>':''}</div>${max?`<p class="assignment-types">${choice?`选择题 ${choice} 道 · `:''}${questions.length-choice?`简答题 ${questions.length-choice} 道 · `:''}满分 ${max} 分</p>`:''}</div><div class="actions">${teacher?badge(a.status):`<span class="badge" data-state="${info.latest?.status||'todo'}">${h(info.label)}</span>`}${link(target,action,'primary')}</div></article>`;
 }
 function assignments() {
-  const teacher = state.user.role === "teacher";
-  main.innerHTML = `<section class="paper">${head("HOMEWORK / 作业工作台", teacher ? "布置与批改" : "我的作业", teacher ? "你的答案，决定每一次批改的标准。" : "图片、PDF 或文字，选择适合你的提交方式。", teacher ? link("account", state.user.unified ? "我的班级" : "班级管理") + link("new", "布置作业", "primary") : "")}${state.assignments.length ? state.assignments.map(row).join("") : empty(teacher ? "从一份作业开始" : "还没有待完成的作业", teacher ? (state.user.unified ? "选择已有班级，上传参考答案，确认评分点后即可接收作业。" : "创建班级，上传你的参考答案，确认评分点后即可接收作业。") : "教师发布作业后，会显示在这里。", link(teacher ? (state.classes.length ? "new" : "account") : "account", teacher ? (state.classes.length ? "布置第一份作业" : state.user.unified ? "查看班级" : "创建班级") : "查看我的班级", "primary"))}</section>`;
+ const teacher=state.user.role==='teacher';
+ main.innerHTML=`<section class="paper">${head('',teacher?'我的作业':'今天从哪份作业开始',teacher?'发布到已有班级，查看提交与批阅情况。':'先完成待交作业，提交后可以离开页面。',teacher?link('account','我的班级')+link('new','发布作业','primary'):'')}
+ <div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${(teacher?[['all','全部'],['published','已发布'],['draft','待发布']]:[['all','全部'],['todo','待完成'],['processing','批阅中'],['done','已出成绩']]).map(([v,t])=>`<button type="button" data-assignment-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${t}</button>`).join('')}</div><label class="search-field"><span class="sr-only">查找作业</span><input type="search" id="assignment-search" placeholder="查找作业" autocomplete="off"></label></div><div id="assignment-list"></div></section>`;
+ const draw=()=>{const term=$('#assignment-search').value.trim();let rows=state.assignments.filter(a=>a.title.includes(term)&&(state.assignmentFilter==='all'||(teacher?(state.assignmentFilter==='published'?a.published:!a.published):assignmentState(a,state.submissions).key===state.assignmentFilter)));
+  rows.sort((a,b)=>{if(teacher)return (b.createdAt||'').localeCompare(a.createdAt||'');const ai=assignmentState(a,state.submissions),bi=assignmentState(b,state.submissions);return (ai.key==='todo'?0:1)-(bi.key==='todo'?0:1)||(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity);});
+  $('#assignment-list').innerHTML=rows.length?rows.map(row).join(''):empty(state.assignments.length?'这个分类已经清空':teacher?'从一份作业开始':'老师发布后，作业会出现在这里',state.assignments.length?'可以切换分类或调整搜索词。':teacher?'选择已有班级，上传答案并核对评分点。':'已沿用你的注册班级，无需再次加入。',state.assignments.length?'':link(teacher?'new':'account',teacher?'发布第一份作业':'查看我的班级','primary'));
+ };
+ $$('[data-assignment-filter]').forEach(b=>b.onclick=()=>{state.assignmentFilter=b.dataset.assignmentFilter;$$('[data-assignment-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});$('#assignment-search').oninput=draw;draw();
 }
 function newAssignment() {
   if (!state.classes.length) {
@@ -224,9 +232,10 @@ function newAssignment() {
     toast(state.user.unified ? "请先在 Bookself 教师端确认班级，作业工作台会自动同步" : "先创建一个班级，即可布置作业");
     return;
   }
-  main.innerHTML = `<section class="paper">${head("NEW ASSIGNMENT", "布置一份作业", "下一步上传参考答案，核对评分点。", link("assignments", "返回作业"))}<form id="new-assignment" class="stack small-form">${field("作业标题", "title", "", "text", 'required maxlength="120" placeholder="例如：AD–AS 图像与政策分析"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field("截止时间（可选）", "dueAt", "", "datetime-local")}</div><fieldset><legend>布置给</legend>${state.classes.map((c) => `<label class="check"><input type="checkbox" name="classId" value="${c.id}" checked>${h(c.name)}</label>`).join("")}</fieldset>${area("题目与作业要求", "instructions", "", 'placeholder="填写题目、需要画图的要求、提交说明…"')}<p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 上传参考答案</button></form></section>`;
+  main.innerHTML = `<section class="paper">${head("NEW ASSIGNMENT", "布置一份作业", "下一步上传参考答案，核对评分点。", link("assignments", "返回作业"))}<form id="new-assignment" class="stack small-form">${field("作业标题", "title", "", "text", 'required maxlength="120" placeholder="例如：AD–AS 图像与政策分析"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field("截止时间（可选）", "dueAt", "", "datetime-local")}</div><fieldset><legend>布置给</legend>${state.classes.map((c) => `<label class="check"><input type="checkbox" name="classId" value="${c.id}" checked>${h(c.name)}</label>`).join("")}</fieldset>${area("题目与作业要求", "instructions", "", 'placeholder="填写题目、需要画图的要求、提交说明…"')}<label class="field"><span>成绩返回方式</span><select name="gradingMode"><option value="auto">自动批阅并返回，异常转教师复核</option><option value="manual">全部由教师复核后发布</option></select></label><label class="check"><input type="checkbox" name="allowResubmit" checked>允许学生在截止前重新提交</label><p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 上传参考答案</button></form></section>`;
   formHandler($("#new-assignment"), async (b) => {
     b.classIds = $$("input[name=classId]:checked").map((x) => x.value);
+    b.allowResubmit=$("[name=allowResubmit]").checked;
     if (b.dueAt) b.dueAt = new Date(b.dueAt).toISOString();
     const { assignment } = await post("assignments", b);
     go("answer/" + assignment.id);
@@ -266,7 +275,7 @@ function fileMarkup(ids, editable = false) {
     .map((id, i) => {
       const f = state.files.get(id);
       if (!f) return "";
-      return `<div class="file"><button type="button" class="icon-btn" data-preview="${id}" aria-label="预览 ${h(f.name)}">${f.mime === "application/pdf" ? '<span class="file-thumb">PDF</span>' : `<img class="file-thumb" src="/api/homework/files/${id}" alt="" loading="lazy">`}</button><div><button type="button" class="text-button file-name" data-preview="${id}">${h(f.name)}</button><div class="hint">${f.pages} 页 · ${(f.size / 1024 / 1024).toFixed(1)} MB</div></div>${editable ? `<div class="file-tools">${f.mime.startsWith("image/") ? `<button type="button" class="icon-btn" data-rotate="${i}" aria-label="顺时针旋转 ${h(f.name)}">${icon("rotate")}</button>` : ""}<button type="button" class="icon-btn" data-up="${i}" aria-label="上移 ${h(f.name)}" ${i === 0 ? "disabled" : ""}>${icon("up")}</button><button type="button" class="icon-btn" data-remove="${i}" aria-label="移除 ${h(f.name)}">${icon("close")}</button></div>` : ""}</div>`;
+      return `<div class="file"><button type="button" class="icon-btn" data-preview="${id}" aria-label="预览 ${h(f.name)}">${f.mime === "application/pdf" ? '<span class="file-thumb">PDF</span>' : `<img class="file-thumb" src="/api/homework/files/${id}" alt="" loading="lazy">`}</button><div><button type="button" class="text-button file-name" data-preview="${id}">${h(f.name)}</button><div class="hint">${f.pages} 页 · ${((f.originalSize||f.size) / 1024 / 1024).toFixed(1)} MB</div>${!editable?`<a class="download-link" href="/api/homework/files/${id}?download=1" download>下载原件</a>`:""}</div>${editable ? `<div class="file-tools">${f.mime.startsWith("image/") ? `<button type="button" class="icon-btn" data-rotate="${i}" aria-label="顺时针旋转 ${h(f.name)}">${icon("rotate")}</button>` : ""}<button type="button" class="icon-btn" data-up="${i}" aria-label="上移 ${h(f.name)}" ${i === 0 ? "disabled" : ""}>${icon("up")}</button><button type="button" class="icon-btn" data-remove="${i}" aria-label="移除 ${h(f.name)}">${icon("close")}</button></div>` : ""}</div>`;
     })
     .join("");
 }
@@ -279,11 +288,11 @@ function bindPreviews(root = document) {
 function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
   let ids = [...initial],
     uploading = false;
-  root.innerHTML = `<div class="file-list"></div>${purpose === "answer" ? '<div class="answer-inline-preview"></div>' : ""}<label class="upload"><span class="upload-icon" aria-hidden="true">${icon("up")}</span><strong>点击上传，或将文件拖到这里</strong><small class="muted">JPG / PNG / WebP / PDF · 单文件 20 MB</small><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple aria-label="上传${purpose === "answer" ? "参考答案" : purpose === "question" ? "题目" : "作业"}"></label><progress value="0" max="100" hidden aria-label="文件上传进度"></progress><p class="hint upload-status" role="status">最多 20 页，合计 50 MB。HEIC 请先转为 JPG。</p>`;
+  root.innerHTML = `${purpose==="submission"?'<div class="capture-actions"><label class="capture-button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v15H4Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg><span>拍照添加</span><input type="file" class="camera-input" accept="image/*" capture="environment" aria-label="拍照添加作业"></label></div>':""}<div class="file-list"></div>${purpose === "answer" ? '<div class="answer-inline-preview"></div>' : ""}<label class="upload"><span class="upload-icon" aria-hidden="true">${icon("up")}</span><strong>${purpose==="submission"?"从相册或文件添加":"点击上传，或将文件拖到这里"}</strong><small class="muted">JPG / PNG / WebP / PDF · 单文件 20 MB</small><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple aria-label="上传${purpose === "answer" ? "参考答案" : purpose === "question" ? "题目" : "作业"}"></label><progress value="0" max="100" hidden aria-label="文件上传进度"></progress><p class="hint upload-status" role="status">最多 20 页，合计 50 MB。HEIC 请先转为 JPG。</p>`;
   const list = $(".file-list", root),
     status = $(".upload-status", root),
     progress = $("progress", root),
-    input = $("input", root),
+    input = $(".upload input", root),
     zone = $(".upload", root);
   function draw() {
     list.innerHTML = fileMarkup(ids, true);
@@ -295,12 +304,13 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
           ? `<div class="pdf-preview" data-pdf="${f.id}"></div>`
           : `<img class="original-preview" src="/api/homework/files/${f.id}" alt="参考答案预览">`;
     }
+    $$(".file-tools button",list).forEach(b=>{if(uploading)b.disabled=true;});
     bindPreviews(list);
     renderPDFs(root);
     $$("[data-rotate]", list).forEach(
       (b) =>
         (b.onclick = async () => {
-          b.disabled = true;
+          if(uploading)return;uploading=true;input.disabled=true;draw();onChange(ids);
           try {
             const i = Number(b.dataset.rotate),
               { file } = await post("files/" + ids[i] + "/rotate");
@@ -310,14 +320,13 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
             onChange(ids);
           } catch (e) {
             toast(e.message);
-            b.disabled = false;
-          }
+          } finally {uploading=false;input.disabled=false;draw();onChange(ids);}
         }),
     );
     $$("[data-remove]", list).forEach(
       (b) =>
         (b.onclick = () => {
-          ids.splice(Number(b.dataset.remove), 1);
+          if(uploading)return;ids.splice(Number(b.dataset.remove), 1);
           draw();
           onChange(ids);
         }),
@@ -325,7 +334,7 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
     $$("[data-up]", list).forEach(
       (b) =>
         (b.onclick = () => {
-          const i = Number(b.dataset.up);
+          if(uploading)return;const i = Number(b.dataset.up);
           [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
           draw();
           onChange(ids);
@@ -336,14 +345,16 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
     if (uploading) return;
     uploading = true;
     input.disabled = true;
+    if($(".camera-input",root))$(".camera-input",root).disabled=true;
     progress.hidden = false;
+    draw();onChange(ids);
     try {
       for (const file of selected) {
         if (ids.length >= 20) throw new Error("最多上传 20 个附件");
         if (file.size > 20 * 1024 * 1024)
           throw new Error(file.name + " 超过 20 MB");
         if (
-          ids.reduce((n, x) => n + (state.files.get(x)?.size || 0), 0) +
+          ids.reduce((n, x) => n + (state.files.get(x)?.originalSize || state.files.get(x)?.size || 0), 0) +
             file.size >
           50 * 1024 * 1024
         )
@@ -376,6 +387,7 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
           xhr.send(file);
         });
         state.files.set(uploaded.id, uploaded);
+        if(ids.reduce((n,x)=>n+(state.files.get(x)?.pages||0),0)+uploaded.pages>20)throw new Error("附件合计超过 20 页。前面已添加的文件仍保留。");
         ids.push(uploaded.id);
         draw();
         onChange(ids);
@@ -387,11 +399,14 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
     } finally {
       uploading = false;
       input.disabled = false;
+      if($(".camera-input",root)){$(".camera-input",root).disabled=false;$(".camera-input",root).value="";}
       input.value = "";
-      progress.hidden = true;
+      onChange(ids);
+      progress.hidden = true;draw();
     }
   }
   input.onchange = () => upload([...input.files]);
+  if($(".camera-input",root))$(".camera-input",root).onchange=e=>upload([...e.target.files]);
   zone.ondragover = (e) => {
     e.preventDefault();
     zone.classList.add("dragging");
@@ -405,31 +420,17 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
   draw();
   return { ids: () => ids, busy: () => uploading };
 }
-function rubricEditor(questions) {
-  return questions
-    .map(
-      (q, i) =>
-        `<article class="rubric-question" data-question><div class="question-bar"><h3>第 ${i + 1} 题</h3><label>题号<input name="qid" value="${h(q.id)}" aria-label="第 ${i + 1} 题题号" required maxlength="30"></label><label>满分<input name="points" type="number" min="0.5" max="100" step="0.5" value="${h(q.maxPoints)}" aria-label="第 ${i + 1} 题满分" required></label><button type="button" class="icon-btn remove-question" aria-label="删除第 ${i + 1} 题">${icon("close")}</button></div><div class="stack">${area("题目（学生可见）", "prompt", q.prompt)}${area("参考答案", "answer", q.answer, "required")}${area("评分点与可接受的表达", "criteria", q.criteria, 'required placeholder="逐条写明得分条件与对应分值"')}${field("答案出处", "sourcePages", q.sourcePages || "文字答案")}</div></article>`,
-    )
-    .join("");
-}
-function readRubric() {
-  return $$("[data-question]").map((el) => ({
-    id: $("[name=qid]", el).value,
-    prompt: $("[name=prompt]", el).value,
-    answer: $("[name=answer]", el).value,
-    criteria: $("[name=criteria]", el).value,
-    maxPoints: Number($("[name=points]", el).value),
-    sourcePages: $("[name=sourcePages]", el).value,
-  }));
-}
+function pointEditor(points=[]){return points.map(p=>`<div class="scoring-point" data-point><label class="field"><span>得分条件</span><input name="criterion" value="${h(p.criterion)}" maxlength="3000" required></label><label class="field"><span>分值</span><input name="pointMax" type="number" min="0.5" max="100" step="0.5" value="${h(p.maxPoints)}" required></label><button type="button" class="icon-btn remove-point" aria-label="移除此评分点">${icon('close')}</button></div>`).join('');}
+function rubricEditor(questions){return questions.map((q,i)=>`<article class="rubric-question" data-question><div class="question-bar"><h3>第 ${i+1} 题</h3><label>题号<input name="qid" value="${h(q.id)}" required maxlength="30" aria-label="第 ${i+1} 题题号"></label><label>满分<input name="points" type="number" min="0.5" max="100" step="0.5" value="${h(q.maxPoints)}" required aria-label="第 ${i+1} 题满分"></label><button type="button" class="icon-btn remove-question" aria-label="删除第 ${i+1} 题">${icon('close')}</button></div><div class="stack"><label class="field"><span>题型</span><select name="questionType"><option value="short" ${q.type!=='choice'?'selected':''}>简答题</option><option value="choice" ${q.type==='choice'?'selected':''}>选择题</option></select></label>${area('题目（学生可见）','prompt',q.prompt)}${area('参考答案','answer',q.answer,'required')}<div class="choice-settings stack" ${q.type==='choice'?'':'hidden'}><div class="field-row"><label class="field"><span>选择方式</span><select name="choiceMode"><option value="single" ${q.choiceMode!=='multiple'?'selected':''}>单选</option><option value="multiple" ${q.choiceMode==='multiple'?'selected':''}>多选</option></select></label>${field('正确选项','correctOptions',(Array.isArray(q.correctOptions)?q.correctOptions.join(', '):q.correctOptions||''),'text','placeholder="例如 B 或 A, C"')}</div><p class="hint">选项完全一致得满分，多选漏选或错选不得分。</p></div>${area('评分说明与可接受的表达','criteria',q.criteria,'required')}<div class="short-settings" ${q.type==='choice'?'hidden':''}><h4>逐点评分</h4><div class="point-list">${pointEditor(q.scoringPoints)}</div><button type="button" class="secondary add-point">添加评分点</button><p class="hint">各评分点分值之和须等于本题满分。未确认逐点评分的题目会进入教师复核。</p></div>${field('知识点（可选）','knowledge',q.knowledge||'')}${field('答案出处','sourcePages',q.sourcePages||'文字答案')}</div></article>`).join('');}
+function readRubric(){return $$('[data-question]').map(el=>({id:$('[name=qid]',el).value,prompt:$('[name=prompt]',el).value,answer:$('[name=answer]',el).value,criteria:$('[name=criteria]',el).value,maxPoints:Number($('[name=points]',el).value),sourcePages:$('[name=sourcePages]',el).value,type:$('[name=questionType]',el).value,choiceMode:$('[name=choiceMode]',el).value,correctOptions:$('[name=correctOptions]',el).value,knowledge:$('[name=knowledge]',el).value,scoringPoints:$$('[data-point]',el).map(p=>({criterion:$('[name=criterion]',p).value,maxPoints:Number($('[name=pointMax]',p).value)}))}));}
+
 async function answerPage(id) {
   const renderId = state.routeVersion;
   const { assignment: a } = await api("assignments/" + id);
   await metadata([...a.answerFiles, ...a.questionFiles]);
   if (renderId !== state.routeVersion) return;
   const questions = a.draftRubric || a.rubric || [];
-  main.innerHTML = `<section class="paper">${head("ANSWER KEY / " + h(a.course), "上传参考答案", a.title, `<span class="answer-private">仅教师可见</span>` + link("assignments", "返回"))}<div class="split"><section><div class="section-head"><h2>你的参考答案</h2>${badge(a.status)}</div><form id="source-form" class="stack"><div id="answer-upload"></div><details ${a.answerFiles.length ? "" : "open"}><summary>文字答案</summary>${area("文字答案", "answerText", a.answerText, 'placeholder="可直接粘贴答案、题号与评分说明…"')}</details><details><summary>题目附件与学生说明</summary><div class="stack">${area("学生可见的题目要求", "instructions", a.instructions)}<div id="question-upload"></div></div></details><p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存原始答案</button><button type="button" id="parse-answer" class="primary">AI 整理评分点</button></div><p class="hint">上传的答案保留原件。AI 整理后，请核对右侧评分点，再启用批改。</p></form>${a.answerFiles.length ? `<button class="link" data-preview="${a.answerFiles[0]}">打开原始答案</button>` : ""}${["queued", "parsing"].includes(a.status) ? '<div class="status-line" id="parse-status">等待这台 Mac 整理答案。你可以离开页面，任务会继续保存。</div>' : ""}${a.error ? `<p class="error">${h(a.error)}</p>` : ""}</section><section><div class="section-head"><h2>核对评分点</h2><span class="hint">${a.version ? "当前 v" + a.version : "待确认"}</span></div><form id="rubric-form"><div id="questions">${questions.length ? rubricEditor(questions) : empty("先整理，再确认", "使用左侧答案生成评分点，也可以手动添加。")}</div><button type="button" id="add-question" class="secondary">添加题目</button><hr class="rule"><label class="check"><input type="checkbox" name="confirmed" required>我已核对每题答案、满分和评分点</label><p class="hint">确认后，学生即可提交。参考答案保持私密，发布成绩只展示得分和反馈。修改评分标准会生成新版本。</p><p class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="primary wide">确认答案并启用批改</button></div></form></section></div></section>`;
+  main.innerHTML = `<section class="paper">${head("ANSWER KEY / " + h(a.course), "上传参考答案", a.title, `<span class="answer-private">仅教师可见</span>` + link("assignments", "返回"))}<div class="split"><section><div class="section-head"><h2>你的参考答案</h2>${badge(a.status)}</div><form id="source-form" class="stack"><div id="answer-upload"></div><details ${a.answerFiles.length ? "" : "open"}><summary>文字答案</summary>${area("文字答案", "answerText", a.answerText, 'placeholder="可直接粘贴答案、题号与评分说明…"')}</details><details><summary>题目附件与学生说明</summary><div class="stack">${area("学生可见的题目要求", "instructions", a.instructions)}<div id="question-upload"></div></div></details><p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存原始答案</button><button type="button" id="parse-answer" class="primary">AI 整理评分点</button></div><p class="hint">上传的答案保留原件。AI 整理后，请核对右侧评分点，再启用批改。</p></form>${a.answerFiles.length ? `<button class="link" data-preview="${a.answerFiles[0]}">打开原始答案</button>` : ""}${["queued", "parsing"].includes(a.status) ? '<div class="status-line" id="parse-status">正在后台整理答案。你可以离开页面，任务会继续保存。</div>' : ""}${a.error ? `<p class="error">${h(a.error)}</p>` : ""}</section><section><div class="section-head"><h2>核对评分点</h2><span class="hint">${a.version ? "当前 v" + a.version : "待确认"}</span></div><form id="rubric-form"><div id="questions">${questions.length ? rubricEditor(questions) : empty("先整理，再确认", "使用左侧答案生成评分点，也可以手动添加。")}</div><button type="button" id="add-question" class="secondary">添加题目</button><hr class="rule"><label class="check"><input type="checkbox" name="confirmed" required>我已核对每题答案、满分和评分点</label><p class="hint">确认后，学生即可提交。参考答案保持私密，发布成绩只展示得分和反馈。修改评分标准会生成新版本。</p><p class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="primary wide">确认答案并发布作业</button></div></form></section></div></section>`;
   let sourceDirty = false;
   const markDirty = () => (sourceDirty = true);
   $("#source-form").addEventListener("input", markDirty);
@@ -467,12 +468,18 @@ async function answerPage(id) {
     await saveSource();
     await post(`assignments/${id}/parse`);
     await render();
-    toast("已加入本地处理队列");
+    toast("已加入后台处理队列");
   });
-  const bindRemove = () =>
-    $$(".remove-question").forEach(
-      (b) => (b.onclick = () => b.closest("[data-question]").remove()),
-    );
+  const bindRemove = () => {
+    $$(".remove-question").forEach(b=>b.onclick=()=>{sourceDirty=true;b.closest('[data-question]').remove();});
+    $$('[data-question]').forEach(el=>{
+      const type=$('[name=questionType]',el);
+      const update=()=>{const choice=type.value==='choice';$('.choice-settings',el).hidden=!choice;$('.short-settings',el).hidden=choice;$$('.short-settings input',el).forEach(x=>x.disabled=choice);};
+      type.onchange=update;update();
+      $('.add-point',el).onclick=()=>{$('.point-list',el).insertAdjacentHTML('beforeend',pointEditor([{criterion:'',maxPoints:1}]));sourceDirty=true;bindRemove();};
+    });
+    $$('.remove-point').forEach(b=>b.onclick=()=>{sourceDirty=true;b.closest('[data-point]').remove();});
+  };
   bindRemove();
   click("#add-question", () => {
     const q = readRubric();
@@ -490,6 +497,7 @@ async function answerPage(id) {
   formHandler($("#rubric-form"), async () => {
     if (au.busy() || qu.busy()) throw new Error("请等待上传完成");
     const questions = readRubric();
+    if(!questions.length)throw new Error("请至少确认一道题");
     await saveSource();
     await post(`assignments/${id}/confirm`, {
       questions,
@@ -518,8 +526,8 @@ async function answerPage(id) {
           if (el)
             el.textContent =
               next.status === "parsing"
-                ? "本地 AI 正在核对题号与评分点…"
-                : "已排队。Mac 在线并准备好模型后开始处理。";
+                ? "正在核对题号与评分点…"
+                : "已排队，批改服务准备好后会开始处理。";
           pollTimer = setTimeout(pollAnswer, 6000);
         }
       } catch {
@@ -530,80 +538,42 @@ async function answerPage(id) {
   }
 }
 async function submitPage(id) {
-  const renderId = state.routeVersion;
-  const { assignment: a } = await api("assignments/" + id);
-  const all = state.submissions.filter((s) => s.assignmentId === id),
-    draft = all.find((s) => s.status === "draft"),
-    latest = all
-      .filter((s) => s.status !== "draft")
-      .sort((a, b) =>
-        (b.submittedAt || "").localeCompare(a.submittedAt || ""),
-      )[0];
-  await metadata([...a.questionFiles, ...(draft?.files || [])]);
-  if (renderId !== state.routeVersion) return;
-  const key = `hw-draft:${state.user.id}:${id}`;
-  let clientId =
-    draft?.clientId || sessionStorage.getItem(key) || crypto.randomUUID();
-  sessionStorage.setItem(key, clientId);
-  main.innerHTML = `<section class="paper">${head("SUBMIT / " + h(a.course), a.title, "截止 " + date(a.dueAt), link("assignments", "返回作业"))}<div class="split"><section><details class="assignment-brief" ${matchMedia("(max-width:640px)").matches ? "" : "open"}><summary>这次要完成什么</summary><div class="instructions">${h(a.instructions || "请根据题目要求完成作业。")}</div>${(a.questions || []).map((q) => `<div class="published-question"><h3>第 ${h(q.id)} 题 <span class="hint">${q.maxPoints} 分</span></h3><p>${h(q.prompt)}</p></div>`).join("")}<div class="file-list">${fileMarkup(a.questionFiles)}</div>${latest ? `<div class="status-line">最近提交：${date(latest.submittedAt)} · ${h(labels[latest.status])}</div>${link("result/" + latest.id, "查看提交与反馈")}` : ""}</details></section><section><div class="section-head"><h2>提交你的答案</h2><span class="hint">评分标准 v${a.version}</span></div><form id="submit-form" class="stack"><div id="student-upload"></div>${area("文字答案（可与附件一起提交）", "answer", draft?.text || "", 'placeholder="按题号填写。例如：1(a)… 1(b)…"')}<p class="hint" id="draft-status">草稿会保存到你的账户。提交前请检查页数与清晰度。</p><p class="form-error" role="alert"></p><div class="actions"><button type="button" id="save-draft" class="secondary">保存草稿</button><button type="submit" class="primary">确认提交</button></div></form></section></div></section>`;
-  let saving,
-    autosave,
-    submitted = false;
-  const ownForm = $("#submit-form"),
-    ownText = $("[name=answer]");
-  const widget = uploadWidget(
-    $("#student-upload"),
-    "submission",
-    draft?.files || [],
-    schedule,
-  );
-  async function save(isDraft) {
-    if (widget.busy()) throw new Error("附件正在上传，请稍等");
-    if (saving) await saving;
-    const content = {
-      assignmentId: id,
-      text: ownText.value,
-      files: widget.ids(),
-      draft: isDraft,
-      clientId,
-    };
-    saving = post("submissions", content);
-    try {
-      return await saving;
-    } finally {
-      saving = null;
-    }
-  }
-  function schedule() {
-    clearTimeout(autosave);
-    autosave = setTimeout(async () => {
-      if (submitted || !ownForm.isConnected) return;
-      try {
-        await save(true);
-        $("#draft-status").textContent = "草稿已保存 · " + date(new Date());
-      } catch (e) {
-        const el = $("#draft-status");
-        if (el) el.textContent = e.message;
-      }
-    }, 1800);
-  }
-  $("[name=answer]").addEventListener("input", schedule);
-  click("#save-draft", async () => {
-    clearTimeout(autosave);
-    await save(true);
-    $("#draft-status").textContent = "草稿已保存";
-    toast("草稿已保存");
-  });
-  formHandler($("#submit-form"), async () => {
-    clearTimeout(autosave);
-    const { submission } = await save(false);
-    submitted = true;
-    sessionStorage.removeItem(key);
-    toast("提交成功，文件和答案已保存");
-    go("result/" + submission.id);
-  });
-  bindPreviews();
+ const version=state.routeVersion,{assignment:a}=await api('assignments/'+id);
+ const all=state.submissions.filter(s=>s.assignmentId===id),draft=all.find(s=>s.status==='draft'),record=assignmentRecords(all,[a])[0],latest=record?.latest;
+ const cacheKey=`hw-work:${state.user.id}:${id}`;let cached;
+ try{cached=JSON.parse(sessionStorage.getItem(cacheKey)||'null');}catch{}
+ if(cached&&all.some(s=>s.status!=='draft'&&s.clientId===cached.clientId))cached=null;
+ const useCache=cached&&(!draft||cached.updatedAt>Date.parse(draft.updatedAt));
+ let clientId=useCache?cached.clientId:draft?.clientId||crypto.randomUUID();
+ let initialFiles=useCache?cached.files:draft?.files||latest?.files||[],initialText=useCache?cached.text:draft?.text??latest?.text??'';
+ await metadata([...a.questionFiles,...initialFiles]);if(version!==state.routeVersion)return;
+ const expired=a.dueAt&&Date.parse(a.dueAt)<Date.now()&&!a.allowLate&&latest?.status!=='returned';
+ const locked=expired||(a.allowResubmit===false&&latest&&latest.status!=='returned');
+ const max=(a.questions||[]).reduce((n,q)=>n+q.maxPoints,0);
+ main.innerHTML=`<section class="paper submit-paper">${head('',a.title,`${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}${max?' · 满分 '+max+' 分':''}`,link('assignments','返回作业'))}<div class="submission-layout"><section class="assignment-reading"><details class="assignment-brief" ${innerWidth>760?'open':''}><summary>查看题目与要求</summary><p class="instructions">${h(a.instructions||'根据题目完成作答，照片请包含完整题号。')}</p>${(a.questions||[]).map(q=>`<div class="published-question"><h3>第 ${h(q.id)} 题 <span class="hint">${q.maxPoints} 分</span></h3><p>${h(q.prompt)}</p></div>`).join('')}<div class="file-list">${fileMarkup(a.questionFiles)}</div></details><a class="secondary" href="/api/homework/assignments/${id}/pdf" download>保存题目 PDF</a>${latest?`<div class="previous-submission"><p>上次提交 ${date(latest.submittedAt)}</p>${badge(latest.status)}${link('result/'+latest.id,'查看上次提交')}${record.grade?`<p class="hint">已有成绩 ${record.grade.total}/${record.grade.maxPoints}，新结果出来前会保留。</p>`:''}</div>`:''}</section><section class="submission-compose"><div class="section-head"><h2>${latest?'补充或重新提交':'提交你的作业'}</h2><span class="hint">账号与班级已带入</span></div>${locked?`<p class="status-line" role="status">${expired?'已过截止时间。你可以继续保存草稿，请联系老师开放补交。':'老师已关闭重新提交。原作答和成绩仍可查看。'}</p>`:''}<form id="submit-form" class="stack"><div class="input-modes" role="group" aria-label="添加作答"><button type="button" data-mode="photo" aria-pressed="true">拍照</button><button type="button" data-mode="pdf" aria-pressed="false">PDF</button><button type="button" data-mode="text" aria-pressed="false">文字</button></div><div id="student-upload"></div><details id="typed-answer" ${initialText?'open':''}><summary>补充文字答案</summary>${area('按题号填写答案','answer',initialText,'maxlength="40000" placeholder="例如：第 1 题… 第 2 题…"')}</details><div class="submit-check"><p id="page-summary"></p><p class="hint">提交前确认：题号完整、文字清楚、没有漏页。</p></div><p class="draft-feedback" id="draft-status" role="status">${useCache?'已恢复这台设备上未完成的草稿。':draft?'已恢复账户草稿。':latest?'已带入上次作答。请保留正确页面，只替换或补充需要修改的部分。':'填写后会自动保存草稿。'}</p><p class="form-error" role="alert"></p><div class="actions submit-actions"><button type="button" id="save-draft" class="secondary">保存草稿</button><button type="submit" class="primary" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div><p class="hint">提交后可以关闭页面，批阅结果会自动保留。</p></form></section></div></section>`;
+ const form=$('#submit-form'),textArea=$('[name=answer]',form),status=$('#draft-status'),pageSummary=$('#page-summary');
+ let submitted=false,autosave,dirty=Boolean(useCache||(!draft&&latest)),writing=Promise.resolve(),localSaved=true,revision=0;
+ const widget=uploadWidget($('#student-upload'),'submission',initialFiles,changed);
+ const snapshot=()=>({assignmentId:id,text:textArea.value,files:[...widget.ids()],clientId});
+ function cache(){try{sessionStorage.setItem(cacheKey,JSON.stringify({...snapshot(),updatedAt:Date.now()}));localSaved=true;}catch{localSaved=false;}}
+ function summary(){const pages=widget.ids().reduce((n,x)=>n+(state.files.get(x)?.pages||0),0);pageSummary.textContent=pages?`已添加 ${pages} 页${textArea.value.trim()?'，另有文字答案':''}`:textArea.value.trim()?'已填写文字答案':'还没有添加作答';}
+ function changed(){dirty=true;revision++;cache();summary();clearTimeout(autosave);if(!widget.busy())autosave=setTimeout(()=>{if(!submitted)save(true).catch(e=>{status.textContent=e.message+(localSaved?' 当前内容已在此页面暂存。':' 请暂时不要关闭页面。');if(e.retryable&&form.isConnected)autosave=setTimeout(online,3000);});},1000);}
+ function save(isDraft){
+  if(widget.busy())return Promise.reject(Error('附件仍在上传，请稍等。已经添加的页面会保留。'));
+  const body={...snapshot(),draft:isDraft},captured=revision;
+  writing=writing.catch(()=>{}).then(()=>post('submissions',body)).then(value=>{if(captured===revision)dirty=false;if(form.isConnected&&isDraft)status.textContent='草稿已保存到账户 · '+date(new Date());return value;});return writing;
+ }
+ function beforeUnload(e){cache();if(widget.busy()||dirty){e.preventDefault();e.returnValue='';}}
+ const online=()=>{clearTimeout(autosave);let attempts=0;const retry=async()=>{if(!form.isConnected||!dirty||submitted)return;try{await save(true);}catch(e){status.textContent=e.message+(localSaved?' 当前内容已在此页面暂存。':' 请暂时不要关闭页面。');if(e.retryable&&form.isConnected)autosave=setTimeout(retry,Math.min(5000,1500*++attempts));}};autosave=setTimeout(retry,300);};
+ window.addEventListener('beforeunload',beforeUnload);window.addEventListener('online',online);
+ state.viewCleanup=()=>{clearTimeout(autosave);window.removeEventListener('beforeunload',beforeUnload);window.removeEventListener('online',online);if(!submitted){cache();if(dirty&&!widget.busy())void save(true).catch(()=>{});}};
+ textArea.addEventListener('input',changed);summary();if(dirty){cache();online();}
+ $$('[data-mode]',form).forEach(b=>b.onclick=()=>{$$('[data-mode]',form).forEach(x=>x.setAttribute('aria-pressed',x===b));if(b.dataset.mode==='text'){$('#typed-answer').open=true;textArea.focus();}else if(b.dataset.mode==='pdf'){const input=$('.upload input',form);input.accept='application/pdf';input.click();input.accept='image/jpeg,image/png,image/webp,application/pdf';}else $('.camera-input',form).click();});
+ click('#save-draft',async()=>{clearTimeout(autosave);await save(true);toast('草稿已保存，稍后可以继续');});
+ formHandler(form,async()=>{if(locked)throw Error('请联系老师开放提交');clearTimeout(autosave);const controls=$$('input,textarea,button',form).map(el=>({el,disabled:el.disabled}));controls.forEach(({el})=>el.disabled=true);try{const {submission}=await save(false);submitted=true;sessionStorage.removeItem(cacheKey);toast('提交成功，原件已保存');if(form.isConnected)go('result/'+submission.id);}finally{controls.forEach(({el,disabled})=>el.disabled=disabled);}});
+ bindPreviews();
 }
+
 function submissionRows(rows) {
   return rows
     .map((s) => {
@@ -616,25 +586,32 @@ function reviews(assignmentId) {
   const teacher = state.user.role === "teacher";
   let rows = state.submissions.filter((s) => s.status !== "draft");
   if (assignmentId) rows = rows.filter((s) => s.assignmentId === assignmentId);
+  if(teacher)rows=rows.filter(s=>s.status==="needs_review"||s.reviewRequests?.some(r=>r.status==="open"));
   rows.sort(
     (a, b) =>
       (a.status === "needs_review" ? -1 : 1) -
       (b.status === "needs_review" ? -1 : 1),
   );
-  main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "逐份看见思考" : "提交记录", teacher ? "AI 提供初批建议，由你确认后发布。" : "每次提交都会保留。成绩发布后，可在这里查看反馈。", link("assignments", "返回作业"))}${rows.length ? submissionRows(rows) : empty(teacher ? "这里等待第一份作业" : "还没有提交记录", teacher ? "学生提交后会进入本地批改队列；需要复核的作业会显示在前面。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
+  main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "待复核的作业" : "提交记录", teacher ? "只处理需要确认的作答，以及学生提出的复核申请。" : "每次提交都会保留。成绩发布后，可在这里查看反馈。", link("assignments", "返回作业"))}${rows.length ? submissionRows(rows) : empty(teacher ? "这里等待第一份作业" : "还没有提交记录", teacher ? "正常结果会按作业设置返回；需要确认的作答会集中出现在这里。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
 }
 async function resultPage(id) {
-  const renderId = state.routeVersion;
-  const { submission: s } = await api("submissions/" + id),
-    a = state.assignments.find((x) => x.id === s.assignmentId);
-  await metadata(s.files);
-  if (renderId !== state.routeVersion) return;
-  const g = s.publishedGrade;
-  main.innerHTML = `<section class="paper">${head("SUBMISSION / 提交记录", a?.title || "作业提交", "提交于 " + date(s.submittedAt), badge(s.status) + link("history", "返回记录"))}<div class="split"><section><h2>你的提交</h2><div class="file-list">${fileMarkup(s.files)}</div><div class="instructions">${h(s.text || "本次答案见附件。")}</div><p class="hint">提交凭证 ${h(s.id.slice(0, 12).toUpperCase())}</p></section><section>${g ? `<div class="section-head"><h2>教师反馈</h2><div class="score-box">${g.total}<span> / ${g.maxPoints}</span></div></div>${g.questions.map((q) => `<article class="published-question"><h3>第 ${h(q.id)} 题 <span>${q.score} / ${q.maxPoints}</span></h3><p>${h(q.feedback)}</p><p class="hint">依据：${h(q.evidence)}</p></article>`).join("")}<div class="instructions">${h(g.teacherNote || "")}</div><p class="hint">发布于 ${date(g.publishedAt)} · 评分标准 v${g.answerVersion}</p>` : empty(s.status === "returned" ? "请调整后重新提交" : s.status === "needs_review" ? "等待教师复核" : s.status === "grading" ? "正在阅读你的作业" : "提交已收到", s.status === "returned" ? s.returnedReason : s.status === "needs_review" ? "初批建议会由教师检查，发布后即可在这里查看。" : "作业已经安全保存，会按队列依次处理。关闭此页不影响提交。", s.status === "returned" ? link("submit/" + s.assignmentId, "返回作业", "primary") : "")}${g && s.status !== "published" ? '<p class="status-line">上方保留此前发布的成绩；新的批改尚未发布。</p>' : ""}</section></div></section>`;
-  bindPreviews();
-  if (["queued", "grading", "needs_review"].includes(s.status))
-    pollTimer = setTimeout(() => render(false), 15000);
+ const version=state.routeVersion,{submission:s}=await api('submissions/'+id);
+ const a=state.assignments.find(x=>x.id===s.assignmentId)||s.assignment||{title:'作业提交'};
+ await metadata(s.files);if(version!==state.routeVersion)return;
+ const g=s.publishedGrade,types=questionTotals(g,s.questions||[]),uncertain=s.status==='needs_review';
+ const statusTitle=s.status==='returned'?'需要补充作答':uncertain?'等待老师确认':s.status==='grading'?'正在后台批阅':'作业已提交';
+ const steps=`<ol class="grading-steps"><li class="complete"><span></span><div><strong>已保存原件</strong><p>提交编号 ${h(s.id.slice(0,12).toUpperCase())}</p></div></li><li class="${s.status==='grading'?'current':''}"><span></span><div><strong>${s.status==='returned'?'需要补充作答':uncertain?'待教师确认':s.status==='grading'?'正在后台批阅':'排队等待批阅'}</strong><p>${s.status==='returned'?h(s.returnedReason):uncertain?'这份作答需要进一步核对，暂不确定总分。':'可以关闭页面，任务会继续保留。'}</p></div></li><li><span></span><div><strong>成绩与错题自动归档</strong><p>结果返回后，在“成绩”中随时查看。</p></div></li></ol>`;
+ main.innerHTML=`<section class="paper result-paper">${head('',g?'本次成绩':statusTitle,a.title,link('grades','成绩档案'))}<div class="result-layout"><section class="result-main">${g?`<div class="result-score"><strong>${g.total}<small>/${g.maxPoints}</small></strong><span>${Math.round(g.total/g.maxPoints*1000)/10}%</span></div><div class="score-breakdown">${types.choice.max?`<span>选择题 <strong>${types.choice.score}/${types.choice.max}</strong></span>`:''}${types.short.max?`<span>简答题 <strong>${types.short.score}/${types.short.max}</strong></span>`:''}</div>${s.status!=='published'?'<p class="status-line">此前成绩保留；新一轮批阅或复核完成后会更新。</p>':''}<div class="section-head"><h2>逐题反馈</h2><span class="hint">${g.questions.filter(q=>q.score<q.maxPoints).length} 道失分题</span></div><div class="filter-tabs" role="group" aria-label="题目筛选"><button data-question-filter="wrong" aria-pressed="true">失分题</button><button data-question-filter="all" aria-pressed="false">全部题目</button></div><div id="question-results">${g.questions.map(q=>`<details class="result-question" data-correct="${q.score===q.maxPoints}" ${q.score<q.maxPoints?'open':''}><summary><span>第 ${h(q.id)} 题</span><strong>${q.score}/${q.maxPoints}</strong></summary><div class="question-detail"><p class="instructions">${h(q.feedback)}</p><details class="evidence"><summary>查看作答依据</summary><p class="instructions">${h(q.evidence)}</p></details>${q.score<q.maxPoints?link('mistakes/'+s.assignmentId+'/'+encodeURIComponent(q.id),'回看与订正'):''}<details class="review-appeal"><summary>对这道题的评分有疑问</summary>${(s.reviewRequests||[]).some(r=>r.questionId===q.id&&r.status==='open')?'<p class="status-line">已申请复核，当前成绩会保留到老师处理完成。</p>':`<form data-appeal="${h(q.id)}" class="stack">${area('需要老师核对什么','reason','','required maxlength="1500" placeholder="例如：我在第二页写出了这个计算步骤…"')}<p class="form-error" role="alert"></p><button class="secondary" type="submit">申请复核</button></form>`}</details></div></details>`).join('')}</div><p id="all-correct" class="empty-inline" hidden>这次没有失分题。你可以切换到全部题目回顾反馈。</p>${g.teacherNote?`<p class="instructions">${h(g.teacherNote)}</p>`:''}<p class="hint">${g.source==='automatic'?'自动批阅':'教师已确认'} · ${date(g.publishedAt)} · 答案 v${g.answerVersion}</p><div class="actions"><a class="primary" href="/api/homework/submissions/${s.id}/pdf?kind=grade" download>下载批改 PDF</a>${link('mistakes','查看错题集')}</div>`:steps+`<div class="actions">${link('assignments','返回作业列表','primary')}${s.status==='returned'?link('submit/'+s.assignmentId,'补充作业'):''}</div>`}</section><aside class="submission-receipt"><h2>我的原始作答</h2><p class="meta">${date(s.submittedAt)}${s.late?' · 迟交':''}</p><div class="file-list">${fileMarkup(s.files)}</div><details ${s.text?'open':''}><summary>文字作答</summary><p class="instructions">${h(s.text||'本次作答见附件。')}</p></details><a class="secondary" href="/api/homework/submissions/${s.id}/pdf" download>保存作业 PDF</a>${a.allowResubmit!==false&&(!a.dueAt||Date.parse(a.dueAt)>Date.now()||a.allowLate)?link('submit/'+s.assignmentId,'补充或重新提交','link'):''}${s.gradeHistory?.length?`<details class="grade-revisions"><summary>历次成绩版本</summary>${s.gradeHistory.map(v=>`<p>${date(v.publishedAt)} · ${v.total}/${v.maxPoints} · 答案 v${v.answerVersion}</p>`).join('')}</details>`:''}</aside></div></section>`;
+ if(g){const filter=value=>{$$('.result-question').forEach(q=>q.hidden=value==='wrong'&&q.dataset.correct==='true');$('#all-correct').hidden=value!=='wrong'||g.questions.some(q=>q.score<q.maxPoints);$$('[data-question-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.questionFilter===value));};$$('[data-question-filter]').forEach(b=>b.onclick=()=>filter(b.dataset.questionFilter));filter('wrong');
+  $$('[data-appeal]').forEach(form=>formHandler(form,async b=>{await post('submissions/'+s.id+'/review-request',{questionId:form.dataset.appeal,reason:b.reason});form.innerHTML='<p class="status-line">复核申请已保存，当前成绩保留。</p>';toast('已提交复核申请');}));
+ }
+ bindPreviews();
+ if(['queued','grading','needs_review'].includes(s.status)){
+  const anchor=$('.result-paper'),fingerprint=JSON.stringify([s.status,s.publishedGrade,s.reviewRequests]);
+  const poll=async()=>{if(!anchor.isConnected)return;try{const next=(await api('submissions/'+id)).submission;if(!anchor.isConnected)return;if(JSON.stringify([next.status,next.publishedGrade,next.reviewRequests])!==fingerprint){await render(false);return;}}catch{}if(anchor.isConnected)pollTimer=setTimeout(poll,10000);};pollTimer=setTimeout(poll,6000);
+ }
 }
+
 async function reviewPage(id) {
   const renderId = state.routeVersion;
   const { submission: s } = await api("submissions/" + id),
@@ -643,7 +620,7 @@ async function reviewPage(id) {
   await metadata(s.files);
   if (renderId !== state.routeVersion) return;
   const suggestions =
-    s.suggestedGrade?.questions ||
+    (s.status==="needs_review"?s.suggestedGrade?.questions:s.publishedGrade?.questions) || s.suggestedGrade?.questions ||
     s.rubricSnapshot?.map((q) => ({
       id: q.id,
       score: null,
@@ -653,7 +630,7 @@ async function reviewPage(id) {
       needsReview: true,
     })) ||
     [];
-  main.innerHTML = `<section class="paper">${head("REVIEW / " + h(a?.title || "作业复核"), name + "的作业", "提交于 " + date(s.submittedAt) + " · 使用评分标准 v" + s.version, badge(s.status) + link("reviews", "返回待复核"))}<div class="review-layout"><section class="review-source"><div class="section-head"><h2>原始作答</h2></div><div class="file-list">${fileMarkup(s.files)}</div>${s.files[0] ? (state.files.get(s.files[0]).mime === "application/pdf" ? `<div class="pdf-preview" data-pdf="${s.files[0]}"></div>` : `<img class="original-preview" src="/api/homework/files/${s.files[0]}" alt="学生原始答案">`) : ""}<div class="instructions">${h(s.text)}</div>${s.error ? `<p class="error">${h(s.error)}</p>` : ""}<div class="actions"><button class="secondary" id="regrade">按最新标准重新批改</button><button class="quiet" id="return-work">退回重交</button></div><form id="return-form" hidden class="stack">${area("退回原因", "reason", "", "required")}<p class="form-error" role="alert"></p><button type="submit" class="danger">确认退回</button></form></section><section><div class="section-head"><h2>逐题复核</h2><span class="answer-private">发布前仅教师可见</span></div>${["queued", "grading"].includes(s.status) ? '<div class="status-line">批改正在排队或进行中。完成后会自动更新。</div>' : ""}<form id="review-form">${suggestions
+  main.innerHTML = `<section class="paper">${head("REVIEW / " + h(a?.title || "作业复核"), name + "的作业", "提交于 " + date(s.submittedAt) + " · 使用评分标准 v" + s.version, badge(s.status) + link("reviews", "返回待复核"))}<div class="review-layout"><section class="review-source"><div class="section-head"><h2>原始作答</h2></div><div class="file-list">${fileMarkup(s.files)}</div>${s.files[0] ? (state.files.get(s.files[0]).mime === "application/pdf" ? `<div class="pdf-preview" data-pdf="${s.files[0]}"></div>` : `<img class="original-preview" src="/api/homework/files/${s.files[0]}" alt="学生原始答案">`) : ""}<div class="instructions">${h(s.text)}</div>${s.error ? `<p class="error">${h(s.error)}</p>` : ""}${(s.reviewRequests||[]).filter(r=>r.status==="open").map(r=>`<div class="review-request"><h3>学生申请复核第 ${h(r.questionId)} 题</h3><p>${h(r.reason)}</p></div>`).join("")}<div class="actions"><button class="secondary" id="regrade">按最新标准重新批改</button><button class="quiet" id="return-work">退回重交</button></div><form id="return-form" hidden class="stack">${area("退回原因", "reason", "", "required")}<p class="form-error" role="alert"></p><button type="submit" class="danger">确认退回</button></form></section><section><div class="section-head"><h2>逐题复核</h2><span class="answer-private">发布前仅教师可见</span></div>${["queued", "grading"].includes(s.status) ? '<div class="status-line">批改正在排队或进行中。完成后会自动更新。</div>' : ""}<form id="review-form">${suggestions
     .map((q) => {
       const ref = s.rubricSnapshot.find((r) => r.id === q.id);
       return `<article class="rubric-question" data-grade data-qid="${h(q.id)}"><div class="question-bar"><h3>第 ${h(q.id)} 题</h3><label>得分<input name="score" type="number" min="0" max="${q.maxPoints}" step="0.5" value="${q.score ?? ""}" required aria-label="第 ${h(q.id)} 题得分"></label><span class="hint">/ ${q.maxPoints}</span></div><details><summary>查看本次评分标准</summary><div class="instructions">${h(ref.answer)}<br><br>${h(ref.criteria)}</div></details><div class="stack">${area("学生作答依据", "evidence", q.evidence, "required")}${area("给学生的反馈", "feedback", q.feedback, "required")}<label class="check"><input type="checkbox" name="checked" required>我已核对原始作答与本题得分</label></div></article>`;
@@ -707,7 +684,7 @@ async function devicePage() {
     <div class="device-grid"><section>
       <h2 class="device-title">${cloud ? "DeepSeek 云端" : "本机批改"}</h2>
       <p class="device-status" role="status"><span class="device-dot ${d?.online ? "online" : ""}"></span>${status}</p>
-      <dl class="device-detail"><div><dt>当前模型</dt><dd>${h(s.model)}</dd></div><div><dt>运行位置</dt><dd>${cloud ? "Railway · Mac 关机仍可处理" : "你的 Mac · 开机联网时处理"}</dd></div><div><dt>成绩发布</dt><dd>逐题提供依据，教师复核后发布</dd></div></dl>
+      <dl class="device-detail"><div><dt>当前模型</dt><dd>${h(s.model)}</dd></div><div><dt>运行位置</dt><dd>${cloud ? "Railway · Mac 关机仍可处理" : "你的 Mac · 开机联网时处理"}</dd></div><div><dt>成绩发布</dt><dd>${s.autoPublishValidatedFor?"按作业设置返回，异常结果转复核":"先复核样本，验证后可开启自动返回"}</dd></div></dl>
       ${d?.lastError ? `<p class="error" role="alert">${h(d.lastError)}</p>` : ""}
       <hr class="rule"><p class="hint">${cloud ? "图片和 PDF 会与教师答案一起发送给 DeepSeek，按实际调用计费。连接中断时，作业保留在队列中。" : "本地模式由这台 Mac 处理。休眠或断网后作业仍保留，重新连接会继续。"}</p>
       <div class="form-actions"><button id="device-test" class="secondary">测试连接与图片识别</button><button id="device-pause" class="quiet">${d?.revoked ? "恢复批改" : "暂停批改"}</button></div>
@@ -720,7 +697,7 @@ async function devicePage() {
       <div id="cloud-fields" class="stack" ${s.provider === "ollama" ? "hidden" : ""}>
       ${field("API Key", "apiKey", "", "password", `autocomplete="off" spellcheck="false" maxlength="2000" placeholder="${s.hasApiKey ? "已加密保存；留空保持原密钥" : "在此填写密钥"}"`)}
       <label class="check"><input type="checkbox" name="cloudConsent" ${s.cloudConsent ? "checked" : ""}>我同意将作业和参考答案发送到所选服务商</label></div>
-      <p class="hint">密钥加密保存，学生无法查看。切回本机时会保留 DeepSeek 配置。</p>
+      <p class="hint">密钥加密保存，学生无法查看。切回本机时会保留 DeepSeek 配置。</p><label class="check"><input type="checkbox" name="autoPublishValidated" ${s.autoPublishValidatedFor?"checked":""}>我已用人工批改样本验证当前模型，同意对校验通过的作业自动返回成绩</label><p class="hint">未勾选时，学生可以正常提交，批阅结果先进入教师复核。切换模型后需要重新验证。</p>
       <p class="form-error" role="alert"></p><button type="submit" class="primary">保存批改设置</button></form>
     </section></div></section>`;
   const form = $("#settings-form"), provider = $("[name=provider]", form);
@@ -730,6 +707,7 @@ async function devicePage() {
     $("#model-fields").hidden = deepseek;
     $("#provider-note").textContent = deepseek ? "使用 deepseek-flash，支持文字、图片和 PDF。由 Railway 处理，无需保持 Mac 开机。" : local ? "本机模型保留作备用。需要保持 Mac 开机并联网。" : "由你的 Mac 调用填写的兼容接口。";
     if (reset) {
+      $("[name=autoPublishValidated]",form).checked=false;
       $("[name=baseUrl]", form).value = deepseek ? "https://api.deepseek.com" : local ? "http://127.0.0.1:11434" : "";
       $("[name=model]", form).value = deepseek ? "deepseek-flash" : local ? "qwen3-vl:8b-instruct" : "";
       $("[name=apiKey]", form).value = "";
@@ -741,6 +719,7 @@ async function devicePage() {
   updateProvider(false);
   formHandler(form, async b => {
     b.cloudConsent = $("[name=cloudConsent]", form).checked;
+    b.autoPublishValidated=$("[name=autoPublishValidated]",form).checked;
     await put("device/settings", b);
     $("[name=apiKey]", form).value = "";
     toast("批改设置已保存");
@@ -768,6 +747,7 @@ function accountPage() {
   if(state.user.unified){
     const passwordForm=$('#password-form');
     passwordForm.parentElement.innerHTML='<h2>统一账号</h2><p class="muted">使用 Bookself 账号，班级与学习进度保持同步。</p><p class="hint">新作业、提交记录与成绩直接保存到当前账号。</p><a class="secondary" href="/?account=password">修改 Bookself 密码</a>';
+    const accountColumn=$('.split > section:last-child');if(state.user.canManageGrading)accountColumn.insertAdjacentHTML('beforeend','<div class="section-gap">'+link('device','批改设置')+'</div>');
   }
   click("#logout", async () => {
     await post("logout");
@@ -793,52 +773,45 @@ function accountPage() {
   });
 }
 async function render(scroll = true) {
+  state.viewCleanup?.();state.viewCleanup=null;
   clearPDFs();
   if (!state.user) return showLogin();
   clearTimeout(pollTimer);
   const version = ++state.routeVersion;
   main.setAttribute("aria-busy", "true");
-  const [route = "assignments", id] = location.hash.slice(1).split("/");
+  const [route = "assignments", id, questionId] = location.hash.slice(1).split("/").map(x=>{try{return decodeURIComponent(x)}catch{return x}});
   try {
     await refresh();
     if (version !== state.routeVersion) return;
     const teacher = state.user.role === "teacher";
     if (
       !teacher &&
-      ["new", "answer", "reviews", "review", "device"].includes(route)
+      ["new", "answer", "reviews", "review", "device", "overview", "gradebook"].includes(route)
     ) {
       go("assignments");
       return;
     }
-    nav?.select(
-      teacher
-        ? route === "device"
-          ? 2
-          : ["reviews", "review"].includes(route)
-            ? 1
-            : 0
-        : ["history", "result"].includes(route)
-          ? 1
-          : route === "account"
-            ? 2
-            : 0,
-    );
+    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='mistakes'?2:['grades','history','result'].includes(route)?1:0);
+    const learning=createLearningUI({state,main,api,post,put,h,head,link,badge,date,click,formHandler,area,field,bindPreviews,fileMarkup,metadata,uploadWidget,toast,go});
     if (route === "new") newAssignment();
     else if (route === "answer" && id) await answerPage(id);
     else if (route === "submit" && id) await submitPage(id);
-    else if (["reviews", "history"].includes(route)) reviews(id);
+    else if (route === "reviews") reviews(id);
+    else if (["grades","history","gradebook"].includes(route))await learning.gradebook(id);
+    else if(route==="mistakes")await learning.mistakes(id,questionId);
+    else if(route==="overview"&&id)await learning.overview(id);
     else if (route === "result" && id) await resultPage(id);
     else if (route === "review" && id) await reviewPage(id);
     else if (route === "device") await devicePage();
     else if (route === "account") accountPage();
     else assignments();
-    if (scroll) main.scrollTo({ top: 0, behavior: "instant" });
+    if (scroll) {main.scrollTo({ top: 0, behavior: "instant" });main.focus({preventScroll:true});}
   } catch (e) {
     if (!state.user || version !== state.routeVersion) return;
     main.innerHTML = `<section class="paper">${head("WORKSPACE", "暂时无法打开")}<p class="error" role="alert">${h(e.message)}</p><div class="form-actions"><button id="retry" class="primary">重试</button>${link("assignments", "返回作业")}</div></section>`;
     click("#retry", () => render());
   } finally {
-    main.setAttribute("aria-busy", "false");
+    if(version===state.routeVersion)main.setAttribute("aria-busy", "false");
   }
 }
 window.addEventListener("hashchange", () => render());

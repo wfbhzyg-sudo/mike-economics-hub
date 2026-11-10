@@ -36,6 +36,8 @@ export function createFiles(store) {
         bytes.length > 0 && bytes.length <= MAX_FILE,
         "单个文件最多 20 MB",
       );
+      const originalBytes=bytes;
+      let originalMime;
       let mime,
         pages = 1,
         width,
@@ -49,7 +51,7 @@ export function createFiles(store) {
         }
         pages = pdf.getPageCount();
         assert(pages > 0 && pages <= 20, "每份 PDF 最多 20 页");
-        mime = "application/pdf";
+        mime = "application/pdf"; originalMime=mime;
       } else {
         let meta;
         try {
@@ -61,6 +63,7 @@ export function createFiles(store) {
           ["jpeg", "png", "webp"].includes(meta.format) && !meta.pages,
           "暂支持静态 JPG、PNG、WebP 图片和 PDF；HEIC 请先转为 JPG",
         );
+        originalMime="image/"+(meta.format==="jpeg"?"jpeg":meta.format);
         bytes = await sharp(bytes)
           .rotate()
           .resize({
@@ -86,8 +89,10 @@ export function createFiles(store) {
         width,
         height,
         size: bytes.length,
+        originalSize: originalBytes.length, originalMime,
         createdAt: now(),
       };
+      await s3.send(new PutObjectCommand({Bucket,Key:file.id+"/original",Body:originalBytes,ContentType:originalMime}));
       await s3.send(
         new PutObjectCommand({
           Bucket,
@@ -109,11 +114,16 @@ export function createFiles(store) {
         .rotate(90)
         .jpeg({ quality: 90 })
         .toBuffer();
-      return this.upload(rotated, {
+      const copy = await this.upload(rotated, {
         owner: file.owner,
         purpose: file.purpose,
         name: file.name,
       });
+      copy.originalKey=file.originalKey||(file.originalSize?file.id+"/original":file.id);copy.originalSize=file.originalSize||file.size;copy.originalMime=file.originalMime||file.mime;
+      await store.put("file",copy);return copy;
+    },
+    async readOriginal(file) {
+      return (await s3.send(new GetObjectCommand({Bucket,Key:file.originalKey||(file.originalSize?file.id+"/original":file.id)}))).Body;
     },
     async read(file) {
       return (await s3.send(new GetObjectCommand({ Bucket, Key: file.id })))
@@ -129,7 +139,7 @@ export function createFiles(store) {
         403,
       );
       assert(
-        files.reduce((s, f) => s + f.size, 0) <= MAX_TOTAL,
+        files.reduce((s, f) => s + (f.originalSize||f.size), 0) <= MAX_TOTAL,
         "附件合计最多 50 MB",
       );
       assert(

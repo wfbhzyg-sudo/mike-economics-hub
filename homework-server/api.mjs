@@ -14,7 +14,9 @@ import {
   passwordMatches,
 } from "./store.mjs";
 import { createFiles, readBody, MAX_FILE } from "./files.mjs";
-import { HttpError, assert, text, boundedText, rubric, grade } from "./validation.mjs";
+import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } from "./validation.mjs";
+import {visibleQuestions, publishedResult, mistakeRows} from './learning.mjs';
+import {exportWork} from './export.mjs';
 const safeUser = (u) => ({
   id: u.id,
   name: u.name,
@@ -32,11 +34,12 @@ const publicAssignment = (a) => ({
   questionFiles: a.questionFiles,
   classIds: a.classIds,
   dueAt: a.dueAt,
+  gradingMode:a.gradingMode||"manual", allowLate:Boolean(a.allowLate), allowResubmit:a.allowResubmit!==false,
   version: a.version,
   questions: a.rubric?.map((q) => ({
     id: q.id,
     prompt: q.prompt,
-    maxPoints: q.maxPoints,
+    maxPoints: q.maxPoints, type:q.type||"short", knowledge:q.knowledge||"",
   })),
   createdAt: a.createdAt,
 });
@@ -52,6 +55,8 @@ const publicSubmission = (s) => ({
   version: s.version,
   clientId: s.clientId,
   returnedReason: s.returnedReason,
+  questions:visibleQuestions(s), reviewRequests:s.reviewRequests||[],
+  gradeHistory:s.gradeHistory||[], classIds:s.classIds||[], late:Boolean(s.late),
 });
 const encodeCookie = (value, age) =>
   `hw_session=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
@@ -189,6 +194,7 @@ export async function createHomework({externalAuth} = {}) {
   };
   const queueGrade = async (s, a, c) => {
     s.version = a.version;
+    s.gradingMode = a.gradingMode || "manual";
     s.rubricSnapshot = structuredClone(a.rubric);
     s.status = "queued";
     s.suggestedGrade = null;
@@ -227,6 +233,7 @@ export async function createHomework({externalAuth} = {}) {
           (await db.get(s.assignmentId))?.teacherId === user.id
         )
           return true;
+    if(user.role==='teacher')for(const n of await db.list('mistake-note'))if(n.corrections?.some(c=>c.files?.includes(file.id))&&(await db.get(n.assignmentId))?.teacherId===user.id)return true;
     return false;
   };
   return async (req, res) => {
@@ -235,7 +242,7 @@ export async function createHomework({externalAuth} = {}) {
     const route = url.pathname
         .slice("/api/homework/".length)
         .split("/")
-        .filter(Boolean),
+        .filter(Boolean).map(x=>{try{return decodeURIComponent(x)}catch{return x}}),
       method = req.method;
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -296,7 +303,7 @@ export async function createHomework({externalAuth} = {}) {
               const target = await db.get(j.target, c);
               if (target?.jobId === j.id) {
                 target.status = "needs_review";
-                target.error = "本地设备多次中断，请检查后重新批改";
+                target.error = "批改服务多次中断，请检查后重新批改";
                 await db.put(
                   j.kind === "grade" ? "submission" : "assignment",
                   target,
@@ -393,7 +400,7 @@ export async function createHomework({externalAuth} = {}) {
               if (job.kind === "parse")
                 result = { questions: rubric(b.questions) };
               else if (job.kind === "grade")
-                result = grade(b, job.payload.rubric);
+                result = b.protocolVersion===2 ? automaticGrade(b, job.payload.rubric) : grade(b, job.payload.rubric);
               else
                 result = { ok: Boolean(b.ok), message: text(b.message, 1000) };
               await c.query(
@@ -408,6 +415,12 @@ export async function createHomework({externalAuth} = {}) {
                 } else if (job.kind === "grade") {
                   target.suggestedGrade = result;
                   target.status = "needs_review";
+                  const settings=await db.get('model-settings',c);
+                  const fingerprint=[settings.provider,settings.baseUrl,settings.model].join('|');
+                  if(target.gradingMode==='auto' && b.protocolVersion===2 && !result.needsReview && settings.autoPublishValidatedFor===fingerprint){
+                    publishedResult(target,result,'worker',now(),'','automatic',settings.model);
+                    await db.audit('worker','auto_publish_grade',target.id,c);
+                  }
                 }
                 await db.put(
                   job.kind === "grade" ? "submission" : "assignment",
@@ -602,6 +615,33 @@ export async function createHomework({externalAuth} = {}) {
         });
         return (json(res, { user: safeUser(joined) }), true);
       }
+      const accessibleWork = async (c) => {
+        const allAssignments=await db.list('assignment',c), allSubmissions=await db.list('submission',c);
+        const assignments=allAssignments.filter(a=>user.role==='teacher'?a.teacherId===user.id:(a.published&&a.classIds.some(x=>user.classIds.includes(x)))||allSubmissions.some(s=>s.studentId===user.id&&s.assignmentId===a.id));
+        const submissions=allSubmissions.filter(s=>user.role==='teacher'?assignments.some(a=>a.id===s.assignmentId):s.studentId===user.id);
+        return {assignments,submissions};
+      };
+      if(route[0]==='learning'&&method==='GET'){
+        const {assignments,submissions}=await accessibleWork();
+        const roster=user.role==='teacher'?(externalAuth?await externalAuth.students(auth.signed):(await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(x=>assignments.some(a=>a.classIds.includes(x))))):[];
+        const users=await db.list('user');
+        const students=roster.map(u=>({id:u.id,name:u.name,classIds:u.classIds}));
+        for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
+        return (json(res,{students,assignments:assignments.map(publicAssignment),submissions:submissions.map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.list('mistake-note'))}),true);
+      }
+      if(route[0]==='mistakes'&&route[1]&&route[2]&&method==='PUT'){
+        assert(user.role==='student','请使用学生账号');const b=await body(req);
+        const key='mistake:'+hash(user.id+':'+route[1]+':'+route[2]);
+        const saved=await db.tx(async c=>{
+          const work=await accessibleWork(c), rows=mistakeRows(work.submissions,work.assignments);
+          assert(rows.some(r=>r.assignmentId===route[1]&&r.questionId===route[2]),'该题不在你的当前错题集中',404);
+          const old=await db.get(key,c);
+          assert(Number(b.revision||0)===(old?.revision||0),'订正已在另一处更新，请刷新后重试',409);
+          const entry={...old,id:key,studentId:user.id,assignmentId:route[1],questionId:route[2],note:boundedText(b.note,5000,'笔记'),status:['todo','review','mastered'].includes(b.status)?b.status:'todo',revision:(old?.revision||0)+1,updatedAt:now(),corrections:old?.corrections||[]};
+          if(b.correction||b.files?.length){await files.validate(b.files||[],user.id,'submission',c);entry.corrections.push({id:id(),text:boundedText(b.correction,10000,'订正'),files:b.files||[],createdAt:now()});entry.status='review';}
+          await db.put('mistake-note',entry,c);return entry;
+        });return (json(res,{note:saved}),true);
+      }
       if (route[0] === "files") {
         if (method === "POST" && route[1] && route[2] === "rotate") {
           const f = await db.get(route[1]);
@@ -639,10 +679,11 @@ export async function createHomework({externalAuth} = {}) {
             return (json(res, { file: f }), true);
           res.writeHead(200, {
             "Content-Type": f.mime,
-            "Content-Length": f.size,
-            "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+            "Content-Length": url.searchParams.has('download')?(f.originalSize||f.size):f.size,
+            "Content-Disposition": `${url.searchParams.has('download')?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+            ...(url.searchParams.has('download')?{'Content-Type':f.originalMime||f.mime}:{}),
           });
-          (await files.read(f)).on("error", () => res.destroy()).pipe(res);
+          (await (url.searchParams.has("download")?files.readOriginal(f):files.read(f))).on("error", () => res.destroy()).pipe(res);
           return true;
         }
       }
@@ -673,6 +714,7 @@ export async function createHomework({externalAuth} = {}) {
               b.classIds.every((x) => classes.some((c) => c.id === x)),
             "请选择自己的班级",
           );
+          assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),"截止时间格式不正确");
           const a = {
             id: id(),
             type: "assignment",
@@ -685,6 +727,8 @@ export async function createHomework({externalAuth} = {}) {
             questionFiles: [],
             answerFiles: [],
             answerText: "",
+            gradingMode:b.gradingMode==="manual"?"manual":"auto",
+            allowLate:Boolean(b.allowLate),allowResubmit:b.allowResubmit!==false,
             version: 0,
             published: false,
             status: "draft",
@@ -695,6 +739,11 @@ export async function createHomework({externalAuth} = {}) {
         }
         if (route[1]) {
           const a = await requireAssignment(route[1], user);
+          if(method==='GET'&&route[2]==='pdf'){
+            rate(req,'pdf',40,user.id);
+            const bytes=await exportWork({assignment:a,readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
+            res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(a.title+'-题目.pdf')}`}).end(bytes);return true;
+          }
           if (method === "GET")
             return (
               json(res, {
@@ -704,6 +753,13 @@ export async function createHomework({externalAuth} = {}) {
             );
           teacher();
           const b = await body(req);
+          if(route[2]==='settings'&&method==='PUT'){
+            await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);
+              current.gradingMode=b.gradingMode==='auto'?'auto':'manual';current.allowLate=Boolean(b.allowLate);current.allowResubmit=b.allowResubmit!==false;
+              assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),'截止时间格式不正确');current.dueAt=b.dueAt?new Date(b.dueAt).toISOString():null;
+              await db.put('assignment',current,c);await db.audit(user.id,'assignment_settings',a.id,c);
+            });return (json(res,{assignment:await db.get(a.id)}),true);
+          }
           if (route[2] === "source" && method === "PUT") {
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);
@@ -836,16 +892,16 @@ export async function createHomework({externalAuth} = {}) {
           const b = await body(req);
           const result = await db.tx(async (c) => {
             const a = await requireAssignment(b.assignmentId, user, c);
-            assert(
-              !a.dueAt || Date.parse(a.dueAt) > Date.now() || b.draft,
-              "已超过截止时间，请联系教师",
-            );
+            const late=Boolean(a.dueAt&&Date.parse(a.dueAt)<Date.now());
             const submissionId = hash(
               `${user.id}:${a.id}:${text(b.clientId, 100)}`,
             );
             assert(text(b.clientId, 100), "缺少提交凭证");
             const previous = await db.get(submissionId, c);
             if (previous && previous.status !== "draft") return previous;
+            const earlier=(await db.list('submission',c)).filter(s=>s.studentId===user.id&&s.assignmentId===a.id&&s.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt));
+            assert(!late||a.allowLate||b.draft||earlier[0]?.status==='returned','已超过截止时间，请联系教师开放补交');
+            assert(b.draft||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
             await files.validate(b.files || [], user.id, "submission", c);
             const content = boundedText(b.text, 40000, "作业文字");
             assert(
@@ -861,6 +917,7 @@ export async function createHomework({externalAuth} = {}) {
               clientId: text(b.clientId, 100),
               text: content,
               files: b.files || [],
+              classIds:[...user.classIds],late,
               status: "draft",
               createdAt: previous?.createdAt || now(),
               updatedAt: now(),
@@ -878,10 +935,23 @@ export async function createHomework({externalAuth} = {}) {
         }
         if (route[1]) {
           const s = await requireSubmission(route[1], user);
+          if(method==='GET'&&route[2]==='pdf'){
+            rate(req,'pdf',40,user.id);const a=await db.get(s.assignmentId);
+            const withGrade=url.searchParams.get('kind')==='grade';assert(!withGrade||s.publishedGrade,'成绩尚未发布');
+            const bytes=await exportWork({assignment:a,submission:s,grade:withGrade?s.publishedGrade:null,readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
+            res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(a.title+(withGrade?'-批改结果':'-我的作业')+'.pdf')}`}).end(bytes);return true;
+          }
+          if(method==='POST'&&route[2]==='review-request'){
+            assert(user.role==='student','请使用学生账号');const b=await body(req);
+            await db.tx(async c=>{const current=await requireSubmission(s.id,user,c);assert(current.publishedGrade?.questions.some(q=>q.id===b.questionId),'该题尚无已发布成绩');assert(text(b.reason,1500),'请说明需要复核的地方');
+              current.reviewRequests ||= [];assert(!current.reviewRequests.some(r=>r.questionId===b.questionId&&r.status==='open'),'该题已申请复核，老师会处理');
+              current.reviewRequests.push({id:id(),questionId:b.questionId,reason:boundedText(b.reason,1500,'复核说明'),status:'open',createdAt:now()});await db.put('submission',current,c);
+            });return (json(res,{ok:true}),true);
+          }
           if (method === "GET")
             return (
               json(res, {
-                submission: user.role === "teacher" ? s : publicSubmission(s),
+                submission: {...(user.role === "teacher" ? s : publicSubmission(s)),assignment:publicAssignment(await db.get(s.assignmentId))},
               }),
               true
             );
@@ -916,14 +986,7 @@ export async function createHomework({externalAuth} = {}) {
                 ),
                 "请逐题确认分数、依据与反馈",
               );
-              current.publishedGrade = {
-                ...reviewed,
-                teacherNote: text(b.teacherNote, 4000),
-                publishedAt: now(),
-                answerVersion: current.version,
-              };
-              current.status = "published";
-              current.updatedAt = now();
+              publishedResult(current,reviewed,user.id,now(),text(b.teacherNote,4000));
               await db.put("submission", current, c);
               await db.audit(user.id, "publish_grade", s.id, c);
             });
@@ -992,6 +1055,7 @@ export async function createHomework({externalAuth} = {}) {
             execution: deepseek ? "cloud" : "local",
             model: deepseek ? "deepseek-flash" : text(b.model, 120),
             apiKeyEncrypted, cloudConsent: provider === "openai", updatedAt: now(),
+            autoPublishValidatedFor:b.autoPublishValidated===true?[provider,baseUrl,deepseek?'deepseek-flash':text(b.model,120)].join('|'):'',
           };
           assert(settings.model, "请填写模型名称");
           await db.tx(async c => {
