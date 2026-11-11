@@ -58,7 +58,7 @@ export function rubric(input) {
     };
   });
 }
-export function grade(input, questions) {
+export function grade(input, questions, {scoreOnly = false} = {}) {
   assert(input && Array.isArray(input.questions), "模型没有返回逐题批改结果");
   assert(
     input.questions.length === questions.length,
@@ -76,13 +76,13 @@ export function grade(input, questions) {
         (Number.isFinite(score) && score >= 0 && score <= ref.maxPoints),
       "批改分数超出评分范围",
     );
-    const evidence = text(q.evidence, 6000),
-      feedback = text(q.feedback, 6000);
-    assert(feedback, "批改缺少反馈");
-    const needsReview = Boolean(q.needsReview) || score === null || !evidence;
+    const evidence = scoreOnly ? "" : text(q.evidence, 6000),
+      feedback = scoreOnly ? "" : text(q.feedback, 6000);
+    if (!scoreOnly) assert(feedback, "批改缺少反馈");
+    const needsReview = Boolean(q.needsReview) || score === null || (!scoreOnly && !evidence);
     return {
       id: ref.id,
-      score: needsReview && (!evidence || score === null) ? null : score,
+      score: needsReview && (scoreOnly || !evidence || score === null) ? null : score,
       maxPoints: ref.maxPoints,
       evidence,
       feedback,
@@ -90,6 +90,7 @@ export function grade(input, questions) {
     };
   });
   return {
+    ...(scoreOnly ? {scoreOnly:true} : {}),
     questions: rows,
     total: rows.some((q) => q.score === null)
       ? null
@@ -105,23 +106,24 @@ export function options(value){
   if(!/^[A-Ja-jＡ-Ｊａ-ｊ,，、;；\s]+$/.test(source.trim()))return [];
   return [...new Set(source.normalize('NFKC').toUpperCase().match(/[A-J]/g)||[])].sort();
 }
-// Automatic release is stricter than a teacher-reviewed result. The model does
-// not get to determine choice marks or alter confirmed per-point allocations.
+// Model suggestions require stricter checks than teacher-reviewed scores.
+// Choice marks and confirmed per-point allocations remain server-controlled.
 export function automaticGrade(input, questions){
-  const checked=grade(input,questions);
+  const scoreOnly=input.protocolVersion===3;
+  const checked=grade(input,questions,{scoreOnly});
   const byId=new Map(input.questions.map(q=>[String(q.id),q]));
   for(const row of checked.questions){
     const ref=questions.find(q=>q.id===row.id),raw=byId.get(row.id);
-    let valid=input.protocolVersion===2 && raw.mappingVerified===true && raw.answerReadable===true && !row.needsReview;
+    let valid=[2,3].includes(input.protocolVersion) && raw.mappingVerified===true && raw.answerReadable===true && raw.needsReview===false && !row.needsReview;
     if(ref.type==='choice'){
       const selected=options(raw.selectedOptions);
       valid=valid && Array.isArray(raw.selectedOptions) && raw.selectedOptions.every(x=>typeof x==='string'&&/^[A-Ja-jＡ-Ｊａ-ｊ]$/.test(x)) && (selected.length>0||raw.confirmedBlank===true) && (ref.choiceMode==='multiple'||selected.length<=1);
-      if(valid){row.score=JSON.stringify(selected)===JSON.stringify(ref.correctOptions)?ref.maxPoints:0;row.selectedOptions=selected;row.feedback=row.score===ref.maxPoints?'所选答案符合本题评分标准。':'所选答案未满足本题评分标准，请结合原作答核对。';}
+      if(valid){row.score=JSON.stringify(selected)===JSON.stringify(ref.correctOptions)?ref.maxPoints:0;row.selectedOptions=selected;if(!scoreOnly)row.feedback=row.score===ref.maxPoints?'所选答案符合本题评分标准。':'所选答案未满足本题评分标准，请结合原作答核对。';}
     }else{
       const points=ref.scoringPoints||[],got=raw.pointResults||[];
       valid=valid&&points.length>0&&got.length===points.length&&new Set(got.map(p=>p.id)).size===points.length;
-      if(valid){valid=points.every(p=>{const r=got.find(x=>x.id===p.id);return r&&typeof r.earned==='number'&&Number.isFinite(r.earned)&&r.earned>=0&&r.earned<=p.maxPoints&&r.needsReview===false&&text(r.evidence,6000)&&text(r.feedback,6000);});}
-      if(valid){const total=got.reduce((n,p)=>n+p.earned,0);valid=Math.abs(total-row.score)<.000001;if(valid)row.pointResults=got.map(p=>({id:p.id,earned:p.earned,evidence:text(p.evidence,6000),feedback:text(p.feedback,6000)}));}
+      if(valid){valid=points.every(p=>{const r=got.find(x=>x.id===p.id);return r&&typeof r.earned==='number'&&Number.isFinite(r.earned)&&r.earned>=0&&r.earned<=p.maxPoints&&r.needsReview===false&&(scoreOnly||text(r.evidence,6000)&&text(r.feedback,6000));});}
+      if(valid){const total=got.reduce((n,p)=>n+p.earned,0);valid=Math.abs(total-row.score)<.000001;if(valid)row.pointResults=got.map(p=>({id:p.id,earned:p.earned,...(!scoreOnly?{evidence:text(p.evidence,6000),feedback:text(p.feedback,6000)}:{})}));}
     }
     if(!valid){row.needsReview=true;row.score=null;}
   }

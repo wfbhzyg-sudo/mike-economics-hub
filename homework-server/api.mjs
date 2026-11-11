@@ -407,7 +407,7 @@ export async function createHomework({externalAuth} = {}) {
               if (job.kind === "parse")
                 result = { questions: rubric(b.questions) };
               else if (job.kind === "grade")
-                result = b.protocolVersion===2 ? automaticGrade(b, job.payload.rubric) : grade(b, job.payload.rubric);
+                result = [2,3].includes(b.protocolVersion) ? automaticGrade(b, job.payload.rubric) : grade(b, job.payload.rubric);
               else
                 result = { ok: Boolean(b.ok), message: text(b.message, 1000) };
               await c.query(
@@ -1061,7 +1061,7 @@ export async function createHomework({externalAuth} = {}) {
               const ref=current.rubricSnapshot.find(q=>q.id===b.question?.id);assert(ref,'无效题号');
               const q=b.question;assert(['string','number'].includes(typeof q.score)&&String(q.score).trim()!==''&&Number.isFinite(Number(q.score))&&q.score>=0&&q.score<=ref.maxPoints,'请核对本题得分');
               const entry={id:ref.id,score:Number(q.score),maxPoints:ref.maxPoints,evidence:boundedText(q.evidence,4000,'作答依据'),feedback:boundedText(q.feedback,4000,'反馈'),checked:q.checked===true,needsReview:false};
-              assert(entry.evidence&&entry.feedback&&entry.checked,'请核对依据与反馈，并勾选本题已确认');
+              assert(entry.checked,'请核对本题得分并勾选确认');
               const old=current.teacherReviewDraft?.jobId===current.jobId?current.teacherReviewDraft.questions:[];
               current.teacherReviewDraft={jobId:current.jobId,revision:(current.teacherReviewDraft?.revision||0)+1,questions:[...old.filter(q=>q.id!==ref.id),entry],savedAt:now(),actor:user.id};
               await db.put('submission',current,c);
@@ -1093,12 +1093,12 @@ export async function createHomework({externalAuth} = {}) {
                 409,
               );
               if(b.reviewRevision!==undefined)assert(Number(b.reviewRevision)===Number(current.teacherReviewDraft?.revision||0),'复核草稿已更新，请重新打开核对',409);
-              const reviewed = grade(b, current.rubricSnapshot);
+              const reviewed = grade(b, current.rubricSnapshot, {scoreOnly:true});
               assert(
                 reviewed.questions.every(
                   (q) => q.score !== null && !q.needsReview,
                 ),
-                "请逐题确认分数、依据与反馈",
+                "请逐题核对并确认分数",
               );
               publishedResult(current,reviewed,user.id,now(),text(b.teacherNote,4000));
               current.teacherReviewDraft=null;

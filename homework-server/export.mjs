@@ -23,7 +23,7 @@ export async function exportWork({assignment,submission,grade,readAttachment}){
  paragraph(assignment.title,21);
  paragraph(assignment.course||'经济学');
  if(submission){paragraph('提交时间 '+new Date(submission.submittedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));paragraph('提交编号 '+submission.id.slice(0,12).toUpperCase());}
- if(grade){paragraph(`成绩 ${grade.total} / ${grade.maxPoints}`,17);paragraph(`评分标准 v${grade.answerVersion} · 成绩版本 ${grade.revision||1}`);for(const q of grade.questions){paragraph(`第 ${q.id} 题   ${q.score} / ${q.maxPoints}`,13);paragraph(q.feedback);paragraph('作答依据：'+q.evidence);}if(grade.teacherNote)paragraph(grade.teacherNote);}
+ if(grade){paragraph(`成绩 ${grade.total} / ${grade.maxPoints}`,17);paragraph(`评分标准 v${grade.answerVersion} · 成绩版本 ${grade.revision||1}`);for(const q of grade.questions){paragraph(`第 ${q.id} 题   ${q.score} / ${q.maxPoints}`,13);if(q.feedback)paragraph(q.feedback);if(q.evidence)paragraph('作答依据：'+q.evidence);}if(grade.teacherNote)paragraph(grade.teacherNote);}
  if(submission?.text){paragraph('文字作答',15);paragraph(submission.text);}
  if(!submission){paragraph(assignment.instructions||'');for(const q of assignment.rubric||assignment.questions||[]){paragraph(`第 ${q.id} 题   ${q.maxPoints} 分`,13);paragraph(q.prompt);}}
  const ids=submission?.files||assignment.questionFiles||[];
