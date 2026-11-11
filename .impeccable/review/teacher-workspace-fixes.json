@@ -1,0 +1,145 @@
+{
+  "checks": [
+    {
+      "width": 360,
+      "route": "home",
+      "passed": true
+    },
+    {
+      "width": 360,
+      "route": "classes",
+      "passed": true
+    },
+    {
+      "width": 360,
+      "route": "work/new",
+      "passed": true
+    },
+    {
+      "width": 360,
+      "route": "work/reviews",
+      "passed": true
+    },
+    {
+      "width": 360,
+      "route": "work/gradebook",
+      "passed": true
+    },
+    {
+      "width": 360,
+      "route": "settings",
+      "passed": true
+    },
+    {
+      "width": 360,
+      "route": "games",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "home",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "classes",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "work/new",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "work/reviews",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "work/gradebook",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "settings",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "route": "games",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "home",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "classes",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "work/new",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "work/reviews",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "work/gradebook",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "settings",
+      "passed": true
+    },
+    {
+      "width": 844,
+      "route": "games",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "home",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "classes",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "work/new",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "work/reviews",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "work/gradebook",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "settings",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "route": "games",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

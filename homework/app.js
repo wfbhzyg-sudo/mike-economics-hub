@@ -2,10 +2,12 @@ import {mountPDFReader} from "./pdf-reader.js";
 import { setupDock } from "./nav.js";
 import {assignmentRecords,assignmentState,questionTotals} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
+const embedded = document.documentElement.dataset.teacherWorkspace === "true";
+let embeddedRoute="assignments", embeddedContext={},embeddedGeneration=0;
 const $ = (q, root = document) => root.querySelector(q),
   $$ = (q, root = document) => [...root.querySelectorAll(q)],
-  main = $("#main"),
-  dock = $("#dock");
+  main = $(embedded ? "#homework-main" : "#main"),
+  dock = $(embedded ? "#homework-dock" : "#dock");
 const h = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -70,7 +72,7 @@ const head = (eyebrow, title, description = "", actions = "") =>
 const empty = (title, copy, action = "") =>
   `<div class="empty"><h2>${h(title)}</h2><p>${h(copy)}</p>${action}</div>`;
 const link = (route, label, kind = "secondary") =>
-  `<a class="${kind}" href="#${route}">${label}</a>`;
+  `<a class="${kind}" href="#${embedded?"work/":""}${route}">${label}</a>`;
 function toast(message) {
   $("#notice").textContent = message;
   $("#notice").classList.add("visible");
@@ -126,6 +128,7 @@ function formHandler(form, fn) {
     buttons.forEach((b) => (b.disabled = true));
     try {
       await fn(formData(form));
+      if(embedded)document.dispatchEvent(new Event("homework:saved"));
     } catch (e) {
       if (error) {error.textContent=e.message;error.tabIndex=-1;error.scrollIntoView({block:"center"});error.focus({preventScroll:true});}
       else toast(e.message);
@@ -148,10 +151,13 @@ function click(selector, fn) {
   });
 }
 const go = (route) => {
-  if (location.hash === "#" + route) render();
-  else location.hash = route;
+  if(embedded)document.dispatchEvent(new Event("homework:saved"));
+  const target=(embedded?"work/":"")+route;
+  if (location.hash === "#" + target) {embeddedRoute=route;render();}
+  else location.hash = target;
 };
 function installNavigation() {
+  if(embedded)return;
   nav?.destroy();
   const teacher = state.user.role === "teacher";
   const items = teacher
@@ -175,6 +181,7 @@ function installNavigation() {
 async function loginResult(value) {
   state.user = value.user;
   state.csrf = value.csrf;
+  if(!embedded && value.user.role === "teacher" && value.teacherWorkspace){location.replace("/teacher/#work/"+(location.hash.slice(1)||"assignments"));return;}
   installNavigation();
   if (!location.hash || location.hash === "#login")
     location.hash = "assignments";
@@ -211,6 +218,7 @@ async function refresh() {
   state.assignments = a.assignments;
   state.submissions = s.submissions;
   state.classes = c.classes;
+  if(embedded && embeddedContext.classId){const id="bookself-class:"+embeddedContext.classId;state.assignments=state.assignments.filter(a=>a.classIds.includes(id));state.submissions=state.submissions.filter(s=>state.assignments.some(a=>a.id===s.assignmentId));}
 }
 function row(a) {
   const teacher=state.user.role==='teacher', info=assignmentState(a,state.submissions);
@@ -226,7 +234,7 @@ function assignments() {
  if(!courses.includes(state.assignmentCourse))state.assignmentCourse='';
  const filters=teacher?[['all','全部'],['published','已发布'],['draft','待发布']]:[['all','全部'],['todo','待完成'],['processing','批阅中'],['done','已出成绩'],['closed','已截止']];
  if(!filters.some(([key])=>key===state.assignmentFilter))state.assignmentFilter='all';
- main.innerHTML=`<section class="paper">${head('',teacher?'我的作业':'今天从哪份作业开始',teacher?'发布到已有班级，查看提交与批阅情况。':'待完成的作业按截止时间排列，草稿可以接着写。',teacher?link('account','我的班级')+link('new','发布作业','primary'):'')}
+ main.innerHTML=`<section class="paper">${head('',teacher?'我的作业':'今天从哪份作业开始',teacher?'发布到已有班级，查看提交与批阅情况。':'待完成的作业按截止时间排列，草稿可以接着写。',teacher?(embedded?'<a class="secondary" href="#classes">我的班级</a>':link('account','我的班级'))+link('new','发布作业','primary'):'')}
  <div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.map(([v,t])=>`<button type="button" data-assignment-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${t}<span class="filter-count" data-count="${v}"></span></button>`).join('')}</div><div class="assignment-search-controls">${courses.length>1?`<label class="course-filter"><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map(c=>`<option ${state.assignmentCourse===c?'selected':''}>${h(c)}</option>`).join('')}</select></label>`:''}<label class="search-field"><span class="sr-only">查找作业</span><input type="search" id="assignment-search" placeholder="查找作业" value="${h(state.assignmentSearch)}" autocomplete="off"></label></div></div><p id="assignment-count" class="hint" role="status"></p><div id="assignment-list"></div></section>`;
  const draw=()=>{state.assignmentSearch=$('#assignment-search').value;const term=state.assignmentSearch.trim().toLocaleLowerCase(),base=state.assignments.filter(a=>(!state.assignmentCourse||a.course===state.assignmentCourse)&&a.title.toLocaleLowerCase().includes(term));
   const matches=(a,key)=>key==='all'||(teacher?(key==='published'?a.published:!a.published):assignmentState(a,state.submissions).key===key);
@@ -241,7 +249,7 @@ function assignments() {
 }
 function newAssignment() {
  if(!state.classes.length){go('account');toast('请先在 Bookself 教师端确认班级，作业工作台会自动同步');return;}
- main.innerHTML=`<section class="paper">${head('','上传作业题纸','先准备学生看到的内容，下一步设置私密答案与评分标准。',link('assignments','返回作业'))}<form id="new-assignment" class="question-first-form"><section class="stack"><div class="section-head"><h2>作业 PDF 与题目附件</h2><span class="badge">学生可见</span></div><div id="new-question-upload"></div><p class="hint">请上传不含答案的学生版。可以添加补充材料，并上移主题纸到第一位。</p></section><section class="stack">${field('作业名称','title','','text','required maxlength="120" placeholder="例如：AD–AS 第三次练习"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field('截止时间（可选）','dueAt','','datetime-local')}</div><fieldset><legend>布置给</legend>${state.classes.map(c=>`<label class="check"><input type="checkbox" name="classId" value="${c.id}" checked>${h(c.name)}</label>`).join('')}</fieldset>${field('本次完成范围','readingScope','','text','maxlength="500" placeholder="例如：第 1–8 题，第 9 题选做"')}${area('提交要求','submissionGuide','','maxlength="1000" placeholder="例如：按题号作答，图像标注坐标轴；照片保留完整题号。"')}${area('题目补充说明','instructions','','maxlength="20000" placeholder="也可以直接在这里填写题目。"')}<label class="field"><span>成绩返回方式</span><select name="gradingMode"><option value="auto">自动批阅并返回，异常转教师复核</option><option value="manual">全部由教师复核后发布</option></select></label><label class="check"><input type="checkbox" name="allowResubmit" checked>允许学生在截止前重新提交</label><label class="check"><input type="checkbox" name="studentPaperChecked" required>我已检查学生可见的题纸和说明中不含参考答案</label><p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 设置参考答案</button><p class="hint">继续后保存为草稿，核对评分标准并发布后学生才可见。</p></section></form></section>`;
+ main.innerHTML=`<section class="paper">${head('','上传作业题纸','先准备学生看到的内容，下一步设置私密答案与评分标准。',link('assignments','返回作业'))}<form id="new-assignment" class="question-first-form"><section class="stack"><div class="section-head"><h2>作业 PDF 与题目附件</h2><span class="badge">学生可见</span></div><div id="new-question-upload"></div><p class="hint">请上传不含答案的学生版。可以添加补充材料，并上移主题纸到第一位。</p></section><section class="stack">${field('作业名称','title','','text','required maxlength="120" placeholder="例如：AD–AS 第三次练习"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field('截止时间（可选）','dueAt','','datetime-local')}</div><fieldset><legend>布置给</legend>${state.classes.map(c=>`<label class="check"><input type="checkbox" name="classId" value="${c.id}" ${!embeddedContext.classId||c.id==="bookself-class:"+embeddedContext.classId?"checked":""}>${h(c.name)}</label>`).join('')}</fieldset>${field('本次完成范围','readingScope','','text','maxlength="500" placeholder="例如：第 1–8 题，第 9 题选做"')}${area('提交要求','submissionGuide','','maxlength="1000" placeholder="例如：按题号作答，图像标注坐标轴；照片保留完整题号。"')}${area('题目补充说明','instructions','','maxlength="20000" placeholder="也可以直接在这里填写题目。"')}<label class="field"><span>成绩返回方式</span><select name="gradingMode"><option value="auto">自动批阅并返回，异常转教师复核</option><option value="manual">全部由教师复核后发布</option></select></label><label class="check"><input type="checkbox" name="allowResubmit" checked>允许学生在截止前重新提交</label><label class="check"><input type="checkbox" name="studentPaperChecked" required>我已检查学生可见的题纸和说明中不含参考答案</label><p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 设置参考答案</button><p class="hint">继续后保存为草稿，核对评分标准并发布后学生才可见。</p></section></form></section>`;
  const form=$('#new-assignment');const uploader=uploadWidget($('#new-question-upload'),'question',[],ids=>{const first=state.files.get(ids[0]);if(first&&!form.elements.title.value)form.elements.title.value=first.name.replace(/\.[^.]+$/,'').slice(0,120);});
  formHandler(form,async b=>{if(uploader.busy()||uploader.pending())throw Error('请完成题纸上传，或移除未完成的文件后继续。');b.classIds=$$('input[name=classId]:checked',form).map(x=>x.value);b.allowResubmit=form.elements.allowResubmit.checked;b.questionFiles=uploader.ids();if(b.dueAt)b.dueAt=new Date(b.dueAt).toISOString();const {assignment}=await post('assignments',b);go('answer/'+assignment.id);});
 }
@@ -684,7 +692,7 @@ async function devicePage() {
 }
 function accountPage() {
   const teacher = state.user.role === "teacher";
-  main.innerHTML = `<section class="paper">${head("ACCOUNT / 账户与班级", state.user.name, teacher ? "教师账户" : "学生账户", `<button id="logout" class="secondary">退出登录</button>`)}<div class="split"><section><h2>我的班级</h2><div class="class-list">${state.classes.map((c) => `<div class="class-line"><span>${h(c.name)}</span>${teacher ? `<div><span class="hint">${c.source === "bookself" ? "注册班级码" : "原作业班级码"}</span><code>${h(c.invite)}</code></div>` : ""}</div>`).join("") || `<p class="muted">${state.user.unified ? (teacher ? '尚无可用班级，请在 Bookself 教师端确认。' : '暂未关联到班级，请联系老师核对注册信息。') : '尚未加入班级'}</p>`}</div>${state.user.unified ? `<p class="hint">${teacher ? "与 Bookself 共用班级和注册班级码。班级调整请在 Bookself 教师端完成。" : "已沿用注册时的班级，无需再次加入。需要转班时，请联系老师。"}</p>` : `<hr class="rule"><form id="class-form" class="stack">${field(teacher ? "新班级名称" : "加入另一个班级", "value", "", "text", `required placeholder="${teacher ? "例如：AP 宏观 2026 A 班" : "输入班级邀请码"}"`)}<p class="form-error" role="alert"></p><button type="submit" class="primary">${teacher ? "创建班级" : "加入班级"}</button></form>${teacher ? '<p class="hint" style="margin-top:20px">学生使用 Bookself 账号登录，再通过此邀请码加入作业班级。</p>' : ""}`}</section><section><h2>修改密码</h2><form id="password-form" class="stack" style="margin-top:24px">${field("当前密码", "current", "", "password", 'required autocomplete="current-password"')}${field("新密码", "password", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}${field("确认新密码", "confirm", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}<p class="hint">使用至少 10 位密码。修改后，其他设备需要重新登录。</p><p class="form-error" role="alert"></p><button type="submit" class="secondary">更新密码</button></form></section></div></section>`;
+  main.innerHTML = `<section class="paper">${head("ACCOUNT / 账户与班级", state.user.name, teacher ? "教师账户" : "学生账户", `<button id="logout" class="secondary">退出登录</button>`)}<div class="split"><section><h2>我的班级</h2><div class="class-list">${state.classes.map((c) => `<div class="class-line"><span>${h(c.name)}</span>${teacher ? `<div><span class="hint">${c.source === "bookself" ? "注册班级码" : "原作业班级码"}</span><code>${h(c.invite)}</code></div>` : ""}</div>`).join("") || `<p class="muted">${state.user.unified ? (teacher ? '尚无可用班级，请在 Bookself 教师端确认。' : '暂未关联到班级，请联系老师核对注册信息。') : '尚未加入班级'}</p>`}</div>${state.user.unified ? `<p class="hint">${teacher ? "与 Bookself 共用班级和注册班级码。班级调整请在教师工作台的“班级与学生”完成。" : "已沿用注册时的班级，无需再次加入。需要转班时，请联系老师。"}</p>` : `<hr class="rule"><form id="class-form" class="stack">${field(teacher ? "新班级名称" : "加入另一个班级", "value", "", "text", `required placeholder="${teacher ? "例如：AP 宏观 2026 A 班" : "输入班级邀请码"}"`)}<p class="form-error" role="alert"></p><button type="submit" class="primary">${teacher ? "创建班级" : "加入班级"}</button></form>${teacher ? '<p class="hint" style="margin-top:20px">学生使用 Bookself 账号登录，再通过此邀请码加入作业班级。</p>' : ""}`}</section><section><h2>修改密码</h2><form id="password-form" class="stack" style="margin-top:24px">${field("当前密码", "current", "", "password", 'required autocomplete="current-password"')}${field("新密码", "password", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}${field("确认新密码", "confirm", "", "password", 'required minlength="10" maxlength="200" autocomplete="new-password"')}<p class="hint">使用至少 10 位密码。修改后，其他设备需要重新登录。</p><p class="form-error" role="alert"></p><button type="submit" class="secondary">更新密码</button></form></section></div></section>`;
   if(state.user.unified){
     const passwordForm=$('#password-form');
     passwordForm.parentElement.innerHTML='<h2>统一账号</h2><p class="muted">使用 Bookself 账号，班级与学习进度保持同步。</p><p class="hint">新作业、提交记录与成绩直接保存到当前账号。</p><a class="secondary" href="/?account=password">修改 Bookself 密码</a>';
@@ -721,7 +729,7 @@ async function render(scroll = true) {
   clearTimeout(pollTimer);
   const version = ++state.routeVersion;
   main.setAttribute("aria-busy", "true");
-  const [route = "assignments", id, questionId] = location.hash.slice(1).split("/").map(x=>{try{return decodeURIComponent(x)}catch{return x}});
+  const [route = "assignments", id, questionId] = (embedded?embeddedRoute:location.hash.slice(1)).split("/").map(x=>{try{return decodeURIComponent(x)}catch{return x}});
   try {
     await refresh();
     if (version !== state.routeVersion) return;
@@ -757,11 +765,20 @@ async function render(scroll = true) {
     if(version===state.routeVersion)main.setAttribute("aria-busy", "false");
   }
 }
-window.addEventListener("hashchange", () => render());
-try {
-  await loginResult(await api("me"));
-} catch {
-  showLogin();
+export async function mountTeacherHomework(route="assignments",context={}) {
+  if(!embedded)throw Error("请从教师工作台打开");
+  embeddedRoute=route;embeddedContext=context;state.workspaceClassId=context.classId?"bookself-class:"+context.classId:"";const generation=++embeddedGeneration;
+  const session=await api("me");if(generation!==embeddedGeneration)return;state.user=session.user;state.csrf=session.csrf;
+  if(state.user?.role!=="teacher")throw Error("此页面仅供教师使用");
+  await render();
+}
+export function unmountTeacherHomework(){embeddedGeneration++;state.routeVersion++;clearTimeout(pollTimer);state.viewCleanup?.();state.viewCleanup=null;clearPDFs();}
+if(embedded){
+  // Delegate anchors because many reused views render their links dynamically.
+  main.addEventListener('click',event=>{const a=event.target.closest('a[href^="#"]');if(!a)return;const route=a.getAttribute('href').slice(1);if(route==='classes'||route.startsWith('work/'))return;event.preventDefault();go(route);});
+}else{
+  window.addEventListener("hashchange", () => render());
+  try {await loginResult(await api("me"));} catch {showLogin();}
 }
 
 function renderPDFs(root = document) {

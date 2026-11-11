@@ -69,6 +69,18 @@ colors:
   account-paper: "#f5f0e7"
   account-border: "#d2d1c9"
   account-divider: "#cfd0ca"
+  teacher-paper: "#f5f0e5"
+  teacher-ink: "#132941"
+  teacher-muted: "#58616c"
+  teacher-line: "#d4cec0"
+  teacher-blue: "#174e79"
+  teacher-soft: "#e8e4da"
+  teacher-field: "#fff7"
+  teacher-field-border: "#b3b3a9"
+  teacher-control-border: "#8c979e"
+  teacher-focus: "#337caf"
+  teacher-primary-hover: "#1b3c5c"
+  teacher-secondary-hover: "#e2e4dd"
 typography:
   headline:
     fontFamily: "HubSerif, 'Songti SC', serif"
@@ -216,6 +228,36 @@ typography:
   login-secondary:
     fontFamily: "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, sans-serif"
     fontSize: "14px"
+  teacher-heading:
+    fontFamily: "HubSerif, 'Songti SC', Georgia, serif"
+    fontSize: "clamp(28px, 3vw, 42px)"
+    fontWeight: 600
+    lineHeight: 1.35
+    letterSpacing: "-.025em"
+  teacher-heading-mobile:
+    fontFamily: "HubSerif, 'Songti SC', Georgia, serif"
+    fontSize: "29px"
+    fontWeight: 600
+    lineHeight: 1.35
+    letterSpacing: "-.025em"
+  teacher-section:
+    fontFamily: "HubSerif, 'Songti SC', Georgia, serif"
+    fontSize: "25px"
+    fontWeight: 600
+    lineHeight: 1.35
+  teacher-body:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+    fontSize: "15px"
+    lineHeight: 1.6
+  teacher-field:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+    fontSize: "15px"
+    lineHeight: 1.6
+  teacher-navigation:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+    fontSize: "15px"
+    fontWeight: 600
+    lineHeight: 1.6
 rounded:
   square: "0"
   circle: "50%"
@@ -231,6 +273,10 @@ rounded:
   login-control: "7px"
   account-trigger: "24px"
   account-menu: "12px"
+  teacher-shell: "18px"
+  teacher-shell-mobile: "16px 16px 0 0"
+  teacher-control: "7px"
+  teacher-navigation: "9px"
 spacing:
   title-top: "22px"
   title-top-mobile: "16px"
@@ -252,6 +298,11 @@ spacing:
   login-field-gap: "10px"
   login-field-stack: "22px"
   account-item: "12px 0"
+  teacher-page: "36px clamp(22px, 3vw, 46px) 48px"
+  teacher-page-compact: "28px 24px 40px"
+  teacher-page-mobile: "25px 22px calc(110px + env(safe-area-inset-bottom))"
+  teacher-form-gap: "18px"
+  teacher-overview-gap: "30px"
 components:
   floating-title:
     backgroundColor: "transparent"
@@ -431,6 +482,40 @@ components:
     rounded: "{rounded.account-menu}"
     padding: "14px 18px"
     width: "204px"
+  teacher-primary:
+    backgroundColor: "{colors.navy}"
+    textColor: "{colors.white}"
+    rounded: "{rounded.teacher-control}"
+    padding: "8px 17px"
+  teacher-primary-hover:
+    backgroundColor: "{colors.teacher-primary-hover}"
+    textColor: "{colors.white}"
+  teacher-secondary:
+    backgroundColor: "transparent"
+    textColor: "{colors.teacher-ink}"
+    rounded: "{rounded.teacher-control}"
+    padding: "8px 17px"
+  teacher-secondary-hover:
+    backgroundColor: "{colors.teacher-secondary-hover}"
+    textColor: "{colors.teacher-ink}"
+  teacher-field:
+    backgroundColor: "{colors.teacher-field}"
+    textColor: "{colors.teacher-ink}"
+    typography: "{typography.teacher-field}"
+    rounded: "{rounded.teacher-control}"
+    padding: "10px 12px"
+  teacher-navigation:
+    backgroundColor: "transparent"
+    textColor: "{colors.teacher-ink}"
+    typography: "{typography.teacher-navigation}"
+    rounded: "{rounded.teacher-navigation}"
+    padding: "12px 14px"
+  teacher-navigation-current:
+    backgroundColor: "{colors.navy}"
+    textColor: "{colors.white}"
+    typography: "{typography.teacher-navigation}"
+    rounded: "{rounded.teacher-navigation}"
+    padding: "12px 14px"
 ---
 
 # Design System: Mike 的经济一页通
@@ -447,6 +532,8 @@ The electronic homework workspace is an ordinary extension of this frame. Its fi
 
 The approved unified entry extends this world with a navy page, a warm paper form, a white Chinese title and a compact preview of Bookself, EconQuest and electronic homework. The desktop preview occupies diagonal monochrome panels beside the form; on phones it becomes a short branded strip above the form. These are the implemented expressions of the user-approved login composition, not a replacement identity. The signed-in account menu uses a small paper-backed disclosure at the top right.
 
+The approved teacher workspace at `/teacher/` is a code-led Operate extension of this same identity. A navy surround and continuous ivory workspace support sustained teaching work, with the original mark and HubSerif asset retained. Desktop side navigation becomes a fixed phone bottom navigation; real class activity, submissions and learning evidence supply the content. The surface contract lives in `.impeccable/teacher-workspace-brief.md`; this extension does not replace gallery, login or standalone homework behavior.
+
 **Key Characteristics:**
 - Original wordmarks, book covers, model interface, pixel teachers, Wolai icon, and NEBS poster remain the visual evidence.
 - The unified entry places a navy primary action on warm paper; registration, recovery and form errors remain in the same surface.
@@ -455,6 +542,7 @@ The approved unified entry extends this world with a navy page, a warm paper for
 - Physical books and archive folios retain visible page edges and restrained cast shadows.
 - The homework workspace pairs real answer artifacts with editable fields on a single native-scrolling ivory sheet, keeping private references distinct from published feedback.
 - Continuous diagonal expansion, native phone scrolling, separate entry links, keyboard access, and instant reduced-motion states preserve clear navigation.
+- The teacher workspace keeps one continuous ivory surface, with persistent teaching context, native homework reuse and activity-first evidence.
 
 ## Colors
 
@@ -477,6 +565,8 @@ Warm Bookself paper sits beside Quest’s purple landscape, Archive Navy with cr
 
 - **Homework State Colors** (`homework-published*`, `homework-review*`, `homework-danger*`): restrained text-backed status and destructive-action treatments on the paper sheet; they do not replace gallery identity colors.
 
+- **Teacher Actions and Evidence** (`teacher-blue`, with existing `navy`): restrained teacher links, progress marks and primary actions; these stay scoped to the teacher workspace.
+
 ### Tertiary
 - **Quest Night** (`quest-night`): fallback behind the original canyon.
 - **Focus Blue** (`focus`): explicit keyboard focus for panel selection and entry links.
@@ -494,6 +584,8 @@ Warm Bookself paper sits beside Quest’s purple landscape, Archive Navy with cr
 - **Homework Dock** (`homework-guide`, `homework-nav-text`, `homework-accent`): one neutral guide/head/circle color on navy; label color follows focus toward the light blue accent. `homework-focus` supplies visible keyboard outlines and `homework-primary-hover` supplies the primary action hover state.
 
 **The Original Color Rule.** Preserve the original artwork palette; shared colors frame and support the brands rather than recoloring them.
+
+- **Teacher Paper and Controls** (`teacher-paper`, `teacher-ink`, `teacher-muted`, `teacher-line`, `teacher-soft`, `teacher-field`, `teacher-field-border`, `teacher-control-border`): one quiet work surface with thin rules, translucent fields and textual status. `teacher-focus` remains an explicit keyboard outline; the two teacher hover tokens distinguish primary and secondary actions.
 
 **The Selection Color Rule.** Unselected artwork is fully grayscale. Only the active preview or explicit selection restores its original color.
 
@@ -514,6 +606,8 @@ The signed-in gallery retains its original Bookself and Econquest wordmark asset
 - **Scene identities:** resource, NEBS, and course title tokens are base artwork sizes scaled proportionally with the scene, not fixed viewport sizes.
 - **Homework task hierarchy:** `homework-heading` is the task h1, with a (28 px) mobile override; section headings use `homework-section`, (22 px) on phones, and question headings use (20 px), (19 px) on phones. `homework-body` and `homework-field` keep editing text legible; fields remain (16 px) on phones. `homework-hint` becomes (12 px) on phones. The floating homework brand is (34 px maximum) desktop, (25 px) through the tablet range and (21 px) on phones. System sans belongs to controls and body text, never to homework display headings.
 - **Archive and game print:** preserve incumbent folio, cover, question and plaque typography as part of the original scene composition. Decorative book lettering is not a new interface typography standard.
+
+- **Teacher hierarchy:** `teacher-heading` and `teacher-section` use the original HubSerif asset; body, fields and navigation use the teacher system-sans roles. Phone h1 uses `teacher-heading-mobile`, reducing to (27 px) at (380 px); section headings become (23 px). The embedded homework module keeps its own form typography under the shared teacher heading and shell.
 
 **The Identity Asset Rule.** Keep supplied gallery wordmarks as artwork at their intrinsic aspect ratios. QuestDisplay is the original local Nunito Sans family; the pixel lettering belongs to the Econquest logo asset.
 
@@ -541,9 +635,21 @@ The fixed transparent brand sits above a centered native-scrolling `main` sheet;
 
 At (640 px) and below, the sheet scrolls natively in a left content lane with (12 px) left and (83 px) right margins; height is `100dvh - 100px - safe-area-inset-bottom`. Paper padding is (23 px 18 px), narrowing to (20 px 14 px) below (360 px). Source, rubric, review, device and form columns stack. The dock moves to a fixed right rail, (68 px) wide at a (7 px) inset with (48 px) minimum-height targets. Logged-out pages have no dock and use (14 px) side margins. Long assignment titles, file names and feedback wrap within the sheet. The assignment brief can collapse above the mobile upload task. This workspace breakpoint and inner scroll model do not change the gallery’s existing vertical-layout thresholds or physics.
 
+### Teacher Workspace — approved extension
+
+The page scrolls naturally. A (108 px) brand region sits above a workspace capped at (1480 px), with `100% - 48px` width, a (190 px) sidebar and a flexible content column. The overview uses `1.5fr / minmax(240px, 1fr)` with the teacher overview gap; thin rules divide tasks, tables and the evidence rail. The persistent context row exposes class plus the relevant textbook or game course. Form groups use the teacher form gap and a maximum width of (720 px).
+
+At (1150 px) and below the sidebar is (170 px), the outer width becomes `100% - 32px`, and the overview stacks; its progress summaries can share a row. At (760 px) and below the brand region is (80 px), the workspace fills the width, the sidebar disappears, and four fixed bottom slots expose 总览, 班级, 批阅 and 更多. More opens a native dialog for the remaining destinations. Use `teacher-page-mobile` clearance including the safe area; at (380 px) the inline page gutter is (16 px). These are teacher-only breakpoints.
+
+**The Visible Task Rule.** On phones, a table with an action column becomes labeled, stacked rows with the action visible in the content lane. Dense comparison tables retain semantic columns, keyboard-focusable horizontal scrolling and a visible “左右滑动查看完整表格” cue. The approved minimum for phone buttons is (44 px); bottom navigation targets are at least (48 px).
+
+The teacher shell owns outer spacing. Native homework content mounts directly below the work tabs, with its inherited outer padding, fixed height and inner scrolling cleared inside this host; the inner homework flow and PDF reader remain reusable. The standalone `/homework/` layout above remains its own surface.
+
 ## Elevation & Depth
 
 Physical depth remains in books, page edges, the model frame, folios, and the original pixel scene. Floating controls use soft text and SVG shadows for contrast while retaining completely transparent backgrounds. Entry links remain flat. NEBS remains a blended poster recomposition without a floating full-poster shadow.
+
+The teacher workspace is flat at rest: paper tone and thin rules establish hierarchy. Its account dropdown, more-functions dialog and transient notice use local shadows; the phone navigation has a shallow upward shadow. These values are recorded as teacher-scoped sidecar extensions.
 
 ### Shadow Vocabulary
 - **Login paper:** `0 18px 48px #00000030` — neutral ambient lift against the navy page.
@@ -574,6 +680,8 @@ NEBS retains rectangular logo and bull crops of the intact source poster. Gradie
 Workspace papers use modest rounded corners (`homework-paper`, `homework-paper-mobile`); fields and actions share `homework-control`, and status badges use `homework-badge`. Uploaded documents remain rectangular, proportionally fitted artifacts. Authored inline SVG icons use (20 px) boxes with a (1.6 px) round stroke; upload icons use (32 px) boxes. These are form-surface adaptations, not replacements for the gallery’s thin-rule entry links or original identity artwork.
 
 The login paper uses `login-paper` and `login-paper-mobile` corners; fields and primary actions share `login-control`. The account summary is a rounded capsule (`account-trigger`) and its dropdown a softer rectangular paper (`account-menu`). These scoped shapes do not alter the gallery’s diagonal panels or thin-rule entry actions.
+
+The teacher workspace uses `teacher-shell` corners, opening to `teacher-shell-mobile` at the phone edge. Controls use `teacher-control`, desktop navigation uses `teacher-navigation`, and authored line icons use (23 px) boxes with a (1.7 px) round stroke. Divided task and data rows remain part of the continuous paper rather than separate floating cards.
 
 ## Components
 
@@ -633,11 +741,23 @@ The authenticated workspace has three role-specific shortcuts: teachers use 作�
 
 `nav.js` uses the incumbent `HubMotion.indicatorStep`, `influence`, `liquidState`, `liquidLine` and `liquidTransfer`. Line, circle and traveling connector share `homework-guide`. Position/velocity are retained while a running selection retargets; a drag beyond (5 px) follows the pointer, and pointer-up computes the selected item from the release coordinate. The mobile guide/connector geometry scales to (.75) while retaining a vertical path; desktop transfer is horizontal. At settled endpoints the transfer is hidden with an empty path. Reduced motion resolves the target immediately and hides transfer geometry. Keyboard activation uses the native buttons; the workspace does not inherit the gallery’s scene-settlement behavior.
 
+### Teacher Workspace Controls
+
+Primary actions use portal navy and white; secondary actions are transparent with teacher ink and a thin border. They share the teacher control shape and explicit focus outline. The desktop active destination uses the same navy fill; phone navigation instead emphasizes the current label and a short underline. The original M/book-page mark remains white in the navy brand region. Account actions use a native disclosure and More uses a native dialog.
+
+Context controls stay above the current task. Native inputs, selects, textareas and checkboxes preserve labels, inline errors, disabled submit feedback and focusable failure text. Route changes focus the workspace; editing routes prompt before leaving with unsaved changes. Source-service failure is an unavailable state, not a zero score or a successful empty result.
+
+**The Evidence First Rule.** Game concepts with attempts, errors or revisits appear first with their distinct counts and next action, followed by classroom tasks and submitted writing. Unattempted concepts remain reachable in a counted, initially collapsed native disclosure. An absence of activity is stated explicitly. This is a teacher-surface rule, not a new ordering rule for student gameplay.
+
+Homework is mounted through its existing module, with scoped generated CSS and no iframe. Question figures reuse the original core graph renderers. Their diagram colors and geometry remain content evidence; they are not promoted into teacher interface tokens. No new generated imagery is required.
+
 ### Motion
 
 Selection settlement uses an exact critically damped solution with base omega = 1 / 130 ms⁻¹. The rate increases when needed to retain incoming velocity without overshooting either the scroll target or the selected scene anchor. The same rate advances scroll position, expansion, and navigation state. Paused linear WAAPI effects for transform, clip, filter and opacity are sought from the shared expansion progress, including artwork and entry reveal; CSS transition delays are disabled during settlement. Anchor displacement caused by expansion is compensated continuously. Retargeting snapshots current rendered poses and keeps incoming scroll/navigation velocity. The 420 ms opening / 320 ms return cubic remains only for idle hover/collapse. Reduced-motion and keyboard selection stay immediate; there is no autonomous decoration.
 
 Keyboard selection, layout resizing, initialization, and reduced motion resolve immediately. Reduced motion suppresses panel/artwork transitions, color restoration, entry arrows, continuous label smoothing and traveling liquid geometry while preserving selection, final label scale, the selected circle, and all links. The sidecar records motion and layout extensions plus self-contained static component previews; the working liquid animation remains the shipped JavaScript behavior.
+
+Teacher navigation color changes use (160 ms) transitions and the transient notice uses (180 ms) opacity/translation. Teacher reduced-motion rules remove transitions and animations immediately while keeping the destination, focus and all controls available. The teacher sidebar and phone navigation do not inherit the gallery liquid indicator.
 
 ## Do's and Don'ts
 
@@ -653,6 +773,8 @@ Keyboard selection, layout resizing, initialization, and reduced motion resolve 
 - Do keep homework scrolling inside the paper sheet, preserving its right-side mobile dock lane and legible 16 px form fields.
 - Do distinguish private reference material, rubric versions, teacher review and published feedback with clear text and states.
 
+- Do keep teacher actions visible in the phone content lane, reserve bottom-navigation clearance and preserve the approved 44 px minimum for phone buttons.
+
 ### Don't:
 - Don’t treat the filled account disclosure as part of the transparent destination dock.
 - Don’t replace inherited gallery motion or identity artwork as part of authentication work.
@@ -663,3 +785,4 @@ Keyboard selection, layout resizing, initialization, and reduced motion resolve 
 - Don’t let pointer hover override a pinned selection or expose a hidden entry link to interaction.
 - Don’t add autoplay decoration, a second phone momentum engine, an entrance blocker, or a cursor replacement.
 - Don’t introduce repeated uppercase eyebrows, Unicode action glyphs or synthetic document decoration into the homework form hierarchy.
+- Don’t copy the standalone homework outer shell into the teacher host or replace native teacher modules with iframes.

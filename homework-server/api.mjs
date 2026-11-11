@@ -544,7 +544,7 @@ export async function createHomework({externalAuth} = {}) {
         assert(user.role === "teacher", "此操作仅对教师开放", 403);
       if (route[0] === "me" && method === "GET")
         return (
-          json(res, { user: safeUser(user), csrf: auth.session.csrf }),
+          json(res, { user: safeUser(user), csrf: auth.session.csrf, teacherWorkspace:process.env.TEACHER_WORKSPACE_ENABLED==='1' }),
           true
         );
       if(route[0]==='link-account'&&method==='POST'&&externalAuth){

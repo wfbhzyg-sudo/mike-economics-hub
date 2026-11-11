@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-10T06:33:54.564197+00:00",
+  "generatedAt": "2026-11-11T03:50:07.663540+00:00",
   "title": "Design System: Mike 的经济一页通",
   "extensions": {
     "colorMeta": {
@@ -957,6 +957,210 @@
           "oklch(87% 0.0082 114.25)",
           "oklch(95% 0.0082 114.25)"
         ]
+      },
+      "teacher-paper": {
+        "role": "neutral",
+        "displayName": "Teacher Ivory Paper",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.01555 86.43)",
+          "oklch(26.43% 0.01555 86.43)",
+          "oklch(37.86% 0.01555 86.43)",
+          "oklch(49.29% 0.01555 86.43)",
+          "oklch(60.71% 0.01555 86.43)",
+          "oklch(72.14% 0.01555 86.43)",
+          "oklch(83.57% 0.01555 86.43)",
+          "oklch(95.00% 0.01555 86.43)"
+        ]
+      },
+      "teacher-ink": {
+        "role": "neutral",
+        "displayName": "Teacher Ink",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.05287 252.10)",
+          "oklch(26.43% 0.05287 252.10)",
+          "oklch(37.86% 0.05287 252.10)",
+          "oklch(49.29% 0.05287 252.10)",
+          "oklch(60.71% 0.05287 252.10)",
+          "oklch(72.14% 0.05287 252.10)",
+          "oklch(83.57% 0.05287 252.10)",
+          "oklch(95.00% 0.05287 252.10)"
+        ]
+      },
+      "teacher-muted": {
+        "role": "neutral",
+        "displayName": "Teacher Muted Text",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.02091 253.47)",
+          "oklch(26.43% 0.02091 253.47)",
+          "oklch(37.86% 0.02091 253.47)",
+          "oklch(49.29% 0.02091 253.47)",
+          "oklch(60.71% 0.02091 253.47)",
+          "oklch(72.14% 0.02091 253.47)",
+          "oklch(83.57% 0.02091 253.47)",
+          "oklch(95.00% 0.02091 253.47)"
+        ]
+      },
+      "teacher-line": {
+        "role": "neutral",
+        "displayName": "Teacher Paper Rule",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.02017 87.52)",
+          "oklch(26.43% 0.02017 87.52)",
+          "oklch(37.86% 0.02017 87.52)",
+          "oklch(49.29% 0.02017 87.52)",
+          "oklch(60.71% 0.02017 87.52)",
+          "oklch(72.14% 0.02017 87.52)",
+          "oklch(83.57% 0.02017 87.52)",
+          "oklch(95.00% 0.02017 87.52)"
+        ]
+      },
+      "teacher-blue": {
+        "role": "primary",
+        "displayName": "Teacher Evidence Blue",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.09138 246.51)",
+          "oklch(26.43% 0.09138 246.51)",
+          "oklch(37.86% 0.09138 246.51)",
+          "oklch(49.29% 0.09138 246.51)",
+          "oklch(60.71% 0.09138 246.51)",
+          "oklch(72.14% 0.09138 246.51)",
+          "oklch(83.57% 0.09138 246.51)",
+          "oklch(95.00% 0.09138 246.51)"
+        ]
+      },
+      "teacher-soft": {
+        "role": "neutral",
+        "displayName": "Teacher Quiet Fill",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.01408 88.69)",
+          "oklch(26.43% 0.01408 88.69)",
+          "oklch(37.86% 0.01408 88.69)",
+          "oklch(49.29% 0.01408 88.69)",
+          "oklch(60.71% 0.01408 88.69)",
+          "oklch(72.14% 0.01408 88.69)",
+          "oklch(83.57% 0.01408 88.69)",
+          "oklch(95.00% 0.01408 88.69)"
+        ]
+      },
+      "teacher-field": {
+        "role": "neutral",
+        "displayName": "Teacher Translucent Field",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "teacher-field-border": {
+        "role": "neutral",
+        "displayName": "Teacher Field Border",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.01398 106.73)",
+          "oklch(26.43% 0.01398 106.73)",
+          "oklch(37.86% 0.01398 106.73)",
+          "oklch(49.29% 0.01398 106.73)",
+          "oklch(60.71% 0.01398 106.73)",
+          "oklch(72.14% 0.01398 106.73)",
+          "oklch(83.57% 0.01398 106.73)",
+          "oklch(95.00% 0.01398 106.73)"
+        ]
+      },
+      "teacher-control-border": {
+        "role": "neutral",
+        "displayName": "Teacher Action Border",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.01639 235.51)",
+          "oklch(26.43% 0.01639 235.51)",
+          "oklch(37.86% 0.01639 235.51)",
+          "oklch(49.29% 0.01639 235.51)",
+          "oklch(60.71% 0.01639 235.51)",
+          "oklch(72.14% 0.01639 235.51)",
+          "oklch(83.57% 0.01639 235.51)",
+          "oklch(95.00% 0.01639 235.51)"
+        ]
+      },
+      "teacher-focus": {
+        "role": "primary",
+        "displayName": "Teacher Focus Blue",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.10691 242.60)",
+          "oklch(26.43% 0.10691 242.60)",
+          "oklch(37.86% 0.10691 242.60)",
+          "oklch(49.29% 0.10691 242.60)",
+          "oklch(60.71% 0.10691 242.60)",
+          "oklch(72.14% 0.10691 242.60)",
+          "oklch(83.57% 0.10691 242.60)",
+          "oklch(95.00% 0.10691 242.60)"
+        ]
+      },
+      "teacher-primary-hover": {
+        "role": "primary",
+        "displayName": "Teacher Primary Hover",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.06832 249.77)",
+          "oklch(26.43% 0.06832 249.77)",
+          "oklch(37.86% 0.06832 249.77)",
+          "oklch(49.29% 0.06832 249.77)",
+          "oklch(60.71% 0.06832 249.77)",
+          "oklch(72.14% 0.06832 249.77)",
+          "oklch(83.57% 0.06832 249.77)",
+          "oklch(95.00% 0.06832 249.77)"
+        ]
+      },
+      "teacher-secondary-hover": {
+        "role": "neutral",
+        "displayName": "Teacher Secondary Hover",
+        "scope": "/teacher/",
+        "source": "teacher/style.css",
+        "rampPolicy": "Synthesized panel-only OKLCH preview at fixed hue/chroma; not additional runtime tokens.",
+        "tonalRamp": [
+          "oklch(15.00% 0.00961 119.59)",
+          "oklch(26.43% 0.00961 119.59)",
+          "oklch(37.86% 0.00961 119.59)",
+          "oklch(49.29% 0.00961 119.59)",
+          "oklch(60.71% 0.00961 119.59)",
+          "oklch(72.14% 0.00961 119.59)",
+          "oklch(83.57% 0.00961 119.59)",
+          "oklch(95.00% 0.00961 119.59)"
+        ]
       }
     },
     "typographyMeta": {
@@ -1079,6 +1283,36 @@
       "login-secondary": {
         "displayName": "Login Secondary",
         "purpose": "Observed unified login/account role; responsive details in DESIGN.md."
+      },
+      "teacher-heading": {
+        "displayName": "Teacher Heading",
+        "purpose": "Teacher task page heading.",
+        "scope": "/teacher/"
+      },
+      "teacher-heading-mobile": {
+        "displayName": "Teacher Heading Mobile",
+        "purpose": "Teacher phone task heading.",
+        "scope": "/teacher/"
+      },
+      "teacher-section": {
+        "displayName": "Teacher Section",
+        "purpose": "Teacher section heading.",
+        "scope": "/teacher/"
+      },
+      "teacher-body": {
+        "displayName": "Teacher Body",
+        "purpose": "Teacher body and data copy.",
+        "scope": "/teacher/"
+      },
+      "teacher-field": {
+        "displayName": "Teacher Field",
+        "purpose": "Teacher native form text; embedded homework retains its form role.",
+        "scope": "/teacher/"
+      },
+      "teacher-navigation": {
+        "displayName": "Teacher Navigation",
+        "purpose": "Teacher desktop section navigation.",
+        "scope": "/teacher/"
       }
     },
     "shadows": [
@@ -1176,6 +1410,31 @@
         "name": "account-menu",
         "value": "0 12px 30px #0b213930",
         "purpose": "Dropdown separation above gallery artwork."
+      },
+      {
+        "name": "teacher-brand",
+        "value": "0 6px 18px #04102480",
+        "purpose": "Teacher brand text separation on navy."
+      },
+      {
+        "name": "teacher-account",
+        "value": "0 12px 28px #04102440",
+        "purpose": "Teacher account disclosure above the workspace."
+      },
+      {
+        "name": "teacher-more-dialog",
+        "value": "0 20px 60px #07172d66",
+        "purpose": "Native more-functions dialog."
+      },
+      {
+        "name": "teacher-toast",
+        "value": "0 8px 30px #07172d44",
+        "purpose": "Transient teacher operation feedback."
+      },
+      {
+        "name": "teacher-mobile-navigation",
+        "value": "0 -6px 24px #0b1f3a0a",
+        "purpose": "Fixed phone navigation separation."
       }
     ],
     "motion": [
@@ -1268,6 +1527,21 @@
         "name": "login-control",
         "value": "180ms ease-out",
         "purpose": "Primary button background/press feedback; disabled under prefers-reduced-motion."
+      },
+      {
+        "name": "teacher-navigation-color",
+        "value": "background-color .16s, color .16s",
+        "purpose": "Teacher desktop navigation hover/current changes."
+      },
+      {
+        "name": "teacher-toast-state",
+        "value": "opacity .18s, transform .18s",
+        "purpose": "Teacher notice enters from translate(-50%,12px) to translate(-50%,0)."
+      },
+      {
+        "name": "teacher-reduced-motion",
+        "value": "animation:none!important;transition:none!important;scroll-behavior:auto!important",
+        "purpose": "Immediate reduced-motion teacher states including descendants and pseudo-elements."
       }
     ],
     "breakpoints": [
@@ -1322,6 +1596,18 @@
       {
         "name": "account-phone-max",
         "value": "767px"
+      },
+      {
+        "name": "teacher-compact-max",
+        "value": "1150px"
+      },
+      {
+        "name": "teacher-phone-max",
+        "value": "760px"
+      },
+      {
+        "name": "teacher-narrow-phone-max",
+        "value": "380px"
       }
     ],
     "courseEntries": {
@@ -1404,6 +1690,57 @@
       "recovery": "Inline account-service failure state exposes same-tab reconnect, disables logout, and restores the account on success.",
       "snippetPolicy": "Scoped login custom properties retain their actual route values inside previews because generic --navy/--ink names differ between gallery, login and homework.",
       "validation": "Chrome desktop and viewport/touch emulation; not physical-device verification. See .impeccable/review/documentation-review.md."
+    },
+    "teacherWorkspace": {
+      "scope": "/teacher/",
+      "mode": "Operate; code-led approved extension",
+      "source": [
+        "teacher/index.html",
+        "teacher/app.js",
+        "teacher/style.css"
+      ],
+      "brief": ".impeccable/teacher-workspace-brief.md",
+      "review": ".impeccable/review/teacher-workspace-review.md",
+      "layout": {
+        "maxWidth": "1480px",
+        "desktopSidebar": "190px",
+        "compactSidebar": "170px",
+        "desktopBrandHeight": "108px",
+        "phoneBrandHeight": "80px",
+        "phoneNavigation": [
+          "总览",
+          "班级",
+          "批阅",
+          "更多"
+        ],
+        "phoneButtonMinimum": "44px",
+        "phoneNavigationMinimum": "48px"
+      },
+      "tableBehavior": "Action tables stack with semantic data labels on phones; other tables scroll horizontally with a visible cue.",
+      "gameDisclosure": "Observed concepts, classroom tasks and submitted writing precede the counted collapsed unattempted catalog.",
+      "homeworkReuse": {
+        "module": "homework/app.js",
+        "mount": "mountTeacherHomework",
+        "unmount": "unmountTeacherHomework",
+        "generatedCss": "teacher/homework.css",
+        "generator": "scripts/scope-homework.mjs",
+        "sourceCss": "homework/style.css",
+        "iframe": false
+      },
+      "assets": {
+        "mark": "assets/mike-hub-mark.svg",
+        "font": "assets/hub-serif-84bab7c8.woff2",
+        "newGeneratedImagery": false
+      },
+      "graphProvenance": {
+        "sourceProject": "econquest-navigation-v22-20261110/econquest/dist/js",
+        "copies": [
+          "teacher/graphs.js",
+          "teacher/graph-projections.js"
+        ],
+        "policy": "Preserve renderer geometry and content-specific colors; do not convert them into teacher UI tokens."
+      },
+      "scopeBoundary": "Preserve original gallery, login, standalone homework, identity assets, existing tokens and existing sidecar entries. No broad drift repair."
     }
   },
   "components": [
@@ -1502,6 +1839,45 @@
       "description": "Paper-backed account control; native disclosure interaction, separate from destination navigation.",
       "html": "<details class=\"ds-account\" open><summary>账户</summary><div class=\"ds-account-menu\"><span class=\"ds-account-name\">账户名称</span><a href=\"/?account=password\">修改密码</a><a href=\"/homework/#account\">作业账户与班级</a><button type=\"button\">退出登录</button></div></details>",
       "css": ".ds-account{font:14px -apple-system,BlinkMacSystemFont,\"PingFang SC\",sans-serif;color:#102d47}.ds-account summary{cursor:pointer;list-style:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:12px 16px;border-radius:24px;background:#f9f6efdd;box-shadow:0 5px 20px #0b213922;width:max-content}.ds-account summary::-webkit-details-marker{display:none}.ds-account-menu{width:204px;margin-top:8px;padding:14px 18px;background:#f5f0e7;border:1px solid #d2d1c9;border-radius:12px;box-shadow:0 12px 30px #0b213930;display:flex;flex-direction:column}.ds-account-menu a,.ds-account-menu button{padding:12px 0;text-align:left;background:none;border:0;color:#102d47;text-decoration:none;font:inherit;cursor:pointer;min-height:44px}.ds-account-name{padding:8px 0 12px;border-bottom:1px solid #cfd0ca;overflow-wrap:anywhere;font-weight:600}.ds-account :focus-visible{outline:2px solid #397aa3;outline-offset:4px}"
+    },
+    {
+      "name": "Teacher Primary Action",
+      "kind": "button",
+      "refersTo": "teacher-primary",
+      "description": "Native teacher task action, with the phone minimum retained in the preview.",
+      "html": "<button class=\"ds-teacher-primary\">发布作业</button>",
+      "css": ".ds-teacher-primary{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.5;min-height:44px;padding:8px 17px;border:1px solid var(--tw-navy,#0b1f3a);border-radius:7px;background:var(--tw-navy,#0b1f3a);color:#fff;font-weight:550;cursor:pointer}.ds-teacher-primary:hover{background:#1b3c5c}.ds-teacher-primary:focus-visible{outline:3px solid var(--tw-focus,#337caf);outline-offset:4px;}"
+    },
+    {
+      "name": "Teacher Secondary Action",
+      "kind": "button",
+      "refersTo": "teacher-secondary",
+      "description": "Outlined teacher task action; phone tables expand this action to the row width.",
+      "html": "<button class=\"ds-teacher-secondary\">开始复核</button>",
+      "css": ".ds-teacher-secondary{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.5;min-height:44px;padding:8px 17px;border:1px solid #8c979e;border-radius:7px;background:transparent;color:var(--tw-ink,#132941);font-weight:550;cursor:pointer}.ds-teacher-secondary:hover{background:#e2e4dd}.ds-teacher-secondary:focus-visible{outline:3px solid var(--tw-focus,#337caf);outline-offset:4px;}"
+    },
+    {
+      "name": "Teacher Field",
+      "kind": "input",
+      "refersTo": "teacher-field",
+      "description": "Labeled native teacher input on the continuous paper surface.",
+      "html": "<label class=\"ds-teacher-field\"><span>任务名称</span><input value=\"供给变化与市场调整\"></label>",
+      "css": ".ds-teacher-field{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.5;display:grid;gap:7px;color:var(--tw-ink,#132941)}.ds-teacher-field input{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.5;min-height:44px;padding:10px 12px;border:1px solid #b3b3a9;border-radius:7px;background:#fff7;color:var(--tw-ink,#132941);max-width:100%}.ds-teacher-field input:focus-visible{outline:3px solid var(--tw-focus,#337caf);outline-offset:4px;}"
+    },
+    {
+      "name": "Teacher Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "teacher-navigation-current",
+      "description": "Desktop teacher sections use a navy current item; mobile uses its separate fixed four-slot pattern.",
+      "html": "<nav class=\"ds-teacher-nav\" aria-label=\"教师工作台\"><a href=\"#home\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9\"/></svg>教学总览</a><a href=\"#classes\">班级与学生</a></nav>",
+      "css": ".ds-teacher-nav{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.5;display:grid;gap:8px;background:var(--tw-paper,#f5f0e5);padding:14px}.ds-teacher-nav a{display:flex;gap:12px;align-items:center;min-height:52px;padding:12px 14px;border-radius:9px;color:var(--tw-ink,#132941);font-weight:600;text-decoration:none;transition:background-color .16s,color .16s}.ds-teacher-nav a[aria-current=page]{background:var(--tw-navy,#0b1f3a);color:#fff}.ds-teacher-nav a:hover:not([aria-current=page]){background:var(--tw-soft,#e8e4da)}.ds-teacher-nav a:focus-visible{outline:3px solid var(--tw-focus,#337caf);outline-offset:4px;}.ds-teacher-nav svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}@media(prefers-reduced-motion:reduce){.ds-teacher-nav a{transition:none}}"
+    },
+    {
+      "name": "Teacher Unattempted Concept Disclosure",
+      "kind": "custom",
+      "description": "Counted native disclosure keeps available concepts reachable after real activity and submitted work.",
+      "html": "<details class=\"ds-teacher-concepts\"><summary>查看 56 个尚未尝试的概念与补练</summary><p>可预览练习内容，提前选择要分配的学生。</p><a href=\"#games\">预览与补练</a></details>",
+      "css": ".ds-teacher-concepts{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.5;padding:26px 0;border-top:1px solid var(--tw-line,#d4cec0);color:var(--tw-ink,#132941)}.ds-teacher-concepts summary{min-height:44px;cursor:pointer;font-weight:600}.ds-teacher-concepts p{color:var(--tw-muted,#58616c);font-size:13px}.ds-teacher-concepts a{display:inline-flex;align-items:center;min-height:44px;color:var(--tw-blue,#174e79);text-underline-offset:4px}.ds-teacher-concepts summary:hover,.ds-teacher-concepts a:hover{color:#112b41}.ds-teacher-concepts summary:focus-visible,.ds-teacher-concepts a:focus-visible{outline:3px solid var(--tw-focus,#337caf);outline-offset:4px;}"
     }
   ],
   "narrative": {
@@ -1514,9 +1890,23 @@
       "Seven fixed shortcuts use neutral line/circle guides below desktop titles and to the right of phone titles; only the current label uses blue.",
       "Physical books and archive folios retain visible page edges and restrained cast shadows.",
       "The homework workspace pairs real answer artifacts with editable fields on a single native-scrolling ivory sheet, keeping private references distinct from published feedback.",
-      "Continuous diagonal expansion, native phone scrolling, separate entry links, keyboard access, and instant reduced-motion states preserve clear navigation."
+      "Continuous diagonal expansion, native phone scrolling, separate entry links, keyboard access, and instant reduced-motion states preserve clear navigation.",
+      "The teacher workspace keeps one continuous ivory surface, with persistent teaching context, native homework reuse and activity-first evidence."
     ],
-    "rules": [],
+    "rules": [
+      {
+        "name": "The Visible Task Rule",
+        "body": "On phones, a table with an action column becomes labeled, stacked rows with the action visible in the content lane. Dense comparison tables retain semantic columns, keyboard-focusable horizontal scrolling and a visible “左右滑动查看完整表格” cue. The approved minimum for phone buttons is (44 px); bottom navigation targets are at least (48 px).",
+        "section": "layout",
+        "scope": "/teacher/"
+      },
+      {
+        "name": "The Evidence First Rule",
+        "body": "Game concepts with attempts, errors or revisits appear first with their distinct counts and next action, followed by classroom tasks and submitted writing. Unattempted concepts remain reachable in a counted, initially collapsed native disclosure. An absence of activity is stated explicitly. This is a teacher-surface rule, not a new ordering rule for student gameplay.",
+        "section": "components",
+        "scope": "/teacher/"
+      }
+    ],
     "dos": [
       "Do preserve the navy-and-paper login hierarchy, visible field labels and same-surface error/recovery states.",
       "Do retain a reachable account reconnection action after a temporary session-service failure.",
@@ -1527,7 +1917,8 @@
       "Do maintain proportional artwork, continuous diagonal seams, and separate selection and entry actions.",
       "Do preserve native phone scrolling, keyboard access, immediate interruption, and instant reduced-motion states.",
       "Do keep homework scrolling inside the paper sheet, preserving its right-side mobile dock lane and legible 16 px form fields.",
-      "Do distinguish private reference material, rubric versions, teacher review and published feedback with clear text and states."
+      "Do distinguish private reference material, rubric versions, teacher review and published feedback with clear text and states.",
+      "Do keep teacher actions visible in the phone content lane, reserve bottom-navigation clearance and preserve the approved 44 px minimum for phone buttons."
     ],
     "donts": [
       "Don’t treat the filled account disclosure as part of the transparent destination dock.",
@@ -1538,7 +1929,8 @@
       "Don’t describe decorative folio compositions as existing downloadable books or NEBS gradient crops as organic cutouts.",
       "Don’t let pointer hover override a pinned selection or expose a hidden entry link to interaction.",
       "Don’t add autoplay decoration, a second phone momentum engine, an entrance blocker, or a cursor replacement.",
-      "Don’t introduce repeated uppercase eyebrows, Unicode action glyphs or synthetic document decoration into the homework form hierarchy."
+      "Don’t introduce repeated uppercase eyebrows, Unicode action glyphs or synthetic document decoration into the homework form hierarchy.",
+      "Don’t copy the standalone homework outer shell into the teacher host or replace native teacher modules with iframes."
     ]
   }
 }

@@ -24,7 +24,7 @@ export async function createPortalAuth(env=process.env){
   const url=new URL(req.url,auth.portalOrigin);if(!url.pathname.startsWith('/api/portal/'))return false;
   try{
    const route=url.pathname.slice('/api/portal/'.length);auth.checkOrigin(req,auth.portalOrigin);
-   if(route==='session'&&req.method==='GET'){json(res,{user:auth.publicUser(await auth.session(req)),csrf:auth.csrf(req),coreOrigin:auth.coreOrigin});return true;}
+   if(route==='session'&&req.method==='GET'){json(res,{user:auth.publicUser(await auth.session(req)),csrf:auth.csrf(req),coreOrigin:auth.coreOrigin,teacherWorkspace:env.TEACHER_WORKSPACE_ENABLED==='1'});return true;}
    if(['login','register','recover','password'].includes(route)&&req.method==='POST'){
     const bytes=await readBody(req,6000);let b;try{b=JSON.parse(bytes);}catch{throw Object.assign(Error('请输入有效内容'),{status:400});}
     if(route==='password'&&(!await auth.session(req)||req.headers['x-csrf-token']!==auth.csrf(req)))throw Object.assign(Error('请重新登录后再试'),{status:403});
