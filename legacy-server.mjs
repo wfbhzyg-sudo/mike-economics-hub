@@ -72,7 +72,7 @@ const server = createServer(async (request, response) => {
     const homeworkAsset = [
       "homework/index.html",
       "homework/app.js",
-      "homework/style.css",
+      "homework/style.css", "homework/workspace.css", "homework/workspace-ui.js",
       "homework/nav.js","homework/learning-model.js","homework/learning-ui.js","homework/pdf-reader.js",
     ].includes(relative);
     if (

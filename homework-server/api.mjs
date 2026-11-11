@@ -45,6 +45,7 @@ const publicAssignment = (a) => ({
     paperLocation:questionLocation(paperOf(a),q.id),
   })),
   createdAt: a.createdAt,
+  deletedAt: a.deletedAt || null,
 });
 const publicSubmission = (s) => ({
   id: s.id,
@@ -169,7 +170,7 @@ export async function createHomework({externalAuth} = {}) {
     assert(
       user.role === "teacher"
         ? a.teacherId === user.id
-        : a.published && a.classIds.some((x) => user.classIds?.includes(x)),
+        : !a.deletedAt && a.published && a.classIds.some((x) => user.classIds?.includes(x)),
       "没有访问这份作业的权限",
       403,
     );
@@ -202,6 +203,7 @@ export async function createHomework({externalAuth} = {}) {
     s.rubricSnapshot = structuredClone(a.rubric);
     s.status = "queued";
     s.suggestedGrade = null;
+    s.teacherReviewDraft = null;
     s.error = null;
     s.jobId = await db.enqueue(
       "grade",
@@ -734,7 +736,7 @@ export async function createHomework({externalAuth} = {}) {
           return (
             json(res, {
               assignments:
-                user.role === "teacher" ? all : all.map(publicAssignment),
+                user.role === "teacher" ? all.filter(a=>url.searchParams.get("trash")==="1"?a.deletedAt:!a.deletedAt) : all.filter(a=>!a.deletedAt).map(publicAssignment),
             }),
             true
           );
@@ -791,16 +793,52 @@ export async function createHomework({externalAuth} = {}) {
             );
           teacher();
           const b = await body(req);
-          if(route[2]==='settings'&&method==='PUT'){
+          if(route[2]==='metadata'&&method==='PUT'){
+            const classes=await availableClasses();
             await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);
+              assert(!current.deletedAt,'请先从回收站恢复作业',409);
+              assert(Number(b.editRevision||0)===Number(current.editRevision||0),'作业已在另一处修改，当前输入仍保留，请重新打开核对',409);
+              assert(text(b.title,120),'请填写作业名称');
+              assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(k=>k.id===x)),'请选择自己的班级');
+              assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),'截止时间格式不正确');
+              current.metadataHistory||=[];current.metadataHistory.push({title:current.title,course:current.course,classIds:current.classIds,dueAt:current.dueAt,gradingMode:current.gradingMode,allowLate:current.allowLate,allowResubmit:current.allowResubmit,at:now(),actor:user.id});
+              Object.assign(current,{title:boundedText(b.title,120,'作业名称'),course:boundedText(b.course,80,'课程'),classIds:b.classIds,dueAt:b.dueAt?new Date(b.dueAt).toISOString():null,gradingMode:b.gradingMode==='auto'?'auto':'manual',allowLate:Boolean(b.allowLate),allowResubmit:b.allowResubmit!==false,editRevision:(current.editRevision||0)+1,updatedAt:now()});
+              await db.put('assignment',current,c);await db.audit(user.id,'edit_assignment',a.id,c);
+            });return (json(res,{assignment:await db.get(a.id)}),true);
+          }
+          if(['archive','restore'].includes(route[2])&&method==='POST'){
+            await db.tx(async c=>{const current=await requireAssignment(a.id,user,c),archive=route[2]==='archive';
+              if(archive&&!current.deletedAt){
+                current.deletedAt=now();current.deletedBy=user.id;current.jobId=null;
+                if(['queued','parsing'].includes(current.status))current.status='draft';
+                for(const entry of await db.list('submission',c))if(entry.assignmentId===a.id&&['queued','grading'].includes(entry.status)){
+                  entry.status='needs_review';entry.error='作业已移入回收站，自动批阅已暂停；恢复后可继续复核。';entry.jobId=null;await db.put('submission',entry,c);
+                }
+                await c.query(`UPDATE ${db.jobs} SET status='cancelled',finished=now() WHERE status IN ('queued','running') AND (target=$1 OR payload->>'assignmentId'=$1)`,[a.id]);
+              }else if(!archive){current.deletedAt=null;current.deletedBy=null;}
+              current.updatedAt=now();await db.put('assignment',current,c);await db.audit(user.id,route[2]+'_assignment',a.id,c);
+            });return (json(res,{assignment:await db.get(a.id)}),true);
+          }
+          if(route[2]==='duplicate'&&method==='POST'){
+            const classes=await availableClasses();let copy;
+            await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);const classIds=current.classIds.filter(x=>classes.some(k=>k.id===x));
+              assert(classIds.length,'请先确认原班级仍在你的班级列表中');
+              copy={id:id(),type:'assignment',teacherId:user.id,title:('副本 · '+current.title).slice(0,120),course:current.course,classIds,dueAt:null,instructions:current.instructions,questionFiles:[...current.questionFiles],mainQuestionFile:current.mainQuestionFile,readingScope:current.readingScope,submissionGuide:current.submissionGuide,answerFiles:[...current.answerFiles],answerText:current.answerText,draftRubric:structuredClone(current.draftRubric||current.rubric||[]),sourceRevision:0,editRevision:0,gradingMode:current.gradingMode,allowLate:false,allowResubmit:current.allowResubmit!==false,version:0,published:false,status:'draft',copiedFrom:current.id,createdAt:now()};
+              await db.put('assignment',copy,c);await db.audit(user.id,'duplicate_assignment',copy.id,c);
+            });return (json(res,{assignment:copy},201),true);
+          }
+          assert(!a.deletedAt,'作业已在回收站，请先恢复再修改或批阅',409);
+          if(route[2]==='settings'&&method==='PUT'){
+            await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);assert(!current.deletedAt,'请先恢复作业再修改',409);
               current.gradingMode=b.gradingMode==='auto'?'auto':'manual';current.allowLate=Boolean(b.allowLate);current.allowResubmit=b.allowResubmit!==false;
-              assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),'截止时间格式不正确');current.dueAt=b.dueAt?new Date(b.dueAt).toISOString():null;
+              assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),'截止时间格式不正确');current.dueAt=b.dueAt?new Date(b.dueAt).toISOString():null;current.editRevision=(current.editRevision||0)+1;current.updatedAt=now();
               await db.put('assignment',current,c);await db.audit(user.id,'assignment_settings',a.id,c);
             });return (json(res,{assignment:await db.get(a.id)}),true);
           }
           if (route[2] === "source" && method === "PUT") {
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);
+              assert(!current.deletedAt,"请先恢复作业再修改",409);
               assert(
                 Number(b.sourceRevision || 0) ===
                   Number(current.sourceRevision || 0),
@@ -825,7 +863,7 @@ export async function createHomework({externalAuth} = {}) {
               current.answerText = boundedText(b.answerText, 40000, "参考答案");
               current.instructions = boundedText(b.instructions, 20000, "作业说明");
               current.sourceRevision = (current.sourceRevision || 0) + 1;
-              current.draftRubric = null;
+              if(b.draftRubric!==undefined){assert(Array.isArray(b.draftRubric)&&b.draftRubric.length<=100&&JSON.stringify(b.draftRubric).length<=100000,'评分草稿过长');current.draftRubric=b.draftRubric;}else current.draftRubric = null;
               current.status = "draft";
               current.jobId = null;
               await db.put("assignment", current, c);
@@ -835,6 +873,7 @@ export async function createHomework({externalAuth} = {}) {
           if (route[2] === "parse" && method === "POST") {
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);
+              assert(!current.deletedAt,"请先恢复作业再修改",409);
               assert(
                 current.answerText || current.answerFiles?.length,
                 "请先上传或填写参考答案",
@@ -860,6 +899,7 @@ export async function createHomework({externalAuth} = {}) {
             const questions = rubric(b.questions);
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);
+              assert(!current.deletedAt,"请先恢复作业再修改",409);
               assert(
                 Number(b.sourceRevision || 0) ===
                   Number(current.sourceRevision || 0),
@@ -1013,10 +1053,26 @@ export async function createHomework({externalAuth} = {}) {
             );
           teacher();
           const b = await body(req);
+          if(route[2]==='review-draft'&&method==='PUT'){
+            await db.tx(async c=>{const current=await requireSubmission(s.id,user,c);
+              assert(!['queued','grading'].includes(current.status),'批阅还在进行，请完成后再保存',409);
+              assert(b.jobId===current.jobId,'批阅版本已更新，请重新打开复核',409);
+              assert(Number(b.revision||0)===Number(current.teacherReviewDraft?.revision||0),'另一处已保存复核，请重新打开核对',409);
+              const ref=current.rubricSnapshot.find(q=>q.id===b.question?.id);assert(ref,'无效题号');
+              const q=b.question;assert(['string','number'].includes(typeof q.score)&&String(q.score).trim()!==''&&Number.isFinite(Number(q.score))&&q.score>=0&&q.score<=ref.maxPoints,'请核对本题得分');
+              const entry={id:ref.id,score:Number(q.score),maxPoints:ref.maxPoints,evidence:boundedText(q.evidence,4000,'作答依据'),feedback:boundedText(q.feedback,4000,'反馈'),checked:q.checked===true,needsReview:false};
+              assert(entry.evidence&&entry.feedback&&entry.checked,'请核对依据与反馈，并勾选本题已确认');
+              const old=current.teacherReviewDraft?.jobId===current.jobId?current.teacherReviewDraft.questions:[];
+              current.teacherReviewDraft={jobId:current.jobId,revision:(current.teacherReviewDraft?.revision||0)+1,questions:[...old.filter(q=>q.id!==ref.id),entry],savedAt:now(),actor:user.id};
+              await db.put('submission',current,c);
+            });return (json(res,{draft:(await db.get(s.id)).teacherReviewDraft}),true);
+          }
+          if(["regrade","publish","return"].includes(route[2]))assert(!(await db.get(s.assignmentId))?.deletedAt,"请先恢复作业再继续批阅",409);
           if (route[2] === "regrade" && method === "POST") {
             await db.tx(async (c) => {
               const current = await requireSubmission(s.id, user, c),
                 a = await requireAssignment(s.assignmentId, user, c);
+              assert(!a.deletedAt,"请先恢复作业再继续批阅",409);
               assert(a.version > 0, "尚未确认参考答案");
               await queueGrade(current, a, c);
               await db.audit(user.id, "regrade", s.id, c);
@@ -1026,6 +1082,7 @@ export async function createHomework({externalAuth} = {}) {
           if (route[2] === "publish" && method === "POST") {
             await db.tx(async (c) => {
               const current = await requireSubmission(s.id, user, c);
+              assert(!(await db.get(s.assignmentId,c))?.deletedAt,"请先恢复作业再继续批阅",409);
               assert(
                 !["queued", "grading"].includes(current.status),
                 "请等待初批完成，或先退回提交",
@@ -1035,6 +1092,7 @@ export async function createHomework({externalAuth} = {}) {
                 "这份作业已重新批改，请刷新后复核",
                 409,
               );
+              if(b.reviewRevision!==undefined)assert(Number(b.reviewRevision)===Number(current.teacherReviewDraft?.revision||0),'复核草稿已更新，请重新打开核对',409);
               const reviewed = grade(b, current.rubricSnapshot);
               assert(
                 reviewed.questions.every(
@@ -1043,6 +1101,7 @@ export async function createHomework({externalAuth} = {}) {
                 "请逐题确认分数、依据与反馈",
               );
               publishedResult(current,reviewed,user.id,now(),text(b.teacherNote,4000));
+              current.teacherReviewDraft=null;
               await db.put("submission", current, c);
               await db.audit(user.id, "publish_grade", s.id, c);
             });

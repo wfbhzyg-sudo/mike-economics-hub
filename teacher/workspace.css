@@ -1,0 +1,642 @@
+/* V3 shared teacher shell, keeping all teaching tools in the same workspace. */
+:root {
+  --tw-navy: #213e55;
+  --tw-paper: #f1f2ee;
+  --tw-ink: #203446;
+  --tw-muted: #53636c;
+  --tw-line: #d5dcd8;
+  --tw-blue: #2c536e;
+  --tw-soft: #dfe9ef;
+}
+html,
+body {
+  background: #f1f2ee;
+}
+body {
+  font-size: 14px;
+  line-height: 1.55;
+}
+.tw-brand {
+  height: 64px;
+  max-width: none;
+  padding: 8px 24px;
+  justify-content: flex-start;
+  color: var(--tw-ink);
+  border-bottom: 1px solid var(--tw-line);
+}
+.tw-brand > a {
+  font-size: 19px;
+  gap: 9px;
+  text-shadow: none;
+}
+.tw-brand img {
+  width: 30px;
+  height: 30px;
+  filter: brightness(0) saturate(100%) invert(19%) sepia(19%) saturate(1282%)
+    hue-rotate(163deg) brightness(93%);
+}
+.tw-account {
+  top: 10px;
+  right: 24px;
+}
+.tw-account summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+}
+.tw-account > div {
+  background: #fff;
+  border: 1px solid var(--tw-line);
+}
+.tw-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  grid-template-columns: 164px minmax(0, 1fr);
+  border-radius: 0;
+  overflow: visible;
+  min-height: calc(100dvh - 64px);
+  background: transparent;
+}
+.tw-sidebar {
+  padding: 16px 10px;
+  gap: 24px;
+}
+.tw-sidebar nav {
+  gap: 4px;
+  top: 14px;
+}
+.tw-sidebar a {
+  padding: 10px;
+  min-height: 46px;
+  font-size: 13px;
+  gap: 9px;
+}
+.tw-sidebar a[aria-current="page"] {
+  background: #dfe9ef;
+  color: #2c536e;
+}
+.tw-sidebar-end {
+  font-size: 12px;
+}
+.tw-sidebar .tw-icon {
+  width: 20px;
+  height: 20px;
+}
+.tw-page {
+  padding: 16px 22px 30px;
+  min-width: 0;
+}
+.tw-page-heading {
+  gap: 12px;
+}
+.tw-page-heading h1 {
+  font: 650 24px/1.4 var(--tw-sans);
+}
+.tw-page-heading p {
+  font-size: 13px;
+  margin-top: 3px;
+}
+.tw-context {
+  gap: 8px;
+  margin-top: 14px;
+  padding-bottom: 10px;
+}
+.tw-context label {
+  gap: 7px;
+}
+.tw-context select {
+  min-height: 44px;
+  padding: 8px 30px 8px 10px;
+  font-size: 14px;
+  background: #fff;
+}
+.tw-context label span {
+  font-size: 12px;
+}
+.tw-tabs {
+  margin-bottom: 12px;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tw-tabs a {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.tw-tabs a[aria-current="page"] {
+  background: #dfe9ef;
+  color: #2c536e;
+  border-color: #c2d3df;
+}
+.tw-button {
+  min-height: 44px;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+.tw-small {
+  min-height: 44px;
+}
+.tw-text {
+  min-height: 44px;
+}
+.tw-section-head h2,
+h2 {
+  font: 650 18px/1.4 var(--tw-sans);
+}
+h3 {
+  font-size: 15px;
+}
+.tw-task {
+  padding: 14px 0;
+  gap: 12px;
+}
+.tw-task p {
+  font-size: 12px;
+}
+.tw-task > svg {
+  width: 24px;
+  height: 24px;
+}
+.tw-section {
+  margin-top: 18px;
+  padding-top: 16px;
+}
+.tw-grid {
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+}
+.tw-rail {
+  padding-left: 18px;
+}
+.tw-section-head {
+  margin-bottom: 10px;
+}
+.tw-table td,
+.tw-table th {
+  padding: 10px 8px;
+}
+.tw-statline {
+  padding: 10px 0;
+  gap: 18px;
+}
+.tw-statline strong {
+  font-size: 22px;
+}
+.tw-empty {
+  padding: 22px 0;
+}
+.tw-empty h2 {
+  font-size: 18px;
+}
+.tw-form {
+  gap: 12px;
+}
+.tw-field input,
+.tw-field select,
+.tw-field textarea {
+  font-size: 16px;
+  background: #fff;
+}
+.tw-form-grid {
+  gap: 12px;
+}
+.tw-class-row {
+  padding: 14px 0;
+}
+.tw-class-row h3 {
+  font: 600 17px/1.5 var(--tw-sans);
+}
+.tw-class-list {
+  border: 1px solid var(--tw-line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #fff;
+}
+.tw-progress-row {
+  margin-top: 16px;
+}
+.tw-class-code {
+  font-size: 15px;
+}
+#workspace {
+  margin-top: 14px;
+  min-height: 0;
+}
+#workspace.tw-host-toolbar {
+  margin-top: 8px;
+}
+.homework-surface {
+  margin-top: 12px;
+  background: transparent;
+  min-height: 0;
+  font-size: 15px;
+}
+.homework-surface #homework-main {
+  padding: 0;
+  width: 100%;
+  margin: 0;
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+}
+.homework-surface .paper {
+  padding: 0;
+  min-height: 0;
+  margin: 0;
+  background: transparent;
+}
+.homework-surface h1 {
+  font: 600 22px/1.4 var(--tw-sans);
+}
+.homework-surface h2 {
+  font: 600 16px/1.5 var(--tw-sans);
+}
+.homework-surface .paper-head {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+.homework-surface .paper-head > div > p {
+  font-size: 13px;
+}
+.homework-surface .reader-heading {
+  background: #dfe9ef;
+}
+.homework-surface .question-first-form {
+  gap: 16px;
+}
+.homework-surface .reader-body {
+  height: 52dvh;
+}
+.homework-surface .pdf-fullscreen-dialog .reader-body {
+  height: auto;
+}
+.homework-surface .editor-footer {
+  bottom: 0;
+}
+.homework-surface .workspace-columns {
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+}
+.homework-surface .work-section-heading h2 {
+  font-size: 15px;
+}
+.homework-surface .split {
+  gap: 16px;
+}
+.homework-surface .section-head h2 {
+  font-size: 15px;
+}
+.homework-surface .work-dialog h2 {
+  font-size: 18px;
+}
+.tw-status:empty {
+  display: none;
+}
+body[data-section="work"] .tw-page-heading {
+  display: none;
+}
+body[data-section="work"] .tw-context {
+  margin-top: 0;
+}
+body[data-work-task="true"] .tw-host-toolbar {
+  display: none;
+}
+body[data-work-task="true"] .tw-context {
+  display: none;
+}
+body[data-work-task="true"] .homework-surface {
+  margin-top: 0;
+}
+@media (max-width: 1100px) {
+  .tw-page {
+    padding: 14px 16px 24px;
+  }
+  .homework-surface .workspace-columns {
+    grid-template-columns: 1fr;
+  }
+  .tw-grid {
+    grid-template-columns: 1fr;
+  }
+  .tw-rail {
+    padding: 14px 0 0;
+    border: 0;
+  }
+  .tw-progress-list {
+    gap: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .tw-brand {
+    height: 56px;
+    padding: 6px 12px;
+    justify-content: flex-start;
+  }
+  .tw-brand > a {
+    font-size: 16px;
+    gap: 6px;
+  }
+  .tw-brand img {
+    width: 26px;
+    height: 26px;
+  }
+  .tw-account {
+    top: 6px;
+    right: 12px;
+    max-width: 95px;
+  }
+  .tw-account summary {
+    font-size: 12px;
+  }
+  .tw-shell {
+    display: block;
+    min-height: calc(100dvh - 56px);
+    width: 100%;
+    border-radius: 0;
+  }
+  .tw-sidebar {
+    display: none;
+  }
+  .tw-page {
+    padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
+  }
+  .tw-page-heading h1 {
+    font-size: 20px;
+  }
+  .tw-page-heading p {
+    font-size: 12px;
+  }
+  .tw-page-heading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tw-context {
+    margin-top: 10px;
+    padding-bottom: 8px;
+    gap: 8px;
+  }
+  .tw-context label {
+    gap: 6px;
+    flex: 1 1 auto;
+  }
+  .tw-context select {
+    flex: 1;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 14px;
+    width: auto;
+  }
+  .tw-context label span {
+    font-size: 12px;
+  }
+  .tw-context label:nth-child(2) {
+    flex-basis: 45%;
+  }
+  .tw-tabs {
+    margin-bottom: 10px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .tw-tabs a {
+    font-size: 12px;
+    padding: 8px 9px;
+  }
+  .tw-mobile-nav {
+    background: #f8f9f6f5;
+    border: 0;
+    border-top: 1px solid var(--tw-line);
+    color: var(--tw-ink);
+    border-radius: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
+    box-shadow: none;
+  }
+  .tw-mobile-nav a,
+  .tw-mobile-nav button {
+    color: var(--tw-muted);
+    min-height: 52px;
+    font-size: 11px;
+  }
+  .tw-mobile-nav a[aria-current="page"],
+  .tw-mobile-nav button[aria-current="page"] {
+    background: #dfe9ef;
+    color: #2c536e;
+    border-radius: 6px;
+  }
+  .tw-mobile-nav .tw-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .homework-surface {
+    margin-top: 10px;
+  }
+  .homework-surface #homework-main {
+    padding: 0;
+    overflow: visible;
+  }
+  .homework-surface .paper {
+    padding: 0;
+  }
+  .homework-surface h1,
+  .homework-surface .paper-head h1 {
+    font: 600 17px/1.5 var(--tw-sans);
+  }
+  .homework-surface .paper-head {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+  .homework-surface .paper-head > div > p {
+    font-size: 12px;
+  }
+  .homework-surface .workspace-home .paper-head h1 {
+    font-size: 19px;
+  }
+  .homework-surface .work-section-heading h2 {
+    font-size: 14px;
+  }
+  .homework-surface .section-head h2 {
+    font-size: 14px;
+  }
+  .homework-surface .question-first-form {
+    gap: 12px;
+  }
+  .homework-surface .split {
+    gap: 12px;
+  }
+  .homework-surface .editor-footer {
+    bottom: 0;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+  .homework-surface .work-dialog h2 {
+    font-size: 17px;
+  }
+  .homework-surface #notice {
+    bottom: 82px;
+  }
+  .tw-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .tw-action-table td:first-child strong {
+    font-size: 15px;
+  }
+  body[data-work-task="true"] .tw-mobile-nav {
+    display: none;
+  }
+  body[data-work-task="true"] .tw-page {
+    padding-bottom: 24px;
+  }
+  .tw-progress-list {
+    grid-template-columns: 1fr;
+  }
+  .tw-table {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-sidebar a {
+    transition: none;
+  }
+}
+
+body[data-section="work"] .tw-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--tw-line);
+  padding-bottom: 8px;
+}
+body[data-section="work"] .tw-top-controls .tw-context {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+body[data-section="work"] .tw-top-controls #workspace {
+  margin: 0;
+}
+body[data-section="work"] .tw-top-controls .tw-tabs {
+  margin: 0;
+  border: 0;
+}
+body[data-work-task="true"] .tw-top-controls {
+  display: none;
+}
+.homework-surface .paper-head {
+  display: flex;
+}
+.homework-surface .paper-head > .actions {
+  margin: 0;
+  width: auto;
+}
+.homework-surface .section-head {
+  display: flex;
+}
+.homework-surface .workspace-home .paper-head > div > p {
+  display: none;
+}
+@media (max-width: 760px) {
+  body[data-section="work"] .tw-top-controls {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  body[data-section="work"] .tw-top-controls .tw-context {
+    flex: 1;
+    max-width: 145px;
+  }
+  body[data-section="work"] .tw-top-controls .tw-context label {
+    display: flex;
+  }
+  body[data-section="work"] .tw-top-controls .tw-context label > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  body[data-section="work"] .tw-top-controls .tw-context select {
+    width: 100%;
+    font-size: 13px;
+    padding: 8px;
+  }
+  body[data-section="work"] .tw-top-controls .tw-tabs a {
+    padding: 8px;
+    font-size: 12px;
+  }
+  .homework-surface .workspace-home .paper-head {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .homework-surface .workspace-home .paper-head > .actions {
+    flex-wrap: nowrap;
+  }
+  .homework-surface .workspace-home .paper-head > .actions a {
+    flex: 0 1 auto;
+    width: auto;
+    font-size: 12px;
+    min-height: 44px;
+  }
+  .homework-surface .paper-head .actions {
+    margin: 0;
+  }
+  .homework-surface .workspace-home .paper-head h1 {
+    font-size: 18px;
+  }
+  .homework-surface .section-head {
+    display: flex;
+  }
+  .homework-surface .section-head h2 {
+    font-size: 14px;
+  }
+  .homework-surface .work-section-heading h2 {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 760px) {
+  .homework-surface .paper-head {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+    text-align: left;
+  }
+  .homework-surface .paper-head > div:first-child {
+    text-align: left;
+  }
+  .homework-surface .paper-head > .actions > * {
+    flex: none;
+    width: auto;
+    white-space: nowrap;
+  }
+  .homework-surface .workspace-home .paper-head {
+    justify-content: space-between;
+  }
+  .homework-surface .workspace-home .paper-head > div:first-child {
+    width: auto;
+  }
+  .homework-surface .workspace-home .paper-head > .actions {
+    margin: 0;
+    gap: 6px;
+  }
+  .homework-surface .workspace-home .paper-head h1 {
+    text-align: left;
+  }
+  .homework-surface .filter-tabs {
+    flex-wrap: wrap;
+  }
+  .homework-surface .work-section-heading {
+    align-items: center;
+  }
+}
+
+@media (max-width: 760px) {
+  body[data-section="work"] .tw-top-controls .tw-context select,
+  .tw-context select {
+    font-size: 16px;
+  }
+}
