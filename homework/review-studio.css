@@ -11,3 +11,38 @@ body.review-active>.tw-brand,body.review-active .tw-sidebar,body.review-active .
 @media(prefers-reduced-motion:no-preference){.review-studio button{transition:background-color .12s ease-out,color .12s ease-out}.rv-score-row{transition:background-color .12s ease-out}}
 
 .rv-request-dialog article{padding:12px 0;border-bottom:1px solid var(--rv-line)}.rv-request-dialog article p{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px}.rv-request-dialog>[data-close-requests]{margin-top:16px;background:#e1e9eb}
+
+/* Shared attachment lightbox: same controls before submission and during review. */
+#preview.attachment-dialog{position:fixed;inset:0;width:min(1240px,96vw);height:92vh;height:92dvh;max-width:none;max-height:none;margin:auto;padding:48px 0 0;overflow:hidden;background:#f6f8f6;border-radius:12px;box-sizing:border-box}
+#preview.attachment-dialog::before{content:'文件预览';position:absolute;left:16px;top:0;line-height:48px;font-size:14px;font-weight:600;color:#243d4f}
+#preview.attachment-dialog .close{top:2px;right:8px;min-height:44px;min-width:60px;color:#243d4f;font-size:14px;border-radius:6px}
+#preview .attachment-preview{position:relative;inset:auto;width:100%;height:100%;display:grid;grid-template-rows:minmax(0,1fr);place-items:stretch;overflow:hidden;border-radius:0}
+.attachment-preview>.rv-gallery{height:100%;width:100%}
+.attachment-preview .attachment-loading{padding:24px;color:#243d4f}
+.attachment-preview .rv-sheet{object-fit:fill}
+body:has(#preview.attachment-dialog[open]){overflow:hidden}
+.answer-save-status{font-size:12px;line-height:1.5;color:#4b626f;margin:0 0 10px;min-height:18px}
+.answer-save-status[data-state=saved]{color:#376351}
+.answer-save-status[data-state=error]{color:#8c493e}
+.rv-thumbnails canvas{width:100%;height:78px;object-fit:contain;background:#e5e9e8}
+@media(max-width:779px){
+ #preview.attachment-dialog{width:100%;height:100vh;height:100dvh;padding-top:calc(48px + env(safe-area-inset-top,0px));border-radius:0}
+ #preview.attachment-dialog::before{top:env(safe-area-inset-top,0px)}
+ #preview.attachment-dialog .close{top:calc(2px + env(safe-area-inset-top,0px))}
+ #preview .attachment-preview{padding-bottom:env(safe-area-inset-bottom,0px)}
+ .attachment-preview .rv-gallery{grid-template-rows:minmax(0,1fr) 88px}
+ .attachment-preview .rv-gallery-bar{display:grid;grid-template-columns:44px minmax(0,1fr) 44px 44px;grid-template-rows:44px 44px;padding:0 6px}
+ .attachment-preview .rv-gallery-bar button,.attachment-preview .rv-gallery-more summary{min-height:44px;min-width:44px!important}
+ .attachment-preview .rv-page-strip{grid-column:2;grid-row:1;max-width:none}
+ .attachment-preview [data-gallery=prev]{grid-column:1;grid-row:1}
+ .attachment-preview [data-gallery=next]{grid-column:3;grid-row:1}
+ .attachment-preview [data-gallery=album]{grid-column:4;grid-row:1}
+ .attachment-preview [data-gallery=minus]{grid-column:1;grid-row:2}
+ .attachment-preview .rv-zoom{grid-column:2;grid-row:2;font-size:12px}
+ .attachment-preview [data-gallery=plus]{grid-column:3;grid-row:2}
+ .attachment-preview .rv-gallery-more{grid-column:4;grid-row:2}
+ .attachment-preview .rv-tool-divider{display:none}
+ .attachment-preview .rv-album{bottom:96px}
+}
+
+@media(max-width:779px){.attachment-preview [data-gallery=album]{font-size:12px;padding:2px}.attachment-preview [data-gallery=album] .rv-page-count{display:none}}

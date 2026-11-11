@@ -141,7 +141,7 @@ async function api(path, options = {}) {
 const post = (path, body = {}) => api(path, { method: "POST", body });
 const put = (path, body) => api(path, { method: "PUT", body });
 const formData = (form) => Object.fromEntries(new FormData(form));
-function formHandler(form, fn) {
+function formHandler(form, fn, {announceSaved=true}={}) {
   prepareForm(form);
   let submitting=false;
   form.addEventListener("submit", async (e) => {
@@ -153,7 +153,7 @@ function formHandler(form, fn) {
     buttons.forEach((b) => (b.disabled = true));
     try {
       await fn(formData(form));
-      if(embedded)document.dispatchEvent(new Event("homework:saved"));
+      if(embedded&&announceSaved)document.dispatchEvent(new Event("homework:saved"));
     } catch (e) {
       if (error) {error.textContent=e.message;error.tabIndex=-1;error.scrollIntoView({block:"center"});error.focus({preventScroll:true});}
       else toast(e.message);
@@ -267,20 +267,30 @@ async function metadata(ids) {
       }),
   );
 }
-function preview(id) {
-  const f = state.files.get(id);
-  if (!f) return;
-  const dialog = $("#preview");
-  $(".preview-content", dialog).innerHTML =
-    f.mime === "application/pdf"
-      ? `<div class="pdf-preview" data-pdf="${id}" data-large="true"></div>`
-      : `<img src="/api/homework/files/${id}" alt="${h(f.name)}">`;
-  dialog.showModal();
-  renderPDFs(dialog);
+let previewGallery=null,previewVersion=0,previewTrigger=null;
+function resetPreview(){
+  previewVersion++;previewGallery?.destroy();previewGallery=null;
+  const dialog=$("#preview");clearPDFs(dialog);dialog.classList.remove('attachment-dialog');
+  const content=$('.preview-content',dialog);content.classList.remove('review-studio','attachment-preview');content.replaceChildren();
+}
+async function preview(id,ids=[id],trigger=null) {
+  const files=[...new Set(ids)].map(id=>state.files.get(id)).filter(Boolean);
+  if(!files.length)return;
+  const dialog=$("#preview");resetPreview();const version=previewVersion;
+  previewTrigger=trigger;trigger?.focus({preventScroll:true});dialog.classList.add('attachment-dialog');
+  const content=$('.preview-content',dialog);content.classList.add('review-studio','attachment-preview');
+  content.innerHTML='<p class="attachment-loading" role="status">正在打开文件预览…</p>';
+  if(!dialog.open)dialog.showModal();
+  try{
+    const {mountReviewGallery}=await import('./review-gallery.js');
+    if(version!==previewVersion||!dialog.open)return;
+    content.innerHTML='<div class="rv-gallery"></div>';
+    previewGallery=mountReviewGallery($('.rv-gallery',content),{files,initialFileId:id,label:'文件预览',fullscreen:false,storageKey:'attachment-preview:'+state.user.id+':'+files.map(f=>f.id).join(',')});
+  }catch{if(version===previewVersion&&dialog.open)content.innerHTML='<p class="attachment-loading" role="alert">暂时无法打开预览。请关闭后重试，已上传文件仍保留。</p>';}
 }
 $("#preview").addEventListener("close", () => {
-  clearPDFs($("#preview"));
-  $(".preview-content", $("#preview")).replaceChildren();
+  if($("#preview").open)return;
+  resetPreview();if(previewTrigger?.isConnected)previewTrigger.focus({preventScroll:true});previewTrigger=null;
 });
 $("#preview .close").onclick = () => $("#preview").close();
 $("#preview").addEventListener("click", (e) => {
@@ -297,7 +307,10 @@ function fileMarkup(ids, editable = false, compact = false) {
 }
 function bindPreviews(root = document) {
   $$("[data-preview]", root).forEach(
-    (b) => (b.onclick = () => preview(b.dataset.preview)),
+    (b) => (b.onclick = () => {
+      const group=b.closest('.file-list');
+      preview(b.dataset.preview,group?$$('[data-preview]',group).map(el=>el.dataset.preview):[b.dataset.preview],b);
+    }),
   );
   renderPDFs(root);
 }
@@ -371,7 +384,7 @@ function paperLocationFields(q={}){const files=(state.paperFileIds||[]).map(id=>
 function refreshPaperSelectors(ids){state.paperFileIds=[...ids];const files=ids.map(id=>state.files.get(id)).filter(f=>f?.mime==='application/pdf');$$('[name=paperFileId]').forEach(select=>{const old=select.value;select.innerHTML='<option value="">不关联 PDF</option>'+files.map(f=>`<option value="${h(f.id)}">${h(f.name)}</option>`).join('');select.value=old;});const main=$('[name=mainQuestionFile]');if(main){const old=main.value;main.innerHTML=files.map(f=>`<option value="${h(f.id)}">${h(f.name)}</option>`).join('')||'<option value="">无 PDF 主题纸</option>';if(files.some(f=>f.id===old))main.value=old;}}
 function studentPaperSettings(a){return `<details class="student-paper-settings"><summary>学生题纸与提交说明</summary><div class="stack"><span class="badge">学生可见</span><div id="question-upload"></div><label class="field"><span>主作业 PDF</span><select name="mainQuestionFile">${a.questionFiles.map(id=>state.files.get(id)).filter(f=>f?.mime==='application/pdf').map(f=>`<option value="${f.id}" ${a.mainQuestionFile===f.id?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>${field('本次完成范围','readingScope',a.readingScope||'','text','maxlength="500"')}${area('提交要求','submissionGuide',a.submissionGuide||'','maxlength="1000"')}${area('学生可见的题目要求','instructions',a.instructions)}${a.published?area('本次题纸修改说明','paperChangeNote',a.paperChangeNote||'','maxlength="500" placeholder="说明改动的题号或页面；重新发布后学生可见。"'):''}</div></details>`;}
 function rubricEditor(questions){return questions.map((q,i)=>`<details class="rubric-question" data-question ${questions.length===1?"open":""}><summary class="rubric-summary"><strong data-question-label>第 ${h(q.id)} 题</strong><span data-question-score>${q.maxPoints} 分</span><span class="rubric-edit-label">展开编辑</span></summary><div class="question-bar"><h3>第 ${i+1} 题</h3><label>题号<input name="qid" value="${h(q.id)}" required maxlength="30" aria-label="第 ${i+1} 题题号"></label><label>满分<input name="points" type="number" min="0.5" max="100" step="0.5" value="${h(q.maxPoints)}" required aria-label="第 ${i+1} 题满分"></label><button type="button" class="icon-btn remove-question" aria-label="删除第 ${i+1} 题">${icon('close')}</button></div><div class="stack"><label class="field"><span>题型</span><select name="questionType"><option value="short" ${q.type!=='choice'?'selected':''}>简答题</option><option value="choice" ${q.type==='choice'?'selected':''}>选择题</option></select></label>${area('题目（学生可见）','prompt',q.prompt)}${area('参考答案','answer',q.answer,'required')}<div class="choice-settings stack" ${q.type==='choice'?'':'hidden'}><div class="field-row"><label class="field"><span>选择方式</span><select name="choiceMode"><option value="single" ${q.choiceMode!=='multiple'?'selected':''}>单选</option><option value="multiple" ${q.choiceMode==='multiple'?'selected':''}>多选</option></select></label>${field('正确选项','correctOptions',(Array.isArray(q.correctOptions)?q.correctOptions.join(', '):q.correctOptions||''),'text','placeholder="例如 B 或 A, C"')}</div><p class="hint">选项完全一致得满分，多选漏选或错选不得分。</p></div>${area('评分说明与可接受的表达','criteria',q.criteria,'required')}<div class="short-settings" ${q.type==='choice'?'hidden':''}><h3 class="scoring-heading">逐点评分</h3><div class="point-list">${pointEditor(q.scoringPoints)}</div><button type="button" class="secondary add-point">添加评分点</button><p class="hint">各评分点分值之和须等于本题满分。未确认逐点评分的题目会进入教师复核。</p></div>${field('知识点（可选）','knowledge',q.knowledge||'')}${paperLocationFields(q)}${field('答案出处','sourcePages',q.sourcePages||'文字答案')}</div></details>`).join('');}
-function readRubric(){return $$('[data-question]').map(el=>({id:$('[name=qid]',el).value,paperFileId:$('[name=paperFileId]',el).value,paperPage:$('[name=paperPage]',el).value,prompt:$('[name=prompt]',el).value,answer:$('[name=answer]',el).value,criteria:$('[name=criteria]',el).value,maxPoints:Number($('[name=points]',el).value),sourcePages:$('[name=sourcePages]',el).value,type:$('[name=questionType]',el).value,choiceMode:$('[name=choiceMode]',el).value,correctOptions:$('[name=correctOptions]',el).value,knowledge:$('[name=knowledge]',el).value,scoringPoints:$$('[data-point]',el).map(p=>({criterion:$('[name=criterion]',p).value,maxPoints:Number($('[name=pointMax]',p).value)}))}));}
+function readRubric(root=document){return $$('[data-question]',root).map(el=>({id:$('[name=qid]',el).value,paperFileId:$('[name=paperFileId]',el).value,paperPage:$('[name=paperPage]',el).value,prompt:$('[name=prompt]',el).value,answer:$('[name=answer]',el).value,criteria:$('[name=criteria]',el).value,maxPoints:Number($('[name=points]',el).value),sourcePages:$('[name=sourcePages]',el).value,type:$('[name=questionType]',el).value,choiceMode:$('[name=choiceMode]',el).value,correctOptions:$('[name=correctOptions]',el).value,knowledge:$('[name=knowledge]',el).value,scoringPoints:$$('[data-point]',el).map(p=>({criterion:$('[name=criterion]',p).value,maxPoints:Number($('[name=pointMax]',p).value)}))}));}
 
 async function answerPage(id) {
   const renderId = state.routeVersion;
@@ -380,9 +393,11 @@ async function answerPage(id) {
   if (renderId !== state.routeVersion) return;
   state.paperFileIds=[...a.questionFiles];
   const questions = a.draftRubric || a.rubric || [];
-  main.innerHTML = `<section class="paper answer-editor">${head("ANSWER KEY / " + h(a.course), "参考答案与评分", a.title, `<button class="secondary" type="button" id="back-to-paper">← 上一步：题纸</button>`)}<nav class="editor-steps" aria-label="发布步骤"><span>1 题纸与信息</span><span aria-current="step">2 参考答案与发布</span></nav><div class="split"><details class="answer-source" ${questions.length&&innerWidth<900?"":"open"}><summary><strong>参考答案原件</strong>${badge(a.status)}<span>仅教师可见</span></summary><section><form id="source-form" class="stack"><div id="answer-upload"></div><details ${a.answerFiles.length ? "" : "open"}><summary>粘贴或编辑文字答案</summary>${area("答案内容", "answerText", a.answerText, 'placeholder="可直接粘贴答案、题号与评分说明…"')}</details>${studentPaperSettings(a)}<p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存原始答案</button><button type="button" id="parse-answer" class="primary">AI 整理评分点</button></div><p class="hint">上传的答案保留原件。参考答案仅教师可见。整理后核对评分点，再发布作业。</p></form>${a.answerFiles.length ? `<button class="link" data-preview="${a.answerFiles[0]}">打开原始答案</button>` : ""}${["queued", "parsing"].includes(a.status) ? '<div class="status-line" id="parse-status">正在后台整理答案。你可以离开页面，任务会继续保存。</div>' : ""}${a.error ? `<p class="error">${h(a.error)}</p>` : ""}</section></details><section><div class="section-head"><h2>核对评分点</h2><span class="hint">${a.version ? "当前 v" + a.version : "待确认"}</span></div><div class="rubric-tools"><span id="rubric-summary" role="status"></span><button type="button" class="text-button" id="toggle-questions">展开全部</button></div><form id="rubric-form"><div id="questions">${questions.length ? rubricEditor(questions) : empty("先整理，再确认", "使用左侧答案生成评分点，也可以手动添加。")}</div><button type="button" id="add-question" class="secondary">添加题目</button><hr class="rule"><label class="check"><input type="checkbox" name="confirmed" required>我已核对每题答案、满分和评分点</label><p class="hint">确认后，学生即可提交。参考答案保持私密，发布成绩只展示得分和反馈。修改评分标准会生成新版本。</p><p class="form-error" role="alert"></p><div class="form-actions"><button type="button" class="secondary" id="preview-student-paper">预览学生题纸</button><label class="check"><input type="checkbox" name="paperChecked" required>我已检查学生题纸、完成范围和题号定位</label><button type="submit" class="primary wide">确认答案并发布作业</button></div></form></section></div></section>`;
-  let sourceDirty = false;
-  const markDirty = () => {sourceDirty=true;document.dispatchEvent(new Event('homework:dirty'));};
+  main.innerHTML = `<section class="paper answer-editor">${head("ANSWER KEY / " + h(a.course), "参考答案与评分", a.title, `<button class="secondary" type="button" id="back-to-paper">← 上一步：题纸</button><button class="secondary" type="button" id="save-answer-draft">保存草稿</button>`)}<p id="answer-save-status" class="answer-save-status" role="status">已保存的答案仅教师可见</p><nav class="editor-steps" aria-label="发布步骤"><span>1 题纸与信息</span><span aria-current="step">2 参考答案与发布</span></nav><div class="split"><details class="answer-source" ${questions.length&&innerWidth<900?"":"open"}><summary><strong>参考答案原件</strong>${badge(a.status)}<span>仅教师可见</span></summary><section><form id="source-form" class="stack"><div id="answer-upload"></div><details ${a.answerFiles.length ? "" : "open"}><summary>粘贴或编辑文字答案</summary>${area("答案内容", "answerText", a.answerText, 'placeholder="可直接粘贴答案、题号与评分说明…"')}</details>${studentPaperSettings(a)}<p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存原始答案</button><button type="button" id="parse-answer" class="primary">AI 整理评分点</button></div><p class="hint">上传的答案保留原件。参考答案仅教师可见。整理后核对评分点，再发布作业。</p></form>${a.answerFiles.length ? `<button class="link" data-preview="${a.answerFiles[0]}">打开原始答案</button>` : ""}${["queued", "parsing"].includes(a.status) ? '<div class="status-line" id="parse-status">正在后台整理答案。你可以离开页面，任务会继续保存。</div>' : ""}${a.error ? `<p class="error">${h(a.error)}</p>` : ""}</section></details><section><div class="section-head"><h2>核对评分点</h2><span class="hint">${a.version ? "当前 v" + a.version : "待确认"}</span></div><div class="rubric-tools"><span id="rubric-summary" role="status"></span><button type="button" class="text-button" id="toggle-questions">展开全部</button></div><form id="rubric-form"><div id="questions">${questions.length ? rubricEditor(questions) : empty("先整理，再确认", "使用左侧答案生成评分点，也可以手动添加。")}</div><button type="button" id="add-question" class="secondary">添加题目</button><hr class="rule"><label class="check"><input type="checkbox" name="confirmed" required>我已核对每题答案、满分和评分点</label><p class="hint">确认后，学生即可提交。参考答案保持私密，发布成绩只展示得分和反馈。修改评分标准会生成新版本。</p><p class="form-error" role="alert"></p><div class="form-actions"><button type="button" class="secondary" id="preview-student-paper">预览学生题纸</button><label class="check"><input type="checkbox" name="paperChecked" required>我已检查学生题纸、完成范围和题号定位</label><button type="submit" class="primary wide">确认答案并发布作业</button></div></form></section></div></section>`;
+  let sourceDirty=false,sourceEdit=0,sourceSaving=null;
+  const draftStatus=$('#answer-save-status'),sourceForm=$('#source-form'),rubricForm=$('#rubric-form');
+  const isCurrent=()=>renderId===state.routeVersion&&sourceForm.isConnected;
+  const markDirty=()=>{sourceDirty=true;sourceEdit++;draftStatus.textContent=sourceSaving?'正在保存，包含最新修改…':'有未保存的修改';draftStatus.dataset.state='pending';document.dispatchEvent(new Event('homework:dirty'));};
   $("#source-form").addEventListener("input", markDirty);
   $("#rubric-form").addEventListener("input", markDirty);
   const au = uploadWidget(
@@ -397,34 +412,44 @@ async function answerPage(id) {
       a.questionFiles,
       ids=>{markDirty();refreshPaperSelectors(ids);},
     );
-  $('#preview-student-paper').onclick=()=>{const ids=qu.ids(),selected=$('[name=mainQuestionFile]').value,first=state.files.get(selected)||ids.map(x=>state.files.get(x)).find(f=>f?.mime==='application/pdf'),form=$('#source-form'),dialog=$('#preview');$('.preview-content',dialog).innerHTML=`<h2>${h(a.title)}</h2><p class="instructions">${h(form.elements.readingScope.value)}</p><p class="instructions">${h(form.elements.submissionGuide.value)}</p><p class="instructions">${h(form.elements.instructions.value)}</p>${first?`<div class="pdf-preview" data-pdf="${first.id}" data-title="${h(a.title)}"></div>`:fileMarkup(ids)}`;dialog.showModal();bindPreviews(dialog);};
+  $('#preview-student-paper').onclick=()=>{resetPreview();const ids=qu.ids(),selected=$('[name=mainQuestionFile]').value,first=state.files.get(selected)||ids.map(x=>state.files.get(x)).find(f=>f?.mime==='application/pdf'),form=$('#source-form'),dialog=$('#preview');$('.preview-content',dialog).innerHTML=`<h2>${h(a.title)}</h2><p class="instructions">${h(form.elements.readingScope.value)}</p><p class="instructions">${h(form.elements.submissionGuide.value)}</p><p class="instructions">${h(form.elements.instructions.value)}</p>${first?`<div class="pdf-preview" data-pdf="${first.id}" data-title="${h(a.title)}"></div>`:fileMarkup(ids)}`;dialog.showModal();bindPreviews(dialog);};
   let revision = a.sourceRevision || 0;
-  const saveSource = async () => {
-    if (au.busy() || qu.busy() || au.pending() || qu.pending()) throw new Error("请等待文件上传完成");
-    const b = formData($("#source-form"));
-    if(!sourceDirty)return {assignment:a};
-    const result = await put(`assignments/${id}/source`, {
-      ...b,
-      answerFiles: au.ids(),
-      questionFiles: qu.ids(),
-      sourceRevision: revision,
-      draftRubric:readRubric(),
-    });
-    revision = result.assignment.sourceRevision;
-    sourceDirty=false;
-    document.dispatchEvent(new Event('homework:saved'));
-    return result;
+  const saveSource = () => {
+    if(sourceSaving)return sourceSaving;
+    if(au.busy()||qu.busy()||au.pending()||qu.pending())return Promise.reject(Error("请等待文件上传完成"));
+    if(!sourceDirty)return Promise.resolve({assignment:a});
+    const controls=$$('#back-to-paper,#parse-answer,#save-answer-draft,#source-form button[type=submit],#rubric-form button[type=submit]');
+    const previous=controls.map(b=>b.disabled);controls.forEach(b=>b.disabled=true);
+    draftStatus.textContent='正在保存…';draftStatus.dataset.state='pending';
+    sourceSaving=(async()=>{
+      let result={assignment:a};
+      try{
+        // A slow response only acknowledges its own snapshot. Drain newer edits in order.
+        while(sourceDirty){
+          if(au.busy()||qu.busy()||au.pending()||qu.pending())throw Error('请等待文件上传完成，再保存草稿');
+          const edit=sourceEdit,b=formData(sourceForm);
+          result=await put(`assignments/${id}/source`,{...b,answerFiles:[...au.ids()],questionFiles:[...qu.ids()],sourceRevision:revision,draftRubric:readRubric(rubricForm)});
+          revision=result.assignment.sourceRevision;sourceDirty=sourceEdit!==edit;
+        }
+        draftStatus.textContent='草稿已保存 · 发布后生效';draftStatus.dataset.state='saved';
+        if(isCurrent())document.dispatchEvent(new Event('homework:saved'));return result;
+      }catch(e){draftStatus.textContent='未保存成功 · 修改仍在页面，请重试';draftStatus.dataset.state='error';throw e;}
+      finally{sourceSaving=null;controls.forEach((b,i)=>b.disabled=previous[i]);}
+    })();
+    return sourceSaving;
   };
-  click("#back-to-paper",async()=>{await saveSource();go("edit/"+id);});
-  formHandler($("#source-form"), async () => {
-    await saveSource();
-    toast("原始答案已保存");
-  });
-  click("#parse-answer", async () => {
-    await saveSource();
-    await post(`assignments/${id}/parse`);
-    await render();
-    toast("已加入后台处理队列");
+  // Parsing/publishing freezes controls only after saving, so its snapshot cannot change mid-request.
+  const withLockedEditor=async fn=>{
+    const controls=$$('input,textarea,select,button',main),previous=controls.map(b=>b.disabled);
+    controls.forEach(b=>b.disabled=true);
+    try{return await fn();}finally{controls.forEach((b,i)=>b.disabled=previous[i]);}
+  };
+  click("#back-to-paper",async()=>{await saveSource();if(isCurrent())go("edit/"+id);});
+  click('#save-answer-draft',async()=>{await saveSource();if(isCurrent())toast('答案草稿已保存');});
+  formHandler($("#source-form"),async()=>{await saveSource();if(isCurrent())toast('原始答案已保存');},{announceSaved:false});
+  click("#parse-answer",async()=>{
+    await saveSource();if(!isCurrent())return;
+    await withLockedEditor(async()=>{await post(`assignments/${id}/parse`);await render();toast('已加入后台处理队列');});
   });
   function updateRubricSummary(){
     const questions=$$('[data-question]');
@@ -463,15 +488,13 @@ async function answerPage(id) {
   });
   formHandler($("#rubric-form"), async () => {
     if (au.busy() || qu.busy() || au.pending() || qu.pending()) throw new Error("请等待上传完成");
-    const questions = readRubric();
-    if(!questions.length)throw new Error("请至少确认一道题");
-    await saveSource();
-    await post(`assignments/${id}/confirm`, {
-      questions,
-      sourceRevision: revision,
+    if(!readRubric().length)throw new Error("请至少确认一道题");
+    await saveSource();if(!isCurrent())return;
+    const questions=readRubric(rubricForm);
+    await withLockedEditor(async()=>{
+      await post(`assignments/${id}/confirm`,{questions,sourceRevision:revision});
+      toast("评分标准已确认，学生现在可以提交");go("assignments");
     });
-    toast("评分标准已确认，学生现在可以提交");
-    go("assignments");
   });
   bindPreviews();
   if (["queued", "parsing"].includes(a.status)) {
