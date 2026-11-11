@@ -67,6 +67,29 @@ const field = (label, name, value = "", type = "text", extra = "") =>
   `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${h(value)}" ${extra}></label>`;
 const area = (label, name, value = "", extra = "") =>
   `<label class="field"><span>${label}</span><textarea name="${name}" ${extra}>${h(value)}</textarea></label>`;
+function fitTitle(input) {
+  if (!input?.isConnected) return;
+  const top = main.scrollTop;
+  input.style.height = "0px";
+  input.style.height = (input.scrollHeight + 2) + "px";
+  main.scrollTop = top;
+}
+function sizeTitleFields() {
+  const fields = $$('textarea[name="title"]');
+  if (!fields.length) return;
+  const widths = new WeakMap();
+  const observer = new ResizeObserver(entries => {
+    for (const {target, contentRect} of entries) {
+      if (widths.get(target) === contentRect.width) continue;
+      widths.set(target, contentRect.width);
+      fitTitle(target);
+    }
+  });
+  const input = event => fitTitle(event.currentTarget);
+  fields.forEach(el => { fitTitle(el); el.addEventListener("input", input); observer.observe(el); });
+  const previous = state.viewCleanup;
+  state.viewCleanup = () => { previous?.(); observer.disconnect(); fields.forEach(el => el.removeEventListener("input", input)); };
+}
 const head = (eyebrow, title, description = "", actions = "") =>
   `<div class="paper-head"><div><h1>${h(title)}</h1>${/^(ANSWER KEY|SUBMIT) \/ /.test(eyebrow) ? `<p class="context">${eyebrow.split(" / ").slice(1).join(" / ")}</p>` : ""}${description ? `<p>${h(description)}</p>` : ""}</div>${actions ? `<div class="actions">${actions}</div>` : ""}</div>`;
 const empty = (title, copy, action = "") =>
@@ -226,7 +249,7 @@ async function newAssignment() {
  const draftKey='hw-new:'+state.user.id+':'+(state.workspaceClassId||'all');let localDraft;try{localDraft=JSON.parse(sessionStorage.getItem(draftKey)||'null');}catch{}if(localDraft?.files?.length)await metadata(localDraft.files);
  main.innerHTML=`<section class="paper">${head('','上传作业题纸','先准备学生看到的内容，下一步设置私密答案与评分标准。',link('assignments','返回作业'))}<form id="new-assignment" class="question-first-form"><section class="stack"><div class="section-head"><h2>作业 PDF 与题目附件</h2><span class="badge">学生可见</span></div><div id="new-question-upload"></div><p class="hint">请上传不含答案的学生版。可以添加补充材料，并上移主题纸到第一位。</p></section><section class="stack">${area('作业名称','title','','required maxlength="120" rows="2" placeholder="例如：AD–AS 第三次练习"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field('截止时间（可选）','dueAt','','datetime-local')}</div><fieldset><legend>布置给</legend>${state.classes.map(c=>`<label class="check"><input type="checkbox" name="classId" value="${c.id}" ${!embeddedContext.classId||c.id==="bookself-class:"+embeddedContext.classId?"checked":""}>${h(c.name)}</label>`).join('')}</fieldset>${field('本次完成范围','readingScope','','text','maxlength="500" placeholder="例如：第 1–8 题，第 9 题选做"')}${area('提交要求','submissionGuide','','maxlength="1000" placeholder="例如：按题号作答，图像标注坐标轴；照片保留完整题号。"')}${area('题目补充说明','instructions','','maxlength="20000" placeholder="也可以直接在这里填写题目。"')}<label class="field"><span>成绩返回方式</span><select name="gradingMode"><option value="auto">自动批阅并返回，异常转教师复核</option><option value="manual">全部由教师复核后发布</option></select></label><label class="check"><input type="checkbox" name="allowResubmit" checked>允许学生在截止前重新提交</label><label class="check"><input type="checkbox" name="studentPaperChecked" required>我已检查学生可见的题纸和说明中不含参考答案</label><p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 设置参考答案</button><p class="hint" id="new-draft-status" role="status">继续后保存为账户草稿，发布后学生才可见。</p></section></form></section>`;
  const form=$('#new-assignment');
- const cacheNew=()=>{try{const data=formData(form);data.classIds=$$('input[name=classId]:checked',form).map(x=>x.value);data.allowResubmit=form.elements.allowResubmit.checked;sessionStorage.setItem(draftKey,JSON.stringify({...data,files:[...uploader.ids()]}));$('#new-draft-status').textContent='本机暂存 · 继续后保存到账户';}catch{$('#new-draft-status').textContent='本机无法暂存，请继续保存到账户后再离开。';}};
+ const cacheNew=()=>{fitTitle(form.elements.title);try{const data=formData(form);data.classIds=$$('input[name=classId]:checked',form).map(x=>x.value);data.allowResubmit=form.elements.allowResubmit.checked;sessionStorage.setItem(draftKey,JSON.stringify({...data,files:[...uploader.ids()]}));$('#new-draft-status').textContent='本机暂存 · 继续后保存到账户';}catch{$('#new-draft-status').textContent='本机无法暂存，请继续保存到账户后再离开。';}};
  const uploader=uploadWidget($('#new-question-upload'),'question',localDraft?.files||[],ids=>{const first=state.files.get(ids[0]);if(first&&!form.elements.title.value)form.elements.title.value=first.name.replace(/\.[^.]+$/,'').slice(0,120);cacheNew();});
  if(localDraft){for(const name of ['title','course','dueAt','readingScope','submissionGuide','instructions','gradingMode'])if(typeof localDraft[name]==='string')form.elements[name].value=localDraft[name];form.elements.allowResubmit.checked=localDraft.allowResubmit!==false;$$('[name=classId]',form).forEach(el=>el.checked=localDraft.classIds?.includes(el.value));$('#new-draft-status').textContent='已恢复本机暂存，尚未发布。';}
  form.addEventListener('input',cacheNew);
@@ -760,6 +783,7 @@ async function render(scroll = true) {
     else if (route === "device") await devicePage();
     else if (route === "account") accountPage();
     else workspace.dashboard();
+    sizeTitleFields();
     if (scroll) {main.scrollTo({ top: 0, behavior: "instant" });main.focus({preventScroll:true});}
   } catch (e) {
     if (!state.user || version !== state.routeVersion) return;
