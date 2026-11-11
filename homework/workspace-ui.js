@@ -1,3 +1,4 @@
+import {highlightText} from './search-text.js';
 import { assignmentState, assignmentRecords } from "./learning-model.js";
 export function createWorkspaceUI(ctx) {
   const {
@@ -62,7 +63,6 @@ export function createWorkspaceUI(ctx) {
             : info.latest?.status === "returned"
               ? "补充作业"
               : "查看题目";
-    const primary = review.length ? "review/" + review[0].latest.id : target;
     const tone = t
       ? review.length
         ? "sand"
@@ -72,7 +72,12 @@ export function createWorkspaceUI(ctx) {
       : { todo: "blue", processing: "lilac", done: "sage", closed: "sand" }[
           info.key
         ];
-    return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${link(target, h(a.title), "task-name")}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(info.label)}</span></div><div class="meta"><span>${h(a.course)}</span>${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待核对", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${link(primary, review.length ? "核对分数" : action, "primary")}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
+    if(t){
+      const counts=state.rosterSummaries?.[a.id], summary=counts||{submitted:records.length,review:review.length};
+      const stat=(filter,text,cls)=>link('overview/'+a.id+'/'+filter,text,'roster-count '+cls);
+      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title">${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'名单待确认':'同步名单…'):summary.missing+' 未提交',summary.missing>0?'is-missing':'is-neutral')}${stat('review',summary.review+' 待复核',summary.review?'is-review':'is-neutral')}`:'<span class="hint">发布后统计提交</span>'}</div><div class="actions task-actions">${link(target,action,'primary')}${link('edit/'+a.id,'编辑')}${menu(a)}</div></article>`;
+    }
+    return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${link(target, highlightText(a.title,state.assignmentSearch), "task-name")}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(info.label)}</span></div><div class="meta"><span>${h(a.course)}</span>${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待核对", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${link(target, action, "primary")}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
   }
   function bindActions() {
     $$("[data-more]").forEach(
@@ -231,51 +236,9 @@ export function createWorkspaceUI(ctx) {
       let primary = "",
         secondary = "";
       if (t) {
-        const published = rows.filter((a) => a.published),
-          draft = rows.filter((a) => !a.published),
-          ids = new Set(rows.map((a) => a.id)),
-          records = assignmentRecords(
-            state.submissions.filter((s) => ids.has(s.assignmentId)),
-            rows,
-          ),
-          review = records.filter((r) => busy(r.latest));
-        if (published.length)
-          primary += section(
-            "已发布 · " + published.length,
-            "blue",
-            published.map(row).join(""),
-          );
-        if (records.length)
-          primary += section(
-            "最近提交",
-            "sage",
-            records
-              .slice(0, 5)
-              .map(
-                (r) =>
-                  `<div class="compact-feedback"><div><strong>${h(r.latest.studentName || "学生")}</strong><p>${h(r.assignment.title)}</p><span class="hint">${date(r.latest.submittedAt)}</span></div>${link("review/" + r.latest.id, r.grade ? "查看成绩" : "查看作答")}</div>`,
-              )
-              .join(""),
-          );
-        if (review.length)
-          secondary += section(
-            "待处理 · " + review.length,
-            "sand",
-            review
-              .slice(0, 5)
-              .map(
-                (r) =>
-                  `<div class="compact-feedback"><div><strong>${h(r.latest.studentName || "学生")}</strong><p>${h(r.assignment.title)}</p><span class="hint">${r.latest.error ? "分数待确认" : "有待确认的作答"}</span></div>${link("review/" + r.latest.id, "处理")}</div>`,
-              )
-              .join(""),
-            link("reviews", "全部", "text-button"),
-          );
-        if (draft.length)
-          secondary += section(
-            "继续草稿 · " + draft.length,
-            "lilac",
-            draft.map(row).join(""),
-          );
+        const published=rows.filter(a=>a.published),draft=rows.filter(a=>!a.published);
+        if(published.length)primary+=section('已发布 · '+published.length,'blue',published.map(row).join(''));
+        if(draft.length)primary+=section('草稿 · '+draft.length,'lilac',draft.map(row).join(''));
       } else {
         const todo = rows
           .filter((a) => assignmentState(a, state.submissions).key === "todo")
@@ -360,6 +323,12 @@ export function createWorkspaceUI(ctx) {
       draw();
     });
     draw();
+    const version=state.routeVersion;
+    const loadSummary=()=>api('assignments/roster-summary').then(data=>{if(version!==state.routeVersion)return;state.rosterSummaries=data.summaries;state.rosterError=false;draw();}).catch(()=>{if(version!==state.routeVersion)return;state.rosterError=true;draw();const b=document.createElement('button');b.className='text-button roster-retry';b.textContent='班级名单同步失败 · 重试';b.onclick=()=>{b.disabled=true;loadSummary();};$('#task-workspace').prepend(b);});
+    if(t)void loadSummary();
+    const saved=state.assignmentListPosition;
+    if(saved){requestAnimationFrame(()=>{(main.id==='homework-main'?document.scrollingElement:main).scrollTop=saved.top;const target=main.querySelector('[href="'+CSS.escape(saved.href||'')+'"]');target?.focus({preventScroll:true});});}
+    state.viewCleanup=()=>{state.assignmentListPosition={top:(main.id==='homework-main'?document.scrollingElement:main).scrollTop,href:document.activeElement?.getAttribute('href')};};
   }
   async function trash() {
     const { assignments } = await api("assignments?trash=1");
@@ -394,7 +363,7 @@ export function createWorkspaceUI(ctx) {
           .toISOString()
           .slice(0, 16)
       : "";
-    main.innerHTML = `<section class="paper edit-paper">${head("", a.published ? "编辑作业" : "题纸与基本信息", a.title, link("assignments", "返回作业"))}<nav class="editor-steps" aria-label="发布步骤"><span aria-current="step">1 题纸与信息</span><button type="button" class="text-button" id="step-answer">2 参考答案与发布 →</button></nav><form id="edit-assignment" class="editor-grid"><section class="work-section" data-tone="blue"><header class="work-section-heading"><h2>基本信息</h2><span>学生可见</span></header><div class="work-section-body stack">${area("作业名称", "title", a.title, 'required maxlength="120" rows="2"')}<div class="field-row">${field("课程", "course", a.course, "text", 'required maxlength="80"')}${field("截止时间", "dueAt", due, "datetime-local")}</div><fieldset><legend>布置给</legend>${state.classes.map((c) => `<label class="check"><input name="classId" type="checkbox" value="${h(c.id)}" ${a.classIds.includes(c.id) ? "checked" : ""}>${h(c.name)}</label>`).join("")}</fieldset></div></section><section class="work-section" data-tone="sage"><header class="work-section-heading"><h2>提交与成绩</h2></header><div class="work-section-body stack"><div class="field"><span>成绩发布</span><input type="hidden" name="gradingMode" value="manual"><p class="hint">AI 仅给分，教师复核后发布。</p></div><label class="check"><input name="allowLate" type="checkbox" ${a.allowLate ? "checked" : ""}>允许截止后补交</label><label class="check"><input name="allowResubmit" type="checkbox" ${a.allowResubmit !== false ? "checked" : ""}>允许重新提交</label><p class="hint">修改这些设置不会重新批改已有成绩。</p></div></section><section class="work-section editor-wide" data-tone="blue"><header class="work-section-heading"><h2>学生题纸</h2><span>${a.published ? "新内容确认后生效" : "未发布"}</span></header><div class="work-section-body stack"><div id="edit-question-upload"></div>${field("本次完成范围", "readingScope", a.readingScope || "", "text", 'maxlength="500"')}${area("提交要求", "submissionGuide", a.submissionGuide || "", 'maxlength="1000"')}${area("题目补充说明", "instructions", a.instructions || "", 'maxlength="20000"')}${a.published ? field("题纸修改说明", "paperChangeNote", "", "text", 'maxlength="500" placeholder="例如：修正第 3 题图表"') : ""}<p class="hint">${a.published ? "题纸与参考答案的更改在确认评分标准后作为新版本发布，原提交保留原题。" : "上传的题纸和文字会随草稿保存。"}</p></div></section><div class="editor-footer editor-wide"><p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存修改</button><button type="submit" name="next" value="answer" class="primary">保存并设置答案</button></div><p class="hint" id="edit-save-status" role="status"></p></div></form></section>`;
+    main.innerHTML = `<section class="paper edit-paper">${head('',a.published?'编辑作业':'题纸与信息','',link('assignments','返回作业'))}<nav class="editor-steps" aria-label="发布步骤"><span aria-current="step">1 题纸与信息</span><button type="button" class="text-button" id="step-answer">2 参考答案与发布 →</button></nav><form id="edit-assignment" class="compact-editor"><section class="editor-basics"><div class="editor-title-date">${area('作业名称','title',a.title,'required maxlength="120" rows="1"')}${field('截止时间（可选）','dueAt',due,'datetime-local')}</div><fieldset class="class-picker"><legend>布置给</legend><div class="class-chips">${state.classes.map(c=>`<label class="class-chip"><input name="classId" type="checkbox" value="${h(c.id)}" ${a.classIds.includes(c.id)?'checked':''}><span>${h(c.name)}</span></label>`).join('')}</div></fieldset><div class="editor-policy"><label class="check"><input name="allowLate" type="checkbox" ${a.allowLate?'checked':''}>允许补交</label><label class="check"><input name="allowResubmit" type="checkbox" ${a.allowResubmit!==false?'checked':''}>允许重交</label><input type="hidden" name="gradingMode" value="manual"><span>AI 给分 · 教师确认后发布</span></div></section><div class="editor-content"><section class="work-section" data-tone="blue"><header class="work-section-heading"><h2>学生题纸</h2><span>学生可见</span></header><div class="work-section-body"><div id="edit-question-upload"></div></div></section><aside class="editor-notes work-section" data-tone="sage"><header class="work-section-heading"><h2>作答要求</h2></header><div class="work-section-body stack">${field('完成范围','readingScope',a.readingScope||'','text','maxlength="500" placeholder="例如：第 1–10 题"')}${area('提交要求','submissionGuide',a.submissionGuide||'','maxlength="1000" rows="3"')}<details ${a.instructions?'open':''}><summary>补充说明</summary>${area('题目补充说明','instructions',a.instructions||'','maxlength="20000" rows="4"')}</details>${a.published?field('题纸修改说明','paperChangeNote','','text','maxlength="500" placeholder="替换题纸时填写"'):''}<p class="answer-privacy">参考答案 · 仅教师可见<br><span>${a.answerFiles?.length||a.answerText?'已保存原始答案':'下一步上传参考答案'}</span></p></div></aside></div><div class="editor-footer"><p class="form-error" role="alert"></p><p class="hint" id="edit-save-status" role="status"></p><div class="actions"><button type="submit" class="secondary">保存修改</button><button type="submit" name="next" value="answer" class="primary">保存并设置答案</button></div></div></form></section>`;
     const form = $("#edit-assignment");
     let sourceChanged = false,
       revision = a.editRevision || 0,
