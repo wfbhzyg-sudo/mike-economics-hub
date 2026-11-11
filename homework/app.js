@@ -574,76 +574,12 @@ async function reviewPage(id) {
     a = state.assignments.find((x) => x.id === s.assignmentId),
     name = state.submissions.find((x) => x.id === id)?.studentName || "学生";
   await metadata(s.files);
+  const {mountReviewStudio}=await import("./review-studio.js");
   if (renderId !== state.routeVersion) return;
-  const suggestions =
-    (s.status==="needs_review"?s.suggestedGrade?.questions:s.publishedGrade?.questions) || s.suggestedGrade?.questions ||
-    s.rubricSnapshot?.map((q) => ({
-      id: q.id,
-      score: null,
-      maxPoints: q.maxPoints,
-      evidence: "",
-      feedback: "",
-      needsReview: true,
-    })) ||
-    [];
-  const saved=s.teacherReviewDraft?.jobId===s.jobId?s.teacherReviewDraft:null;
-  let reviewRevision=saved?.revision||0;
-  for(let i=0;i<suggestions.length;i++){const q=saved?.questions.find(q=>q.id===suggestions[i].id);if(q)suggestions[i]={...suggestions[i],...q};}
-  main.innerHTML = `<section class="paper review-paper" data-review-pane="grading">${head("REVIEW / " + h(a?.title || "作业复核"), name + "的作业", (a?.title||"作业复核")+" · 提交于 " + date(s.submittedAt) + " · v" + s.version, badge(s.status) + link("reviews", "返回待复核"))}<div class="review-view-switch" role="group" aria-label="复核工作区"><button type="button" data-review-pane="source" aria-pressed="false">原作答</button><button type="button" data-review-pane="grading" aria-pressed="true">核对分数</button></div><div class="review-layout"><section class="review-source"><div class="section-head"><h2>原始作答</h2></div><div class="file-list">${fileMarkup(s.files)}</div>${s.files[0] ? (state.files.get(s.files[0]).mime === "application/pdf" ? `<div class="pdf-preview" data-pdf="${s.files[0]}"></div>` : `<img class="original-preview" src="/api/homework/files/${s.files[0]}" alt="学生原始答案">`) : ""}<div class="instructions">${h(s.text)}</div>${s.error ? `<p class="error">${h(s.error)}</p>` : ""}${(s.reviewRequests||[]).filter(r=>r.status==="open").map(r=>`<div class="review-request"><h3>学生申请复核第 ${h(r.questionId)} 题</h3><p>${h(r.reason)}</p></div>`).join("")}<div class="actions"><button class="secondary" id="regrade">按最新标准重新批改</button><button class="quiet" id="return-work">退回重交</button></div><form id="return-form" hidden class="stack">${area("退回原因", "reason", "", "required")}<p class="form-error" role="alert"></p><button type="submit" class="danger">确认退回</button></form></section><section><div class="section-head"><h2>逐题分数</h2><span class="answer-private">发布前仅教师可见</span></div>${["queued", "grading"].includes(s.status) ? '<div class="status-line">批改正在排队或进行中。完成后会自动更新。</div>' : ""}<form id="review-form"><div class="score-breakdown" role="status"><span>当前总分 <strong id="review-total">—</strong></span><span id="review-count"></span></div><p class="hint">AI 仅给分；原作答和参考答案可随时核对。</p>${suggestions
-    .map((q) => {
-      const ref = s.rubricSnapshot.find((r) => r.id === q.id);
-      return `<article class="rubric-question" data-grade data-qid="${h(q.id)}"><div class="question-bar"><h3>第 ${h(q.id)} 题</h3><label>得分<input name="score" type="number" min="0" max="${q.maxPoints}" step="0.5" value="${q.score ?? ""}" placeholder="待核对" required aria-label="第 ${h(q.id)} 题得分"></label><span class="hint">/ ${q.maxPoints}</span></div><details><summary>查看本次评分标准</summary><div class="instructions">${h(ref.answer)}<br><br>${h(ref.criteria)}</div></details><div class="stack"><label class="check"><input type="checkbox" name="checked" ${q.checked?'checked':''} required>我已核对本题分数</label><button class="secondary save-question" type="button">保存本题，继续下一题</button><p class="hint question-save-status" role="status">${q.checked?'已保存教师复核草稿，尚未发布':''}</p></div></article>`;
-    })
-    .join(
-      "",
-    )}<p class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="primary wide" ${["queued", "grading"].includes(s.status) ? "disabled" : ""}>确认并发布成绩</button></div><p class="hint">核对分数后发布，学生即可查看总分与逐题得分。</p></form></section></div></section>`;
-  bindPreviews();
-  const syncScores=()=>{const rows=$$('[data-grade]'),scores=rows.map(el=>$('[name=score]',el)),missing=scores.filter(el=>!el.value.trim()||!el.validity.valid).length,max=s.rubricSnapshot.reduce((n,q)=>n+q.maxPoints,0);$('#review-total').textContent=(missing?'—':scores.reduce((n,el)=>n+Number(el.value),0))+' / '+max;$('#review-count').textContent=missing?missing+' 题待定分':rows.filter(el=>$('[name=checked]',el).checked).length+' / '+rows.length+' 题已核对';};
-  $('#review-form').addEventListener('input',syncScores);syncScores();
-  $$('[data-review-pane]').filter(b=>b.tagName==='BUTTON').forEach(b=>b.onclick=()=>{$('.review-paper').dataset.reviewPane=b.dataset.reviewPane;$$('.review-view-switch button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
-  $$('.save-question').forEach(b=>b.onclick=async()=>{
-    const el=b.closest('[data-grade]'),status=$('.question-save-status',el),input=$('[name=score]',el);
-    if(!input.reportValidity()||!$('[name=checked]',el).reportValidity())return;
-    b.disabled=true;
-    try{const {draft}=await put('submissions/'+id+'/review-draft',{jobId:s.jobId,revision:reviewRevision,question:{id:el.dataset.qid,score:input.value,checked:$('[name=checked]',el).checked}});reviewRevision=draft.revision;el.dataset.saved='true';status.textContent='已保存到账户 · 尚未发布';
-      const remaining=$$('[data-grade]').find(q=>q!==el&&q.dataset.saved!=='true'&&!saved?.questions.some(x=>x.id===q.dataset.qid));
-      if(remaining){remaining.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[name=score]',remaining).focus({preventScroll:true});}else toast('本题已保存，全部核对后可发布成绩');
-    }catch(e){status.textContent=e.message;}finally{b.disabled=false;}
-  });
-  click("#regrade", async () => {
-    await post("submissions/" + id + "/regrade");
-    toast("已按最新评分标准重新排队");
-    render();
-  });
-  click("#return-work", () => {
-    $("#return-form").hidden = !$("#return-form").hidden;
-  });
-  formHandler($("#return-form"), async (b) => {
-    await post("submissions/" + id + "/return", b);
-    toast("已退回，学生可重新提交");
-    go("reviews");
-  });
-  if (["queued", "grading"].includes(s.status))
-    $$("input,textarea", $("#review-form")).forEach(
-      (el) => (el.disabled = true),
-    );
-  formHandler($("#review-form"), async (b) => {
-    const questions = $$("[data-grade]").map((el) => ({
-      id: el.dataset.qid,
-      score: Number($("[name=score]", el).value),
-      needsReview: false,
-    }));
-    await post("submissions/" + id + "/publish", {
-      questions,
-      jobId: s.jobId,
-      reviewRevision,
-    });
-    toast("成绩已发布");
-    go("reviews");
-  });
-  if (["queued", "grading"].includes(s.status))
-    pollTimer = setTimeout(() => render(false), 15000);
+  const queue=state.submissions.filter(q=>q.assignmentId===s.assignmentId&&(q.status==='needs_review'||q.id===s.id));
+  state.viewCleanup=mountReviewStudio(main,{submission:s,title:a?.title||'作业复核',name,files:s.files.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
 }
+
 async function devicePage() {
   const { device: d, settings: s } = await api("device");
   const cloud = s.execution === "cloud";
