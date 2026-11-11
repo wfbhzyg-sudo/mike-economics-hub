@@ -3715,3 +3715,8 @@
 .homework-surface .compact-editor .file .file-thumb{width:32px;height:40px;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:10px;margin:0}
 .homework-surface .paper-file-switch{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;min-width:0}.homework-surface .paper-file-switch span{white-space:nowrap;color:var(--muted)}.homework-surface .paper-file-switch select{min-width:0;max-width:100%;flex:1;min-height:44px;font-size:14px;padding:8px;background:#fcfdfb;border:1px solid var(--line);border-radius:6px}
 @media(max-width:700px){.homework-surface .paper-file-switch select{font-size:16px}}
+@media(max-width:700px){
+ .homework-surface .reader-v2 .reader-panel{position:fixed;left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom));max-height:min(48dvh,360px);border-radius:13px;z-index:35}
+ .homework-surface .edit-paper .reader-v2 .reader-panel,.homework-surface .reader-v2.reader-is-fullscreen .reader-panel{bottom:max(12px,env(safe-area-inset-bottom))}
+ .homework-surface .reader-v2 .reader-search-content{max-height:min(36dvh,270px)}
+}
