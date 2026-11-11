@@ -10,7 +10,7 @@ import {safePath} from './auth/shared.mjs';
 const auth=await createPortalAuth();
 const homework=await createHomework({externalAuth:auth});
 const root=dirname(fileURLToPath(import.meta.url));
-const pages=new Set(['index.html','login.html','login.css','login.js','portal-nav.js','apps.js','hub.js','hub.css','premium.css','mobile.css','courses.css','floating.css','motion.js','artwork.css','homework/index.html','homework/app.js','homework/style.css','homework/nav.js','homework/learning-model.js','homework/learning-ui.js']);
+const pages=new Set(['index.html','login.html','login.css','login.js','portal-nav.js','apps.js','hub.js','hub.css','premium.css','mobile.css','courses.css','floating.css','motion.js','artwork.css','homework/index.html','homework/app.js','homework/style.css','homework/nav.js','homework/learning-model.js','homework/learning-ui.js','homework/pdf-reader.js']);
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.webp':'image/webp','.jpg':'image/jpeg','.png':'image/png','.woff2':'font/woff2','.ttf':'font/ttf','.wasm':'application/wasm','.bcmap':'application/octet-stream','.pfb':'application/octet-stream'};
 const publicAssets=new Set(['login.css','login.js','assets/mike-hub-mark.svg','assets/hub-serif-84bab7c8.woff2','assets/micro-v1-640-1ed9d14e.webp','assets/macro-v1-640-dba44291.webp','assets/maths-v1-640-f58ee996.webp','assets/scene-mobile-1db46873.webp','assets/econ-quest-logo-816e8870.webp','assets/teachers-34cadd1a.webp']);
 const compressed=new Map();

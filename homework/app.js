@@ -1,3 +1,4 @@
+import {mountPDFReader} from "./pdf-reader.js";
 import { setupDock } from "./nav.js";
 import {assignmentRecords,assignmentState,questionTotals} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
@@ -33,7 +34,7 @@ const pdfTasks = new Map();
 function clearPDFs(root) {
   for (const [el, task] of pdfTasks) {
     if (!root || root.contains(el) || !el.isConnected) {
-      task.destroy().catch(() => {});
+      Promise.resolve(task.destroy()).catch(() => {});
       pdfTasks.delete(el);
     }
   }
@@ -218,7 +219,7 @@ function row(a) {
   const target=teacher?(a.published?'overview/':'answer/')+a.id:info.latest&&info.latest.status!=='returned'&&!(info.draft&&info.canSubmit)?'result/'+info.latest.id:'submit/'+a.id;
   const action=teacher?(a.published?'查看提交':'继续发布'):info.latest&&info.latest.status!=='returned'&&!(info.draft&&info.canSubmit)?(info.key==='done'?'查看成绩':'查看进度'):info.draft?'继续草稿':info.latest?.status==='returned'?'补充作业':info.key==='closed'?'查看作业':'开始作业';
   const urgent=!teacher&&info.key==='todo'&&a.dueAt&&Date.parse(a.dueAt)>Date.now()&&Date.parse(a.dueAt)-Date.now()<86400000;
-  return `<article class="assignment-row ${urgent?'due-soon':''}"><div><a href="#${target}" class="text-button"><h2>${h(a.title)}</h2></a><div class="meta"><span>${h(a.course)}</span><span>${a.classIds.map(x=>h(state.classes.find(c=>c.id===x)?.name||'班级')).join(' · ')}</span><span>${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span>${urgent?'<strong>即将截止</strong>':''}</div>${max?`<p class="assignment-types">${choice?`选择题 ${choice} 道 · `:''}${questions.length-choice?`简答题 ${questions.length-choice} 道 · `:''}满分 ${max} 分</p>`:''}</div><div class="actions">${teacher?badge(a.status):`<span class="badge" data-state="${info.latest?.status||'todo'}">${h(info.label)}</span>`}${link(target,action,'primary')}</div></article>`;
+  return `<article class="assignment-row ${urgent?'due-soon':''}"><div><a href="#${target}" class="text-button"><h2>${h(a.title)}</h2></a><div class="meta"><span>${h(a.course)}</span><span>${a.classIds.map(x=>h(state.classes.find(c=>c.id===x)?.name||'班级')).join(' · ')}</span><span>${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span>${urgent?'<strong>即将截止</strong>':''}</div>${a.paper?.files?.length?`<p class="assignment-types paper-file-summary">${h(a.paper.files.find(f=>f.id===a.paper.mainQuestionFile)?.name||a.paper.files[0].name)} · ${a.paper.files.reduce((n,f)=>n+f.pages,0)} 页${a.readingScope?' · '+h(a.readingScope):''}</p>`:''}${max?`<p class="assignment-types">${choice?`选择题 ${choice} 道 · `:''}${questions.length-choice?`简答题 ${questions.length-choice} 道 · `:''}满分 ${max} 分</p>`:''}</div><div class="actions">${teacher?badge(a.status):`<span class="badge" data-state="${info.latest?.status||'todo'}">${h(info.label)}</span>`}${link(target,action,'primary')}</div></article>`;
 }
 function assignments() {
  const teacher=state.user.role==='teacher', courses=[...new Set(state.assignments.map(a=>a.course).filter(Boolean))];
@@ -239,19 +240,10 @@ function assignments() {
  $$('[data-assignment-filter]').forEach(b=>b.onclick=()=>{state.assignmentFilter=b.dataset.assignmentFilter;$$('[data-assignment-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});$('#assignment-search').oninput=draw;$('#assignment-course')?.addEventListener('change',e=>{state.assignmentCourse=e.target.value;draw();});draw();
 }
 function newAssignment() {
-  if (!state.classes.length) {
-    go("account");
-    toast(state.user.unified ? "请先在 Bookself 教师端确认班级，作业工作台会自动同步" : "先创建一个班级，即可布置作业");
-    return;
-  }
-  main.innerHTML = `<section class="paper">${head("NEW ASSIGNMENT", "布置一份作业", "下一步上传参考答案，核对评分点。", link("assignments", "返回作业"))}<form id="new-assignment" class="stack small-form">${field("作业标题", "title", "", "text", 'required maxlength="120" placeholder="例如：AD–AS 图像与政策分析"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field("截止时间（可选）", "dueAt", "", "datetime-local")}</div><fieldset><legend>布置给</legend>${state.classes.map((c) => `<label class="check"><input type="checkbox" name="classId" value="${c.id}" checked>${h(c.name)}</label>`).join("")}</fieldset>${area("题目与作业要求", "instructions", "", 'placeholder="填写题目、需要画图的要求、提交说明…"')}<label class="field"><span>成绩返回方式</span><select name="gradingMode"><option value="auto">自动批阅并返回，异常转教师复核</option><option value="manual">全部由教师复核后发布</option></select></label><label class="check"><input type="checkbox" name="allowResubmit" checked>允许学生在截止前重新提交</label><p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 上传参考答案</button></form></section>`;
-  formHandler($("#new-assignment"), async (b) => {
-    b.classIds = $$("input[name=classId]:checked").map((x) => x.value);
-    b.allowResubmit=$("[name=allowResubmit]").checked;
-    if (b.dueAt) b.dueAt = new Date(b.dueAt).toISOString();
-    const { assignment } = await post("assignments", b);
-    go("answer/" + assignment.id);
-  });
+ if(!state.classes.length){go('account');toast('请先在 Bookself 教师端确认班级，作业工作台会自动同步');return;}
+ main.innerHTML=`<section class="paper">${head('','上传作业题纸','先准备学生看到的内容，下一步设置私密答案与评分标准。',link('assignments','返回作业'))}<form id="new-assignment" class="question-first-form"><section class="stack"><div class="section-head"><h2>作业 PDF 与题目附件</h2><span class="badge">学生可见</span></div><div id="new-question-upload"></div><p class="hint">请上传不含答案的学生版。可以添加补充材料，并上移主题纸到第一位。</p></section><section class="stack">${field('作业名称','title','','text','required maxlength="120" placeholder="例如：AD–AS 第三次练习"')}<div class="field-row"><label class="field"><span>课程</span><select name="course"><option>AP 宏观经济学</option><option>AP 微观经济学</option><option>经济学</option></select></label>${field('截止时间（可选）','dueAt','','datetime-local')}</div><fieldset><legend>布置给</legend>${state.classes.map(c=>`<label class="check"><input type="checkbox" name="classId" value="${c.id}" checked>${h(c.name)}</label>`).join('')}</fieldset>${field('本次完成范围','readingScope','','text','maxlength="500" placeholder="例如：第 1–8 题，第 9 题选做"')}${area('提交要求','submissionGuide','','maxlength="1000" placeholder="例如：按题号作答，图像标注坐标轴；照片保留完整题号。"')}${area('题目补充说明','instructions','','maxlength="20000" placeholder="也可以直接在这里填写题目。"')}<label class="field"><span>成绩返回方式</span><select name="gradingMode"><option value="auto">自动批阅并返回，异常转教师复核</option><option value="manual">全部由教师复核后发布</option></select></label><label class="check"><input type="checkbox" name="allowResubmit" checked>允许学生在截止前重新提交</label><label class="check"><input type="checkbox" name="studentPaperChecked" required>我已检查学生可见的题纸和说明中不含参考答案</label><p class="form-error" role="alert"></p><button class="primary" type="submit">继续 · 设置参考答案</button><p class="hint">继续后保存为草稿，核对评分标准并发布后学生才可见。</p></section></form></section>`;
+ const form=$('#new-assignment');const uploader=uploadWidget($('#new-question-upload'),'question',[],ids=>{const first=state.files.get(ids[0]);if(first&&!form.elements.title.value)form.elements.title.value=first.name.replace(/\.[^.]+$/,'').slice(0,120);});
+ formHandler(form,async b=>{if(uploader.busy()||uploader.pending())throw Error('请完成题纸上传，或移除未完成的文件后继续。');b.classIds=$$('input[name=classId]:checked',form).map(x=>x.value);b.allowResubmit=form.elements.allowResubmit.checked;b.questionFiles=uploader.ids();if(b.dueAt)b.dueAt=new Date(b.dueAt).toISOString();const {assignment}=await post('assignments',b);go('answer/'+assignment.id);});
 }
 async function metadata(ids) {
   await Promise.all(
@@ -303,12 +295,12 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
   const key=[state.user.id,location.hash,root.id,purpose].join(':');
   const queue=uploadQueues.get(key)||{ids:[...initial],pending:[],busy:false};
   const ids=queue.ids;
-  root.innerHTML = `${purpose==='submission'?'<div class="capture-actions"><label class="capture-button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v15H4Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg><span>拍照添加</span><input type="file" class="camera-input" accept="image/*" capture="environment" aria-label="拍照添加作业"></label></div>':''}<div class="file-list"></div>${purpose==='answer'?'<div class="answer-inline-preview"></div>':''}<label class="upload"><span class="upload-icon" aria-hidden="true">${icon('up')}</span><strong>${purpose==='submission'?'从相册或文件添加':'点击上传，或将文件拖到这里'}</strong><small class="muted">JPG / PNG / WebP / PDF · 单文件 20 MB</small><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple aria-label="上传${purpose==='answer'?'参考答案':purpose==='question'?'题目':'作业'}"></label><progress value="0" max="100" hidden aria-label="文件上传进度"></progress><p class="hint upload-status" role="status">最多 20 页，合计 50 MB。HEIC 请先转为 JPG。</p><div class="upload-recovery" hidden></div>`;
+  root.innerHTML = `${purpose==='submission'?'<div class="capture-actions"><label class="capture-button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v15H4Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg><span>拍照添加</span><input type="file" class="camera-input" accept="image/*" capture="environment" aria-label="拍照添加作业"></label></div>':''}<div class="file-list"></div>${['answer','question'].includes(purpose)?'<div class="answer-inline-preview"></div>':''}<label class="upload"><span class="upload-icon" aria-hidden="true">${icon('up')}</span><strong>${purpose==='submission'?'从相册或文件添加':'点击上传，或将文件拖到这里'}</strong><small class="muted">JPG / PNG / WebP / PDF · 单文件 20 MB</small><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple aria-label="上传${purpose==='answer'?'参考答案':purpose==='question'?'题目':'作业'}"></label><progress value="0" max="100" hidden aria-label="文件上传进度"></progress><p class="hint upload-status" role="status">最多 20 页，合计 50 MB。HEIC 请先转为 JPG。</p><div class="upload-recovery" hidden></div>`;
   const list=$('.file-list',root),status=$('.upload-status',root),progress=$('progress',root),input=$('.upload input',root),camera=$('.camera-input',root),zone=$('.upload',root),recovery=$('.upload-recovery',root);
   const notify=()=>queue.notify?.();
   function draw(){
     list.innerHTML=fileMarkup(ids,true);
-    if(purpose==='answer'){const f=state.files.get(ids[0]);$('.answer-inline-preview',root).innerHTML=!f?'':f.mime==='application/pdf'?`<div class="pdf-preview" data-pdf="${f.id}"></div>`:`<img class="original-preview" src="/api/homework/files/${f.id}" alt="参考答案预览">`;}
+    if(['answer','question'].includes(purpose)){const f=state.files.get(ids[0]);$('.answer-inline-preview',root).innerHTML=!f?'':f.mime==='application/pdf'?`<div class="pdf-preview" data-pdf="${f.id}"></div>`:`<img class="original-preview" src="/api/homework/files/${f.id}" alt="${purpose==='question'?'学生题纸':'参考答案'}预览">`;}
     input.disabled=queue.busy;if(camera)camera.disabled=queue.busy;progress.hidden=!queue.busy;
     $$('.file-tools button',list).forEach(b=>{if(queue.busy)b.disabled=true;});
     recovery.hidden=!queue.pending.length||queue.busy;
@@ -355,16 +347,20 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
   return {ids:()=>ids,busy:()=>queue.busy,pending:()=>queue.pending.length,discardQueue:()=>{if(queue.busy)throw Error('请等待附件处理完成后再切换版本。');queue.pending=[];uploadQueues.delete(key);}};
 }
 function pointEditor(points=[]){return points.map(p=>`<div class="scoring-point" data-point><label class="field"><span>得分条件</span><input name="criterion" value="${h(p.criterion)}" maxlength="3000" required></label><label class="field"><span>分值</span><input name="pointMax" type="number" min="0.5" max="100" step="0.5" value="${h(p.maxPoints)}" required></label><button type="button" class="icon-btn remove-point" aria-label="移除此评分点">${icon('close')}</button></div>`).join('');}
-function rubricEditor(questions){return questions.map((q,i)=>`<article class="rubric-question" data-question><div class="question-bar"><h3>第 ${i+1} 题</h3><label>题号<input name="qid" value="${h(q.id)}" required maxlength="30" aria-label="第 ${i+1} 题题号"></label><label>满分<input name="points" type="number" min="0.5" max="100" step="0.5" value="${h(q.maxPoints)}" required aria-label="第 ${i+1} 题满分"></label><button type="button" class="icon-btn remove-question" aria-label="删除第 ${i+1} 题">${icon('close')}</button></div><div class="stack"><label class="field"><span>题型</span><select name="questionType"><option value="short" ${q.type!=='choice'?'selected':''}>简答题</option><option value="choice" ${q.type==='choice'?'selected':''}>选择题</option></select></label>${area('题目（学生可见）','prompt',q.prompt)}${area('参考答案','answer',q.answer,'required')}<div class="choice-settings stack" ${q.type==='choice'?'':'hidden'}><div class="field-row"><label class="field"><span>选择方式</span><select name="choiceMode"><option value="single" ${q.choiceMode!=='multiple'?'selected':''}>单选</option><option value="multiple" ${q.choiceMode==='multiple'?'selected':''}>多选</option></select></label>${field('正确选项','correctOptions',(Array.isArray(q.correctOptions)?q.correctOptions.join(', '):q.correctOptions||''),'text','placeholder="例如 B 或 A, C"')}</div><p class="hint">选项完全一致得满分，多选漏选或错选不得分。</p></div>${area('评分说明与可接受的表达','criteria',q.criteria,'required')}<div class="short-settings" ${q.type==='choice'?'hidden':''}><h4>逐点评分</h4><div class="point-list">${pointEditor(q.scoringPoints)}</div><button type="button" class="secondary add-point">添加评分点</button><p class="hint">各评分点分值之和须等于本题满分。未确认逐点评分的题目会进入教师复核。</p></div>${field('知识点（可选）','knowledge',q.knowledge||'')}${field('答案出处','sourcePages',q.sourcePages||'文字答案')}</div></article>`).join('');}
-function readRubric(){return $$('[data-question]').map(el=>({id:$('[name=qid]',el).value,prompt:$('[name=prompt]',el).value,answer:$('[name=answer]',el).value,criteria:$('[name=criteria]',el).value,maxPoints:Number($('[name=points]',el).value),sourcePages:$('[name=sourcePages]',el).value,type:$('[name=questionType]',el).value,choiceMode:$('[name=choiceMode]',el).value,correctOptions:$('[name=correctOptions]',el).value,knowledge:$('[name=knowledge]',el).value,scoringPoints:$$('[data-point]',el).map(p=>({criterion:$('[name=criterion]',p).value,maxPoints:Number($('[name=pointMax]',p).value)}))}));}
+function paperLocationFields(q={}){const files=(state.paperFileIds||[]).map(id=>state.files.get(id)).filter(f=>f?.mime==='application/pdf');return `<div class="field-row paper-location-fields"><label class="field"><span>学生题纸定位（可选）</span><select name="paperFileId"><option value="">不关联 PDF</option>${files.map(f=>`<option value="${h(f.id)}" ${q.paperFileId===f.id?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>${field('所在页','paperPage',q.paperPage||'','number','min="1" step="1" placeholder="页码"')}</div>`;}
+function refreshPaperSelectors(ids){state.paperFileIds=[...ids];const files=ids.map(id=>state.files.get(id)).filter(f=>f?.mime==='application/pdf');$$('[name=paperFileId]').forEach(select=>{const old=select.value;select.innerHTML='<option value="">不关联 PDF</option>'+files.map(f=>`<option value="${h(f.id)}">${h(f.name)}</option>`).join('');select.value=old;});const main=$('[name=mainQuestionFile]');if(main){const old=main.value;main.innerHTML=files.map(f=>`<option value="${h(f.id)}">${h(f.name)}</option>`).join('')||'<option value="">无 PDF 主题纸</option>';if(files.some(f=>f.id===old))main.value=old;}}
+function studentPaperSettings(a){return `<details class="student-paper-settings"><summary>学生题纸与提交说明</summary><div class="stack"><span class="badge">学生可见</span><div id="question-upload"></div><label class="field"><span>主作业 PDF</span><select name="mainQuestionFile">${a.questionFiles.map(id=>state.files.get(id)).filter(f=>f?.mime==='application/pdf').map(f=>`<option value="${f.id}" ${a.mainQuestionFile===f.id?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>${field('本次完成范围','readingScope',a.readingScope||'','text','maxlength="500"')}${area('提交要求','submissionGuide',a.submissionGuide||'','maxlength="1000"')}${area('学生可见的题目要求','instructions',a.instructions)}${a.published?area('本次题纸修改说明','paperChangeNote',a.paperChangeNote||'','maxlength="500" placeholder="说明改动的题号或页面；重新发布后学生可见。"'):''}</div></details>`;}
+function rubricEditor(questions){return questions.map((q,i)=>`<article class="rubric-question" data-question><div class="question-bar"><h3>第 ${i+1} 题</h3><label>题号<input name="qid" value="${h(q.id)}" required maxlength="30" aria-label="第 ${i+1} 题题号"></label><label>满分<input name="points" type="number" min="0.5" max="100" step="0.5" value="${h(q.maxPoints)}" required aria-label="第 ${i+1} 题满分"></label><button type="button" class="icon-btn remove-question" aria-label="删除第 ${i+1} 题">${icon('close')}</button></div><div class="stack"><label class="field"><span>题型</span><select name="questionType"><option value="short" ${q.type!=='choice'?'selected':''}>简答题</option><option value="choice" ${q.type==='choice'?'selected':''}>选择题</option></select></label>${area('题目（学生可见）','prompt',q.prompt)}${area('参考答案','answer',q.answer,'required')}<div class="choice-settings stack" ${q.type==='choice'?'':'hidden'}><div class="field-row"><label class="field"><span>选择方式</span><select name="choiceMode"><option value="single" ${q.choiceMode!=='multiple'?'selected':''}>单选</option><option value="multiple" ${q.choiceMode==='multiple'?'selected':''}>多选</option></select></label>${field('正确选项','correctOptions',(Array.isArray(q.correctOptions)?q.correctOptions.join(', '):q.correctOptions||''),'text','placeholder="例如 B 或 A, C"')}</div><p class="hint">选项完全一致得满分，多选漏选或错选不得分。</p></div>${area('评分说明与可接受的表达','criteria',q.criteria,'required')}<div class="short-settings" ${q.type==='choice'?'hidden':''}><h4>逐点评分</h4><div class="point-list">${pointEditor(q.scoringPoints)}</div><button type="button" class="secondary add-point">添加评分点</button><p class="hint">各评分点分值之和须等于本题满分。未确认逐点评分的题目会进入教师复核。</p></div>${field('知识点（可选）','knowledge',q.knowledge||'')}${paperLocationFields(q)}${field('答案出处','sourcePages',q.sourcePages||'文字答案')}</div></article>`).join('');}
+function readRubric(){return $$('[data-question]').map(el=>({id:$('[name=qid]',el).value,paperFileId:$('[name=paperFileId]',el).value,paperPage:$('[name=paperPage]',el).value,prompt:$('[name=prompt]',el).value,answer:$('[name=answer]',el).value,criteria:$('[name=criteria]',el).value,maxPoints:Number($('[name=points]',el).value),sourcePages:$('[name=sourcePages]',el).value,type:$('[name=questionType]',el).value,choiceMode:$('[name=choiceMode]',el).value,correctOptions:$('[name=correctOptions]',el).value,knowledge:$('[name=knowledge]',el).value,scoringPoints:$$('[data-point]',el).map(p=>({criterion:$('[name=criterion]',p).value,maxPoints:Number($('[name=pointMax]',p).value)}))}));}
 
 async function answerPage(id) {
   const renderId = state.routeVersion;
   const { assignment: a } = await api("assignments/" + id);
   await metadata([...a.answerFiles, ...a.questionFiles]);
   if (renderId !== state.routeVersion) return;
+  state.paperFileIds=[...a.questionFiles];
   const questions = a.draftRubric || a.rubric || [];
-  main.innerHTML = `<section class="paper">${head("ANSWER KEY / " + h(a.course), "上传参考答案", a.title, `<span class="answer-private">仅教师可见</span>` + link("assignments", "返回"))}<div class="split"><section><div class="section-head"><h2>你的参考答案</h2>${badge(a.status)}</div><form id="source-form" class="stack"><div id="answer-upload"></div><details ${a.answerFiles.length ? "" : "open"}><summary>文字答案</summary>${area("文字答案", "answerText", a.answerText, 'placeholder="可直接粘贴答案、题号与评分说明…"')}</details><details><summary>题目附件与学生说明</summary><div class="stack">${area("学生可见的题目要求", "instructions", a.instructions)}<div id="question-upload"></div></div></details><p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存原始答案</button><button type="button" id="parse-answer" class="primary">AI 整理评分点</button></div><p class="hint">上传的答案保留原件。AI 整理后，请核对右侧评分点，再启用批改。</p></form>${a.answerFiles.length ? `<button class="link" data-preview="${a.answerFiles[0]}">打开原始答案</button>` : ""}${["queued", "parsing"].includes(a.status) ? '<div class="status-line" id="parse-status">正在后台整理答案。你可以离开页面，任务会继续保存。</div>' : ""}${a.error ? `<p class="error">${h(a.error)}</p>` : ""}</section><section><div class="section-head"><h2>核对评分点</h2><span class="hint">${a.version ? "当前 v" + a.version : "待确认"}</span></div><form id="rubric-form"><div id="questions">${questions.length ? rubricEditor(questions) : empty("先整理，再确认", "使用左侧答案生成评分点，也可以手动添加。")}</div><button type="button" id="add-question" class="secondary">添加题目</button><hr class="rule"><label class="check"><input type="checkbox" name="confirmed" required>我已核对每题答案、满分和评分点</label><p class="hint">确认后，学生即可提交。参考答案保持私密，发布成绩只展示得分和反馈。修改评分标准会生成新版本。</p><p class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="primary wide">确认答案并发布作业</button></div></form></section></div></section>`;
+  main.innerHTML = `<section class="paper">${head("ANSWER KEY / " + h(a.course), "上传参考答案", a.title, `<span class="answer-private">仅教师可见</span>` + link("assignments", "返回"))}<div class="split"><section><div class="section-head"><h2>你的参考答案</h2>${badge(a.status)}</div><form id="source-form" class="stack"><div id="answer-upload"></div><details ${a.answerFiles.length ? "" : "open"}><summary>文字答案</summary>${area("文字答案", "answerText", a.answerText, 'placeholder="可直接粘贴答案、题号与评分说明…"')}</details>${studentPaperSettings(a)}<p class="form-error" role="alert"></p><div class="actions"><button type="submit" class="secondary">保存原始答案</button><button type="button" id="parse-answer" class="primary">AI 整理评分点</button></div><p class="hint">上传的答案保留原件。AI 整理后，请核对右侧评分点，再启用批改。</p></form>${a.answerFiles.length ? `<button class="link" data-preview="${a.answerFiles[0]}">打开原始答案</button>` : ""}${["queued", "parsing"].includes(a.status) ? '<div class="status-line" id="parse-status">正在后台整理答案。你可以离开页面，任务会继续保存。</div>' : ""}${a.error ? `<p class="error">${h(a.error)}</p>` : ""}</section><section><div class="section-head"><h2>核对评分点</h2><span class="hint">${a.version ? "当前 v" + a.version : "待确认"}</span></div><form id="rubric-form"><div id="questions">${questions.length ? rubricEditor(questions) : empty("先整理，再确认", "使用左侧答案生成评分点，也可以手动添加。")}</div><button type="button" id="add-question" class="secondary">添加题目</button><hr class="rule"><label class="check"><input type="checkbox" name="confirmed" required>我已核对每题答案、满分和评分点</label><p class="hint">确认后，学生即可提交。参考答案保持私密，发布成绩只展示得分和反馈。修改评分标准会生成新版本。</p><p class="form-error" role="alert"></p><div class="form-actions"><button type="button" class="secondary" id="preview-student-paper">预览学生题纸</button><label class="check"><input type="checkbox" name="paperChecked" required>我已检查学生题纸、完成范围和题号定位</label><button type="submit" class="primary wide">确认答案并发布作业</button></div></form></section></div></section>`;
   let sourceDirty = false;
   const markDirty = () => (sourceDirty = true);
   $("#source-form").addEventListener("input", markDirty);
@@ -379,11 +375,12 @@ async function answerPage(id) {
       $("#question-upload"),
       "question",
       a.questionFiles,
-      markDirty,
+      ids=>{markDirty();refreshPaperSelectors(ids);},
     );
+  $('#preview-student-paper').onclick=()=>{const ids=qu.ids(),selected=$('[name=mainQuestionFile]').value,first=state.files.get(selected)||ids.map(x=>state.files.get(x)).find(f=>f?.mime==='application/pdf'),form=$('#source-form'),dialog=$('#preview');$('.preview-content',dialog).innerHTML=`<h2>${h(a.title)}</h2><p class="instructions">${h(form.elements.readingScope.value)}</p><p class="instructions">${h(form.elements.submissionGuide.value)}</p><p class="instructions">${h(form.elements.instructions.value)}</p>${first?`<div class="pdf-preview" data-pdf="${first.id}" data-title="${h(a.title)}"></div>`:fileMarkup(ids)}`;dialog.showModal();bindPreviews(dialog);};
   let revision = a.sourceRevision || 0;
   const saveSource = async () => {
-    if (au.busy() || qu.busy()) throw new Error("请等待文件上传完成");
+    if (au.busy() || qu.busy() || au.pending() || qu.pending()) throw new Error("请等待文件上传完成");
     const b = formData($("#source-form"));
     const result = await put(`assignments/${id}/source`, {
       ...b,
@@ -429,7 +426,7 @@ async function answerPage(id) {
     bindRemove();
   });
   formHandler($("#rubric-form"), async () => {
-    if (au.busy() || qu.busy()) throw new Error("请等待上传完成");
+    if (au.busy() || qu.busy() || au.pending() || qu.pending()) throw new Error("请等待上传完成");
     const questions = readRubric();
     if(!questions.length)throw new Error("请至少确认一道题");
     await saveSource();
@@ -471,6 +468,12 @@ async function answerPage(id) {
     pollTimer = setTimeout(pollAnswer, 6000);
   }
 }
+function paperSurface(a,location=null){
+ const ids=a.questionFiles||a.paper?.questionFiles||[],files=ids.map(x=>state.files.get(x)).filter(Boolean),pdfs=files.filter(f=>f.mime==='application/pdf'),mainFile=pdfs.find(f=>f.id===location?.fileId)||pdfs.find(f=>f.id===a.mainQuestionFile)||pdfs[0];
+ return `<div class="paper-reader-surface">${a.readingScope?`<p class="paper-scope"><strong>本次完成</strong> ${h(a.readingScope)}</p>`:''}${a.submissionGuide||a.paper?.changeNote?`<details class="paper-notes"><summary>${a.paper?.changeNote?'题纸已更新 · 查看说明':'作答要求'}</summary>${a.paper?.changeNote?`<p>题纸更新：${h(a.paper.changeNote)}</p>`:''}${a.submissionGuide?`<p>${h(a.submissionGuide)}</p>`:''}</details>`:''}${mainFile?`<div class="pdf-preview" data-pdf="${mainFile.id}" data-title="${h(a.title)}" ${location?.page?`data-page="${location.page}"`:''}></div>`:''}${(a.questions||[]).some(q=>q.paperLocation)?`<nav class="paper-question-nav" aria-label="按题号定位">${a.questions.filter(q=>q.paperLocation).map(q=>`<button type="button" class="secondary" data-paper-file="${q.paperLocation.fileId}" data-paper-page="${q.paperLocation.page}">第 ${h(q.id)} 题 · P${q.paperLocation.page}</button>`).join('')}</nav>`:''}<details class="assignment-brief" ${mainFile?'':'open'}><summary>${mainFile?'补充说明与题目':'查看题目与要求'}</summary><p class="instructions">${h(a.instructions||'请按题号完成作答。')}</p>${(a.questions||[]).map(q=>`<div class="published-question"><h3>第 ${h(q.id)} 题 <span class="hint">${q.maxPoints} 分</span></h3><p>${h(q.prompt)}</p></div>`).join('')}<div class="file-list">${fileMarkup(files.filter(f=>f.id!==mainFile?.id).map(f=>f.id))}</div><a class="secondary" href="${a.originalSubmissionId?'/api/homework/submissions/'+a.originalSubmissionId+'/paper-pdf':'/api/homework/assignments/'+a.id+'/pdf'}" download>保存题目 PDF</a></details></div>`;
+}
+function bindPaperSurface(root=main){$$('[data-paper-file]',root).forEach(button=>button.onclick=()=>{const surface=button.closest('.paper-reader-surface'),reader=surface.querySelector('.pdf-preview'),fileId=button.dataset.paperFile,page=Number(button.dataset.paperPage);if(reader?.dataset.pdf===fileId)pdfTasks.get(reader)?.gotoPage(page);else if(reader){const old=pdfTasks.get(reader);old?.destroy();pdfTasks.delete(reader);reader.replaceChildren();delete reader.dataset.loading;reader.dataset.pdf=fileId;reader.dataset.page=page;renderPDFs(surface);}reader?.scrollIntoView({block:'nearest'});});}
+async function originalPaperPage(submissionId,questionId){const version=state.routeVersion,{submission:s}=await api('submissions/'+submissionId),paper=s.paper||s.assignment.paper,a={...s.assignment,...paper,paper,originalSubmissionId:s.id,questions:(s.questions||[]).map(q=>({...q,paperLocation:paper?.locations?.find(p=>p.id===q.id)}))};await metadata(a.questionFiles||[]);if(version!==state.routeVersion)return;const location=paper?.locations?.find(q=>q.id===questionId);main.innerHTML=`<section class="paper original-paper">${head('',a.title,`本次提交对应题纸 · v${paper?.version||s.version}`,link('result/'+s.id,'返回作业反馈'))}${paperSurface(a,location)}</section>`;bindPreviews();bindPaperSurface();}
 async function submitPage(id) {
  const version=state.routeVersion,{assignment:a}=await api('assignments/'+id);
  const all=state.submissions.filter(s=>s.assignmentId===id),draft=assignmentState(a,all).draft,record=assignmentRecords(all,[a])[0],latest=record?.latest;
@@ -483,12 +486,13 @@ async function submitPage(id) {
  await metadata([...a.questionFiles,...initialFiles]);if(version!==state.routeVersion)return;
  const expired=a.dueAt&&Date.parse(a.dueAt)<Date.now()&&!a.allowLate&&latest?.status!=='returned';
  const locked=expired||(a.allowResubmit===false&&latest&&latest.status!=='returned');
+ const hasPDF=a.questionFiles.some(id=>state.files.get(id)?.mime==='application/pdf');
  const max=(a.questions||[]).reduce((n,q)=>n+q.maxPoints,0);
- main.innerHTML=`<section class="paper submit-paper">${head('',a.title,`${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}${max?' · 满分 '+max+' 分':''}`,link('assignments','返回作业'))}<div class="submission-layout"><section class="assignment-reading"><details class="assignment-brief" ${innerWidth>760?'open':''}><summary>查看题目与要求</summary><p class="instructions">${h(a.instructions||'根据题目完成作答，照片请包含完整题号。')}</p>${(a.questions||[]).map(q=>`<div class="published-question"><h3>第 ${h(q.id)} 题 <span class="hint">${q.maxPoints} 分</span></h3><p>${h(q.prompt)}</p></div>`).join('')}<div class="file-list">${fileMarkup(a.questionFiles)}</div><a class="secondary" href="/api/homework/assignments/${id}/pdf" download>保存题目 PDF</a></details>${latest?`<div class="previous-submission"><p>上次提交 ${date(latest.submittedAt)}</p>${badge(latest.status)}${link('result/'+latest.id,'查看上次提交')}${record.grade?`<p class="hint">已有成绩 ${record.grade.total}/${record.grade.maxPoints}，新结果出来前会保留。</p>`:''}</div>`:''}</section><section class="submission-compose"><div class="section-head"><h2>${latest?'补充或重新提交':'提交你的作业'}</h2><span class="hint">账号与班级已带入</span></div>${locked?`<p class="status-line" role="status">${expired?'已过截止时间。你可以继续保存草稿，请联系老师开放补交。':'老师已关闭重新提交。原作答和成绩仍可查看。'}</p>`:''}<form id="submit-form" class="stack"><div class="input-modes" role="group" aria-label="添加作答"><button type="button" data-mode="photo" aria-pressed="true">拍照</button><button type="button" data-mode="pdf" aria-pressed="false">PDF</button><button type="button" data-mode="text" aria-pressed="false">文字</button></div><div id="student-upload"></div><details id="typed-answer" ${initialText?'open':''}><summary>补充文字答案</summary>${area('按题号填写答案','answer',initialText,'maxlength="40000" placeholder="例如：第 1 题… 第 2 题…"')}</details><div class="submit-check"><p id="page-summary"></p><p class="hint">提交前确认：题号完整、文字清楚、没有漏页。</p></div><p class="draft-feedback" id="draft-status" role="status">${useCache?'已恢复这台设备上未完成的草稿。':draft?'已恢复账户草稿。':latest?'已带入上次作答。请保留正确页面，只替换或补充需要修改的部分。':'填写后会自动保存草稿。'}</p><p class="form-error" role="alert"></p><div class="actions submit-actions"><button type="button" id="save-draft" class="secondary">保存草稿</button><button type="submit" class="primary desktop-submit" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div><p class="hint">提交后可以关闭页面，批阅结果会自动保留。</p></form></section></div><div class="mobile-submit-bar"><div><p id="mobile-page-summary"></p><p id="mobile-save-status" class="hint"></p></div><button type="submit" form="submit-form" class="primary" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div></section>`;
+ main.innerHTML=`<section class="paper submit-paper ${hasPDF?'pdf-submission':''}" data-mobile-pane="reading">${head('',a.title,`${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}${max?' · 满分 '+max+' 分':''}`,link('assignments','返回作业'))}${hasPDF?'<div class="paper-view-switch" role="group" aria-label="看题与作答"><button type="button" data-paper-pane="reading" aria-pressed="true">题目</button><button type="button" data-paper-pane="answer" aria-pressed="false">我的作答</button></div>':''}<div class="submission-layout"><section class="assignment-reading">${paperSurface(a)}${latest?`<div class="previous-submission"><p>上次提交 ${date(latest.submittedAt)}</p>${badge(latest.status)}${link('result/'+latest.id,'查看上次提交')}${record.grade?`<p class="hint">已有成绩 ${record.grade.total}/${record.grade.maxPoints}，新结果出来前会保留。</p>`:''}</div>`:''}</section>${hasPDF?'<div class="reader-divider" role="separator" tabindex="0" aria-label="调整题纸与作答宽度" aria-orientation="vertical" aria-valuemin="45" aria-valuemax="72" aria-valuenow="62"></div>':''}<section class="submission-compose"><div class="section-head"><h2>${latest?'补充或重新提交':'提交你的作业'}</h2><span class="hint">账号与班级已带入</span></div>${locked?`<p class="status-line" role="status">${expired?'已过截止时间。你可以继续保存草稿，请联系老师开放补交。':'老师已关闭重新提交。原作答和成绩仍可查看。'}</p>`:''}<form id="submit-form" class="stack"><div class="input-modes" role="group" aria-label="添加作答"><button type="button" data-mode="photo" aria-pressed="true">拍照</button><button type="button" data-mode="pdf" aria-pressed="false">PDF</button><button type="button" data-mode="text" aria-pressed="false">文字</button></div><div id="student-upload"></div><details id="typed-answer" ${initialText?'open':''}><summary>补充文字答案</summary>${area('按题号填写答案','answer',initialText,'maxlength="40000" placeholder="例如：第 1 题… 第 2 题…"')}</details><div class="submit-check"><p id="page-summary"></p><p class="hint">提交前确认：题号完整、文字清楚、没有漏页。</p></div><p class="draft-feedback" id="draft-status" role="status">${useCache?'已恢复这台设备上未完成的草稿。':draft?'已恢复账户草稿。':latest?'已带入上次作答。请保留正确页面，只替换或补充需要修改的部分。':'填写后会自动保存草稿。'}</p><p class="form-error" role="alert"></p><div class="actions submit-actions"><button type="button" id="save-draft" class="secondary">保存草稿</button><button type="submit" class="primary desktop-submit" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div><p class="hint">提交后可以关闭页面，批阅结果会自动保留。</p></form></section></div><div class="mobile-submit-bar"><div><p id="mobile-page-summary"></p><p id="mobile-save-status" class="hint"></p></div>${hasPDF?'<button type="button" data-open-answer class="primary">开始作答</button>':''}<button type="submit" form="submit-form" class="primary" ${locked?'disabled':''}>${latest?'提交新版本':'提交作业'}</button></div></section>`;
  const form=$('#submit-form'),textArea=$('[name=answer]',form),status=$('#draft-status'),pageSummary=$('#page-summary'),mobileSummary=$('#mobile-page-summary'),mobileStatus=$('#mobile-save-status');
  let submitted=false,autosave,dirty=Boolean(useCache||(!draft&&latest)),writing=Promise.resolve(),localSaved=true,revision=0;
  const widget=uploadWidget($('#student-upload'),'submission',initialFiles,changed);
- const snapshot=()=>({assignmentId:id,text:textArea.value,files:[...widget.ids()],clientId});
+ const snapshot=()=>({assignmentId:id,paperVersion:a.paper?.version||a.version,text:textArea.value,files:[...widget.ids()],clientId});
  function cache(){try{sessionStorage.setItem(cacheKey,JSON.stringify({...snapshot(),updatedAt:Date.now()}));localSaved=true;}catch{localSaved=false;}}
  function setStatus(message){status.textContent=message;mobileStatus.textContent=message;}
  function summary(){const pages=widget.ids().reduce((n,x)=>n+(state.files.get(x)?.pages||0),0);pageSummary.textContent=pages?`已添加 ${pages} 页${textArea.value.trim()?'，另有文字答案':''}`:textArea.value.trim()?'已填写文字答案':'还没有添加作答';mobileSummary.textContent=pageSummary.textContent+(widget.pending()?` · ${widget.pending()} 个待重试`:'');}
@@ -507,7 +511,8 @@ async function submitPage(id) {
  $$('[data-mode]',form).forEach(b=>b.onclick=()=>{$$('[data-mode]',form).forEach(x=>x.setAttribute('aria-pressed',x===b));if(b.dataset.mode==='text'){$('#typed-answer').open=true;textArea.focus();}else if(b.dataset.mode==='pdf'){const input=$('.upload input',form);input.accept='application/pdf';input.click();input.accept='image/jpeg,image/png,image/webp,application/pdf';}else $('.camera-input',form).click();});
  click('#save-draft',async()=>{clearTimeout(autosave);await save(true);toast('草稿已保存，稍后可以继续');});
  formHandler(form,async()=>{if(locked)throw Error('请联系老师开放提交');clearTimeout(autosave);const controls=$$('input,textarea,button',form).map(el=>({el,disabled:el.disabled}));controls.forEach(({el})=>el.disabled=true);try{const {submission}=await save(false);submitted=true;sessionStorage.removeItem(cacheKey);toast('提交成功，原件已保存');if(form.isConnected)go('result/'+submission.id);}finally{controls.forEach(({el,disabled})=>el.disabled=disabled);}});
- bindPreviews();
+ if(hasPDF){const paper=$('.submit-paper'),switchPane=value=>{paper.dataset.mobilePane=value;$$('[data-paper-pane]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.paperPane===value));main.scrollTo({top:0,behavior:'instant'});};$$('[data-paper-pane]').forEach(b=>b.onclick=()=>switchPane(b.dataset.paperPane));$('[data-open-answer]').onclick=()=>switchPane('answer');const divider=$('.reader-divider'),layout=$('.submission-layout');let ratio=62;const resize=value=>{ratio=Math.min(72,Math.max(45,value));layout.style.setProperty('--reading-width',ratio+'%');divider.setAttribute('aria-valuenow',Math.round(ratio));};divider.onkeydown=e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();resize(ratio+(e.key==='ArrowRight'?2:-2));}};divider.onpointerdown=e=>{divider.setPointerCapture(e.pointerId);divider.dataset.dragging='true';};divider.onpointermove=e=>{if(divider.dataset.dragging==='true'){const rect=layout.getBoundingClientRect();resize((e.clientX-rect.left)/rect.width*100);}};divider.onpointerup=divider.onpointercancel=()=>delete divider.dataset.dragging;}
+ bindPreviews();bindPaperSurface();
 }
 
 function submissionRows(rows) {
@@ -537,7 +542,7 @@ async function resultPage(id) {
  const g=s.publishedGrade,types=questionTotals(g,s.questions||[]),uncertain=s.status==='needs_review';
  const statusTitle=s.status==='returned'?'需要补充作答':uncertain?'等待老师确认':s.status==='grading'?'正在后台批阅':'作业已提交';
  const steps=`<ol class="grading-steps"><li class="complete"><span></span><div><strong>已保存原件</strong><p>提交编号 ${h(s.id.slice(0,12).toUpperCase())}</p></div></li><li class="${s.status==='grading'?'current':''}"><span></span><div><strong>${s.status==='returned'?'需要补充作答':uncertain?'待教师确认':s.status==='grading'?'正在后台批阅':'排队等待批阅'}</strong><p>${s.status==='returned'?h(s.returnedReason):uncertain?'这份作答需要进一步核对，暂不确定总分。':'可以关闭页面，任务会继续保留。'}</p></div></li><li><span></span><div><strong>成绩与错题自动归档</strong><p>结果返回后，在“成绩”中随时查看。</p></div></li></ol>`;
- main.innerHTML=`<section class="paper result-paper">${head('',g?'本次成绩':statusTitle,a.title,link('grades','成绩档案'))}<div class="result-layout"><section class="result-main">${g?`<div class="result-score"><strong>${g.total}<small>/${g.maxPoints}</small></strong><span>${Math.round(g.total/g.maxPoints*1000)/10}%</span></div><div class="score-breakdown">${types.choice.max?`<span>选择题 <strong>${types.choice.score}/${types.choice.max}</strong></span>`:''}${types.short.max?`<span>简答题 <strong>${types.short.score}/${types.short.max}</strong></span>`:''}</div>${s.status!=='published'?'<p class="status-line">此前成绩保留；新一轮批阅或复核完成后会更新。</p>':''}<div class="section-head"><h2>逐题反馈</h2><span class="hint">${g.questions.filter(q=>q.score<q.maxPoints).length} 道失分题</span></div><div class="filter-tabs" role="group" aria-label="题目筛选"><button data-question-filter="wrong" aria-pressed="true">失分题</button><button data-question-filter="all" aria-pressed="false">全部题目</button></div><div id="question-results">${g.questions.map(q=>`<details class="result-question" data-correct="${q.score===q.maxPoints}" ${q.score<q.maxPoints?'open':''}><summary><span>第 ${h(q.id)} 题</span><strong>${q.score}/${q.maxPoints}</strong></summary><div class="question-detail"><p class="instructions">${h(q.feedback)}</p><details class="evidence"><summary>查看作答依据</summary><p class="instructions">${h(q.evidence)}</p></details>${q.score<q.maxPoints?link('mistakes/'+s.assignmentId+'/'+encodeURIComponent(q.id),'回看与订正'):''}<details class="review-appeal"><summary>对这道题的评分有疑问</summary>${(s.reviewRequests||[]).some(r=>r.questionId===q.id&&r.status==='open')?'<p class="status-line">已申请复核，当前成绩会保留到老师处理完成。</p>':`<form data-appeal="${h(q.id)}" class="stack">${area('需要老师核对什么','reason','','required maxlength="1500" placeholder="例如：我在第二页写出了这个计算步骤…"')}<p class="form-error" role="alert"></p><button class="secondary" type="submit">申请复核</button></form>`}</details></div></details>`).join('')}</div><p id="all-correct" class="empty-inline" hidden>这次没有失分题。你可以切换到全部题目回顾反馈。</p>${g.teacherNote?`<p class="instructions">${h(g.teacherNote)}</p>`:''}<p class="hint">${g.source==='automatic'?'自动批阅':'教师已确认'} · ${date(g.publishedAt)} · 答案 v${g.answerVersion}</p><div class="actions"><a class="primary" href="/api/homework/submissions/${s.id}/pdf?kind=grade" download>下载批改 PDF</a>${link('mistakes','查看错题集')}</div>`:steps+`<div class="actions">${link('assignments','返回作业列表','primary')}${s.status==='returned'?link('submit/'+s.assignmentId,'补充作业'):''}</div>`}</section><aside class="submission-receipt"><h2>我的原始作答</h2><p class="meta">${date(s.submittedAt)}${s.late?' · 迟交':''}</p><div class="file-list">${fileMarkup(s.files)}</div><details ${s.text?'open':''}><summary>文字作答</summary><p class="instructions">${h(s.text||'本次作答见附件。')}</p></details><a class="secondary" href="/api/homework/submissions/${s.id}/pdf" download>保存作业 PDF</a>${a.allowResubmit!==false&&(!a.dueAt||Date.parse(a.dueAt)>Date.now()||a.allowLate)?link('submit/'+s.assignmentId,'补充或重新提交','link'):''}${s.gradeHistory?.length?`<details class="grade-revisions"><summary>历次成绩版本</summary>${s.gradeHistory.map(v=>`<p>${date(v.publishedAt)} · ${v.total}/${v.maxPoints} · 答案 v${v.answerVersion}</p>`).join('')}</details>`:''}</aside></div></section>`;
+ main.innerHTML=`<section class="paper result-paper">${head('',g?'本次成绩':statusTitle,a.title,link('grades','成绩档案'))}<div class="result-layout"><section class="result-main">${g?`<div class="result-score"><strong>${g.total}<small>/${g.maxPoints}</small></strong><span>${Math.round(g.total/g.maxPoints*1000)/10}%</span></div><div class="score-breakdown">${types.choice.max?`<span>选择题 <strong>${types.choice.score}/${types.choice.max}</strong></span>`:''}${types.short.max?`<span>简答题 <strong>${types.short.score}/${types.short.max}</strong></span>`:''}</div>${s.status!=='published'?'<p class="status-line">此前成绩保留；新一轮批阅或复核完成后会更新。</p>':''}<div class="section-head"><h2>逐题反馈</h2><span class="hint">${g.questions.filter(q=>q.score<q.maxPoints).length} 道失分题</span></div><div class="filter-tabs" role="group" aria-label="题目筛选"><button data-question-filter="wrong" aria-pressed="true">失分题</button><button data-question-filter="all" aria-pressed="false">全部题目</button></div><div id="question-results">${g.questions.map(q=>`<details class="result-question" data-correct="${q.score===q.maxPoints}" ${q.score<q.maxPoints?'open':''}><summary><span>第 ${h(q.id)} 题</span><strong>${q.score}/${q.maxPoints}</strong></summary><div class="question-detail"><p class="instructions">${h(q.feedback)}</p><details class="evidence"><summary>查看作答依据</summary><p class="instructions">${h(q.evidence)}</p></details>${s.paper?.questionFiles?.length?link('paper/'+s.id+'/'+encodeURIComponent(q.id),'查看原题'):''}${q.score<q.maxPoints?link('mistakes/'+s.assignmentId+'/'+encodeURIComponent(q.id),'回看与订正'):''}<details class="review-appeal"><summary>对这道题的评分有疑问</summary>${(s.reviewRequests||[]).some(r=>r.questionId===q.id&&r.status==='open')?'<p class="status-line">已申请复核，当前成绩会保留到老师处理完成。</p>':`<form data-appeal="${h(q.id)}" class="stack">${area('需要老师核对什么','reason','','required maxlength="1500" placeholder="例如：我在第二页写出了这个计算步骤…"')}<p class="form-error" role="alert"></p><button class="secondary" type="submit">申请复核</button></form>`}</details></div></details>`).join('')}</div><p id="all-correct" class="empty-inline" hidden>这次没有失分题。你可以切换到全部题目回顾反馈。</p>${g.teacherNote?`<p class="instructions">${h(g.teacherNote)}</p>`:''}<p class="hint">${g.source==='automatic'?'自动批阅':'教师已确认'} · ${date(g.publishedAt)} · 答案 v${g.answerVersion}</p><div class="actions"><a class="primary" href="/api/homework/submissions/${s.id}/pdf?kind=grade" download>下载批改 PDF</a>${link('mistakes','查看错题集')}</div>`:steps+`<div class="actions">${link('assignments','返回作业列表','primary')}${s.status==='returned'?link('submit/'+s.assignmentId,'补充作业'):''}</div>`}</section><aside class="submission-receipt"><h2>我的原始作答</h2>${s.paper?.questionFiles?.length?link('paper/'+s.id,'查看本次作业题纸'):''}<p class="meta">${date(s.submittedAt)}${s.late?' · 迟交':''}</p><div class="file-list">${fileMarkup(s.files)}</div><details ${s.text?'open':''}><summary>文字作答</summary><p class="instructions">${h(s.text||'本次作答见附件。')}</p></details><a class="secondary" href="/api/homework/submissions/${s.id}/pdf" download>保存作业 PDF</a>${a.allowResubmit!==false&&(!a.dueAt||Date.parse(a.dueAt)>Date.now()||a.allowLate)?link('submit/'+s.assignmentId,'补充或重新提交','link'):''}${s.gradeHistory?.length?`<details class="grade-revisions"><summary>历次成绩版本</summary>${s.gradeHistory.map(v=>`<p>${date(v.publishedAt)} · ${v.total}/${v.maxPoints} · 答案 v${v.answerVersion}</p>`).join('')}</details>`:''}</aside></div></section>`;
  if(g){const filter=value=>{$$('.result-question').forEach(q=>q.hidden=value==='wrong'&&q.dataset.correct==='true');$('#all-correct').hidden=value!=='wrong'||g.questions.some(q=>q.score<q.maxPoints);$$('[data-question-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.questionFilter===value));};$$('[data-question-filter]').forEach(b=>b.onclick=()=>filter(b.dataset.questionFilter));filter('wrong');
   $$('[data-appeal]').forEach(form=>formHandler(form,async b=>{await post('submissions/'+s.id+'/review-request',{questionId:form.dataset.appeal,reason:b.reason});form.innerHTML='<p class="status-line">复核申请已保存，当前成绩保留。</p>';toast('已提交复核申请');}));
  }
@@ -733,6 +738,7 @@ async function render(scroll = true) {
     if (route === "new") newAssignment();
     else if (route === "answer" && id) await answerPage(id);
     else if (route === "submit" && id) await submitPage(id);
+    else if(route==="paper"&&id)await originalPaperPage(id,questionId);
     else if (route === "reviews") reviews(id);
     else if (["grades","history","gradebook"].includes(route))await learning.gradebook(id);
     else if(route==="mistakes")await learning.mistakes(id,questionId);
@@ -758,107 +764,11 @@ try {
   showLogin();
 }
 
-async function renderPDFs(root = document) {
-  for (const [el, task] of pdfTasks)
-    if (!el.isConnected) {
-      task.destroy().catch(() => {});
-      pdfTasks.delete(el);
-    }
-  for (const el of $$(".pdf-preview:not([data-loading])", root)) {
-    el.dataset.loading = "true";
-    el.innerHTML = '<p class="hint">正在打开 PDF…</p>';
-    try {
-      pdfModule ||= import("/assets/pdfjs/pdf.mjs");
-      const lib = await pdfModule;
-      lib.GlobalWorkerOptions.workerSrc = "/assets/pdfjs/pdf.worker.mjs";
-      const task = lib.getDocument({
-        url: "/api/homework/files/" + el.dataset.pdf,
-        cMapUrl: "/assets/pdfjs/cmaps/",
-        cMapPacked: true,
-        standardFontDataUrl: "/assets/pdfjs/standard_fonts/",
-        wasmUrl: "/assets/pdfjs/wasm/",
-        isEvalSupported: false,
-      });
-      pdfTasks.set(el, task);
-      const doc = await task.promise;
-      if (!el.isConnected) {
-        await task.destroy();
-        continue;
-      }
-      el.innerHTML = `<div class="pdf-tools"><button type="button" class="icon-btn pdf-prev" aria-label="上一页">${icon("left")}</button><span class="hint pdf-page"></span><button type="button" class="icon-btn pdf-next" aria-label="下一页">${icon("right")}</button></div><canvas role="img" aria-label="PDF 页面预览"></canvas>`;
-      let current = 1,
-        busy = false;
-      async function page() {
-        if (busy || !el.isConnected) return;
-        busy = true;
-        try {
-          const p = await doc.getPage(current),
-            base = p.getViewport({ scale: 1 }),
-            view = p.getViewport({
-              scale: Math.min(
-                2,
-                (Math.max(200, el.clientWidth - 8) *
-                  Math.min(2, devicePixelRatio)) /
-                  base.width,
-              ),
-            }),
-            canvas = $("canvas", el);
-          canvas.width = view.width;
-          canvas.height = view.height;
-          await p.render({
-            canvasContext: canvas.getContext("2d"),
-            viewport: view,
-          }).promise;
-          $(".pdf-page", el).textContent =
-            current + " / " + doc.numPages + " 页";
-          $(".pdf-prev", el).disabled = current === 1;
-          $(".pdf-next", el).disabled = current === doc.numPages;
-        } finally {
-          busy = false;
-        }
-      }
-      $(".pdf-prev", el).onclick = () => {
-        if (!busy && current > 1) {
-          current--;
-          page();
-        }
-      };
-      $(".pdf-next", el).onclick = () => {
-        if (!busy && current < doc.numPages) {
-          current++;
-          page();
-        }
-      };
-      await page();
-    } catch {
-      el.innerHTML = '<p class="hint">预览暂不可用，请点击文件名打开原件。</p>';
-    }
-  }
-}
-
-// Revalidate an already-open workspace when returning after another page signs out.
-if (document.documentElement.dataset.unified === 'true') {
-  let checkingSession = false;
-  async function checkUnifiedSession() {
-    if (checkingSession || document.hidden || !state.user) return;
-    checkingSession = true;
-    try {
-      const result = await api('me');
-      if (result.user?.id !== state.user?.id) {
-        document.documentElement.style.visibility = 'hidden';
-        location.reload();
-      }
-    } catch {} finally { checkingSession = false; }
-  }
-  window.addEventListener('focus', checkUnifiedSession);
-  window.addEventListener('pageshow', event => {
-    if (event.persisted) {
-      document.documentElement.style.visibility = 'hidden';
-      location.reload();
-    } else void checkUnifiedSession();
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) void checkUnifiedSession();
-  });
-  setInterval(checkUnifiedSession, 30000);
+function renderPDFs(root = document) {
+ for(const [el,task] of pdfTasks)if(!el.isConnected){Promise.resolve(task.destroy()).catch(()=>{});pdfTasks.delete(el);}
+ for(const el of $$('.pdf-preview:not([data-loading])',root)){
+  el.dataset.loading='true';const fileId=el.dataset.pdf;
+  const reader=mountPDFReader(el,{fileId,title:el.dataset.title||state.files.get(fileId)?.name||'PDF',storageKey:`hw-reading:${state.user?.id}:${fileId}`,initialPage:el.dataset.page?Number(el.dataset.page):null,loadPosition:()=>api('files/'+fileId+'/reading').then(x=>x.position),savePosition:position=>put('files/'+fileId+'/reading',position)});
+  pdfTasks.set(el,reader);
+ }
 }

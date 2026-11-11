@@ -1,0 +1,18 @@
+# Assignment PDF reading and submission
+
+Mode: Operate with embedded Read surface. User approved first release on 2026-11-11.
+THESIS: Open the assignment and see its actual paper; move between reading, preparing an answer, and revisiting a wrong question without losing place or work.
+OWN-WORLD: Preserve Mike logo, HubSerif headings, navy surround, ivory forms, transparent title and liquid navigation. PDF page itself stays white and legible.
+FIRST VIEWPORT: Teacher uploads student-visible question PDF before answer setup. Student sees assignment identity, scope and the actual paper.
+FLOW: Upload paper -> assignment/class/deadline -> private answer and rubric -> student-paper preview -> publish. Desktop adjustable reading/answer columns; phone question/answer switch, full-screen reading, page navigation, zoom/pinch, local/account position restore, original download. Teacher manually maps question IDs to PDF pages; result/mistake links use the correct paper snapshot.
+BOUNDARIES: No direct pen annotation in first release; no AI/OCR requirement for viewing or manual page mapping. Existing accounts, grades, files, URLs and service identities remain; published PDF versions never overwrite historical submission paper. Reading position never implies completion. Scanned PDF search must not pretend to work.
+VERIFY: Synthetic end-to-end uploads, privacy and source revision checks, historic access, desktop/phone viewport/touch, rapid zoom/navigation, keyboard/reduced motion, slow/error PDF loads, restore and leak/cancel cleanup. Physical-device testing and AI accuracy remain separately unverified.
+
+## Implemented scope
+
+- Teacher creation starts with student-visible question files and scope/submission instructions. The private answer source stays separate. Manual rubric mapping selects a question PDF and page; student preview and explicit checks precede publication. Text-only assignments and supplementary images remain supported.
+- The inline PDF.js reader presents continuous pages, 65%–400% zoom, fit-width, double-click/pinch zoom, full-screen reading with Escape, original download and page-number directory buttons. The directory is not a thumbnail strip. Search examines an existing PDF text layer and locates a page; image-only papers receive truthful no-text-layer feedback without OCR.
+- Reading position is scoped to account and file, with local/account restoration. A direct question link takes priority over the remembered page. Reading is never completion or submission.
+- At widths above 1000 px, the reading column starts at 62% and adjusts from 45% to 72% by pointer or arrow keys. At 1000 px and below the columns stack; at 640 px and below the student switches between reading and answering. At heights of 500 px and below secondary tools begin collapsed. A closed disclosure remains reachable after the window returns to taller desktop dimensions.
+- Confirmed publication captures student-visible paper metadata and question locations independently of private answers. Historical results and mistake links use the submitted paper snapshot. A new final submission from a stale paper version is rejected with a reopen message while saved work remains; a retry for an already completed submission returns its original acknowledgement before the version check.
+- Incumbent palette, type, transparent frame and liquid navigation remain authoritative. Reader-specific geometry and compact layouts are scoped implementation details, not new global tokens or a replacement visual world. No pen annotation, physical-device verification or new AI-accuracy claim is included.

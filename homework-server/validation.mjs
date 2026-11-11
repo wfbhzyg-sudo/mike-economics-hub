@@ -44,7 +44,10 @@ export function rubric(input) {
     if(type==='choice') assert(correctOptions.length>0 && (choiceMode==='multiple'||correctOptions.length===1),'请确认选择题的正确选项与单选或多选类型');
     const scoringPoints=type==='short' && Array.isArray(q.scoringPoints)?q.scoringPoints.map((p,j)=>({id:String(j+1),criterion:text(p.criterion,3000),maxPoints:Number(p.maxPoints)})):[];
     if(scoringPoints.length) assert(scoringPoints.length<=30 && scoringPoints.every(p=>p.criterion&&Number.isFinite(p.maxPoints)&&p.maxPoints>0)&&Math.abs(scoringPoints.reduce((n,p)=>n+p.maxPoints,0)-maxPoints)<.000001,'逐点评分分值之和必须等于本题满分');
+    const paperFileId=text(q.paperFileId,100),paperPage=q.paperPage?Number(q.paperPage):null;
+    assert((!paperFileId&&!paperPage)||(paperFileId&&Number.isInteger(paperPage)&&paperPage>=1&&paperPage<=2000),'请完整填写 PDF 和页码');
     return {
+      paperFileId,paperPage,
       type,correctOptions,choiceMode,choiceRule:'exact',scoringPoints,knowledge:text(q.knowledge,200),
       id: key,
       prompt: text(q.prompt, 12000),

@@ -17,6 +17,7 @@ import { createFiles, readBody, MAX_FILE } from "./files.mjs";
 import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } from "./validation.mjs";
 import {visibleQuestions, publishedResult, mistakeRows} from './learning.mjs';
 import {exportWork} from './export.mjs';
+import {capturePaper,paperOf,questionLocation} from './paper.mjs';
 const safeUser = (u) => ({
   id: u.id,
   name: u.name,
@@ -30,8 +31,9 @@ const publicAssignment = (a) => ({
   id: a.id,
   title: a.title,
   course: a.course,
-  instructions: a.instructions,
-  questionFiles: a.questionFiles,
+  instructions: paperOf(a).instructions,
+  questionFiles: paperOf(a).questionFiles,
+  paper:paperOf(a),readingScope:paperOf(a).readingScope,submissionGuide:paperOf(a).submissionGuide,mainQuestionFile:paperOf(a).mainQuestionFile,
   classIds: a.classIds,
   dueAt: a.dueAt,
   gradingMode:a.gradingMode||"manual", allowLate:Boolean(a.allowLate), allowResubmit:a.allowResubmit!==false,
@@ -40,6 +42,7 @@ const publicAssignment = (a) => ({
     id: q.id,
     prompt: q.prompt,
     maxPoints: q.maxPoints, type:q.type||"short", knowledge:q.knowledge||"",
+    paperLocation:questionLocation(paperOf(a),q.id),
   })),
   createdAt: a.createdAt,
 });
@@ -55,7 +58,7 @@ const publicSubmission = (s) => ({
   version: s.version,
   clientId: s.clientId,
   returnedReason: s.returnedReason,
-  questions:visibleQuestions(s), reviewRequests:s.reviewRequests||[],
+  paper:s.paperSnapshot||null,questions:visibleQuestions(s), reviewRequests:s.reviewRequests||[],
   gradeHistory:s.gradeHistory||[], classIds:s.classIds||[], late:Boolean(s.late),
 });
 const encodeCookie = (value, age) =>
@@ -193,6 +196,7 @@ export async function createHomework({externalAuth} = {}) {
     return { user: safeUser(user), csrf: s.csrf };
   };
   const queueGrade = async (s, a, c) => {
+    s.paperSnapshot ||= structuredClone(paperOf(a));
     s.version = a.version;
     s.gradingMode = a.gradingMode || "manual";
     s.rubricSnapshot = structuredClone(a.rubric);
@@ -220,12 +224,13 @@ export async function createHomework({externalAuth} = {}) {
     if (file.owner === user.id) return true;
     for (const a of await db.list("assignment"))
       if (
-        (a.questionFiles || []).includes(file.id) &&
+        (paperOf(a).questionFiles || []).includes(file.id) &&
         (user.role === "teacher"
           ? a.teacherId === user.id
           : a.published && a.classIds.some((x) => user.classIds?.includes(x)))
       )
         return true;
+    for(const s of await db.list("submission"))if(s.studentId===user.id&&s.paperSnapshot?.questionFiles?.includes(file.id))return true;
     if (user.role === "teacher")
       for (const s of await db.list("submission"))
         if (
@@ -666,6 +671,14 @@ export async function createHomework({externalAuth} = {}) {
         });return (json(res,{note:saved}),true);
       }
       if (route[0] === "files") {
+        if(route[1]&&route[2]==='reading'&&['GET','PUT'].includes(method)){
+          const f=await db.get(route[1]);assert(f?.mime==='application/pdf'&&await authorizeFile(f,user),'附件不存在或无权查看',404);
+          const key='reading:'+hash(user.id+':'+f.id);
+          if(method==='GET')return (json(res,{position:await db.get(key)||null}),true);
+          const b=await body(req);assert(Number.isInteger(b.page)&&b.page>=1&&b.page<=f.pages,'页码超出题纸范围');
+          const position={id:key,userId:user.id,fileId:f.id,page:b.page,offset:Math.max(0,Math.min(1,Number(b.offset)||0)),updatedAt:now()};await db.put('reading-position',position);return (json(res,{position}),true);
+        }
+
         if (method === "POST" && route[1] && route[2] === "rotate") {
           const f = await db.get(route[1]);
           assert(
@@ -738,6 +751,7 @@ export async function createHomework({externalAuth} = {}) {
             "请选择自己的班级",
           );
           assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),"截止时间格式不正确");
+          await files.validate(b.questionFiles||[],user.id,"question");
           const a = {
             id: id(),
             type: "assignment",
@@ -747,7 +761,8 @@ export async function createHomework({externalAuth} = {}) {
             instructions: text(b.instructions, 20000),
             classIds: b.classIds,
             dueAt: b.dueAt ? new Date(b.dueAt).toISOString() : null,
-            questionFiles: [],
+            questionFiles: b.questionFiles||[],
+            mainQuestionFile:b.questionFiles?.[0]||null,readingScope:boundedText(b.readingScope,500,"完成范围"),submissionGuide:boundedText(b.submissionGuide,1000,"提交要求"),
             answerFiles: [],
             answerText: "",
             gradingMode:b.gradingMode==="manual"?"manual":"auto",
@@ -764,7 +779,7 @@ export async function createHomework({externalAuth} = {}) {
           const a = await requireAssignment(route[1], user);
           if(method==='GET'&&route[2]==='pdf'){
             rate(req,'pdf',40,user.id);
-            const bytes=await exportWork({assignment:a,readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
+            const bytes=await exportWork({assignment:{...a,...paperOf(a)},readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
             res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(a.title+'-题目.pdf')}`}).end(bytes);return true;
           }
           if (method === "GET")
@@ -799,6 +814,12 @@ export async function createHomework({externalAuth} = {}) {
                 "question",
                 c,
               );
+              if(current.published&&!current.publishedPaper)current.publishedPaper=capturePaper(current);
+              current.mainQuestionFile=b.mainQuestionFile||b.questionFiles?.[0]||null;
+              assert(!current.mainQuestionFile||(b.questionFiles||[]).includes(current.mainQuestionFile),'请选择题目附件中的主文件');
+              if(b.readingScope!==undefined)current.readingScope=boundedText(b.readingScope,500,'完成范围');
+              if(b.submissionGuide!==undefined)current.submissionGuide=boundedText(b.submissionGuide,1000,'提交要求');
+              current.paperChangeNote=boundedText(b.paperChangeNote,500,'题纸修改说明');
               current.answerFiles = b.answerFiles || [];
               current.questionFiles = b.questionFiles || [];
               current.answerText = boundedText(b.answerText, 40000, "参考答案");
@@ -845,7 +866,10 @@ export async function createHomework({externalAuth} = {}) {
                 "答案已更新，请刷新后重新确认",
                 409,
               );
+              for(const q of questions)if(q.paperFileId||q.paperPage){const f=await db.get(q.paperFileId,c);assert(current.questionFiles.includes(q.paperFileId)&&f?.mime==='application/pdf'&&q.paperPage<=f.pages,'请核对第 '+q.id+' 题对应的 PDF 与页码');}
+              if(current.version>0){const previousPaper=paperOf(current);for(const submission of await db.list('submission',c))if(submission.assignmentId===current.id&&!submission.paperSnapshot){submission.paperSnapshot=structuredClone(previousPaper);await db.put('submission',submission,c);}}
               const version = current.version + 1;
+              const paper=capturePaper(current,questions,version);paper.files=[];for(const key of paper.questionFiles){const f=await db.get(key,c);paper.files.push({id:f.id,name:f.name,mime:f.mime,pages:f.pages});}
               await db.put(
                 "answer-version",
                 {
@@ -853,6 +877,7 @@ export async function createHomework({externalAuth} = {}) {
                   assignmentId: a.id,
                   version,
                   rubric: questions,
+                  paper,
                   answerText: current.answerText,
                   answerFiles: current.answerFiles,
                   confirmedBy: user.id,
@@ -860,6 +885,7 @@ export async function createHomework({externalAuth} = {}) {
                 },
                 c,
               );
+              current.publishedPaper=paper;
               current.version = version;
               current.rubric = questions;
               current.draftRubric = questions;
@@ -922,6 +948,7 @@ export async function createHomework({externalAuth} = {}) {
             assert(text(b.clientId, 100), "缺少提交凭证");
             const previous = await db.get(submissionId, c);
             if (previous && previous.status !== "draft") return previous;
+            assert(b.draft||b.paperVersion===undefined||Number(b.paperVersion)===paperOf(a).version,'题纸已更新，请先重新打开作业查看新版；已保存的作答会保留',409);
             const earlier=(await db.list('submission',c)).filter(s=>s.studentId===user.id&&s.assignmentId===a.id&&s.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt));
             assert(!late||a.allowLate||b.draft||earlier[0]?.status==='returned','已超过截止时间，请联系教师开放补交');
             assert(b.draft||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
@@ -940,6 +967,7 @@ export async function createHomework({externalAuth} = {}) {
               clientId: text(b.clientId, 100),
               text: content,
               files: b.files || [],
+              paperSnapshot:structuredClone(paperOf(a)),
               classIds:[...user.classIds],late,
               status: "draft",
               createdAt: previous?.createdAt || now(),
@@ -958,10 +986,15 @@ export async function createHomework({externalAuth} = {}) {
         }
         if (route[1]) {
           const s = await requireSubmission(route[1], user);
+          if(method==='GET'&&route[2]==='paper-pdf'){
+            rate(req,'pdf',40,user.id);const a=await db.get(s.assignmentId),paper=s.paperSnapshot||paperOf(a);
+            const bytes=await exportWork({assignment:{...a,...paper,rubric:s.rubricSnapshot||a.rubric},readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
+            res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(paper.title+'-原题.pdf')}`}).end(bytes);return true;
+          }
           if(method==='GET'&&route[2]==='pdf'){
             rate(req,'pdf',40,user.id);const a=await db.get(s.assignmentId);
             const withGrade=url.searchParams.get('kind')==='grade';assert(!withGrade||s.publishedGrade,'成绩尚未发布');
-            const bytes=await exportWork({assignment:a,submission:s,grade:withGrade?s.publishedGrade:null,readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
+            const bytes=await exportWork({assignment:{...a,...(s.paperSnapshot||{})},submission:s,grade:withGrade?s.publishedGrade:null,readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
             res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(a.title+(withGrade?'-批改结果':'-我的作业')+'.pdf')}`}).end(bytes);return true;
           }
           if(method==='POST'&&route[2]==='review-request'){

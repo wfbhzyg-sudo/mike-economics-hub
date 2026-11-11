@@ -1,0 +1,84 @@
+{
+  "unitTests": 24,
+  "baselineIntegrationGroups": 11,
+  "reports": {
+    "PDF API": {
+      "passed": true,
+      "checks": [
+        "Question PDF can be uploaded before assignment creation and remains private until publish",
+        "Answer attachments cannot be published as question attachments",
+        "Question page mappings validate file purpose, ownership and page bounds",
+        "Reading location is scoped to the viewer and validates page bounds",
+        "Published papers stay stable while teacher edits the next version",
+        "New publication preserves the historical paper and prevents stale final submissions",
+        "Mistake records point to the actual submitted paper version"
+      ]
+    },
+    "Desktop and phone": {
+      "checks": [
+        "1440px zoom, full-screen Escape, and page restore",
+        "Desktop reading/answer resize keyboard control",
+        "1440px historic question locator uses old PDF",
+        "1440px mistake-to-original-paper link",
+        "390px zoom, full-screen Escape, and page restore",
+        "390px read/write switch preserves draft and reader",
+        "390px historic question locator uses old PDF",
+        "390px mistake-to-original-paper link",
+        "320px zoom, full-screen Escape, and page restore",
+        "320px read/write switch preserves draft and reader",
+        "320px historic question locator uses old PDF",
+        "320px mistake-to-original-paper link",
+        "Teacher PDF-first upload, manual question mapping, student preview and publish"
+      ],
+      "errors": [],
+      "overflow": [],
+      "environment": "Chrome viewport and touch simulation, synthetic accounts",
+      "passed": true
+    },
+    "Reader edge cases": {
+      "checks": [
+        "Text PDF search locates the matching page",
+        "Rapid alternating zoom and page navigation settle with bounded canvases",
+        "Two-finger pinch scales the PDF and settles after release under reduced motion",
+        "Leaving from the hidden reading pane retains the selected page",
+        "Failed load retries in place; navigation removes the replacement fullscreen reader",
+        "Image-only PDF remains readable with truthful search feedback",
+        "Landscape and slow-load feedback retain usable full-screen reading"
+      ],
+      "errors": [],
+      "environment": "Synthetic Chrome viewport/touch/CDP tests",
+      "passed": true
+    },
+    "Reading continuity": {
+      "checks": [
+        "1440px decimal, blank and out-of-range page inputs remain valid",
+        "1440px nonzero reading offset",
+        "1440px fullscreen entry preserves page and offset",
+        "1440px fullscreen exit preserves page and offset",
+        "Desktop divider resize preserves page and offset",
+        "Short-to-tall desktop preserves page and offset",
+        "Short-to-tall desktop keeps secondary reading tools reachable",
+        "1440px restored account position retains offset",
+        "390px decimal, blank and out-of-range page inputs remain valid",
+        "390px nonzero reading offset",
+        "390px fullscreen entry preserves page and offset",
+        "390px fullscreen exit preserves page and offset",
+        "Portrait to landscape preserves page and offset",
+        "Landscape to portrait preserves page and offset",
+        "390px restored account position retains offset"
+      ],
+      "errors": [],
+      "passed": true
+    },
+    "Mobile teacher workflow": {
+      "checks": [
+        "Teacher PDF-first upload, manual question mapping, student preview and publish"
+      ],
+      "errors": [],
+      "overflow": [],
+      "environment": "Chrome viewport and touch simulation, synthetic accounts",
+      "passed": true
+    }
+  },
+  "scope": "Synthetic local accounts and Chrome viewport/touch simulation; not physical devices or an AI accuracy evaluation."
+}
