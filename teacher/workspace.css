@@ -640,3 +640,35 @@ body[data-work-task="true"] .tw-top-controls {
     font-size: 16px;
   }
 }
+
+/* Shared feedback, compact context and predictable phone targets. */
+html{-webkit-text-size-adjust:100%;scroll-padding-bottom:100px}
+.tw-page input,.tw-page select,.tw-page textarea{caret-color:var(--tw-navy)}
+.tw-page :is(button,a,input,textarea,select,summary){scroll-margin-block:90px;touch-action:manipulation}
+.tw-page :is(button,[role=button]){user-select:none;-webkit-user-select:none}
+.tw-page mark{background:#f0dfad;color:#3a3020;border-radius:2px;padding:0 .05em}
+.tw-brand>a{min-height:44px;align-items:center}
+.tw-task>div{min-width:0}.tw-task h3,.tw-class-row h3{overflow-wrap:anywhere}
+.tw-account>div{max-width:calc(100vw - 24px)}
+.tw-account>div strong{overflow-wrap:anywhere}
+.homework-surface .answer-editor .split{align-items:start}
+@media(max-width:760px){
+ .tw-context select{font-size:16px}
+ .tw-task{grid-template-columns:24px minmax(0,1fr);gap:8px 10px}
+ .tw-task>.tw-button{grid-column:2;justify-self:start;min-width:112px;width:auto}
+ .tw-rail{margin-top:0}
+ .tw-progress-row{margin-top:10px}
+ .tw-progress-list{gap:10px}
+ .tw-progress-row small{overflow-wrap:anywhere}
+ .tw-page .tw-statline{gap:12px}
+ .tw-class-list{padding:0 10px}
+ .tw-class-row{padding:10px 0}
+ .tw-class-row p{font-size:12px}
+ .tw-class-row .tw-actions{gap:6px}
+ .tw-class-row .tw-button{padding:8px 10px}
+ .homework-surface .student-profile .profile-heading h2{font:650 19px/1.5 var(--tw-sans)}
+ .homework-surface .student-profile{padding-top:0;border-top:0}
+ .homework-surface .student-profile .grade-trend{max-width:100%}
+ .homework-surface .answer-editor .split>section{padding:10px}
+}
+@media(hover:hover) and (pointer:fine){.tw-page .tw-button:hover{background:#e3eaf0}.tw-page .tw-primary:hover{background:#284d67}}

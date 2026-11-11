@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover,interactive-widget=resizes-content"
     />
     <meta name="theme-color" content="#f1f2ee" />
     <meta name="color-scheme" content="light" />
@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/homework/style.css" />
     <link rel="stylesheet" href="/homework/workspace.css" />
     <link rel="stylesheet" href="/homework/review-studio.css" />
-  </head>
+  <link rel="stylesheet" href="/homework/form-feedback.css"></head>
   <body>
     <a class="skip" href="#main">跳到正文</a>
     <header class="brand">
@@ -32,7 +32,7 @@
     </main>
     <nav id="dock" aria-label="工作台导航" hidden></nav>
     <div id="notice" role="status" aria-live="polite"></div>
-    <dialog id="preview">
+    <dialog id="preview" aria-label="作业文件预览">
       <button class="close" aria-label="关闭预览">关闭</button>
       <div class="preview-content"></div>
     </dialog>

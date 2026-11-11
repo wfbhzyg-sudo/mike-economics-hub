@@ -2045,3 +2045,67 @@ legend {
  .edit-paper .reader-v2 .reader-panel,.reader-v2.reader-is-fullscreen .reader-panel{bottom:max(12px,env(safe-area-inset-bottom))}
  .reader-v2 .reader-search-content{max-height:min(36dvh,270px)}
 }
+
+/* Complete-task feedback and compact long-form editing. */
+.upload-undo{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#eef2ea;padding:2px 10px;border-radius:6px;font-size:13px}
+.upload-undo button{min-height:44px;color:#315b48;text-decoration:underline;text-underline-offset:3px}
+.upload-status{font-variant-numeric:tabular-nums}
+.answer-editor .split>section{min-width:0}
+.answer-editor .rubric-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 10px;color:var(--muted);font-size:13px}
+.answer-editor .rubric-tools button{min-height:44px;padding:8px}
+.answer-editor details.rubric-question{padding:0;margin:0 0 8px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.answer-editor .rubric-summary{display:flex;align-items:center;gap:12px;list-style:none;min-height:52px;padding:10px 12px;cursor:pointer}
+.answer-editor .rubric-summary::-webkit-details-marker{display:none}
+.answer-editor .rubric-summary>strong{font-size:14px;overflow-wrap:anywhere;flex:1}
+.answer-editor .rubric-summary>[data-question-score]{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.answer-editor .rubric-edit-label{font-size:12px;color:#526879}
+.answer-editor .rubric-summary:after{content:'';width:7px;height:7px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);margin:0 3px 3px 0;transition:transform 160ms ease-out}
+.answer-editor details[open]>.rubric-summary:after{transform:rotate(225deg);margin-top:5px}
+.answer-editor details[open]>.rubric-summary{background:#e7edf0;border-radius:6px 6px 0 0}
+.answer-editor details[open]>.rubric-summary .rubric-edit-label{visibility:hidden}
+.answer-editor .rubric-question>.question-bar,.answer-editor .rubric-question>.stack{margin:0;padding:12px}
+.answer-editor .rubric-question>.question-bar{border-bottom:1px solid var(--line);gap:8px;flex-wrap:wrap}
+.answer-editor .question-bar h3{display:none}
+.answer-editor .question-bar label{flex:1;min-width:80px;font-size:12px}
+.answer-editor .question-bar input{max-width:90px;min-width:0}
+.answer-editor .rubric-question>.stack{gap:12px}
+.answer-editor .rubric-question textarea{min-height:76px}
+.answer-editor .rubric-question h4{font-size:14px;margin:0 0 8px}
+.answer-editor #source-form>details>summary,.answer-editor .student-paper-settings>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;gap:8px}
+.answer-editor #source-form>details>summary:before{content:'›';font-size:20px;line-height:1}
+.answer-editor #source-form>details[open]>summary:before{transform:rotate(90deg)}
+.answer-editor .scoring-point{gap:8px}
+.mobile-student-picker{display:none}
+.submission-confirmation{display:flex;align-items:center;gap:10px;background:#e4ede5;color:#305340;border-radius:7px;padding:12px 14px;margin-bottom:18px}
+.submission-confirmation strong{font-size:14px}.submission-confirmation p{margin:3px 0 0;font-size:12px}.receipt-check .ui-icon{width:24px;height:24px}.receipt-id{margin-left:auto;font-size:12px;font-variant-numeric:tabular-nums}
+.search-context{font-size:13px;line-height:1.65;margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+#dock .ui-icon{width:20px;height:20px;display:block}
+.form-validation button:focus-visible,.rubric-summary:focus-visible{outline:2px solid #385f7b;outline-offset:2px}
+@media(max-width:760px){
+ .mobile-student-picker{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;gap:6px;margin:0 0 14px}
+ .mobile-student-picker .field{min-width:0}.mobile-student-picker select{width:100%;min-width:0;text-overflow:ellipsis;font-size:16px}.mobile-student-picker button{padding:9px 8px;font-size:12px;min-height:46px}
+ .learning-layout:has(.student-profile)>.roster{display:none}
+ .learning-layout:has(.student-profile){display:block}
+ .student-profile .profile-heading h2{font:650 19px/1.5 var(--sans);margin:0}
+ .student-profile .profile-heading{margin-bottom:12px}
+ .student-profile .profile-metrics{margin:12px 0;gap:24px}
+ .student-profile .grade-trend{margin:14px 0}
+ .submission-confirmation{flex-wrap:wrap;gap:8px;margin-bottom:12px;padding:10px}
+ .submission-confirmation .receipt-id{margin-left:32px;flex-basis:100%}
+ .brand .back,.brand .brand-title,.brand .account{min-height:44px;display:inline-flex;align-items:center}
+ .submit-paper .paper-head .actions a{min-height:44px;display:inline-flex;align-items:center}
+ .attempts>summary,.recipient-confirm>summary{min-height:44px;align-content:center}
+ .answer-editor .split{gap:12px}
+ .answer-editor .rubric-question>.stack{padding:10px}
+ .answer-editor .rubric-summary{min-height:52px}
+}
+@media(prefers-reduced-motion:reduce){.answer-editor .rubric-summary:after{transition:none}}
+.answer-editor .answer-source{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
+.answer-editor .answer-source>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 10px;background:#e9e4ef;color:#564b69;border-radius:5px;list-style:none;cursor:pointer}
+.answer-editor .answer-source>summary::-webkit-details-marker{display:none}
+.answer-editor .answer-source>summary>strong{font-size:14px;flex:1}.answer-editor .answer-source>summary>span:last-child{font-size:12px}
+.answer-editor .answer-source>summary:after{content:'';border:solid currentColor;border-width:0 1.5px 1.5px 0;width:6px;height:6px;transform:rotate(45deg);margin:0 2px 4px}
+.answer-editor .answer-source[open]>summary:after{transform:rotate(225deg);margin-top:6px}
+.answer-editor .answer-source>section{padding:10px 0 0;min-width:0}
+.answer-editor .scoring-heading{font-size:14px;margin:0 0 8px}
+@media(max-width:760px){.answer-editor .answer-source>summary{padding:4px 8px}.answer-editor .answer-source>summary>span:last-child{display:none}}
