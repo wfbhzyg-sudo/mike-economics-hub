@@ -2,7 +2,7 @@ import {mountGradeJourney} from './grade-journey.js';
 import {mountGradeHeatmap} from './grade-heatmap.js';
 import {scoreBadge,scoreLegend} from './score-bands.js';
 import {viewMemory} from './view-memory.js';
-import {mountCorrectionReference} from './correction-workspace.js';
+import {mountCorrectionReference,mountAssignmentPaper} from './correction-workspace.js';
 import {showAssignmentRoster} from './assignment-roster.js';
 import {highlightText} from './search-text.js';
 import {assignmentRecords,gradeSummary,questionTotals} from './learning-model.js';
@@ -17,7 +17,7 @@ export function createLearningUI(ctx){
   if(teacher&&!studentId){const view=mountGradeHeatmap(ctx,data);state.viewCleanup=()=>view.destroy();return;}
   const student=teacher?data.students.find(u=>u.id===studentId):state.user;
   if(!student){main.innerHTML=`<section class="paper">${head('','未找到该学生','',link('gradebook','返回班级成绩'))}</section>`;return;}
-  const view=mountGradeJourney(ctx,data,student,{teacher,back:teacher?'gradebook':'',mountCorrection:async(host,assignmentId,questionId,onClose)=>{
+  const view=mountGradeJourney(ctx,data,student,{teacher,back:teacher?'gradebook':'',mountPaper:(host,assignmentId,submissionId,onClose)=>mountAssignmentPaper(host,{assignmentId,submissionId,state,api,metadata,h,onClose}),mountCorrection:async(host,assignmentId,questionId,onClose)=>{
    const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};let closed=false;
    const open=async(route)=>{if(closed)return;local.viewCleanup?.();local.viewCleanup=null;local.correctionNavigation=null;local.routeVersion++;const [,a,q]=route.split('/').map(decodeURIComponent);const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(mode==='next'&&next)await open(next);else await onClose();}});await child.mistakes(a,q);if(closed)return;const b=host.querySelector('[data-inline-close]');if(b)b.onclick=async()=>{try{await onClose();}catch(e){toast(e.message);}};};
    try{await open('mistakes/'+encodeURIComponent(assignmentId)+'/'+encodeURIComponent(questionId));}catch(error){closed=true;local.routeVersion++;local.viewCleanup?.();throw error;}return {flush:()=>local.correctionNavigation?.(),destroy(){closed=true;local.routeVersion++;local.viewCleanup?.();local.viewCleanup=null;}};

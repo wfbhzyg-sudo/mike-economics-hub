@@ -24,3 +24,21 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
  $('[data-collapse-reference]').onclick=e=>{const body=$('.correction-reference-body'),open=body.hidden;body.hidden=!open;e.currentTarget.setAttribute('aria-expanded',String(open));e.currentTarget.textContent=open?'收起参考区':'展开原题与原作答';};
  if(compact)$('[data-write-correction]').onclick=()=>onEdit?.();load('question');return {destroy(){destroyed=true;reader?.destroy();gallery?.destroy();questionGallery?.destroy();}};
 }
+
+// Read-only paper view shared by a grade card's direct original-question entry.
+export async function mountAssignmentPaper(root,{assignmentId,submissionId,state,api,metadata,h,onClose}){
+ const payload=await api(submissionId?'submissions/'+submissionId:'assignments/'+assignmentId);
+ const submission=payload.submission,assignment=submission?.assignment||payload.assignment;
+ const paper=submission?.paper||assignment?.paper||assignment||{};
+ const ids=paper.questionFiles||[],questions=submission?.questions||assignment?.questions||[];
+ await metadata(ids);
+ const files=ids.map(id=>state.files.get(id)).filter(Boolean),first=files.find(f=>f.id===paper.mainQuestionFile)||files.find(f=>f.mime==='application/pdf')||files[0];
+ let reader=null,gallery=null;
+ const text=()=>`<p class="instructions">${h(paper.instructions||'')}</p>${questions.map(q=>`<article class="published-question"><h3>第 ${h(q.id)} 题</h3><p class="instructions">${h(q.prompt||'题目见原件')}</p></article>`).join('')}`;
+ root.innerHTML=`<section class="gj-original-paper" aria-label="作业原题"><header><h2>作业原题</h2><button type="button" class="secondary" data-close-paper>收起原题</button></header><p class="hint">${submission?.paper?'本次提交的原题':'当前作业原题'}${paper.version?' · v'+h(paper.version):''}</p>${files.length>1?`<label class="field"><span>题纸文件</span><select aria-label="选择原题文件">${files.map(f=>`<option value="${h(f.id)}" ${f===first?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>`:''}<div data-original-document></div>${first&&questions.length?`<details class="gj-original-text"><summary>题干文字与要求</summary>${text()}</details>`:!first?questions.length||paper.instructions?text():'<p class="hint">这份作业还没有题纸或文字题干。</p>':''}</section>`;
+ const close=root.querySelector('[data-close-paper]');close.onclick=()=>onClose();
+ const stop=()=>{reader?.destroy();reader=null;gallery?.destroy();gallery=null;};
+ const show=file=>{stop();const host=root.querySelector('[data-original-document]');host.replaceChildren();host.className='';if(file.mime==='application/pdf'){host.className='pdf-preview';reader=mountPDFReader(host,{fileId:file.id,title:'作业原题',storageKey:`hw-grade-paper:${state.user.id}:${submissionId||assignmentId}:${file.id}`});}else{host.className='review-studio gj-original-gallery';host.innerHTML='<div class="rv-gallery"></div>';gallery=mountReviewGallery(host.firstElementChild,{files:[file],label:'作业原题',fullscreen:false,storageKey:`hw-grade-paper:${state.user.id}:${submissionId||assignmentId}:${file.id}`});}};
+ if(first)show(first);const select=root.querySelector('select');if(select)select.onchange=()=>show(files.find(f=>f.id===select.value));
+ return {flush:async()=>{},destroy:stop};
+}
