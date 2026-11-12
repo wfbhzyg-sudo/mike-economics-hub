@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {scoreBand} from '../homework/score-bands.js';
+test('Fixed 20 percentage point AP-reference bands use inclusive lower boundaries',()=>{for(const [v,n]of [[0,1],[19.9,1],[20,2],[39.9,2],[40,3],[59.9,3],[60,4],[79.9,4],[80,5],[100,5]])assert.equal(scoreBand(v).level,n);});
+test('Missing and invalid grades remain neutral; displayed rounding and color agree',()=>{for(const v of [null,undefined,'',NaN,Infinity,-1,101])assert.equal(scoreBand(v),null);assert.deepEqual(scoreBand(79.96),{value:80,level:5,color:'deep-green'});});

@@ -724,7 +724,7 @@ function accountPage() {
 async function render(scroll = true) {
   $("#preview").close();document.querySelector("#work-dialog")?.close();
   clearTimeout(noticeTimer);$("#notice").classList.remove("visible");
-  state.viewCleanup?.();state.viewCleanup=null;
+  state.viewCleanup?.();state.viewCleanup=null;state.restoreView=null;
   clearPDFs();
   if (!state.user) return showLogin();
   clearTimeout(pollTimer);
@@ -764,7 +764,7 @@ async function render(scroll = true) {
     else if (route === "account") accountPage();
     else workspace.dashboard();
     sizeTitleFields();
-    if (scroll) {main.scrollTo({ top: 0, behavior: "instant" });main.focus({preventScroll:true});}
+    if (scroll) {main.scrollTo({ top: 0, behavior: "instant" });main.focus({preventScroll:true});state.restoreView?.();}
   } catch (e) {
     if (!state.user || version !== state.routeVersion) return;
     main.innerHTML = `<section class="paper">${head("WORKSPACE", "暂时无法打开")}<p class="error" role="alert">${h(e.message)}</p><div class="form-actions"><button id="retry" class="primary">重试</button>${link("assignments", "返回作业")}</div></section>`;

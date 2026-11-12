@@ -71,7 +71,7 @@ const server = createServer(async (request, response) => {
     const file = resolve(root, relative);
     const homeworkAsset = [
       "homework/index.html",
-      "homework/app.js","homework/form-feedback.js","homework/form-feedback.css",
+      "homework/app.js","homework/score-bands.js","homework/view-memory.js","homework/correction-workspace.js","homework/flow.css","homework/form-feedback.js","homework/form-feedback.css",
       "homework/style.css", "homework/workspace.css", "homework/workspace-ui.js",
       "homework/nav.js","homework/learning-model.js","homework/learning-ui.js","homework/search-text.js","homework/assignment-roster.js","homework/pdf-reader.js","homework/review-studio.js","homework/review-gallery.js","homework/review-save.js","homework/review-studio.css",
     ].includes(relative);
