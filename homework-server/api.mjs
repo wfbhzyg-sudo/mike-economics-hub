@@ -31,6 +31,7 @@ const safeUser = (u) => ({
 const publicAssignment = (a) => ({
   id: a.id,
   title: a.title,
+  published: Boolean(a.published),
   course: a.course,
   instructions: paperOf(a).instructions,
   questionFiles: paperOf(a).questionFiles,
@@ -635,9 +636,10 @@ export async function createHomework({externalAuth} = {}) {
         const roster=user.role==='teacher'?(externalAuth?await externalAuth.students(auth.signed):(await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(x=>assignments.some(a=>a.classIds.includes(x))))):[];
         const users=await db.list('user');
         const students=roster.map(u=>({id:u.id,name:u.name,username:u.username||'',classIds:u.classIds}));
+        if(user.role==='teacher')for(const a of assignments)for(const u of a.recipients?.students||[])if(!students.some(s=>s.id===u.id))students.push({...u,historical:true});
         for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
         const privateDrafts=user.role==='student'?(await db.list('mistake-draft')).filter(d=>d.studentId===user.id):[];
-        return (json(res,{students,assignments:assignments.map(publicAssignment),submissions:submissions.map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.list('mistake-note')).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
+        return (json(res,{students,assignments:assignments.map(a=>({...publicAssignment(a),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}})),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.list('mistake-note')).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);

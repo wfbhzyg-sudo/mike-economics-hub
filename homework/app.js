@@ -622,7 +622,7 @@ async function reviewPage(id) {
   const {mountReviewStudio}=await import("./review-studio.js");
   if (renderId !== state.routeVersion) return;
   const queue=state.submissions.filter(q=>q.assignmentId===s.assignmentId&&(q.status==='needs_review'||q.id===s.id));
-  state.viewCleanup=mountReviewStudio(main,{submission:s,title:a?.title||'作业复核',name,files:s.files.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
+  state.viewCleanup=mountReviewStudio(main,{backRoute:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews',submission:s,title:a?.title||'作业复核',name,files:s.files.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
 }
 
 async function devicePage() {
