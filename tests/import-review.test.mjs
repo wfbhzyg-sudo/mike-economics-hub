@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {questionIssues,reviewQueue} from '../homework/import-review-model.js';
+const item=()=>({id:'1',type:'choice',sliceOnly:true,options:'ABCDE'.split('').map(label=>({label,text:''})),answer:'C',sourcePages:'答案第 2 页',regions:[{page:1,x:0,y:0,w:1,h:.4}],checked:false});
+test('review queue prioritizes missing keys but retains all unconfirmed questions',()=>{const a=item(),b={...item(),id:'2',answer:''},c={...item(),id:'3',checked:true};assert.deepEqual(reviewQueue([a,b,c],2).map(x=>x.index),[1,0]);assert(questionIssues(b,[a,b,c],2).some(x=>x.code==='answer'&&x.blocking));});
+test('confirmed item still blocks invalid key, duplicate number and invalid crop',()=>{const a={...item(),checked:true,answer:'F',regions:[{page:3,x:.9,y:0,w:.4,h:.4}]};const issues=questionIssues(a,[a,{...item()}],2);for(const code of ['answer','number','regions'])assert(issues.some(x=>x.code===code&&x.blocking));});
+test('cross-page and shared material require human confirmation and do not generate prose',()=>{const q={...item(),sharedMaterial:true,inlineAnswer:true,regions:[...item().regions,{page:2,x:0,y:0,w:1,h:.3}]};assert.deepEqual(questionIssues(q,[q],2).map(x=>x.code),['inline','pages','shared']);q.checked=true;assert.deepEqual(questionIssues(q,[q],2),[]);assert.equal(q.prompt,undefined);});
+test('short answer requires reference answer and finite positive points',()=>{const q={...item(),type:'short',criteria:'',maxPoints:NaN};assert(questionIssues(q,[q],2).some(x=>x.code==='criteria'));assert(questionIssues(q,[q],2).some(x=>x.code==='points'));});
