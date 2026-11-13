@@ -19,7 +19,7 @@ form.addEventListener('submit',async e=>{
  const button=$('#submit'),label=button.textContent;button.disabled=true;button.textContent=mode==='login'?'正在登录…':'正在保存…';
  try{
   const body=Object.fromEntries(new FormData(form));body.remember=body.remember==='on';body.consent=body.consent==='on';
-  const r=await fetch('/api/portal/'+mode,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify(body),credentials:'same-origin',signal:AbortSignal.timeout(25000)});const data=await r.json();
+  const r=await fetch('/api/portal/'+mode,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify(body),credentials:'same-origin',signal:AbortSignal.timeout(65000)});const data=await r.json();
   if(!r.ok)throw Error(messages[data.error]||data.error||'暂时无法登录，请稍后重试。');
   if(data.recoveryCode){recovery=data.recoveryCode;signed=mode==='register';form.hidden=true;$('#new-recovery-code').textContent=recovery;$('#recovery-result').hidden=false;$('#form-title').textContent=mode==='register'?'账号已创建':'密码已更新';$('#form-description').textContent='先保存恢复码，再继续学习';$('#back-login').hidden=true;$('#register').hidden=true;return;}
   next();

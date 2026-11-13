@@ -29,7 +29,7 @@ export async function createPortalAuth(env=process.env){
     const bytes=await readBody(req,6000);let b;try{b=JSON.parse(bytes);}catch{throw Object.assign(Error('请输入有效内容'),{status:400});}
     if(route==='password'&&(!await auth.session(req)||req.headers['x-csrf-token']!==auth.csrf(req)))throw Object.assign(Error('请重新登录后再试'),{status:403});
     const endpoint=route==='password'?'/api/account/password':'/api/auth/'+route;
-    const response=await fetch(new URL(endpoint,env.CORE_INTERNAL_ORIGIN||auth.coreOrigin),{method:'POST',headers:{'Content-Type':'application/json','Host':new URL(auth.coreOrigin).host,'Origin':auth.coreOrigin,'Cookie':req.headers.cookie||'','X-Real-IP':String(req.headers['x-real-ip']||req.socket.remoteAddress)},body:bytes,redirect:'manual',signal:AbortSignal.timeout(20000)});
+    const response=await fetch(new URL(endpoint,env.CORE_INTERNAL_ORIGIN||auth.coreOrigin),{method:'POST',headers:{'Content-Type':'application/json','Host':new URL(auth.coreOrigin).host,'Origin':auth.coreOrigin,'Cookie':req.headers.cookie||'','X-Real-IP':String(req.headers['x-real-ip']||req.socket.remoteAddress)},body:bytes,redirect:'manual',signal:AbortSignal.timeout(60000)});
     const result=await response.json();
     if(response.ok){const cookies=response.headers.getSetCookie();if(cookies.length)res.setHeader('Set-Cookie',cookies.map(c=>{c=c.replace(/SameSite=Strict/ig,'SameSite=Lax');return b.remember===true?c:c.replace(/; Max-Age=[1-9]\d*/i,'');}));}
     json(res,result,response.status);return true;

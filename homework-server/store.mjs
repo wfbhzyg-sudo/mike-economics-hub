@@ -59,6 +59,17 @@ export function createStore(connectionString, schema = "homework") {
         )
       ).rows.map((r) => r.data);
     },
+    // Filter before transferring JSON (rubrics and paper snapshots can be large).
+    async find(kind, filters, client = pool) {
+      const allowed = new Set(['studentId','assignmentId','owner','teacherId','unitId','version']);
+      const values = [kind], clauses = ['kind=$1'];
+      for (const [field, value] of Object.entries(filters)) {
+        if (!allowed.has(field)) throw new Error('Invalid record filter');
+        values.push(Array.isArray(value) ? value.map(String) : String(value));
+        clauses.push(`data->>'${field}' ${Array.isArray(value) ? '=ANY($'+values.length+'::text[])' : '=$'+values.length}`);
+      }
+      return (await client.query(`SELECT data FROM ${table} WHERE ${clauses.join(' AND ')} ORDER BY created DESC`, values)).rows.map(r=>r.data);
+    },
     async put(kind, data, client = pool) {
       await client.query(
         `INSERT INTO ${table}(id,kind,data) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET data=EXCLUDED.data WHERE ${table}.kind=EXCLUDED.kind`,
@@ -69,13 +80,14 @@ export function createStore(connectionString, schema = "homework") {
     async remove(key, client = pool) {
       await client.query(`DELETE FROM ${table} WHERE id=$1`, [key]);
     },
-    async tx(fn) {
+    async tx(fn, scope) {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
-          schema,
-        ]);
+        // Scoped student writes can run together. Existing global transactions
+        // (publishing, regrading, deletion) still exclude ALL scoped writes.
+        await client.query(scope ? 'SELECT pg_advisory_xact_lock_shared(hashtext($1))' : 'SELECT pg_advisory_xact_lock(hashtext($1))', [schema]);
+        if (scope) await client.query('SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))', [schema, scope]);
         const result = await fn(client);
         await client.query("COMMIT");
         return result;
@@ -90,6 +102,10 @@ export function createStore(connectionString, schema = "homework") {
       await query(
         `CREATE SCHEMA IF NOT EXISTS ${schema}; CREATE TABLE IF NOT EXISTS ${table}(id text PRIMARY KEY,kind text NOT NULL,data jsonb NOT NULL,created timestamptz NOT NULL DEFAULT now()); CREATE INDEX IF NOT EXISTS records_kind ON ${table}(kind); CREATE TABLE IF NOT EXISTS ${jobs}(id text PRIMARY KEY,kind text NOT NULL,target text NOT NULL,payload jsonb NOT NULL,status text NOT NULL DEFAULT 'queued',lease text,lease_until timestamptz,attempts integer NOT NULL DEFAULT 0,created timestamptz NOT NULL DEFAULT now(),finished timestamptz,result jsonb,error text); CREATE INDEX IF NOT EXISTS jobs_queue ON ${jobs}(status,created);`,
       );
+      for (const field of ['studentId','assignmentId','owner','teacherId','unitId']) {
+        // CONCURRENTLY avoids blocking class saves during a rolling release.
+        await query(`CREATE INDEX CONCURRENTLY IF NOT EXISTS records_scope_${field.toLowerCase()} ON ${table}(kind,(data->>'${field}'))`);
+      }
       if (process.env.HOMEWORK_TEACHER_PASSWORD)
         await api.tx(async (c) => {
           if (!(await api.list("user", c)).some((u) => u.role === "teacher"))

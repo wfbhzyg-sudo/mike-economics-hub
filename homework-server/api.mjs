@@ -1,3 +1,4 @@
+import {sendJSON} from './json-response.mjs';
 import {byteRange} from './file-range.mjs';
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
 import {choiceScore,combineScores} from './mcq-model.mjs';
@@ -92,13 +93,7 @@ export async function createHomework({externalAuth} = {}) {
   await db.init();
   const files = createFiles(db);
   const limited = new Map();
-  const json = (res, value, status = 200) =>
-    res
-      .writeHead(status, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "no-store",
-      })
-      .end(JSON.stringify(value));
+  const json = sendJSON;
   const body = async (req) => {
     try {
       return JSON.parse((await readBody(req)).toString() || "{}");
@@ -151,16 +146,19 @@ export async function createHomework({externalAuth} = {}) {
     if(externalAuth){
       const signed=await externalAuth.session(req);if(!signed)return null;
       const registeredClasses=await externalAuth.classrooms(signed);
-      const user=await db.tx(async c=>{
+      // A normal authenticated read must not join the global write queue.
+      let stored = await db.get('bookself:'+signed.id);
+      if (!stored) stored = await db.tx(async c=>{
         let u=await db.get('bookself:'+signed.id,c);
         if(!u){u={id:'bookself:'+signed.id,bookselfId:signed.id,username:signed.username,name:signed.name,role:signed.role,classIds:[],createdAt:now()};await db.put('user',u,c);}
-        assert(u && ['student','teacher'].includes(u.role),'账号关联异常，请联系老师',409);
-        // New homework belongs only to the signed-in Bookself identity.
-        // Legacy records and mappings remain untouched in storage.
-        const classIds=registeredClasses.map(x=>x.id);
-        const canManageGrading=signed.role==='teacher'&&signed.id===process.env.HOMEWORK_OWNER_BOOKSELF_ID;
-        return {...u,classIds,name:signed.name,role:signed.role,unified:true,canManageGrading};
+        return u;
       });
+      assert(stored && ['student','teacher'].includes(stored.role),'账号关联异常，请联系老师',409);
+      // New homework belongs only to the signed-in Bookself identity.
+      // Legacy records and mappings remain untouched in storage.
+      const classIds=registeredClasses.map(x=>x.id);
+      const canManageGrading=signed.role==='teacher'&&signed.id===process.env.HOMEWORK_OWNER_BOOKSELF_ID;
+      const user = {...stored,classIds,name:signed.name,role:signed.role,unified:true,canManageGrading};
       return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed,registeredClasses};
     }
     const raw = (req.headers.cookie || "")
@@ -249,7 +247,7 @@ export async function createHomework({externalAuth} = {}) {
           : a.published && a.classIds.some((x) => user.classIds?.includes(x)))
       )
         return true;
-    for(const s of await db.list("submission"))if(s.studentId===user.id&&s.paperSnapshot?.questionFiles?.includes(file.id))return true;
+    for(const s of await db.find('submission',{studentId:user.id}))if(s.paperSnapshot?.questionFiles?.includes(file.id))return true;
     if (user.role === "teacher")
       for (const s of await db.list("submission"))
         if (
@@ -650,7 +648,8 @@ export async function createHomework({externalAuth} = {}) {
         return (json(res, { user: safeUser(joined) }), true);
       }
       const accessibleWork = async (c) => {
-        const allAssignments=await db.list('assignment',c), allSubmissions=await db.list('submission',c);
+        const allAssignments=user.role==='teacher'?await db.find('assignment',{teacherId:user.id},c):await db.list('assignment',c);
+        const allSubmissions=await db.find('submission',user.role==='teacher'?{assignmentId:allAssignments.map(a=>a.id)}:{studentId:user.id},c);
         const assignments=allAssignments.filter(a=>user.role==='teacher'?a.teacherId===user.id:(a.published&&a.classIds.some(x=>user.classIds.includes(x)))||allSubmissions.some(s=>s.studentId===user.id&&s.assignmentId===a.id));
         const submissions=allSubmissions.filter(s=>user.role==='teacher'?assignments.some(a=>a.id===s.assignmentId):s.studentId===user.id);
         return {assignments,submissions};
@@ -663,12 +662,12 @@ export async function createHomework({externalAuth} = {}) {
       if(route[0]==='learning'&&method==='GET'){
         const {assignments,submissions}=await accessibleWork();
         const roster=user.role==='teacher'?(externalAuth?await externalAuth.students(auth.signed):(await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(x=>assignments.some(a=>a.classIds.includes(x))))):[];
-        const users=await db.list('user');
+        const users=user.role==='teacher'?await db.list('user'):[];
         const students=roster.map(u=>({id:u.id,name:u.name,username:u.username||'',classIds:u.classIds}));
         if(user.role==='teacher')for(const a of assignments)for(const u of a.recipients?.students||[])if(!students.some(s=>s.id===u.id))students.push({...u,historical:true});
         for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
-        const privateDrafts=user.role==='student'?(await db.list('mistake-draft')).filter(d=>d.studentId===user.id):[];
-        return (json(res,{students,assignments:assignments.map(a=>({...publicAssignment(a),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}})),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.list('mistake-note'),await db.list('review-links')).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
+        const privateDrafts=user.role==='student'?await db.find('mistake-draft',{studentId:user.id}):[];
+        return (json(res,{students,assignments:assignments.map(a=>({...publicAssignment(a),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}})),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.find('mistake-note',user.role==='student'?{studentId:user.id}:{assignmentId:assignments.map(a=>a.id)}),await db.find('review-links',{assignmentId:assignments.map(a=>a.id)})).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);
@@ -780,7 +779,7 @@ export async function createHomework({externalAuth} = {}) {
               : a.published &&
                 a.classIds.some((x) => user.classIds.includes(x)),
           );
-          const attempts=user.role==='student'?(await db.list('mcq-attempt')).filter(t=>t.studentId===user.id&&!t.submittedId):[];
+          const attempts=user.role==='student'?(await db.find('mcq-attempt',{studentId:user.id})).filter(t=>!t.submittedId):[];
           return (
             json(res, {
               assignments:
@@ -1021,15 +1020,9 @@ export async function createHomework({externalAuth} = {}) {
       }
       if (route[0] === "submissions") {
         if (method === "GET" && !route[1]) {
-          const assignments = (await db.list("assignment"))
-              .filter((a) => a.teacherId === user.id)
-              .map((a) => a.id),
-            users = await db.list("user");
-          const rows = (await db.list("submission")).filter((s) =>
-            user.role === "teacher"
-              ? assignments.includes(s.assignmentId)
-              : s.studentId === user.id,
-          );
+          const assignments = user.role === 'teacher' ? (await db.find('assignment',{teacherId:user.id})).map(a=>a.id) : [];
+          const users = user.role === 'teacher' ? await db.list('user') : [];
+          const rows = await db.find('submission', user.role==='teacher' ? {assignmentId:assignments} : {studentId:user.id});
           return (
             json(res, {
               submissions: rows.map((s) =>
@@ -1058,7 +1051,7 @@ export async function createHomework({externalAuth} = {}) {
             const previous = await db.get(submissionId, c);
             if (previous && previous.status !== "draft") return previous;
             assert(b.draft||b.paperVersion===undefined||Number(b.paperVersion)===paperOf(a).version,'题纸已更新，请先重新打开作业查看新版；已保存的作答会保留',409);
-            const earlier=(await db.list('submission',c)).filter(s=>s.studentId===user.id&&s.assignmentId===a.id&&s.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt));
+            const earlier=(await db.find('submission',{studentId:user.id,assignmentId:a.id},c)).filter(s=>s.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt));
             assert(!late||a.allowLate||b.draft||earlier[0]?.status==='returned','已超过截止时间，请联系教师开放补交');
             assert(b.draft||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
             await files.validate(b.files || [], user.id, "submission", c);
@@ -1087,7 +1080,7 @@ export async function createHomework({externalAuth} = {}) {
               await queueGrade(s, a, c);
             } else await db.put("submission", s, c);
             return s;
-          });
+          }, 'submission:'+user.id+':'+b.assignmentId);
           return (
             json(res, { submission: publicSubmission(result) }, 201),
             true

@@ -15,7 +15,7 @@ export const STUDENT_TUTOR=`当前账户已由服务器验证为学生。经济�
 7. 跟随学生语言，不评价学生能力，不暴露内部推理。旧对话中的长解析不是需要模仿的风格。`;
 export function companionSystem(user){return COMPANION_SYSTEM+'\n'+(user.role==='student'?STUDENT_TUTOR:'当前账户已由服务器验证为教师。可直接讨论经济概念与教学设计，但不声称读取私有答案或执行操作。');}
 export function createCompanion({db,decrypt,callModel=deepseek}){
- const locked=async user=>{for(const t of await db.list('mcq-attempt'))if(t.studentId===user.id&&activeExam(t,await db.get(t.assignmentId)))return true;return false};
+ const locked=async user=>{for(const t of await db.find('mcq-attempt',{studentId:user.id}))if(activeExam(t,await db.get(t.assignmentId)))return true;return false};
  return async({req,res,route,method,user,body,json})=>{
  if(route[0]!=='companion')return false;assert(['GET','POST','DELETE'].includes(method),'不支持的操作',405);
  if(route[1]==='settings'){assert(user.role==='teacher'&&user.canManageGrading!==false,'仅批改管理员可操作',403);const current=await db.get('chat-settings')||{id:'chat-settings',studentDaily:40,teacherDaily:200};if(method==='GET'){json(res,current);return true;}const b=await body(req);current.studentDaily=Math.max(1,Math.min(200,Number(b.studentDaily)||40));current.teacherDaily=Math.max(1,Math.min(1000,Number(b.teacherDaily)||200));await db.put('settings',current);json(res,current);return true;}
