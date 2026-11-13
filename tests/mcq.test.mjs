@@ -22,3 +22,32 @@ test('key correction previews impact, rejects stale approval and preserves publi
  const fresh=(await call(f.handler,f.teacher,route+'/preview','POST',b)).value;const result=(await call(f.handler,f.teacher,route+'/regrade','POST',{...b,token:fresh.token})).value;assert.equal(result.version,2);assert.equal((await f.db.get(s.id)).publishedGrade.total,1);assert.equal((await f.db.get(s.id)).choiceGrade.total,0);assert.equal((await f.db.list('submission-regrade-history')).length,1);assert.equal((await f.db.get('active-other')).version,2);assert.equal((await f.db.get('active-other')).answers['1'],'B');assert.equal((await f.db.get(a.id+':v1')).rubric[0].correctOptions[0],'C');assert.equal((await f.db.get(a.id+':v2')).rubric[0].correctOptions[0],'A');
 });
 function nowForTest(){return new Date().toISOString()}
+test('mixed short answers stay attached to their own question through save, submit and restart',async()=>{
+ const f=await prepare();for(const id of ['photo2','photo3'])await f.db.put('file',{id,owner:'student'});
+ const short=id=>({...item(),id,type:'short',criteria:'Expected reasoning',maxPoints:3});
+ const a=(await call(f.handler,f.teacher,'mcq/imports/import/publish','POST',{items:[item(),short('2'),short('3')],revision:0,classIds:['class'],allowResubmit:true})).value.assignment;
+ const responses={'2':{text:'Output rises',files:['photo2']},'3':{text:'Price rises',files:['photo3']}};
+ const saved=(await call(f.handler,f.student,'mcq/attempt/'+a.id,'POST',{revision:0,answers:{'1':'C'},responses})).value.attempt;
+ assert.deepEqual(saved.responses,responses);assert.equal(saved.freeText,'');
+ const fetched=(await call(f.handler,f.student,'mcq/attempt/'+a.id)).value.attempt;assert.deepEqual(fetched.responses,responses);
+ const submitted=(await call(f.handler,f.student,'mcq/attempt/'+a.id+'/submit','POST',{revision:fetched.revision,answers:{'1':'C'},responses})).value;
+ const s=await f.db.get(submitted.submittedId);assert.deepEqual(s.responses,responses);assert.deepEqual(s.files,['photo2','photo3']);assert.match(s.text,/第 2 题：\nOutput rises\n本题作答见附件第 1 页/);assert.match(s.text,/第 3 题：\nPrice rises\n本题作答见附件第 2 页/);
+ a.allowResubmit=true;await f.db.put('assignment',a);const restarted=(await call(f.handler,f.student,'mcq/attempt/'+a.id+'/restart','POST',{revision:0})).value.attempt;assert.deepEqual(restarted.responses,{});assert.deepEqual((await f.db.get(s.id)).responses,responses);
+});
+test('short response validation rejects unknown/choice IDs, foreign files and combined text overflow',async()=>{
+ const f=await prepare();const a={id:'a',type:'assignment',teacherId:'teacher',classIds:['class'],version:1,format:'mixed',rubric:[{...item(),correctOptions:['C']},{id:'2',type:'short'},{id:'3',type:'short'}]};await f.db.put('assignment',a);
+ for(const responses of [{'1':{text:'wrong type'}},{'99':{text:'wrong id'}},{'2':{text:'x',files:['foreign']}},{'2':{text:'x'.repeat(16000)},'3':{text:'x'.repeat(16000)}}])await assert.rejects(call(f.handler,f.student,'mcq/attempt/a','POST',{revision:0,responses}));
+});
+test('legacy shared response remains separate and survives an upgraded save',async()=>{
+ const f=await prepare();const a={id:'a',type:'assignment',teacherId:'teacher',classIds:['class'],version:1,format:'mixed',rubric:[{id:'2',type:'short',maxPoints:3},{id:'3',type:'short',maxPoints:3}]};await f.db.put('assignment',a);
+ const legacy=(await call(f.handler,f.student,'mcq/attempt/a','POST',{revision:0,freeText:'2. old shared answer',files:[]})).value.attempt;
+ const next=(await call(f.handler,f.student,'mcq/attempt/a','POST',{revision:legacy.revision,responses:{'3':{text:'New third answer',files:[]}}})).value.attempt;
+ assert.equal(next.freeText,'2. old shared answer');assert.equal(next.responses['2'],undefined);assert.equal(next.responses['3'].text,'New third answer');
+});
+test('short answer attachments use stable PDF page ranges and validate the combined upload',async()=>{
+ const f=await prepare();await f.db.put('file',{id:'scan',owner:'student',pages:3});await f.db.put('file',{id:'photo',owner:'student',pages:1});
+ const a={id:'a',type:'assignment',teacherId:'teacher',classIds:['class'],version:1,format:'mixed',rubric:[{id:'2',type:'short',maxPoints:3},{id:'3',type:'short',maxPoints:3}]};await f.db.put('assignment',a);
+ const validation=f.files.validate,seen=[];f.files.validate=async(ids,...rest)=>{seen.push([...ids]);return validation(ids,...rest)};
+ const r=(await call(f.handler,f.student,'mcq/attempt/a/submit','POST',{revision:0,responses:{'2':{text:'',files:['scan']},'3':{text:'',files:['photo']}}})).value,s=await f.db.get(r.submittedId);
+ assert.match(s.text,/第 2 题：[\s\S]*附件第 1–3 页/);assert.match(s.text,/第 3 题：[\s\S]*附件第 4 页/);assert.ok(seen.some(ids=>ids.join(',')==='scan,photo'));
+});

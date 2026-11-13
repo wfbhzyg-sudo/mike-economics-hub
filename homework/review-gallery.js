@@ -1,7 +1,7 @@
 import {pdfLibrary,openPDF} from './pdf-reader.js';
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export function mountReviewGallery(root,{files=[],text='',storageKey='',initialFileId='',label='学生作答',fullscreen=true}={}) {
+export function mountReviewGallery(root,{files=[],text='',storageKey='',initialFileId='',label='学生作答',fullscreen=true,fitContent=false}={}) {
   const pages=files.flatMap(f=>Array.from({length:f.mime==='application/pdf'?Math.max(1,f.pages||1):1},(_,i)=>({file:f,page:i+1,key:f.id+':'+(i+1)})));
   if(text.trim())pages.push({text,key:'text'});
   let persistTimer;let current=0,stamp=0,destroyed=false,asset=null,pdfRender=null,renderTimer,resizeFrame,gestureFrame,gesture=null,drag=null,lastTap=null;
@@ -17,7 +17,7 @@ export function mountReviewGallery(root,{files=[],text='',storageKey='',initialF
   function remember(){if(!asset||!pages[current])return;positions.set(pages[current].key,{zoom,rotation,mode,left:viewport.scrollLeft,top:viewport.scrollTop});clearTimeout(persistTimer);persistTimer=setTimeout(()=>{try{sessionStorage.setItem(storageKey,JSON.stringify({current,positions:[...positions]}));}catch{}},150);}
   function dimensions(){const turned=rotation%180!==0;return {w:turned?asset.h:asset.w,h:turned?asset.w:asset.h};}
   function fitScale(){const {w,h}=dimensions(),width=Math.max(120,viewport.clientWidth-24);return mode==='page'?Math.min(width/w,Math.max(120,viewport.clientHeight-24)/h):width/w;}
-  function layout(){if(!asset||asset.text)return;const {w,h}=dimensions(),scale=fitScale()*zoom;stage.style.width=w*scale+'px';stage.style.height=h*scale+'px';asset.el.style.width=asset.w+'px';asset.el.style.height=asset.h+'px';asset.el.style.transform=`translate(-50%,-50%) rotate(${rotation}deg) scale(${scale})`;controls();}
+  function layout(){if(!asset||asset.text)return;const {w,h}=dimensions();if(fitContent){const preferred=Math.ceil(Math.max(120,viewport.clientWidth-24)*h/w+24+$('.rv-gallery-bar').offsetHeight)+'px';if(root.parentElement.style.getPropertyValue('--question-height')!==preferred)root.parentElement.style.setProperty('--question-height',preferred);}const scale=fitScale()*zoom;stage.style.width=w*scale+'px';stage.style.height=h*scale+'px';asset.el.style.width=asset.w+'px';asset.el.style.height=asset.h+'px';asset.el.style.transform=`translate(-50%,-50%) rotate(${rotation}deg) scale(${scale})`;controls();}
   function controls(){
     root.querySelectorAll('[data-page]').forEach((b,i)=>b.setAttribute('aria-current',i===current?'page':'false'));
     root.querySelectorAll('[data-thumb]').forEach((b,i)=>b.setAttribute('aria-current',i===current?'page':'false'));
