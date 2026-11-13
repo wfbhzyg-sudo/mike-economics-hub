@@ -18,3 +18,10 @@ export function combineScores(a,b){const questions=[...a.questions,...b.question
 export function studentItems(a){return (a.rubric||[]).map(q=>({id:q.id,prompt:q.prompt,type:q.type,maxPoints:q.maxPoints,options:q.options||[],questionImages:q.questionImages||[]}));}
 export function attemptRules(a,studentId){return {...a,...(a.accommodations?.find(r=>r.studentId===studentId)||{})};}
 export function activeExam(t,a,at=Date.now()){if(!t||t.mode!=='exam'||t.submittedId||!a||a.deletedAt||a.version!==t.version)return false;const r=attemptRules(a,t.studentId),end=Math.min(r.timeLimitMinutes?Date.parse(t.startedAt)+r.timeLimitMinutes*60000:Infinity,r.dueAt&&!r.allowLate?Date.parse(r.dueAt):Infinity);return at<end;}
+
+export function validateTiming(input,maxMinutes=180){
+ const minutes=Number(input.timeLimitMinutes||0);assert(Number.isFinite(minutes)&&minutes>=0&&minutes<=maxMinutes,'时长应为 0–'+maxMinutes+' 分钟');
+ assert(!input.opensAt||Number.isFinite(Date.parse(input.opensAt)),'开放时间无效');assert(!input.dueAt||Number.isFinite(Date.parse(input.dueAt)),'截止时间无效');
+ assert(!input.dueAt||!input.opensAt||Date.parse(input.opensAt)<Date.parse(input.dueAt),'截止时间应晚于开放时间');
+ return {timeLimitMinutes:minutes,opensAt:input.opensAt||null,dueAt:input.dueAt||null};
+}

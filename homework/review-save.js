@@ -22,3 +22,10 @@ export function createReviewSaver({revision=0, save, onChange=()=>{}}) {
     },
   };
 }
+
+// Keep original questions separate from explicitly linked student evidence.
+export function questionReviewEvidence(submission,questionId,source='auto'){
+ const q=submission.rubricSnapshot?.find(q=>q.id===questionId),r=submission.responses?.[questionId],kind=source==='auto'?(q?.type==='choice'?'question':'answer'):source;
+ if(kind==='question')return {source:kind,files:q?.questionImages||[],text:q?.questionImages?.length?'':q?.prompt||'未关联题面'};
+ return {source:kind,files:r?.files?.length?r.files:r?[]:submission.files||[],text:r?.text||(!r?submission.text||'':!r.files?.length?'本题没有单独保存的文字或附件。':'')};
+}

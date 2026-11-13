@@ -595,6 +595,9 @@ export async function createHomework({externalAuth} = {}) {
           if (s.userId === user.id) await db.remove(s.id);
         return (json(res, await startSession(user, res)), true);
       }
+      if(route[0]==='students'&&method==='GET'&&!route[1]){
+        teacher();return (json(res,{students:(await availableStudents()).map(u=>({id:u.id,name:u.name,classIds:u.classIds||[]}))}),true);
+      }
       if (route[0] === "classes") {
         if (method === "GET")
           return (

@@ -39,3 +39,6 @@
  .correction-reference-panel .correction-question-text{margin:0 0 4px;font-size:12px}
  .correction-reference-panel .correction-question-text>summary{min-height:28px;padding:3px 0}
 }
+
+.correction-saved{background:#e5eee4;border-left:3px solid #7f9c83;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:13px}.correction-saved>summary{font-weight:600}.correction-saved .instructions{max-height:160px;overflow:auto;margin:6px 0}.correction-saved .hint{font-size:12px}
+.correction-editor .mcq-letters button{min-height:44px;min-width:44px}
