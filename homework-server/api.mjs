@@ -1,3 +1,6 @@
+import {choiceScore,combineScores} from './mcq-model.mjs';
+import {createMCQ} from './mcq.mjs';
+import {createCompanion} from './companion.mjs';
 import {
   createCipheriv,
   createDecipheriv,
@@ -29,7 +32,7 @@ const safeUser = (u) => ({
   canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
 const publicAssignment = (a) => ({
-  id: a.id,
+  id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
   course: a.course,
@@ -44,7 +47,7 @@ const publicAssignment = (a) => ({
     id: q.id,
     prompt: q.prompt,
     maxPoints: q.maxPoints, type:q.type||"short", knowledge:q.knowledge||"",
-    paperLocation:questionLocation(paperOf(a),q.id),
+    options:q.options||[],questionImages:q.questionImages||[],paperLocation:questionLocation(paperOf(a),q.id),
   })),
   createdAt: a.createdAt,
   deletedAt: a.deletedAt || null,
@@ -54,6 +57,7 @@ const publicSubmission = (s) => ({
   assignmentId: s.assignmentId,
   text: s.text,
   files: s.files,
+  choices:s.choices||null,
   status: s.status,
   submittedAt: s.submittedAt,
   updatedAt: s.updatedAt,
@@ -203,6 +207,10 @@ export async function createHomework({externalAuth} = {}) {
     s.version = a.version;
     s.gradingMode = a.gradingMode || "manual";
     s.rubricSnapshot = structuredClone(a.rubric);
+    if(s.choices){
+      s.choiceGrade=choiceScore(a.rubric,s.choices);
+      if(a.rubric.every(q=>q.type==='choice')){s.status='needs_review';s.suggestedGrade=s.choiceGrade;s.teacherReviewDraft=null;s.error=null;s.jobId=null;s.updatedAt=now();await db.put('submission',s,c);return;}
+    }
     s.status = "queued";
     s.suggestedGrade = null;
     s.teacherReviewDraft = null;
@@ -215,9 +223,10 @@ export async function createHomework({externalAuth} = {}) {
         title: a.title,
         instructions: a.instructions,
         version: a.version,
-        rubric: a.rubric,
+        rubric: s.choices ? a.rubric.filter(q=>q.type!=="choice") : a.rubric,
         text: s.text,
         files: s.files,
+  choices:s.choices||null,
       },
       c,
     );
@@ -245,6 +254,8 @@ export async function createHomework({externalAuth} = {}) {
     if(user.role==='teacher')for(const n of await db.list('mistake-note'))if(n.corrections?.some(c=>c.files?.includes(file.id))&&(await db.get(n.assignmentId))?.teacherId===user.id)return true;
     return false;
   };
+  const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
+  const companion=createCompanion({db,decrypt});
   return async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (!url.pathname.startsWith("/api/homework/")) return false;
@@ -422,6 +433,7 @@ export async function createHomework({externalAuth} = {}) {
                   target.draftRubric = result.questions;
                   target.status = "answer_review";
                 } else if (job.kind === "grade") {
+                  if(target.choiceGrade)result=combineScores(target.choiceGrade,result);
                   target.suggestedGrade = result;
                   target.status = "needs_review";
                   const settings=await db.get('model-settings',c);
@@ -547,6 +559,8 @@ export async function createHomework({externalAuth} = {}) {
         );
       const teacher = () =>
         assert(user.role === "teacher", "此操作仅对教师开放", 403);
+      const extensionContext={req,res,route,method,user,body,json,availableClasses,availableStudents};
+      if(await mcq(extensionContext)||await companion(extensionContext))return true;
       if (route[0] === "me" && method === "GET")
         return (
           json(res, { user: safeUser(user), csrf: auth.session.csrf, teacherWorkspace:process.env.TEACHER_WORKSPACE_ENABLED==='1' }),
@@ -742,10 +756,11 @@ export async function createHomework({externalAuth} = {}) {
               : a.published &&
                 a.classIds.some((x) => user.classIds.includes(x)),
           );
+          const attempts=user.role==='student'?(await db.list('mcq-attempt')).filter(t=>t.studentId===user.id&&!t.submittedId):[];
           return (
             json(res, {
               assignments:
-                user.role === "teacher" ? all.filter(a=>url.searchParams.get("trash")==="1"?a.deletedAt:!a.deletedAt) : all.filter(a=>!a.deletedAt).map(publicAssignment),
+                user.role === "teacher" ? all.filter(a=>url.searchParams.get("trash")==="1"?a.deletedAt:!a.deletedAt) : all.filter(a=>!a.deletedAt).map(a=>({...publicAssignment(a),attemptProgress:attempts.find(t=>t.assignmentId===a.id&&t.version===a.version)?{started:true,answered:Object.values(attempts.find(t=>t.assignmentId===a.id&&t.version===a.version).answers).filter(Boolean).length}:null})),
             }),
             true
           );
@@ -847,7 +862,7 @@ export async function createHomework({externalAuth} = {}) {
             const classes=await availableClasses();let copy;
             await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);const classIds=current.classIds.filter(x=>classes.some(k=>k.id===x));
               assert(classIds.length,'请先确认原班级仍在你的班级列表中');
-              copy={id:id(),type:'assignment',teacherId:user.id,title:('副本 · '+current.title).slice(0,120),course:current.course,classIds,dueAt:null,instructions:current.instructions,questionFiles:[...current.questionFiles],mainQuestionFile:current.mainQuestionFile,readingScope:current.readingScope,submissionGuide:current.submissionGuide,answerFiles:[...current.answerFiles],answerText:current.answerText,draftRubric:structuredClone(current.draftRubric||current.rubric||[]),sourceRevision:0,editRevision:0,gradingMode:current.gradingMode,allowLate:false,allowResubmit:current.allowResubmit!==false,version:0,published:false,status:'draft',copiedFrom:current.id,createdAt:now()};
+              copy={id:id(),type:'assignment',teacherId:user.id,title:('副本 · '+current.title).slice(0,120),course:current.course,classIds,dueAt:null,instructions:current.instructions,questionFiles:[...current.questionFiles],mainQuestionFile:current.mainQuestionFile,readingScope:current.readingScope,submissionGuide:current.submissionGuide,answerFiles:[...current.answerFiles],answerText:current.answerText,draftRubric:structuredClone(current.draftRubric||current.rubric||[]),sourceRevision:0,editRevision:0,gradingMode:current.gradingMode,allowLate:false,allowResubmit:current.allowResubmit!==false,version:0,published:false,status:'draft',format:current.format,timeLimitMinutes:current.timeLimitMinutes,assessmentMode:current.assessmentMode,copiedFrom:current.id,createdAt:now()};
               await db.put('assignment',copy,c);await db.audit(user.id,'duplicate_assignment',copy.id,c);
             });return (json(res,{assignment:copy},201),true);
           }
@@ -920,7 +935,11 @@ export async function createHomework({externalAuth} = {}) {
             return (json(res, { assignment: await db.get(a.id) }), true);
           }
           if (route[2] === "confirm" && method === "POST") {
-            const questions = rubric(b.questions);
+            const questions = rubric(b.questions.map(q=>{const old=(a.rubric||a.draftRubric)?.find(x=>x.id===q.id);return {...q,...(old?.questionImages?.length?{questionImages:old.questionImages,options:old.options}:{})}}));
+            if(['mcq','mixed'].includes(a.format))for(const q of questions){
+              assert(q.questionImages?.length,'导入作业中的新题需要先关联学生题面，请通过 PDF 导入创建题目');
+              if(q.type==='choice')assert(q.choiceMode!=='multiple'&&q.options?.length>=2&&q.correctOptions?.length===1&&q.options.some(o=>o.label===q.correctOptions[0]),'请选择已有 A–E 选项中的一个正确答案');
+            }
             const recipients = !a.published && a.version===0 ? captureRecipients(a.classIds,await availableStudents()) : null;
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);

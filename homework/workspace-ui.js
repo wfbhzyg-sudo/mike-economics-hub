@@ -58,7 +58,7 @@ export function createWorkspaceUI(ctx) {
         ? "查看反馈"
         : info.key === "processing"
           ? "查看进度"
-          : info.draft
+          : info.draft||a.attemptProgress
             ? "继续作答"
             : info.latest?.status === "returned"
               ? "补充作业"
@@ -178,7 +178,7 @@ export function createWorkspaceUI(ctx) {
       ...new Set(state.assignments.map((a) => a.course).filter(Boolean)),
     ];
     if (!courses.includes(state.assignmentCourse)) state.assignmentCourse = "";
-    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的作业", state.classes.map((c) => c.name).join(" · "), t ? link("trash", "回收站") + link("new", "布置作业", "primary") : "")}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}</div><div class="assignment-search-controls">${courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option ${state.assignmentCourse === c ? "selected" : ""}>${h(c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
+    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的作业", state.classes.map((c) => c.name).join(" · "), t ? link("trash", "回收站") + link("new", "布置作业", "primary") + link("mcq-import", "导入选择题 PDF") : "")}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}</div><div class="assignment-search-controls">${courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option ${state.assignmentCourse === c ? "selected" : ""}>${h(c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
     function draw() {
       state.assignmentSearch = $("#assignment-search").value;
       const term = state.assignmentSearch.trim().toLocaleLowerCase(),
@@ -214,7 +214,7 @@ export function createWorkspaceUI(ctx) {
       const pane = $("#task-workspace");
       pane.className = "";
       if (!rows.length) {
-        pane.innerHTML = `<div class="empty"><h2>${state.assignments.length ? "没有符合条件的作业" : t ? "准备第一份作业" : "老师发布后，作业会出现在这里"}</h2><p>${state.assignments.length ? "可以清空搜索或切换分类。" : t ? "从学生题纸开始，再确认参考答案。" : "已沿用你的 Bookself 班级，无需再次加入。"}</p>${state.assignments.length ? '<button class="secondary" data-reset>清空筛选</button>' : t ? link("new", "布置作业", "primary") : link("account", "查看我的班级")}</div>`;
+        pane.innerHTML = `<div class="empty"><h2>${state.assignments.length ? "没有符合条件的作业" : t ? "准备第一份作业" : "老师发布后，作业会出现在这里"}</h2><p>${state.assignments.length ? "可以清空搜索或切换分类。" : t ? "从学生题纸开始，再确认参考答案。" : "已沿用你的 Bookself 班级，无需再次加入。"}</p>${state.assignments.length ? '<button class="secondary" data-reset>清空筛选</button>' : t ? link("new", "布置作业", "primary") + link("mcq-import", "导入选择题 PDF") : link("account", "查看我的班级")}</div>`;
         $("[data-reset]")?.addEventListener("click", () => {
           state.assignmentFilter = "all";
           state.assignmentSearch = "";

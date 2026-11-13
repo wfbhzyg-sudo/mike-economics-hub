@@ -40,6 +40,7 @@ const pages = new Set([
   "artwork.css",
   "使用说明.txt",
 ]);
+for(const f of ['companion.js','companion.css','homework/mcq.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
 const compressed = new Map();
 const server = createServer(async (request, response) => {
   response.setHeader("X-Content-Type-Options", "nosniff");

@@ -7,7 +7,7 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
  const $=s=>root.querySelector(s);let submission;
  const getSubmission=()=>submission||(submission=api('submissions/'+m.submissionId).then(v=>v.submission).catch(e=>{submission=null;throw e;}));
  async function question(panel){
-  const paper=m.paper||(await getSubmission()).paper,ids=paper?.questionFiles||[];
+  const paper=m.paper||(await getSubmission()).paper,ids=m.questionImages?.length?m.questionImages:paper?.questionFiles||[];
   await metadata(ids);if(destroyed)return;
   const files=ids.map(id=>state.files.get(id)).filter(Boolean),location=m.paperLocation||paper?.locations?.find(q=>q.id===m.questionId),first=files.find(f=>f.id===location?.fileId)||files.find(f=>f.id===paper?.mainQuestionFile)||files[0];
   panel.innerHTML=`${m.prompt?(compact&&first?`<details class="correction-question-text"><summary>题干文字</summary><p class="correction-prompt">${h(m.prompt)}</p></details>`:`<p class="correction-prompt">${h(m.prompt)}</p>`):''}${first?`<p class="correction-location">本次提交的原题${paper?.version?' · v'+paper.version:''}${location?.page?' · 第 '+location.page+' 页':' · 未标注题页，可用搜索或页码定位'}</p>${files.length>1?`<label class="field"><span>题纸文件</span><select data-correction-file aria-label="选择原题文件">${files.map(f=>`<option value="${h(f.id)}" ${f===first?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>`:''}<div data-correction-document></div>`:!m.prompt?'<p class="correction-prompt">这次作业没有可显示的题纸或文字题干。你仍可查看自己的原作答，继续订正。</p>':''}`;

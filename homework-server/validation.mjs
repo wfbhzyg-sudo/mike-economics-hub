@@ -47,7 +47,7 @@ export function rubric(input) {
     const paperFileId=text(q.paperFileId,100),paperPage=q.paperPage?Number(q.paperPage):null;
     assert((!paperFileId&&!paperPage)||(paperFileId&&Number.isInteger(paperPage)&&paperPage>=1&&paperPage<=2000),'请完整填写 PDF 和页码');
     return {
-      paperFileId,paperPage,
+      paperFileId,paperPage,options:Array.isArray(q.options)?q.options.map(o=>({label:text(o.label,1),text:text(o.text,4000)})):[],questionImages:Array.isArray(q.questionImages)?q.questionImages.map(x=>text(x,100)):[],
       type,correctOptions,choiceMode,choiceRule:'exact',scoringPoints,knowledge:text(q.knowledge,200),
       id: key,
       prompt: text(q.prompt, 12000),

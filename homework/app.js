@@ -1,3 +1,4 @@
+import {createMCQUI} from './mcq.js';
 import {prepareForm,validateForm} from './form-feedback.js';
 import {mountPDFReader} from "./pdf-reader.js";
 import {createWorkspaceUI} from "./workspace-ui.js";
@@ -534,6 +535,7 @@ function paperSurface(a,location=null){
 function bindPaperSurface(root=main){$$('[data-paper-select]',root).forEach(select=>select.onchange=()=>{const surface=select.closest('.paper-reader-surface'),reader=surface.querySelector('.pdf-preview');pdfTasks.get(reader)?.destroy();pdfTasks.delete(reader);reader.replaceChildren();delete reader.dataset.loading;delete reader.dataset.page;reader.dataset.pdf=select.value;renderPDFs(surface);});$$('[data-paper-file]',root).forEach(button=>button.onclick=()=>{const surface=button.closest('.paper-reader-surface'),reader=surface.querySelector('.pdf-preview'),fileId=button.dataset.paperFile,page=Number(button.dataset.paperPage);const select=surface.querySelector('[data-paper-select]');if(select)select.value=fileId;if(reader?.dataset.pdf===fileId)pdfTasks.get(reader)?.gotoPage(page);else if(reader){const old=pdfTasks.get(reader);old?.destroy();pdfTasks.delete(reader);reader.replaceChildren();delete reader.dataset.loading;reader.dataset.pdf=fileId;reader.dataset.page=page;renderPDFs(surface);}reader?.scrollIntoView({block:'nearest'});});}
 async function originalPaperPage(submissionId,questionId){const version=state.routeVersion,{submission:s}=await api('submissions/'+submissionId),paper=s.paper||s.assignment.paper,a={...s.assignment,...paper,paper,originalSubmissionId:s.id,questions:(s.questions||[]).map(q=>({...q,paperLocation:paper?.locations?.find(p=>p.id===q.id)}))};await metadata(a.questionFiles||[]);if(version!==state.routeVersion)return;const location=paper?.locations?.find(q=>q.id===questionId);main.innerHTML=`<section class="paper original-paper">${head('',a.title,`本次提交对应题纸 · v${paper?.version||s.version}`,link('result/'+s.id,'返回作业反馈'))}${paperSurface(a,location)}</section>`;bindPreviews();bindPaperSurface();}
 async function submitPage(id) {
+  if(["mcq","mixed"].includes(state.assignments.find(a=>a.id===id)?.format)){go("mcq/"+id);return;}
  const version=state.routeVersion,{assignment:a}=await api('assignments/'+id);
  const all=state.submissions.filter(s=>s.assignmentId===id),draft=assignmentState(a,all).draft,record=assignmentRecords(all,[a])[0],latest=record?.latest;
  const cacheKey=`hw-work:${state.user.id}:${id}`;let cached;
@@ -618,15 +620,17 @@ async function reviewPage(id) {
   const { submission: s } = await api("submissions/" + id),
     a = state.assignments.find((x) => x.id === s.assignmentId),
     name = state.submissions.find((x) => x.id === id)?.studentName || "学生";
-  await metadata(s.files);
+  const reviewFiles=[...s.files,...(s.choices?s.rubricSnapshot.flatMap(q=>q.questionImages||[]):[])];
+  await metadata(reviewFiles);
   const {mountReviewStudio}=await import("./review-studio.js");
   if (renderId !== state.routeVersion) return;
   const queue=state.submissions.filter(q=>q.assignmentId===s.assignmentId&&(q.status==='needs_review'||q.id===s.id));
-  state.viewCleanup=mountReviewStudio(main,{backRoute:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews',submission:s,title:a?.title||'作业复核',name,files:s.files.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
+  state.viewCleanup=mountReviewStudio(main,{backRoute:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews',submission:s,title:a?.title||'作业复核',name,files:reviewFiles.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
 }
 
 async function devicePage() {
   const { device: d, settings: s } = await api("device");
+  const chatSettings = await api("companion/settings");
   const cloud = s.execution === "cloud";
   const selected = cloud ? "deepseek" : s.provider;
   const status = d?.revoked ? "已暂停" : cloud && !s.hasApiKey ? "待填写 API Key" : d?.online ? d.busy ? "正在批改" : d.modelReady ? "已连接 · 可以批改" : "已连接 · 待配置模型" : "未连接 · 作业会继续排队";
@@ -649,7 +653,8 @@ async function devicePage() {
       <label class="check"><input type="checkbox" name="cloudConsent" ${s.cloudConsent ? "checked" : ""}>我同意将作业和参考答案发送到所选服务商</label></div>
       <p class="hint">密钥加密保存，学生无法查看。切回本机时会保留 DeepSeek 配置。</p><p class="hint">批阅只生成分数，不生成判分理由。核对后再发布给学生。</p>
       <p class="form-error" role="alert"></p><button type="submit" class="primary">保存批改设置</button></form>
-    </section></div></section>`;
+    </section></div><hr class="rule"><details><summary>Mike 伙伴 · 对话额度</summary><p class="hint">与批改共用已保存的 DeepSeek 连接。只提供经济学与平台帮助；测验中只提供操作帮助。</p><form id="chat-settings-form" class="stack"><div class="field-row">${field("学生每日条数", "studentDaily", chatSettings.studentDaily, "number", 'min="1" max="200" required')}${field("教师每日条数", "teacherDaily", chatSettings.teacherDaily, "number", 'min="1" max="1000" required')}</div><p class="form-error" role="alert"></p><button type="submit" class="secondary">保存对话额度</button></form></details></section>`;
+  formHandler($("#chat-settings-form"), async b => { await post("companion/settings",b); toast("对话额度已保存"); });
   const form = $("#settings-form"), provider = $("[name=provider]", form);
   function updateProvider(reset) {
     const kind = provider.value, deepseek = kind === "deepseek", local = kind === "ollama";
@@ -748,7 +753,11 @@ async function render(scroll = true) {
     if(!embedded){document.body.dataset.workTask=task?'true':'false';document.body.dataset.workRoute=route;}
     document.documentElement.dataset.homeworkRoute=route;
     const learning=createLearningUI({state,main,api,post,put,h,head,link,badge,date,click,formHandler,area,field,bindPreviews,fileMarkup,metadata,uploadWidget,toast,go,paperSurface,bindPaperSurface});
-    if (route === "new") await newAssignment();
+    const mcqUI=createMCQUI({main,state,api,post,put,go,h,toast});
+    if(route === "mcq-import")await mcqUI.imports(id);
+    else if(route === "mcq")await mcqUI.attempt(id);
+    else if(route === "mcq-analysis")await mcqUI.analysis(id);
+    else if (route === "new") await newAssignment();
     else if (route === "edit" && id) await workspace.edit(id);
     else if (route === "trash") await workspace.trash();
     else if (route === "answer" && id) await answerPage(id);

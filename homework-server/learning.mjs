@@ -1,6 +1,6 @@
 import {questionLocation} from './paper.mjs';
 import {assignmentRecords} from '../homework/learning-model.js';
-export const visibleQuestions = (s) => (s.publishedGrade?.questionsSnapshot || s.rubricSnapshot || []).map(q=>({id:q.id,prompt:q.prompt,type:q.type||'short',maxPoints:q.maxPoints,knowledge:q.knowledge||'',paperLocation:questionLocation(s.paperSnapshot,q.id)}));
+export const visibleQuestions = (s) => (s.publishedGrade?.questionsSnapshot || s.rubricSnapshot || []).map(q=>({id:q.id,prompt:q.prompt,type:q.type||'short',maxPoints:q.maxPoints,knowledge:q.knowledge||'',options:q.options||[],questionImages:q.questionImages||[],paperLocation:questionLocation(s.paperSnapshot,q.id)}));
 export function publishedResult(s, result, actor, at, note='', source='teacher', model='') {
   if(s.publishedGrade) s.gradeHistory=[...(s.gradeHistory||[]),structuredClone(s.publishedGrade)];
   s.publishedGrade={...result,questions:result.questions.map(q=>({...q,type:s.rubricSnapshot.find(r=>r.id===q.id)?.type||'short'})),
@@ -20,7 +20,7 @@ export function mistakeRows(submissions, assignments, notes=[]) {
       const meta=notes.find(n=>n.studentId===record.studentId&&n.assignmentId===record.assignmentId&&n.questionId===q.id);
       rows.push({assignmentId:record.assignmentId,assignmentTitle:record.assignment.title||'作业',course:record.assignment.course||'',studentId:record.studentId,
         submissionId:record.effective.id,questionId:q.id,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',
-        score:q.score,maxPoints:q.maxPoints,evidence:q.evidence,feedback:q.feedback,publishedAt:record.grade.publishedAt,
+        options:ref.options||[],questionImages:ref.questionImages||[],score:q.score,maxPoints:q.maxPoints,evidence:q.evidence,feedback:q.feedback,publishedAt:record.grade.publishedAt,
         paper:record.effective.paperSnapshot||null,paperLocation:questionLocation(record.effective.paperSnapshot,q.id),
         gradeRevision:record.grade.revision||1,pendingUpdate:record.pendingUpdate,
         note:meta?.note||'',status:meta?.status||'todo',corrections:meta?.corrections||[],revision:meta?.revision||0});
