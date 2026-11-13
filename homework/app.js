@@ -614,7 +614,7 @@ function reviews(assignmentId) {
       (a.status === "needs_review" ? -1 : 1) -
       (b.status === "needs_review" ? -1 : 1),
   );
-  main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "待复核的作业" : "提交记录", teacher ? "核对 AI 给出的分数，也可以直接改分后发布。" : "每次提交都会保留。成绩发布后，可在这里查看反馈。", link("assignments", "返回作业"))}${rows.length ? submissionRows(rows) : empty(teacher ? "这里等待第一份作业" : "还没有提交记录", teacher ? "学生提交并完成批阅后，分数会出现在这里等待核对。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
+  main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "待复核的作业" : "提交记录", teacher ? "核对初评分，也可以直接改分后发布。" : "每次提交都会保留。成绩发布后，可在这里查看反馈。", link("assignments", "返回作业"))}${rows.length ? submissionRows(rows) : empty(teacher ? "这里等待第一份作业" : "还没有提交记录", teacher ? "学生提交并完成批阅后，分数会出现在这里等待核对。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
 }
 async function resultPage(id) {
  const version=state.routeVersion,{submission:s}=await api('submissions/'+id);

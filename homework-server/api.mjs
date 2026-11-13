@@ -19,7 +19,7 @@ import {
 } from "./store.mjs";
 import { createFiles, readBody, MAX_FILE } from "./files.mjs";
 import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } from "./validation.mjs";
-import {visibleQuestions, publishedResult, mistakeRows} from './learning.mjs';
+import {visibleQuestions, publishedResult, mistakeRows, reviewDraft} from './learning.mjs';
 import {exportWork} from './export.mjs';
 import {captureRecipients,assignmentRoster} from './roster.mjs';
 import {capturePaper,paperOf,questionLocation} from './paper.mjs';
@@ -1116,8 +1116,7 @@ export async function createHomework({externalAuth} = {}) {
               const q=b.question;assert(['string','number'].includes(typeof q.score)&&String(q.score).trim()!==''&&Number.isFinite(Number(q.score))&&q.score>=0&&q.score<=ref.maxPoints,'请核对本题得分');
               const entry={id:ref.id,score:Number(q.score),maxPoints:ref.maxPoints,evidence:boundedText(q.evidence,4000,'作答依据'),feedback:boundedText(q.feedback,4000,'反馈'),checked:q.checked===true,needsReview:false};
               assert(entry.checked,'请核对本题得分并勾选确认');
-              const old=current.teacherReviewDraft?.jobId===current.jobId?current.teacherReviewDraft.questions:[];
-              current.teacherReviewDraft={jobId:current.jobId,revision:(current.teacherReviewDraft?.revision||0)+1,questions:[...old.filter(q=>q.id!==ref.id),entry],savedAt:now(),actor:user.id};
+              current.teacherReviewDraft=reviewDraft(current,entry,user.id,now());
               await db.put('submission',current,c);
             });return (json(res,{draft:(await db.get(s.id)).teacherReviewDraft}),true);
           }

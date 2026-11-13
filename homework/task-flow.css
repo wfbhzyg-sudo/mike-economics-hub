@@ -45,8 +45,8 @@
 /* Keep question switching in view and give Mike a reserved mobile navigation slot. */
 @media(max-width:760px){
  .mistake-inline{scroll-margin-top:72px}
- body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) #dock{padding-right:64px}
- body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher{right:8px;bottom:calc(8px + env(safe-area-inset-bottom));min-width:44px;min-height:44px;padding:4px}
- body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher img{width:36px;height:36px}
- body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher span{display:none}
+ body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) #dock{padding-right:64px}
+ body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher{right:8px;bottom:calc(8px + env(safe-area-inset-bottom));min-width:44px;min-height:44px;padding:4px}
+ body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher img{width:36px;height:36px}
+ body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher span{display:none}
 }
