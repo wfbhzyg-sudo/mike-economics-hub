@@ -34,11 +34,12 @@ const safeUser = (u) => ({
   unified: Boolean(u.unified),
   canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
-const publicAssignment = (a) => ({
+export const publicAssignment = (a) => ({
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
   course: a.course,
+  libraryUnit:a.libraryUnit||null, libraryCollection:a.libraryCollection||null, libraryCourse:a.libraryCourse||null,
   instructions: paperOf(a).instructions,
   questionFiles: paperOf(a).questionFiles,
   paper:paperOf(a),readingScope:paperOf(a).readingScope,submissionGuide:paperOf(a).submissionGuide,mainQuestionFile:paperOf(a).mainQuestionFile,

@@ -1,3 +1,4 @@
+import {bindDisclosureMenus} from './disclosure-menu.js';
 const noteSaves = new Map();
 const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export async function mountInk(root,{api,put,post,userId,scope,background=null,onExport,aspect=545/755,exportLabel='保存为 PDF 并加入本题答案',exportHint='草稿自动保存，添加后仍需交卷。'}){
@@ -10,12 +11,13 @@ export async function mountInk(root,{api,put,post,userId,scope,background=null,o
  const $=s=>root.querySelector(s),canvas=$('.ink-canvas'),ctx=canvas.getContext('2d'),sheet=$('.ink-sheet');let width=0,height=0;
  canvas.style.touchAction=mode==='write'?'none':'pan-x pan-y';canvas.style.pointerEvents=mode==='hand'?'none':'auto';
  if(background)await background($('.ink-background'));
+ const closeMenus=bindDisclosureMenus(root,'.ink-more');
  let selectedText=null;
  function textLayer(){
   const layer=$('.ink-text-layer');layer.replaceChildren();
   for(const a of note.annotations||[]){if(a.page!==page)continue;const b=document.createElement('button');b.type='button';b.className='ink-text-anchor';b.textContent=a.text||'T';b.style.cssText=`left:${a.x*100}%;top:${a.y*100}%;width:${a.width*100}%;color:${a.color}`;b.setAttribute('aria-label','编辑文字批注：'+(a.text||'空白批注'));b.onclick=()=>editText(a);layer.append(b);}
  }
- function editText(a){selectedText=a.id;$('.ink-text-editor').hidden=false;$('[data-annotation-text]').value=a.text;$('[data-annotation-text]').focus({preventScroll:true});}
+ function editText(a){$('.ink-more').open=false;selectedText=a.id;$('.ink-text-editor').hidden=false;$('[data-annotation-text]').value=a.text;$('[data-annotation-text]').focus({preventScroll:true});}
  function setMode(value){mode=value;root.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(value==='write'&&b.dataset.tool===tool)));canvas.style.touchAction=mode==='write'?'none':'pan-x pan-y';canvas.style.pointerEvents=mode==='hand'?'none':'auto';root.dataset.inkMode=mode;root.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));}
  $('[data-annotation-text]').oninput=e=>{const a=note.annotations.find(a=>a.id===selectedText);if(a){a.text=e.target.value;changed();textLayer();}};
  $('[data-text-done]').onclick=()=>{$('.ink-text-editor').hidden=true;selectedText=null;root.querySelector('[data-mode=text]').focus({preventScroll:true});};
@@ -42,5 +44,5 @@ export async function mountInk(root,{api,put,post,userId,scope,background=null,o
  $('[data-keep-local]').onclick=async()=>{try{const local=stored(),cloud=(await api('library/notes?'+query)).note;if(!local)throw Error('没有可恢复的本机草稿');note={...cloud,pages:local.pages,text:local.text,annotations:local.annotations||[]};conflict=false;$('.ink-conflict').hidden=true;lockConflict();$('textarea').value=note.text;page=0;changed();await save();schedule()}catch(e){$('.ink-error').textContent=e.message}};
  if(onExport)$('[data-export]').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{await save();if(!note.pages.some(p=>p.length)&&!note.annotations?.some(a=>a.text.trim()))throw Error('先写下答案，再保存为 PDF');const d=await post('library/notes/export',{...scope,...note});note.revision=d.note.revision;await onExport(d.file);status('PDF 已保存并添加');}catch(e){$('.ink-error').textContent=e.message}finally{b.disabled=false}};
  const observer=new ResizeObserver(schedule);observer.observe(sheet);const online=()=>void save().catch(()=>{}),unload=e=>{if(dirty){persist();e.preventDefault();e.returnValue=''}};window.addEventListener('online',online);window.addEventListener('beforeunload',unload);schedule();status(dirty?'恢复了本机草稿':'已保存');if(dirty&&!conflict)void save().catch(()=>{});
- return {save,checkpoint(){if(active!==null){active=null;changed();}if(dirty)persist();},destroy(){if(active!==null){active=null;changed();}if(dirty){persist();void save().catch(()=>{})}disposed=true;clearTimeout(timer);cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);}};
+ return {save,checkpoint(){if(active!==null){active=null;changed();}if(dirty)persist();},destroy(){if(active!==null){active=null;changed();}if(dirty){persist();void save().catch(()=>{})}disposed=true;closeMenus();clearTimeout(timer);cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);}};
 }

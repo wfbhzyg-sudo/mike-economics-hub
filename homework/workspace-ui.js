@@ -1,3 +1,4 @@
+import {studentAssignmentAction} from './assignment-navigation.js';
 import {highlightText} from './search-text.js';
 import { assignmentState, assignmentRecords } from "./learning-model.js";
 export function createWorkspaceUI(ctx) {
@@ -43,26 +44,9 @@ export function createWorkspaceUI(ctx) {
       done = records.filter((r) => r.grade),
       questions = (t ? a.rubric : a.questions) || [],
       score = questions.reduce((n, q) => n + q.maxPoints, 0);
-    const target = t
-      ? (a.published ? "overview/" : "edit/") + a.id
-      : info.latest &&
-          info.latest.status !== "returned" &&
-          !(info.draft && info.canSubmit)
-        ? "result/" + info.latest.id
-        : "submit/" + a.id;
-    const action = t
-      ? a.published
-        ? "查看提交"
-        : "继续草稿"
-      : info.key === "done"
-        ? "查看反馈"
-        : info.key === "processing"
-          ? "查看进度"
-          : info.draft||a.attemptProgress
-            ? "继续作答"
-            : info.latest?.status === "returned"
-              ? "补充作业"
-              : "查看题目";
+    const studentAction=studentAssignmentAction(a,state.submissions);
+    const target=t?(a.published?'overview/':'edit/')+a.id:studentAction.target;
+    const action=t?(a.published?'查看提交':'继续草稿'):studentAction.action;
     const tone = t
       ? review.length
         ? "sand"
@@ -75,9 +59,9 @@ export function createWorkspaceUI(ctx) {
     if(t){
       const counts=state.rosterSummaries?.[a.id], summary=counts||{submitted:records.length,review:review.length};
       const stat=(filter,text,cls)=>link('overview/'+a.id+'/'+filter,text,'roster-count '+cls);
-      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title">${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'名单待确认':'同步名单…'):summary.missing+' 未提交',summary.missing>0?'is-missing':'is-neutral')}${stat('review',summary.review+' 待复核',summary.review?'is-review':'is-neutral')}`:'<span class="hint">发布后统计提交</span>'}</div><div class="actions task-actions">${link(target,action,'primary')}${link('edit/'+a.id,'编辑')}${menu(a)}</div></article>`;
+      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title">${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.opensAt&&Date.parse(a.opensAt)>Date.now()?'开放 '+date(a.opensAt)+(a.dueAt?' · 截止 '+date(a.dueAt):''):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'名单待确认':'同步名单…'):summary.missing+' 未提交',summary.missing>0?'is-missing':'is-neutral')}${stat('review',summary.review+' 待复核',summary.review?'is-review':'is-neutral')}`:'<span class="hint">发布后统计提交</span>'}</div><div class="actions task-actions">${link(target,action,'primary')}${link('edit/'+a.id,'编辑')}${menu(a)}</div></article>`;
     }
-    return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${link(target, highlightText(a.title,state.assignmentSearch), "task-name")}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(info.label)}</span></div><div class="meta"><span>${h(a.course)}</span>${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待核对", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${link(target, action, "primary")}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
+    return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${target?link(target, highlightText(a.title,state.assignmentSearch), "task-name"):`<strong class="task-name">${highlightText(a.title,state.assignmentSearch)}</strong>`}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(studentAction.label)}</span></div><div class="meta"><span>${h(a.course)}</span>${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${!t&&studentAction.opensLater?"开放 "+date(a.opensAt):a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待核对", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${target?link(target, action, "primary"):`<button class="secondary" disabled>${h(action)}</button>`}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
   }
   function bindActions() {
     $$("[data-more]").forEach(
@@ -363,7 +347,7 @@ export function createWorkspaceUI(ctx) {
           .slice(0, 16)
       : "";
     if (['mcq','mixed'].includes(a.format) && a.published) {
-      main.innerHTML=`<section class="paper edit-paper">${head('','编辑作业','',link('assignments','返回作业'))}<form id="edit-assignment" class="compact-editor"><section class="editor-basics"><div class="editor-title-date">${area('作业名称','title',a.title,'required maxlength="120" rows="1"')}${field('截止时间（可选）','dueAt',due,'datetime-local')}</div><fieldset class="class-picker"><legend>布置给</legend><div class="class-chips">${state.classes.map(c=>`<label class="class-chip"><input name="classId" type="checkbox" value="${h(c.id)}" ${a.classIds.includes(c.id)?'checked':''}><span>${h(c.name)}</span></label>`).join('')}</div></fieldset><div class="editor-policy"><label class="check"><input name="allowLate" type="checkbox" ${a.allowLate?'checked':''}>允许补交</label><label class="check"><input name="allowResubmit" type="checkbox" ${a.allowResubmit!==false?'checked':''}>允许重交</label><span>AI 给分 · 教师确认后发布</span></div></section><div class="work-section" data-tone="sage"><div class="work-section-body"><p>本次已发布 ${a.rubric.length} 道题。这里修改布置安排，学生已交作答与历史成绩保留。</p>${link('mcq-analysis/'+id,'查看题目与更正选择题答案')}</div></div><div class="editor-footer"><p class="form-error" role="alert"></p><p id="edit-save-status" role="status"></p><button type="submit" class="primary">保存修改</button></div></form></section>`;
+      main.innerHTML=`<section class="paper edit-paper">${head('','编辑作业','',link('assignments','返回作业'))}<form id="edit-assignment" class="compact-editor"><section class="editor-basics"><div class="editor-title-date">${area('作业名称','title',a.title,'required maxlength="120" rows="1"')}${field('截止时间（可选）','dueAt',due,'datetime-local')}</div><fieldset class="class-picker"><legend>布置给</legend><div class="class-chips">${state.classes.map(c=>`<label class="class-chip"><input name="classId" type="checkbox" value="${h(c.id)}" ${a.classIds.includes(c.id)?'checked':''}><span>${h(c.name)}</span></label>`).join('')}</div></fieldset><div class="editor-policy"><label class="check"><input name="allowLate" type="checkbox" ${a.allowLate?'checked':''}>允许补交</label><label class="check"><input name="allowResubmit" type="checkbox" ${a.allowResubmit!==false?'checked':''}>允许重交</label><span>${a.format==='mcq'?'选择题自动计分 · 教师确认后发布':'选择题自动计分 · 简答题教师复核'}</span></div></section><div class="work-section" data-tone="sage"><div class="work-section-body"><p>本次已发布 ${a.rubric.length} 道题。这里修改布置安排，学生已交作答与历史成绩保留。</p>${link('mcq-analysis/'+id,'查看题目与更正选择题答案')}</div></div><div class="editor-footer"><p class="form-error" role="alert"></p><p id="edit-save-status" role="status"></p><button type="submit" class="primary">保存修改</button></div></form></section>`;
       const form=$('#edit-assignment');let revision=a.editRevision||0;
       formHandler(form,async b=>{b.classIds=$$('input[name=classId]:checked',form).map(x=>x.value);b.allowLate=form.elements.allowLate.checked;b.allowResubmit=form.elements.allowResubmit.checked;b.editRevision=revision;b.gradingMode='manual';if(b.dueAt)b.dueAt=new Date(b.dueAt).toISOString();const result=await put('assignments/'+id+'/metadata',b);revision=result.assignment.editRevision;$('#edit-save-status').textContent='布置安排已保存；题目和历史成绩保留。';toast('修改已保存');});return;
     }
