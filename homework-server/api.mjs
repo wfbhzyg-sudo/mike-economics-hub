@@ -751,11 +751,12 @@ export async function createHomework({externalAuth} = {}) {
           const size = download ? (f.originalSize || f.size) : f.size;
           const range = method === 'GET' ? byteRange(req.headers.range, size) : null;
           if (range === false) {res.writeHead(416, {'Content-Range':`bytes */${size}`, 'Accept-Ranges':'bytes'}).end();return true;}
+          const downloadName=(download?(f.originalMime||f.mime):f.mime)==='application/pdf'&&!/\.pdf$/i.test(f.name)?f.name+'.pdf':f.name;
           const headers = {
             'Content-Type':download ? (f.originalMime || f.mime) : f.mime,
             'Content-Length':range ? range.length : size,
             'Accept-Ranges':'bytes', 'Cache-Control':'private, no-cache',
-            'Content-Disposition':`${download?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+            'Content-Disposition':`${download?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
             ...(range ? {'Content-Range':`bytes ${range.start}-${range.end}/${size}`} : {})
           };
           if(method === 'HEAD'){res.writeHead(200,headers).end();return true;}
