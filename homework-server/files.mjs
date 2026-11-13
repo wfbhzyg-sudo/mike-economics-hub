@@ -122,11 +122,11 @@ export function createFiles(store) {
       copy.originalKey=file.originalKey||(file.originalSize?file.id+"/original":file.id);copy.originalSize=file.originalSize||file.size;copy.originalMime=file.originalMime||file.mime;
       await store.put("file",copy);return copy;
     },
-    async readOriginal(file) {
-      return (await s3.send(new GetObjectCommand({Bucket,Key:file.originalKey||(file.originalSize?file.id+"/original":file.id)}))).Body;
+    async readOriginal(file, range) {
+      return (await s3.send(new GetObjectCommand({Bucket,Key:file.originalKey||(file.originalSize?file.id+"/original":file.id),...(range?{Range:`bytes=${range.start}-${range.end}`}:{})}))).Body;
     },
-    async read(file) {
-      return (await s3.send(new GetObjectCommand({ Bucket, Key: file.id })))
+    async read(file, range) {
+      return (await s3.send(new GetObjectCommand({ Bucket, Key: file.id,...(range?{Range:`bytes=${range.start}-${range.end}`}:{}) })))
         .Body;
     },
     async validate(ids, owner, purpose, c) {

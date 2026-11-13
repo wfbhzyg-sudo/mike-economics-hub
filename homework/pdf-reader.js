@@ -5,7 +5,7 @@ export async function pdfLibrary(){
  libraryPromise ||= import('/assets/pdfjs/pdf.mjs').then(lib=>{lib.GlobalWorkerOptions.workerSrc='/assets/pdfjs/pdf.worker.mjs';return lib;});
  return libraryPromise;
 }
-export function openPDF(fileId,lib){return lib.getDocument({url:'/api/homework/files/'+encodeURIComponent(fileId),cMapUrl:'/assets/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/assets/pdfjs/standard_fonts/',wasmUrl:'/assets/pdfjs/wasm/',isEvalSupported:false});}
+export function openPDF(fileId,lib){return lib.getDocument({url:'/api/homework/files/'+encodeURIComponent(fileId),cMapUrl:'/assets/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/assets/pdfjs/standard_fonts/',wasmUrl:'/assets/pdfjs/wasm/',isEvalSupported:false,disableAutoFetch:true,disableStream:true,rangeChunkSize:131072});}
 export function mountPDFReader(root,{fileId,title='作业题纸',storageKey='',initialPage=null,initialOffset=0,loadPosition,savePosition}={}){
  const interactionEvents=new AbortController();let userInteracted=false;for(const name of ['pointerdown','keydown','wheel','touchstart'])root.addEventListener(name,e=>{userInteracted=true;if(name==='wheel'||((name==='pointerdown'||name==='touchstart')&&e.target.closest('.reader-scroll')))++jumpId;},{passive:true,signal:interactionEvents.signal});
  let pdfLib,rotation=0,panel="",matches=[],selectedMatch=-1,indexing=false,searchTimer,jumpId=0,thumbRunning=false;

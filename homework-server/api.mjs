@@ -1,3 +1,4 @@
+import {byteRange} from './file-range.mjs';
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
 import {choiceScore,combineScores} from './mcq-model.mjs';
 import {createLibrary} from './library.mjs';
@@ -272,7 +273,7 @@ export async function createHomework({externalAuth} = {}) {
     try {
       res.setHeader("Cache-Control", "no-store");
       res.setHeader("X-Frame-Options", "SAMEORIGIN");
-      if (!["GET", "POST", "PUT", "DELETE"].includes(method))
+      if (!["GET", "HEAD", "POST", "PUT", "DELETE"].includes(method))
         throw new HttpError(405, "不支持的请求方式");
       if (route[0] === "worker") {
         const device = await db.get("device"),
@@ -482,7 +483,7 @@ export async function createHomework({externalAuth} = {}) {
         }
         throw new HttpError(404, "没有这个设备接口");
       }
-      if (method !== "GET") {
+      if (!["GET", "HEAD"].includes(method)) {
         const origin = req.headers.origin,
           allowed = process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`;
         assert(!origin || origin === allowed, "请求来源不匹配", 403);
@@ -556,7 +557,7 @@ export async function createHomework({externalAuth} = {}) {
         : (await db.list('class')).filter(c=>user.role==='teacher'?c.teacherId===user.id:user.classIds.includes(c.id));
       const availableStudents = async () => { if(externalAuth)return externalAuth.students(auth.signed);const classes=await availableClasses();return (await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(c=>classes.some(k=>k.id===c))); };
       if(externalAuth && route[0]==="device")assert(user.canManageGrading,"批改引擎仅由平台管理员配置",403);
-      if (method !== "GET")
+      if (!["GET", "HEAD"].includes(method))
         assert(
           req.headers["x-csrf-token"] === auth.session.csrf,
           "登录已更新，请刷新页面",
@@ -737,7 +738,7 @@ export async function createHomework({externalAuth} = {}) {
           });
           return (json(res, { file: f }, 201), true);
         }
-        if (method === "GET" && route[1]) {
+        if (["GET", "HEAD"].includes(method) && route[1]) {
           const f = await db.get(route[1]);
           assert(
             f?.mime && (await authorizeFile(f, user)),
@@ -746,13 +747,21 @@ export async function createHomework({externalAuth} = {}) {
           );
           if (url.searchParams.get("meta") === "1")
             return (json(res, { file: f }), true);
-          res.writeHead(200, {
-            "Content-Type": f.mime,
-            "Content-Length": url.searchParams.has('download')?(f.originalSize||f.size):f.size,
-            "Content-Disposition": `${url.searchParams.has('download')?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
-            ...(url.searchParams.has('download')?{'Content-Type':f.originalMime||f.mime}:{}),
-          });
-          (await (url.searchParams.has("download")?files.readOriginal(f):files.read(f))).on("error", () => res.destroy()).pipe(res);
+          const download = url.searchParams.has('download');
+          const size = download ? (f.originalSize || f.size) : f.size;
+          const range = method === 'GET' ? byteRange(req.headers.range, size) : null;
+          if (range === false) {res.writeHead(416, {'Content-Range':`bytes */${size}`, 'Accept-Ranges':'bytes'}).end();return true;}
+          const headers = {
+            'Content-Type':download ? (f.originalMime || f.mime) : f.mime,
+            'Content-Length':range ? range.length : size,
+            'Accept-Ranges':'bytes', 'Cache-Control':'private, no-cache',
+            'Content-Disposition':`${download?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+            ...(range ? {'Content-Range':`bytes ${range.start}-${range.end}/${size}`} : {})
+          };
+          if(method === 'HEAD'){res.writeHead(200,headers).end();return true;}
+          const stream = await (download ? files.readOriginal(f, range) : files.read(f, range));
+          res.writeHead(range ? 206 : 200, headers);
+          stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy?.());stream.pipe(res);
           return true;
         }
       }
