@@ -66,3 +66,19 @@ test('student follow-up scope retains prior tutoring question and role cannot be
  assert.match(seen[1].m[0].content,/当前账户已由服务器验证为学生/);assert.equal(seen[1].o.maxTokens,450);
  assert(seen[2].m.at(-1).content.includes('需求量'));assert(seen[2].m.at(-1).content.startsWith('不知道'));assert.equal(seen[2].m.length,2);
 });
+
+test('key changes preserve active attempt identity, timer and receipt through actual student endpoints',async()=>{
+ const f=await prepare();const a=(await call(f.handler,f.teacher,'mcq/imports/import/publish','POST',{items:[item()],revision:0,classIds:['class']})).value.assignment;
+ const first=(await call(f.handler,f.student,'mcq/attempt/'+a.id,'POST',{revision:0,answers:{'1':'B'},flags:['1'],index:0})).value.attempt;
+ const plan={version:1,questionId:'1',answer:'B'},route='mcq/analysis/'+a.id;
+ const preview=(await call(f.handler,f.teacher,route+'/preview','POST',plan)).value;
+ await call(f.handler,f.teacher,route+'/regrade','POST',{...plan,token:preview.token});
+ const restored=(await call(f.handler,f.student,'mcq/attempt/'+a.id)).value.attempt;
+ assert.equal(restored.id,first.id);assert.equal(restored.startedAt,first.startedAt);assert.equal(restored.answers['1'],'B');assert.deepEqual(restored.flags,['1']);
+ const submitted=(await call(f.handler,f.student,'mcq/attempt/'+a.id+'/submit','POST',{revision:restored.revision,answers:restored.answers})).value;
+ const secondPlan={version:2,questionId:'1',answer:'A'},secondPreview=(await call(f.handler,f.teacher,route+'/preview','POST',secondPlan)).value;
+ await call(f.handler,f.teacher,route+'/regrade','POST',{...secondPlan,token:secondPreview.token});
+ const receipt=(await call(f.handler,f.student,'mcq/attempt/'+a.id)).value.attempt;assert.equal(receipt.submittedId,submitted.submittedId);
+ await assert.rejects(call(f.handler,f.student,'mcq/attempt/'+a.id+'/restart','POST',{revision:0}));
+ const duplicate=(await call(f.handler,f.student,'mcq/attempt/'+a.id+'/submit','POST',{revision:0,answers:{'1':'A'}})).value;assert.equal(duplicate.submittedId,submitted.submittedId);assert.equal((await f.db.list('submission')).length,1);
+});

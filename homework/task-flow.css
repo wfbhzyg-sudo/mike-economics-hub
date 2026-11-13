@@ -41,3 +41,12 @@
 .correction-editor h2{display:flex;align-items:center;justify-content:space-between;gap:8px}.correction-editor .mcq-letters button{border:1px solid #bdccc4;border-radius:7px;background:#f9fbf7;color:#243d4f;min-height:44px}.correction-editor .mcq-letters button[aria-checked=true]{background:#243d4f;color:white}.correction-editor .mcq-letters button:focus-visible{outline:2px solid #527b89;outline-offset:2px}
 @media(min-width:1101px){body:has(.mistake-inline) .mike-launcher{left:24px;right:auto;bottom:24px}}
 @media(max-width:760px){body:has(.correction-editor :is(input,textarea):focus) .mike-launcher{visibility:hidden;pointer-events:none}}
+
+/* Keep question switching in view and give Mike a reserved mobile navigation slot. */
+@media(max-width:760px){
+ .mistake-inline{scroll-margin-top:72px}
+ body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) #dock{padding-right:64px}
+ body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher{right:8px;bottom:calc(8px + env(safe-area-inset-bottom));min-width:44px;min-height:44px;padding:4px}
+ body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher img{width:36px;height:36px}
+ body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher span{display:none}
+}

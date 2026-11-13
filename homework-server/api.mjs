@@ -695,7 +695,7 @@ export async function createHomework({externalAuth} = {}) {
           if(b.draftRevision!==undefined)assert(Number(b.draftRevision)===(draft?.revision||0),'草稿已在另一处更新，请选择要保留的版本',409);
           assert(Number(b.revision||0)===(old?.revision||0),'订正已在另一处更新，请刷新后重试',409);
           const entry={...old,id:key,studentId:user.id,assignmentId:route[1],questionId:route[2],note:boundedText(b.note,5000,'笔记'),status:['todo','review','mastered'].includes(b.status)?b.status:'todo',revision:(old?.revision||0)+1,updatedAt:now(),corrections:old?.corrections||[]};
-          if(b.correction||b.files?.length){await files.validate(b.files||[],user.id,'submission',c);entry.corrections.push({id:id(),text:boundedText(b.correction,10000,'订正'),files:b.files||[],createdAt:now()});entry.status='review';}
+          if(b.correction||b.files?.length){await files.validate(b.files||[],user.id,'submission',c);entry.corrections.push({id:id(),text:boundedText(b.correction,10000,'订正'),files:b.files||[],createdAt:now()});entry.status=b.status==='mastered'?'mastered':'review';}
           entry.lastMutationId=mutationId||null;entry.lastMutationHash=mutationHash;await db.put('mistake-note',entry,c);if(b.draftRevision!==undefined)await db.put('mistake-draft',{id:draftKey,studentId:user.id,assignmentId:route[1],questionId:route[2],revision:(draft?.revision||0)+1,updatedAt:now(),cleared:true},c);return entry;
         });return (json(res,{note:saved}),true);
       }
