@@ -647,7 +647,7 @@ async function reviewPage(id) {
   const {mountReviewStudio}=await import("./review-studio.js");
   if (renderId !== state.routeVersion) return;
   const queue=state.submissions.filter(q=>q.assignmentId===s.assignmentId&&(q.status==='needs_review'||q.id===s.id));
-  state.viewCleanup=mountReviewStudio(main,{backRoute:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews',submission:s,title:a?.title||'作业复核',name,files:reviewFiles.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
+  state.viewCleanup=mountReviewStudio(main,{backRoute:state.reviewReturn?.assignmentId===s.assignmentId?state.reviewReturn.route:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews',submission:s,title:a?.title||'作业复核',name,files:reviewFiles.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
 }
 
 async function devicePage() {
@@ -786,8 +786,8 @@ async function render(scroll = true) {
     else if (route === "answer" && id) await answerPage(id);
     else if (route === "submit" && id) await submitPage(id);
     else if(route==="paper"&&id)await originalPaperPage(id,questionId);
-    else if (route === "reviews") reviews(id);
-    else if (["grades","history","gradebook"].includes(route))await learning.gradebook(id);
+    else if (route === "reviews") {state.reviewReturn=null;state.gradeReturn=null;reviews(id);}
+    else if (["grades","history","gradebook"].includes(route)){state.reviewReturn=null;await learning.gradebook(id);}
     else if(route==="mistakes")await learning.mistakes(id,questionId);
     else if(route==="overview"&&id)await learning.overview(id,(embedded?embeddedRoute:location.hash.slice(1)).split('/')[2]);
     else if (route === "result" && id) await resultPage(id);

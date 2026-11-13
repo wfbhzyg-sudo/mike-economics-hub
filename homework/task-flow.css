@@ -50,3 +50,61 @@
  body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher img{width:36px;height:36px}
  body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher span{display:none}
 }
+
+/* Question reading owns the viewport; controls take their actual height. */
+body[data-mcq-active=true]>.brand{display:none}
+body[data-mcq-active=true] #main{position:fixed;inset:0;width:100%;height:100dvh;max-width:none;margin:0;padding:0;overflow:auto}
+body[data-mcq-active=true] .mcq-work{padding:8px 12px;box-sizing:border-box;min-height:100%;max-width:1200px}
+body[data-mcq-active=true] .mcq-top{display:flex;gap:8px;flex-wrap:nowrap;padding:4px 0 8px}
+body[data-mcq-active=true] .mcq-top h1{font-size:18px;line-height:1.4;min-width:0}
+.mcq-session-status{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 10px;font-size:12px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.mcq-session-status #mcq-timer{font-size:12px;width:auto;text-align:right}
+.mcq-session-status #mcq-timer[data-urgent=true]{color:#883d31;font-weight:600}
+body[data-mcq-active=true] .mcq-answerbar{position:static;margin:0;padding:4px 0 0;box-shadow:none}
+body[data-mcq-active=true] .mcq-answerbar .mcq-toolbar{padding:2px 0 calc(4px + env(safe-area-inset-bottom))}
+body[data-mcq-active=true] .mcq-work>.mcq-error{position:static;margin:4px 0;padding:6px 10px;font-size:13px}
+body[data-mcq-active=true][data-mcq-question-type=choice] .mcq-work{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;gap:0}
+body[data-mcq-active=true][data-mcq-question-type=choice] .mcq-question{display:flex;flex-direction:column;min-height:0;max-width:none;width:100%;overflow:auto;margin:0}
+body[data-mcq-active=true][data-mcq-question-type=choice] .mcq-question>.mcq-toolbar{flex:none;padding:3px 0 6px}
+body[data-mcq-active=true][data-mcq-question-type=choice] .mcq-question .mcq-paper{flex:1 0 120px;min-height:0;max-height:none;padding:8px;scrollbar-width:thin;scrollbar-color:#9baea3 transparent}
+body[data-mcq-active=true][data-mcq-question-type=choice] .mcq-question:has(#mcq-accessible:not([hidden])) .mcq-paper{flex:0 0 45%}
+body[data-mcq-active=true][data-mcq-question-type=short] .mcq-work{padding-bottom:16px}
+body[data-mcq-active=true][data-mcq-question-type=short] .mcq-answerbar{position:sticky;bottom:0}
+body[data-mcq-active=true] .mike-launcher{bottom:calc(120px + env(safe-area-inset-bottom))}
+#mcq-question-heading:focus-visible{outline:2px solid #527b89;outline-offset:3px;border-radius:3px}
+dialog.mcq-modal,.homework-surface dialog.mcq-modal{height:fit-content;background:#fcfcf9}
+.work-dialog,.homework-surface .work-dialog{height:fit-content}
+.mcq-palette-dialog{width:min(520px,calc(100% - 24px));box-sizing:border-box}
+.mcq-palette-dialog>p{margin:8px 0;font-size:14px}
+.mcq-palette-dialog>p:empty{display:none}
+.mcq-palette-filters{justify-content:flex-start;gap:6px}
+.mcq-palette-filters [aria-pressed=true]{background:#e2ebe5;border-color:#688477;font-weight:600}
+.mcq-palette-dialog .mcq-palette{grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:8px;margin:10px 0}
+.mcq-palette-dialog .mcq-palette button{min-width:44px;min-height:44px;padding:8px 4px}
+.mcq-palette-dialog .mcq-palette [aria-current=step]{outline:2px solid #315563;outline-offset:1px;font-weight:700}
+.mcq-palette-dialog #mcq-final{width:100%;margin-top:12px}
+@media(max-width:760px){
+ body[data-mcq-active=true] .mcq-work{padding:4px 10px}
+ body[data-mcq-active=true] .mcq-top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 8px;padding:2px 0 4px}
+ body[data-mcq-active=true] .mcq-top h1{font-size:15px;line-height:1.4}
+ .mcq-session-status{grid-column:1/-1;justify-content:space-between;min-height:18px;font-size:12px}
+ body[data-mcq-active=true] .mcq-session-status #mcq-timer{font-size:12px;grid-column:auto;grid-row:auto}
+ body[data-mcq-active=true][data-mcq-question-type=choice] .mcq-question .mcq-paper{padding:3px}
+ .mcq-palette-dialog .mcq-toolbar h2{font-size:17px;margin:0}
+}
+@media(min-width:1000px),(min-width:761px) and (max-height:550px){
+ body[data-mcq-active=true] .mcq-top h1{font-size:15px}
+ body[data-mcq-active=true] .mcq-session-status{max-width:170px}
+ body[data-mcq-active=true] .mcq-answerbar{display:flex;gap:12px;align-items:center}
+ body[data-mcq-active=true] .mcq-choice-row{flex:1;gap:6px}
+ body[data-mcq-active=true] .mcq-choice-row>span{display:none}
+ body[data-mcq-active=true] .mcq-letters{padding:2px 0}
+ body[data-mcq-active=true] .mcq-answerbar .mcq-toolbar{flex-wrap:nowrap;gap:6px;padding:0}
+ body[data-mcq-active=true] .mcq-answerbar button{padding:6px 8px;font-size:12px}
+ body[data-mcq-active=true] .mike-launcher{bottom:70px}
+}
+/* Reserve a small help slot instead of covering attachments or answer controls. */
+body[data-mcq-active=true] .mcq-top{padding-right:48px}
+body[data-mcq-active=true][data-mcq-question-type] .mike-launcher{top:8px!important;right:10px!important;bottom:auto!important;left:auto!important;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;place-content:center}
+body[data-mcq-active=true] .mike-launcher img{width:38px;height:38px}
+body[data-mcq-active=true] .mike-launcher span{display:none}

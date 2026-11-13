@@ -11,7 +11,7 @@ async function open(){lastFocus=document.activeElement;panel.hidden=false;launch
 async function close(){await animate(false);panel.hidden=true;restoreBackground();launcher.hidden=false;launcher.setAttribute('aria-expanded','false');(lastFocus?.isConnected?lastFocus:launcher).focus();}
 let drag=null,moved=false;
 launcher.title='点击提问 · 拖动可调整位置';
-launcher.addEventListener('pointerdown',e=>{if(e.button!==0||document.querySelector('.library-work,.lib-handwriting[open]'))return;const b=launcher.getBoundingClientRect();drag={id:e.pointerId,x:e.clientX,y:e.clientY,left:b.left,top:b.top};moved=false;launcher.setPointerCapture(e.pointerId)});
+launcher.addEventListener('pointerdown',e=>{if(e.button!==0||document.body.dataset.mcqActive==='true'||document.querySelector('.library-work,.lib-handwriting[open]'))return;const b=launcher.getBoundingClientRect();drag={id:e.pointerId,x:e.clientX,y:e.clientY,left:b.left,top:b.top};moved=false;launcher.setPointerCapture(e.pointerId)});
 launcher.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!moved&&Math.hypot(dx,dy)<8)return;moved=true;launcher.style.right='auto';launcher.style.bottom='auto';launcher.style.left=Math.max(4,Math.min(innerWidth-launcher.offsetWidth-4,drag.left+dx))+'px';launcher.style.top=Math.max(4,Math.min(innerHeight-launcher.offsetHeight-4,drag.top+dy))+'px';});
 launcher.addEventListener('pointerup',()=>{drag=null});launcher.addEventListener('pointercancel',()=>{drag=null;moved=true});
 launcher.addEventListener('click',e=>{if(moved){e.preventDefault();moved=false;return;}open()});$('[data-action=close]').onclick=close;$('[data-action=hide]').onclick=async()=>{await close();host.hidden=true};
