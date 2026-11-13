@@ -8,24 +8,94 @@ import {validateTiming} from './mcq-model.mjs';
 import {questionFingerprint} from './review-links.mjs';
 import {UNIT,publicUnit,cleanDrawing,validateSelection} from './library-model.mjs';
 export function createLibrary({db,files,requireAssignment}){
- async function unitFor(user){const u=await db.get(UNIT);assert(u?.type==='library-unit','Unit 2 教学资料正在准备',404);if(user.role==='teacher'){assert(u.owner===user.id,'这份教学包尚未共享给你',403);return u;}const releases=(await db.list('library-release')).filter(r=>r.unitId===UNIT&&r.classIds.some(c=>user.classIds?.includes(c)));assert(releases.length,'老师尚未向本班开放 Unit 2 教学包',403);return u;}
- async function canReadFile(file,user){if(file.purpose!=='library')return false;try{const u=await unitFor(user);return u.resources.some(r=>r.fileId===file.id&&(user.role==='teacher'||r.audience!=='teacher'));}catch{return false;}}
+ const visibleTo = (unit, user, releases) =>
+   user.role === 'teacher'
+     ? unit.owner === user.id
+     : releases.some(release =>
+         release.unitId === unit.id &&
+         (!release.owner || release.owner === unit.owner) &&
+         release.classIds.some(classId => user.classIds?.includes(classId)));
+
+ async function unitFor(user, unitId = UNIT) {
+   assert(/^(micro|macro)-unit-[1-6]$/.test(unitId), '教学包编号无效', 400);
+   const unit = await db.get(unitId);
+   assert(unit?.type === 'library-unit', '教学资料正在准备', 404);
+   const releases = user.role === 'teacher' ? [] : await db.list('library-release');
+   assert(visibleTo(unit, user, releases), user.role === 'teacher'
+     ? '这份教学包尚未共享给你'
+     : '老师尚未向本班开放此教学包', 403);
+   return unit;
+ }
+
+ async function canReadFile(file, user) {
+   if (file.purpose !== 'library') return false;
+   const units = await db.list('library-unit');
+   const releases = user.role === 'teacher' ? [] : await db.list('library-release');
+   return units.some(unit => visibleTo(unit, user, releases) &&
+     unit.resources.some(resource => resource.fileId === file.id &&
+       (user.role === 'teacher' || resource.audience !== 'teacher')));
+ }
  async function handle({req,res,route,method,user,json,availableClasses,availableStudents}){
  if(route[0]!=='library')return false;
  const bdy=async()=>{try{return JSON.parse((await readBody(req,3*1024*1024)).toString())}catch(e){if(e.status)throw e;assert(false,'无法读取保存内容')}};
  const teacher=()=>assert(user.role==='teacher','此操作仅对教师开放',403);
- if(route[1]==='unit'&&method==='GET'){const u=await unitFor(user);json(res,{unit:user.role==='teacher'?u:publicUnit(u),releases:user.role==='teacher'?(await db.list('library-release')).filter(r=>r.unitId===UNIT):[]});return true;}
- if(route[1]==='questions'&&method==='GET'){teacher();await unitFor(user);json(res,{questions:(await db.list('library-question')).filter(q=>q.unitId===UNIT)});return true;}
- if(route[1]==='release'&&method==='POST'){teacher();await unitFor(user);const b=await bdy(),classes=await availableClasses();assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(c=>c.id===x)),'请选择自己的班级');const r=await db.tx(async c=>{const key='library-release:'+hash(user.id+UNIT),old=await db.get(key,c);const r={id:key,unitId:UNIT,owner:user.id,classIds:[...new Set([...(old?.classIds||[]),...b.classIds])],createdAt:old?.createdAt||now(),updatedAt:now()};await db.put('library-release',r,c);await db.audit(user.id,'library_release',UNIT,c);return r;});json(res,{release:r});return true;}
+ const query = new URL(req.url, 'http://local').searchParams;
+ const requestedUnit = query.get('unit') || UNIT;
+ if (route[1] === 'catalog' && method === 'GET') {
+   const releases = user.role === 'teacher' ? [] : await db.list('library-release');
+   const units = (await db.list('library-unit'))
+     .filter(unit => visibleTo(unit, user, releases))
+     .map(({id, title, questionCount}) => ({id, title, questionCount}))
+     .sort((a, b) => a.id.localeCompare(b.id));
+   json(res, {units});
+   return true;
+ }
+ if (route[1] === 'unit' && method === 'GET') {
+   const unit = await unitFor(user, requestedUnit);
+   const releases = user.role === 'teacher'
+     ? (await db.list('library-release')).filter(r => r.unitId === unit.id && r.owner === user.id)
+     : [];
+   json(res, {unit: user.role === 'teacher' ? unit : publicUnit(unit), releases});
+   return true;
+ }
+ if (route[1] === 'questions' && method === 'GET') {
+   teacher();
+   await unitFor(user, requestedUnit);
+   json(res, {questions: (await db.list('library-question', undefined, requestedUnit))
+     .filter(q => q.unitId === requestedUnit)});
+   return true;
+ }
+ if (route[1] === 'release' && method === 'POST') {
+   teacher();
+   const b = await bdy();
+   const unit = await unitFor(user, b.unitId);
+   const classes = await availableClasses();
+   assert(Array.isArray(b.classIds) && b.classIds.length &&
+     b.classIds.every(x => classes.some(c => c.id === x)), '请选择自己的班级');
+   const release = await db.tx(async c => {
+     const key = 'library-release:' + hash(user.id + unit.id);
+     const old = await db.get(key, c);
+     const record = {
+       id: key, unitId: unit.id, owner: user.id,
+       classIds: [...new Set([...(old?.classIds || []), ...b.classIds])],
+       createdAt: old?.createdAt || now(), updatedAt: now()
+     };
+     await db.put('library-release', record, c);
+     await db.audit(user.id, 'library_release', unit.id, c);
+     return record;
+   });
+   json(res, {release});
+   return true;
+ }
  if(route[1]==='publish'&&method==='POST'){
- teacher();const u=await unitFor(user),b=await bdy(),classes=await availableClasses();assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(c=>c.id===x)),'请选择自己的班级');assert(typeof b.clientId==='string'&&b.clientId.length>=16&&b.clientId.length<=100,'发布标识无效');const title=text(b.title,120);assert(title,'请填写作业名称');const chosen=validateSelection(b.questionIds,(await db.list('library-question')).filter(q=>q.unitId===UNIT)),timing=validateTiming(b),students=await availableStudents();
- const a=await db.tx(async c=>{const key='library-publish:'+hash(user.id+b.clientId),prior=await db.get(key,c);if(prior)return await db.get(prior.assignmentId,c);
- const rubric=chosen.map((q,i)=>({id:String(i+1),type:q.type,prompt:q.type==='short'?(q.searchText||''):'',sliceOnly:true,options:q.type==='choice'?'ABCDE'.split('').map(label=>({label,text:''})):[],correctOptions:q.type==='choice'?[q.answer]:[],choiceMode:'single',answer:q.answer||q.criteria,maxPoints:q.maxPoints||1,criteria:q.criteria||'与已确认的答案一致得分',scoringPoints:q.scoringPoints||[],questionImages:q.questionImages,sourcePages:q.source+' · 原题 '+q.number+' · p.'+q.sourcePages.join(', '),knowledge:q.topic?('Topic '+q.topic+' · '+(u.topics.find(t=>t.id===q.topic)?.title||'')):'Unit 2 · Supply and Demand',libraryChapter:q.chapterKey||'',libraryQuestionId:q.id,libraryVersion:q.version||1}));
- const a={id:id(),type:'assignment',teacherId:user.id,title,course:'AP 微观经济学',classIds:[...new Set(b.classIds)],...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:true,status:'ready',version:1,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:now(),recipients:captureRecipients(b.classIds,students),libraryUnit:UNIT,libraryVersion:u.version};a.publishedPaper=capturePaper(a,rubric,1);
+ teacher();const b=await bdy(),u=await unitFor(user,b.unitId),classes=await availableClasses();assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(c=>c.id===x)),'请选择自己的班级');assert(typeof b.clientId==='string'&&b.clientId.length>=16&&b.clientId.length<=100,'发布标识无效');const title=text(b.title,120);assert(title,'请填写作业名称');const chosen=validateSelection(b.questionIds,(await db.list('library-question',undefined,u.id)).filter(q=>q.unitId===u.id)),timing=validateTiming(b),students=await availableStudents();
+ const a=await db.tx(async c=>{const key='library-publish:'+hash(user.id+b.clientId),prior=await db.get(key,c);if(prior){const saved=await db.get(prior.assignmentId,c);assert(saved?.libraryUnit===u.id,'此发布编号已用于另一单元',409);return saved;}
+ const rubric=chosen.map((q,i)=>({id:String(i+1),type:q.type,prompt:q.type==='short'?(q.searchText||''):'',sliceOnly:true,options:q.type==='choice'?(q.optionLabels||'ABCDE'.split('')).map(label=>({label,text:''})):[],correctOptions:q.type==='choice'?[q.answer]:[],choiceMode:'single',answer:q.answer||q.criteria,maxPoints:q.maxPoints||1,criteria:q.criteria||'与已确认的答案一致得分',scoringPoints:q.scoringPoints||[],questionImages:q.questionImages,sourcePages:q.source+' · 原题 '+q.number+' · p.'+q.sourcePages.join(', '),knowledge:q.topic?('Topic '+q.topic+' · '+(u.topics.find(t=>t.id===q.topic)?.title||'')):u.title,libraryChapter:q.chapterKey||'',libraryQuestionId:q.id,libraryVersion:q.version||1}));
+ const a={id:id(),type:'assignment',teacherId:user.id,title,course:u.id.startsWith('macro-')?'AP 宏观经济学':'AP 微观经济学',classIds:[...new Set(b.classIds)],...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:true,status:'ready',version:1,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:now(),recipients:captureRecipients(b.classIds,students),libraryUnit:u.id,libraryVersion:u.version};a.publishedPaper=capturePaper(a,rubric,1);
  await db.put('assignment',a,c);await db.put('answer-version',{id:a.id+':v1',assignmentId:a.id,version:1,rubric,paper:a.publishedPaper,answerFiles:[],confirmedBy:user.id,confirmedAt:now()},c);await db.put('review-links',{id:'review-links:'+hash(a.id),assignmentId:a.id,defaults:[],questions:rubric.filter(q=>q.libraryChapter).map(q=>({id:q.id,fingerprint:questionFingerprint(q),chapters:[q.libraryChapter]})),revision:1},c);await db.put('library-publication',{id:key,assignmentId:a.id,createdAt:now()},c);await db.audit(user.id,'library_publish',a.id,c);return a;});json(res,{assignment:{id:a.id,title:a.title}},201);return true;}
  if(route[1]==='notes'){
  const query=new URL(req.url,'http://local').searchParams,b=method==='GET'?Object.fromEntries(query):await bdy();let scope;
- if(b.resourceId){const u=await unitFor(user),r=u.resources.find(r=>r.fileId===b.resourceId);assert(r&&(user.role==='teacher'||r.audience!=='teacher'),'无法查看这份资料',403);const page=Number(b.page);assert(Number.isInteger(page)&&page>=1&&page<=r.pages,'页码无效');scope='resource:'+r.fileId+':'+page;}
+ if(b.resourceId){const u=await unitFor(user,b.unitId),r=u.resources.find(r=>r.fileId===b.resourceId);assert(r&&(user.role==='teacher'||r.audience!=='teacher'),'无法查看这份资料',403);const page=Number(b.page);assert(Number.isInteger(page)&&page>=1&&page<=r.pages,'页码无效');scope='resource:'+r.fileId+':'+page;}
  else{const a=await requireAssignment(b.assignmentId,user);assert(user.role==='student','手写作答仅用于自己的作业',403);if(b.correctionId){const submission=await db.get(b.correctionId);assert(submission?.studentId===user.id&&submission.assignmentId===a.id&&submission.publishedGrade&&submission.rubricSnapshot?.some(q=>q.id===b.questionId),'无法打开这份订正',403);scope='correction:'+submission.id+':'+b.questionId;}else{const q=a.rubric?.find(q=>q.id===b.questionId);assert(q?.type==='short','请在简答题内手写作答');scope='assignment:'+a.id+':v'+a.version+':'+q.id;}}
  const key='library-note:'+hash(user.id+':'+scope);
  if(method==='GET'){const n=await db.get(key);json(res,{note:n||{id:key,pages:[[]],text:'',revision:0}});return true;}

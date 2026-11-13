@@ -757,7 +757,7 @@ async function render(scroll = true) {
   clearTimeout(pollTimer);
   const version = ++state.routeVersion;
   main.setAttribute("aria-busy", "true");
-  const [route = "assignments", id, questionId] = (embedded?embeddedRoute:location.hash.slice(1)).split("/").map(x=>{try{return decodeURIComponent(x)}catch{return x}});
+  const [route = "assignments", id, questionId, libraryMode] = (embedded?embeddedRoute:location.hash.slice(1)).split("/").map(x=>{try{return decodeURIComponent(x)}catch{return x}});
   try {
     await refresh();
     if (version !== state.routeVersion) return;
@@ -776,7 +776,7 @@ async function render(scroll = true) {
     document.documentElement.dataset.homeworkRoute=route;
     const learning=createLearningUI({state,main,api,post,put,h,head,link,badge,date,click,formHandler,area,field,bindPreviews,fileMarkup,metadata,uploadWidget,toast,go,paperSurface,bindPaperSurface});
     const mcqUI=createMCQUI({main,state,api,post,put,go,h,toast});
-    if(route === 'library')await showLibrary({main,state,api,post,put,go,toast},id,questionId);
+    if(route === 'library')await showLibrary({main,state,api,post,put,go,toast},id,questionId,libraryMode);
     else if(route === "mcq-import")await mcqUI.imports(id);
     else if(route === "mcq")await mcqUI.attempt(id);
     else if(route === "mcq-analysis")await mcqUI.analysis(id);

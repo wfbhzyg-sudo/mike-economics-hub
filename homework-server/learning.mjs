@@ -26,7 +26,7 @@ export function mistakeRows(submissions, assignments, notes=[], bindings=[]) {
       const ref=visibleQuestions(record.effective).find(r=>r.id===q.id)||{};
       const meta=notes.find(n=>n.studentId===record.studentId&&n.assignmentId===record.assignmentId&&n.questionId===q.id);
       rows.push({assignmentId:record.assignmentId,assignmentTitle:record.assignment.title||'作业',course:record.assignment.course||'',studentId:record.studentId,
-        submissionId:record.effective.id,questionId:q.id,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',
+        libraryUnit:record.assignment.libraryUnit||null,submissionId:record.effective.id,questionId:q.id,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',
         review:reviewLinksFor({...ref,id:q.id},record.assignment,bindings.find(b=>b.assignmentId===record.assignmentId)),options:ref.options||[],questionImages:ref.questionImages||[],score:q.score,maxPoints:q.maxPoints,evidence:q.evidence,feedback:q.feedback,publishedAt:record.grade.publishedAt,
         paper:record.effective.paperSnapshot||null,paperLocation:questionLocation(record.effective.paperSnapshot,q.id),
         gradeRevision:record.grade.revision||1,pendingUpdate:record.pendingUpdate,

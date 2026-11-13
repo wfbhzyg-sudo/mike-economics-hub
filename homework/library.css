@@ -27,3 +27,17 @@ body:has(.library-work) .tw-brand{position:sticky;top:0;z-index:70;background:#f
 body:has(.library-work) .tw-account{right:64px}
 body:has(.library-work) .tw-brand>a{max-width:calc(100% - 100px)}
 @media(max-width:400px){body:has(.library-work) .tw-brand>a{font-size:15px;gap:4px}body:has(.library-work) .tw-account summary{max-width:76px}}
+
+.lib-unit-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 185px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--lib-line);
+}
+.lib-unit-picker label { display: grid; gap: 4px; min-width: 0; font-size: 13px; }
+.lib-unit-picker select { width: 100%; min-width: 0; }
+@media (max-width: 700px) {
+  .lib-unit-picker { grid-template-columns: minmax(0, 136px) minmax(0, 1fr); gap: 8px; }
+  .library-work[data-reading="true"] .lib-unit-picker { display: none; }
+}

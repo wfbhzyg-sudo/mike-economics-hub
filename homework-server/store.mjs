@@ -51,11 +51,11 @@ export function createStore(connectionString, schema = "homework") {
         await client.query(`SELECT data FROM ${table} WHERE id=$1`, [key])
       ).rows[0]?.data;
     },
-    async list(kind, client = pool) {
+    async list(kind, client = pool, unitId) {
       return (
         await client.query(
-          `SELECT data FROM ${table} WHERE kind=$1 ORDER BY created DESC`,
-          [kind],
+          `SELECT data FROM ${table} WHERE kind=$1 ${unitId ? "AND data->>'unitId'=$2" : ""} ORDER BY created DESC`,
+          unitId ? [kind, unitId] : [kind],
         )
       ).rows.map((r) => r.data);
     },

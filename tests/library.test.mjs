@@ -21,7 +21,7 @@ test('Publish rejects unknown, duplicate or unverified questions, while FRQ need
  assert.throws(()=>validateSelection(['f'],[{id:'f',type:'short',status:'ready',questionImages:['img'],criteria:'Key',maxPoints:1,scoringPoints:[]}]));
  assert.equal(validateSelection(['f'],[{id:'f',type:'short',status:'ready',questionImages:['img'],criteria:'Key',maxPoints:1,scoringPoints:[{id:'1',criterion:'Shift demand right',maxPoints:1}]}])[0].id,'f');
 });
-function fixture(){const records=new Map([[UNIT,{id:UNIT,type:'library-unit',owner:'t',topics:[{id:'2.1',teacherNotes:'private'}],resources:[{fileId:'public',audience:'student',pages:10},{fileId:'key',audience:'teacher',pages:2}]}],['release',{id:'release',unitId:UNIT,classIds:['c']}]]);
+function fixture(){const records=new Map([[UNIT,{kind:'library-unit',id:UNIT,type:'library-unit',owner:'t',topics:[{id:'2.1',teacherNotes:'private'}],resources:[{fileId:'public',audience:'student',pages:10},{fileId:'key',audience:'teacher',pages:2}]}],['macro-unit-4',{id:'macro-unit-4',kind:'library-unit',type:'library-unit',owner:'t',topics:[],resources:[{fileId:'locked',audience:'class',pages:2}]}],['release',{id:'release',unitId:UNIT,classIds:['c']}]]);
  const db={get:async id=>records.get(id),list:async kind=>[...records.values()].filter(x=>kind==='library-release'?x.id==='release':x.kind===kind),put:async(kind,v)=>{records.set(v.id,{...v,kind});return v},tx:async fn=>fn({}),audit:async()=>{}};
  const library=createLibrary({db,files:{},requireAssignment:async()=>({id:'a',version:1,rubric:[{id:'1',type:'short'}]})});
  const call=async(user,path,method='GET',body)=>{let result;await library.handle({req:Object.assign(Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]),{url:'/api/homework/'+path}),res:{},route:path.split('?')[0].split('/'),method,user,json:(_r,d)=>{result=d},availableClasses:async()=>[{id:'c'}],availableStudents:async()=>[]});return result};return {records,library,call};}
@@ -30,6 +30,10 @@ test('Library access is class scoped and teacher keys never inherit student rele
  const {library,call}=fixture();await assert.rejects(call({...student,classIds:['other']},'library/unit'));
  await assert.rejects(call({id:'otherTeacher',role:'teacher'},'library/questions'));
  await assert.rejects(call(student,'library/publish','POST',{}));
+ assert.deepEqual((await call(student,'library/catalog')).units.map(u=>u.id),[UNIT]);
+ assert.equal((await call(teacher,'library/catalog')).units.length,2);
+ assert.equal(await library.canReadFile({id:'locked',purpose:'library'},student),false);
+ await assert.rejects(call(student,'library/unit?unit=macro-unit-4'),e=>e.status===403);
  assert.equal(await library.canReadFile({id:'public',purpose:'library'},student),true);
  assert.equal(await library.canReadFile({id:'key',purpose:'library'},student),false);
  assert.equal(await library.canReadFile({id:'key',purpose:'library'},teacher),true);
