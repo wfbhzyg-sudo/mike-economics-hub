@@ -1,3 +1,4 @@
+import {showLibrary} from './library-ui.js';
 import {createMCQUI} from './mcq.js';
 import {prepareForm,validateForm} from './form-feedback.js';
 import {mountPDFReader} from "./pdf-reader.js";
@@ -19,7 +20,7 @@ const h = (value) =>
       ],
   );
 const icon = (name) =>
-  `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${{ work: "M8 3H4v18h16V3h-4M8 2h8v5H8ZM8 11h8M8 15h5", clock: "M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", check: "m5 12 4 4L19 6", up: "M12 20V4m-6 6 6-6 6 6", rotate: "M20 7V3m0 4h-4M20 7a8 8 0 1 0 0 10", close: "m6 6 12 12M18 6 6 18", left: "M19 12H5m6-6-6 6 6 6", right: "M5 12h14m-6-6 6 6-6 6", external: "M6 18 18 6M6 6h12v12" }[name]}"/></svg>`;
+  `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${{ book: "M12 5v16M12 5C9 2 5 2 2 3v16c4-1 7-1 10 2 3-3 6-3 10-2V3c-3-1-7-1-10 2Z", work: "M8 3H4v18h16V3h-4M8 2h8v5H8ZM8 11h8M8 15h5", clock: "M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", check: "m5 12 4 4L19 6", up: "M12 20V4m-6 6 6-6 6 6", rotate: "M20 7V3m0 4h-4M20 7a8 8 0 1 0 0 10", close: "m6 6 12 12M18 6 6 18", left: "M19 12H5m6-6-6 6 6 6", right: "M5 12h14m-6-6 6 6-6 6", external: "M6 18 18 6M6 6h12v12" }[name]}"/></svg>`;
 const state = {
   user: null,
   csrf: "",
@@ -196,9 +197,10 @@ function installNavigation() {
         { label: "作业", route: "assignments" },
         { label: "成绩", route: "grades" },
         { label: "错题", route: "mistakes" },
+        { label: "教材", route: "library" },
       ];
   dock.hidden = false;
-  dock.innerHTML = `<span class="work-nav-label">作业中心</span>`+items.map((item,i)=>`<a href="#${item.route}" class="work-nav-item" aria-current="${i===0?'page':'false'}"><span>${icon(['work','clock','check'][i])}</span>${item.label}</a>`).join('');
+  dock.innerHTML = `<span class="work-nav-label">作业中心</span>`+items.map((item,i)=>`<a href="#${item.route}" class="work-nav-item" aria-current="${i===0?'page':'false'}"><span>${icon(['work','clock','check','book'][i])}</span>${item.label}</a>`).join('');
   nav={select(index){dock.querySelectorAll('a').forEach((a,i)=>a.setAttribute('aria-current',i===index?'page':'false'));},destroy(){dock.replaceChildren();}};
   $("#account").hidden = false;
   $("#account").innerHTML = h(state.user.name) + icon("external");
@@ -381,7 +383,7 @@ function uploadWidget(root, purpose, initial = [], onChange = () => {}) {
   input.onchange=()=>upload([...input.files]);if(camera)camera.onchange=()=>upload([...camera.files]);
   zone.ondragover=e=>{e.preventDefault();zone.classList.add('dragging');};zone.ondragleave=()=>zone.classList.remove('dragging');zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');upload([...e.dataTransfer.files]);};
   queue.draw();
-  return {ids:()=>ids,busy:()=>queue.busy,pending:()=>queue.pending.length,discardQueue:()=>{if(queue.busy)throw Error('请等待附件处理完成后再切换版本。');queue.pending=[];uploadQueues.delete(key);}};
+  return {append(file){if(queue.busy)throw Error('请等待当前上传完成');if(ids.length>=20||ids.reduce((n,id)=>n+(state.files.get(id)?.pages||1),0)+file.pages>20)throw Error('作答附件最多 20 页');state.files.set(file.id,file);ids.push(file.id);draw();notify();},ids:()=>ids,busy:()=>queue.busy,pending:()=>queue.pending.length,discardQueue:()=>{if(queue.busy)throw Error('请等待附件处理完成后再切换版本。');queue.pending=[];uploadQueues.delete(key);}};
 }
 function pointEditor(points=[]){return points.map(p=>`<div class="scoring-point" data-point><label class="field"><span>得分条件</span><input name="criterion" value="${h(p.criterion)}" maxlength="3000" required></label><label class="field"><span>分值</span><input name="pointMax" type="number" min="0.5" max="100" step="0.5" value="${h(p.maxPoints)}" required></label><button type="button" class="icon-btn remove-point" aria-label="移除此评分点">${icon('close')}</button></div>`).join('');}
 function paperLocationFields(q={}){const files=(state.paperFileIds||[]).map(id=>state.files.get(id)).filter(f=>f?.mime==='application/pdf');return `<div class="field-row paper-location-fields"><label class="field"><span>学生题纸定位（可选）</span><select name="paperFileId"><option value="">不关联 PDF</option>${files.map(f=>`<option value="${h(f.id)}" ${q.paperFileId===f.id?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>${field('所在页','paperPage',q.paperPage||'','number','min="1" step="1" placeholder="页码"')}</div>`;}
@@ -767,14 +769,15 @@ async function render(scroll = true) {
       go("assignments");
       return;
     }
-    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='mistakes'?2:['grades','history','result'].includes(route)?1:0);
+    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='library'?3:route==='mistakes'?2:['grades','history','result'].includes(route)?1:0);
     const workspace=createWorkspaceUI({state,main,h,head,link,date,api,post,put,go,toast,field,area,formHandler,uploadWidget,metadata});
     const task=['submit','paper','review','answer','new','edit','mcq-import','mcq'].includes(route);
     if(!embedded){document.body.dataset.workTask=task?'true':'false';document.body.dataset.workRoute=route;}
     document.documentElement.dataset.homeworkRoute=route;
     const learning=createLearningUI({state,main,api,post,put,h,head,link,badge,date,click,formHandler,area,field,bindPreviews,fileMarkup,metadata,uploadWidget,toast,go,paperSurface,bindPaperSurface});
     const mcqUI=createMCQUI({main,state,api,post,put,go,h,toast});
-    if(route === "mcq-import")await mcqUI.imports(id);
+    if(route === 'library')await showLibrary({main,state,api,post,put,go,toast},id,questionId);
+    else if(route === "mcq-import")await mcqUI.imports(id);
     else if(route === "mcq")await mcqUI.attempt(id);
     else if(route === "mcq-analysis")await mcqUI.analysis(id);
     else if (route === "new") {if(id==='upload')await newAssignment();else chooseAssignmentMode();}

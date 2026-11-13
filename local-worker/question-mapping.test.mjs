@@ -90,3 +90,13 @@ test('Choice grading also ignores unrelated unreadable pages and never receives 
   ],prompt=>{assert(!prompt.includes('PRIVATE ANSWER'));assert(!prompt.includes('unrelated blur'));return {selectedOptions:['B'],mappingVerified:true,answerReadable:true,confirmedBlank:false};});
   assert.equal(checked.questions[0].score,1);
 });
+
+test('Per-question typed work is independent of another question attachment and explicit file binding survives absent OCR numbers',async()=>{
+ const original=globalThis.fetch,requests=[],bytes=await sharp({create:{width:20,height:20,channels:3,background:'white'}}).png().toBuffer();
+ globalThis.fetch=async(_url,options)=>{const b=JSON.parse(options.body),p=b.messages[1].content;requests.push(p);let r;
+ if(p.startsWith('Transcribe'))r={text:'a visible drawing without a question number',readable:true,questionIds:[]};
+ else if(p.startsWith('Grade ONLY')){assert(!p.includes('OTHER QUESTION TEXT'));r={earned:p.includes('question 1.')?1:0,sourceStatus:'readable'};}else throw Error('Unexpected request '+p.slice(0,50));return Response.json({message:{content:JSON.stringify(r)}})};
+ try{const rubric=[question('1'),question('2',{prompt:'Draw a graph'})];const result=await processJob({kind:'grade',payload:{rubric,files:['photo'],text:'OTHER QUESTION TEXT',responses:{'1':{text:'FIRST ANSWER',files:['photo']},'2':{text:'SECOND ANSWER: drawing omitted',files:[]}}}},settings,async()=>({bytes,mime:'image/png'}));
+ const checked=automaticGrade(result,rubric);assert.equal(checked.total,1);assert.equal(checked.questions[1].score,0);assert.equal(requests.length,3);assert(!requests[1].includes('SECOND ANSWER'));assert(!requests[2].includes('FIRST ANSWER'));assert(!requests[2].includes('a visible drawing'));
+ }finally{globalThis.fetch=original;}
+});

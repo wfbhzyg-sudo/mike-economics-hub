@@ -1,5 +1,6 @@
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
 import {choiceScore,combineScores} from './mcq-model.mjs';
+import {createLibrary} from './library.mjs';
 import {createMCQ} from './mcq.mjs';
 import {createCompanion} from './companion.mjs';
 import {
@@ -227,6 +228,7 @@ export async function createHomework({externalAuth} = {}) {
         rubric: s.choices ? a.rubric.filter(q=>q.type!=="choice") : a.rubric,
         text: s.text,
         files: s.files,
+        responses: structuredClone(s.responses || {}),
   choices:s.choices||null,
       },
       c,
@@ -236,6 +238,7 @@ export async function createHomework({externalAuth} = {}) {
   };
   const authorizeFile = async (file, user) => {
     if (file.owner === user.id) return true;
+    if(await library.canReadFile(file,user))return true;
     for (const a of await db.list("assignment"))
       if (
         (paperOf(a).questionFiles || []).includes(file.id) &&
@@ -255,6 +258,7 @@ export async function createHomework({externalAuth} = {}) {
     if(user.role==='teacher')for(const n of await db.list('mistake-note'))if(n.corrections?.some(c=>c.files?.includes(file.id))&&(await db.get(n.assignmentId))?.teacherId===user.id)return true;
     return false;
   };
+  const library=createLibrary({db,files,requireAssignment});
   const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
   const companion=createCompanion({db,decrypt});
   return async (req, res) => {
@@ -561,7 +565,7 @@ export async function createHomework({externalAuth} = {}) {
       const teacher = () =>
         assert(user.role === "teacher", "此操作仅对教师开放", 403);
       const extensionContext={req,res,route,method,user,body,json,availableClasses,availableStudents};
-      if(await mcq(extensionContext)||await companion(extensionContext))return true;
+      if(await library.handle(extensionContext)||await mcq(extensionContext)||await companion(extensionContext))return true;
       if (route[0] === "me" && method === "GET")
         return (
           json(res, { user: safeUser(user), csrf: auth.session.csrf, teacherWorkspace:process.env.TEACHER_WORKSPACE_ENABLED==='1' }),
