@@ -1,0 +1,1987 @@
+{
+  "verifiedAt": "2026-11-13T08:23:17.238Z",
+  "source": "Bookself production chapter-index.js and book-catalog.js",
+  "sourceHash": "6fa05be77f7e020c6d062a31285ac77fb66e1968daa6d44aba826b1ffd7683f8",
+  "chapters": [
+    {
+      "book": "ap-microeconomics",
+      "id": "scarcity",
+      "unit": 1,
+      "title": "Scarcity and Choice",
+      "search": "scarcity 稀缺性 opportunity cost 机会成本 oc marginal 边际的；额外一单位的 mb mc",
+      "key": "ap-microeconomics:scarcity",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "systems",
+      "unit": 1,
+      "title": "Economic Systems and Allocation",
+      "search": "scarcity 稀缺性 allocative efficiency 配置效率 msb msc equity vs. efficiency 公平与效率",
+      "key": "ap-microeconomics:systems",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "ppc",
+      "unit": 1,
+      "title": "Production Possibilities",
+      "search": "opportunity cost 机会成本 oc production possibilities curve 生产可能性曲线 ppc ppf productive efficiency 生产效率",
+      "key": "ap-microeconomics:ppc",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "trade",
+      "unit": 1,
+      "title": "Comparative Advantage and Trade",
+      "search": "opportunity cost 机会成本 oc comparative advantage 比较优势 absolute advantage 绝对优势",
+      "key": "ap-microeconomics:trade",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "costbenefit",
+      "unit": 1,
+      "title": "Cost-Benefit Analysis",
+      "search": "opportunity cost 机会成本 oc marginal 边际的；额外一单位的 mb mc sunk cost 沉没成本",
+      "key": "ap-microeconomics:costbenefit",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "marginal",
+      "unit": 1,
+      "title": "Marginal Analysis and Choice",
+      "search": "opportunity cost 机会成本 oc marginal 边际的；额外一单位的 mb mc marginal utility 边际效用 mu tu mu/p",
+      "key": "ap-microeconomics:marginal",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u2-demand-supply",
+      "unit": 2,
+      "title": "Demand and Supply",
+      "search": "demand 需求 d quantity demanded supply 供给 s quantity supplied shift vs. movement 曲线移动与沿曲线移动 substitutes and complements 替代品与互补品",
+      "key": "ap-microeconomics:u2-demand-supply",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u2-equilibrium",
+      "unit": 2,
+      "title": "Equilibrium and Gains from Trade",
+      "search": "allocative efficiency 配置效率 msb msc market equilibrium 市场均衡 consumer and producer surplus 消费者剩余与生产者剩余 cs ps",
+      "key": "ap-microeconomics:u2-equilibrium",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u2-elasticity",
+      "unit": 2,
+      "title": "Elasticity and Revenue",
+      "search": "price elasticity of demand 需求价格弹性 ped ed cross-price and income elasticity 交叉价格弹性与收入弹性 xed yed total revenue 总收益 tr",
+      "key": "ap-microeconomics:u2-elasticity",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u2-controls",
+      "unit": 2,
+      "title": "Price and Quantity Controls",
+      "search": "price ceiling 价格上限 price floor 价格下限 deadweight loss 无谓损失 dwl",
+      "key": "ap-microeconomics:u2-controls",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u2-taxes",
+      "unit": 2,
+      "title": "Taxes and Subsidies",
+      "search": "consumer and producer surplus 消费者剩余与生产者剩余 cs ps tax incidence 税负归宿 tax taxes 税收 deadweight loss 无谓损失 dwl",
+      "key": "ap-microeconomics:u2-taxes",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u2-trade",
+      "unit": 2,
+      "title": "Trade, Tariffs, and Quotas",
+      "search": "comparative advantage 比较优势 consumer and producer surplus 消费者剩余与生产者剩余 cs ps tariff and quota 关税与配额",
+      "key": "ap-microeconomics:u2-trade",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u3-production",
+      "unit": 3,
+      "title": "Production and marginal product",
+      "search": "marginal product 边际产量 mp mpl mpk diminishing marginal returns 边际报酬递减",
+      "key": "ap-microeconomics:u3-production",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u3-costs",
+      "unit": 3,
+      "title": "Short-run costs",
+      "search": "fixed and variable costs 固定成本与可变成本 fc vc tc marginal cost 边际成本 mc δtc/δq average costs 平均成本 atc avc afc",
+      "key": "ap-microeconomics:u3-costs",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u3-scale",
+      "unit": 3,
+      "title": "Scale and plant choice",
+      "search": "diminishing marginal returns 边际报酬递减 economies of scale 规模经济 lrac lratc",
+      "key": "ap-microeconomics:u3-scale",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u3-profit",
+      "unit": 3,
+      "title": "Economic profit",
+      "search": "total revenue 总收益 tr economic and accounting profit 经济利润与会计利润",
+      "key": "ap-microeconomics:u3-profit",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u3-decisions",
+      "unit": 3,
+      "title": "Output, shutdown, and exit",
+      "search": "marginal cost 边际成本 mc δtc/δq average costs 平均成本 atc avc afc marginal revenue 边际收益 mr shutdown vs. exit 停止生产与退出市场",
+      "key": "ap-microeconomics:u3-decisions",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u3-competition",
+      "unit": 3,
+      "title": "Perfect competition over time",
+      "search": "productive efficiency 生产效率 allocative efficiency 配置效率 msb msc economic and accounting profit 经济利润与会计利润 perfect competition 完全竞争",
+      "key": "ap-microeconomics:u3-competition",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u4-market-power",
+      "unit": 4,
+      "title": "Market power and revenue",
+      "search": "marginal revenue 边际收益 mr market power 市场势力 monopoly 垄断",
+      "key": "ap-microeconomics:u4-market-power",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u4-monopoly",
+      "unit": 4,
+      "title": "Monopoly: output, profit, and welfare",
+      "search": "deadweight loss 无谓损失 dwl marginal cost 边际成本 mc δtc/δq marginal revenue 边际收益 mr monopoly 垄断",
+      "key": "ap-microeconomics:u4-monopoly",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u4-discrimination",
+      "unit": 4,
+      "title": "Price discrimination",
+      "search": "consumer and producer surplus 消费者剩余与生产者剩余 cs ps price discrimination 价格歧视",
+      "key": "ap-microeconomics:u4-discrimination",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u4-monopolistic",
+      "unit": 4,
+      "title": "Monopolistic competition",
+      "search": "economies of scale 规模经济 lrac lratc economic and accounting profit 经济利润与会计利润 monopolistic competition 垄断竞争",
+      "key": "ap-microeconomics:u4-monopolistic",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u4-oligopoly",
+      "unit": 4,
+      "title": "Oligopoly and game theory",
+      "search": "oligopoly 寡头垄断 nash equilibrium 纳什均衡 dominant strategy 占优策略",
+      "key": "ap-microeconomics:u4-oligopoly",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u4-regulation",
+      "unit": 4,
+      "title": "Natural monopoly and regulation",
+      "search": "allocative efficiency 配置效率 msb msc average costs 平均成本 atc avc afc natural monopoly 自然垄断",
+      "key": "ap-microeconomics:u4-regulation",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u5-derived-demand",
+      "unit": 5,
+      "title": "Why Firms Demand Inputs",
+      "search": "marginal product 边际产量 mp mpl mpk derived demand 派生需求 marginal revenue product 边际收益产品 mrp",
+      "key": "ap-microeconomics:u5-derived-demand",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u5-factor-shifts",
+      "unit": 5,
+      "title": "Labor Market Changes",
+      "search": "shift vs. movement 曲线移动与沿曲线移动 derived demand 派生需求",
+      "key": "ap-microeconomics:u5-factor-shifts",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u5-hiring",
+      "unit": 5,
+      "title": "Hiring at a Market Wage",
+      "search": "marginal 边际的；额外一单位的 mb mc marginal revenue product 边际收益产品 mrp marginal factor cost 边际要素成本 mfc mrc",
+      "key": "ap-microeconomics:u5-hiring",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u5-input-mix",
+      "unit": 5,
+      "title": "Choose an Input Mix",
+      "search": "marginal product 边际产量 mp mpl mpk least-cost input mix 最低成本要素组合 mpl/w mpk/r",
+      "key": "ap-microeconomics:u5-input-mix",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u5-monopsony",
+      "unit": 5,
+      "title": "Monopsony",
+      "search": "marginal revenue product 边际收益产品 mrp marginal factor cost 边际要素成本 mfc mrc monopsony 买方垄断",
+      "key": "ap-microeconomics:u5-monopsony",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u5-wage-policy",
+      "unit": 5,
+      "title": "Wage Floors and Market Structure",
+      "search": "price floor 价格下限 marginal factor cost 边际要素成本 mfc mrc monopsony 买方垄断",
+      "key": "ap-microeconomics:u5-wage-policy",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u6-efficiency",
+      "unit": 6,
+      "title": "Evaluate Social Efficiency",
+      "search": "allocative efficiency 配置效率 msb msc deadweight loss 无谓损失 dwl private and social margins 私人边际量与社会边际量 mpc mpb msc msb asymmetric information 信息不对称",
+      "key": "ap-microeconomics:u6-efficiency",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u6-negative",
+      "unit": 6,
+      "title": "Negative Externalities",
+      "search": "externality 外部性 private and social margins 私人边际量与社会边际量 mpc mpb msc msb corrective tax or subsidy 矫正税与补贴",
+      "key": "ap-microeconomics:u6-negative",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u6-positive",
+      "unit": 6,
+      "title": "Positive Externalities",
+      "search": "externality 外部性 private and social margins 私人边际量与社会边际量 mpc mpb msc msb corrective tax or subsidy 矫正税与补贴",
+      "key": "ap-microeconomics:u6-positive",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u6-public-goods",
+      "unit": 6,
+      "title": "Public Goods and Shared Resources",
+      "search": "public good 公共物品 rivalry and excludability 竞争性与排他性 free-rider problem 搭便车问题 common resource 公共资源",
+      "key": "ap-microeconomics:u6-public-goods",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u6-policy",
+      "unit": 6,
+      "title": "Choose and Evaluate Policy",
+      "search": "natural monopoly 自然垄断 corrective tax or subsidy 矫正税与补贴 lump-sum vs. per-unit policy 一次总付政策与单位政策",
+      "key": "ap-microeconomics:u6-policy",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-microeconomics",
+      "id": "u6-inequality",
+      "unit": 6,
+      "title": "Income, Wealth and Inequality",
+      "search": "lorenz curve 洛伦兹曲线 gini coefficient 基尼系数 income vs. wealth 收入与财富 equity vs. efficiency 公平与效率 average and marginal tax rates 平均税率与边际税率",
+      "key": "ap-microeconomics:u6-inequality",
+      "bookTitle": "微观经济学导论",
+      "path": "/"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m1-choices",
+      "unit": 1,
+      "title": "Scarcity, choice & the PPC",
+      "search": "scarcity 稀缺性 opportunity cost 机会成本 oc production possibilities curve 生产可能性曲线 ppc ppf productive efficiency 生产效率",
+      "key": "ap-macroeconomics:m1-choices",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m1-trade",
+      "unit": 1,
+      "title": "Comparative advantage & exchange",
+      "search": "opportunity cost 机会成本 oc comparative advantage 比较优势 absolute advantage 绝对优势",
+      "key": "ap-macroeconomics:m1-trade",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m1-markets",
+      "unit": 1,
+      "title": "Demand, supply & disrupted production",
+      "search": "demand 需求 d quantity demanded supply 供给 s quantity supplied shift vs. movement 曲线移动与沿曲线移动 substitutes and complements 替代品与互补品",
+      "key": "ap-macroeconomics:m1-markets",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m1-equilibrium",
+      "unit": 1,
+      "title": "Equilibrium & competing changes",
+      "search": "demand 需求 d quantity demanded supply 供给 s quantity supplied market equilibrium 市场均衡",
+      "key": "ap-macroeconomics:m1-equilibrium",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m2-gdp",
+      "unit": 2,
+      "title": "Circular flow, GDP & its limits",
+      "search": "gross domestic product 国内生产总值 gdp circular flow 经济循环流量 circular-flow real gdp 实际国内生产总值 nominal gdp 名义国内生产总值",
+      "key": "ap-macroeconomics:m2-gdp",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m2-prices",
+      "unit": 2,
+      "title": "Inflation, price indexes & real values",
+      "search": "real gdp 实际国内生产总值 nominal gdp 名义国内生产总值 consumer price index 消费者价格指数 cpi inflation 通货膨胀 disinflation 通胀放缓 deflation 通货紧缩 gdp deflator gdp 平减指数",
+      "key": "ap-macroeconomics:m2-prices",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m2-jobs",
+      "unit": 2,
+      "title": "Employment & the labor force",
+      "search": "labor force 劳动力人口 unemployment rate 失业率 participation rate 劳动参与率 natural unemployment rate 自然失业率",
+      "key": "ap-macroeconomics:m2-jobs",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m2-cycle",
+      "unit": 2,
+      "title": "Business cycles & output gaps",
+      "search": "unemployment rate 失业率 potential output 潜在产出 output gap 产出缺口",
+      "key": "ap-macroeconomics:m2-cycle",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m3-demand",
+      "unit": 3,
+      "title": "Aggregate demand & the multiplier",
+      "search": "aggregate demand 总需求 ad marginal propensity to consume 边际消费倾向 mpc marginal propensity to save 边际储蓄倾向 mps spending multiplier 支出乘数",
+      "key": "ap-macroeconomics:m3-demand",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m3-supply",
+      "unit": 3,
+      "title": "Short-run supply & stagflation",
+      "search": "inflation 通货膨胀 aggregate demand 总需求 ad short-run aggregate supply 短期总供给 sras",
+      "key": "ap-macroeconomics:m3-supply",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m3-adjustment",
+      "unit": 3,
+      "title": "Long-run equilibrium & adjustment",
+      "search": "potential output 潜在产出 output gap 产出缺口 short-run aggregate supply 短期总供给 sras long-run aggregate supply 长期总供给 lras",
+      "key": "ap-macroeconomics:m3-adjustment",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m3-fiscal",
+      "unit": 3,
+      "title": "Fiscal policy & automatic stabilizers",
+      "search": "marginal propensity to consume 边际消费倾向 mpc spending multiplier 支出乘数 fiscal policy 财政政策 automatic stabilizers 自动稳定器",
+      "key": "ap-macroeconomics:m3-fiscal",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m4-assets",
+      "unit": 4,
+      "title": "Financial assets & interest rates",
+      "search": "bond 债券 bonds present value 现值 pv real interest rate 实际利率 nominal interest rate 名义利率",
+      "key": "ap-macroeconomics:m4-assets",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m4-banking",
+      "unit": 4,
+      "title": "Money, banks & deposit creation",
+      "search": "monetary base 基础货币 reserves 准备金 required reserve ratio 法定准备金率 rr",
+      "key": "ap-macroeconomics:m4-banking",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m4-monetary",
+      "unit": 4,
+      "title": "Money markets & monetary policy",
+      "search": "nominal interest rate 名义利率 reserves 准备金 ample reserves 充裕准备金 monetary policy 货币政策",
+      "key": "ap-macroeconomics:m4-monetary",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m4-saving",
+      "unit": 4,
+      "title": "Saving, investment & loanable funds",
+      "search": "income vs. wealth 收入与财富 real interest rate 实际利率 loanable funds 可贷资金 national saving 国民储蓄",
+      "key": "ap-macroeconomics:m4-saving",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m5-phillips",
+      "unit": 5,
+      "title": "Policy trade-offs & the Phillips curve",
+      "search": "inflation 通货膨胀 natural unemployment rate 自然失业率 phillips curve 菲利普斯曲线 srpc lrpc",
+      "key": "ap-macroeconomics:m5-phillips",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m5-moneygrowth",
+      "unit": 5,
+      "title": "Money growth & long-run prices",
+      "search": "inflation 通货膨胀 monetary base 基础货币 monetary neutrality 货币中性",
+      "key": "ap-macroeconomics:m5-moneygrowth",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m5-budget",
+      "unit": 5,
+      "title": "Deficits, debt & crowding out",
+      "search": "loanable funds 可贷资金 budget deficit 预算赤字 public debt 公共债务 crowding out 挤出效应",
+      "key": "ap-macroeconomics:m5-budget",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m5-growth",
+      "unit": 5,
+      "title": "Productivity & economic growth",
+      "search": "production possibilities curve 生产可能性曲线 ppc ppf potential output 潜在产出 productivity 生产率 human capital 人力资本 depreciation 折旧；货币贬值 depreciates",
+      "key": "ap-macroeconomics:m5-growth",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m6-payments",
+      "unit": 6,
+      "title": "Balance of payments",
+      "search": "current account 经常账户 financial account 金融账户",
+      "key": "ap-macroeconomics:m6-payments",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m6-exchange",
+      "unit": 6,
+      "title": "Exchange rates & currency markets",
+      "search": "market equilibrium 市场均衡 appreciation 升值 appreciates depreciation 折旧；货币贬值 depreciates",
+      "key": "ap-macroeconomics:m6-exchange",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m6-exports",
+      "unit": 6,
+      "title": "Exchange rates, prices & net exports",
+      "search": "aggregate demand 总需求 ad appreciation 升值 appreciates depreciation 折旧；货币贬值 depreciates net exports 净出口 nx",
+      "key": "ap-macroeconomics:m6-exports",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "ap-macroeconomics",
+      "id": "m6-capital",
+      "unit": 6,
+      "title": "Interest rates & international capital flows",
+      "search": "real interest rate 实际利率 financial account 金融账户 net exports 净出口 nx capital inflow 资本流入",
+      "key": "ap-macroeconomics:m6-capital",
+      "bookTitle": "宏观经济学导论",
+      "path": "/macro.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-functions",
+      "unit": 1,
+      "title": "From numbers to functions",
+      "search": "从数字运算到函数 integer 整数 fraction 分数 percentage 百分比 variable 变量 parameter 参数 expression 表达式 equation 方程 function 函数 coordinate 坐标 image / range 值域 mathematical induction 数学归纳法 domain 定义域 inverse function 反函数 counterexample 反例",
+      "key": "mathematics-for-economics:math-functions",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-equations",
+      "unit": 1,
+      "title": "Equations, intersections & constraints",
+      "search": "方程、交点与约束 factor 因子 constraint 约束 quadratic function 二次函数",
+      "key": "mathematics-for-economics:math-equations",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-logs",
+      "unit": 1,
+      "title": "Exponents, logs & measurement",
+      "search": "指数、对数与量纲 exponent 指数 logarithm 对数 compounding 复利式累积",
+      "key": "mathematics-for-economics:math-logs",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-sequences",
+      "unit": 1,
+      "title": "Sequences, series & long-run claims",
+      "search": "数列、级数与长期判断 sequence 数列 series 级数 convergence 收敛",
+      "key": "mathematics-for-economics:math-sequences",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-limits",
+      "unit": 2,
+      "title": "Limits, continuity & thresholds",
+      "search": "极限、连续性与阈值 limit 极限 continuity 连续性",
+      "key": "mathematics-for-economics:math-limits",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-derivatives",
+      "unit": 2,
+      "title": "Derivatives & local approximations",
+      "search": "导数与局部近似 derivative 导数 tangent line 切线 chain rule 链式法则",
+      "key": "mathematics-for-economics:math-derivatives",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-elasticity",
+      "unit": 2,
+      "title": "Elasticity & log slopes",
+      "search": "弹性与对数斜率 point elasticity 点弹性 log slope 对数斜率",
+      "key": "mathematics-for-economics:math-elasticity",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-optimisation",
+      "unit": 2,
+      "title": "Optimisation & boundary decisions",
+      "search": "最优化与边界决策 stationary point 驻点 concavity 凹性",
+      "key": "mathematics-for-economics:math-optimisation",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-partials",
+      "unit": 3,
+      "title": "Partial derivatives & production",
+      "search": "偏导数与生产模型 partial derivative 偏导数 homogeneous function 齐次函数",
+      "key": "mathematics-for-economics:math-partials",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-implicit",
+      "unit": 3,
+      "title": "Total changes & implicit functions",
+      "search": "全微分与隐函数 implicit function 隐函数 total differential 全微分",
+      "key": "mathematics-for-economics:math-implicit",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-hessian",
+      "unit": 3,
+      "title": "Gradients, Hessians & saddle points",
+      "search": "梯度、海森矩阵与鞍点 gradient 梯度 hessian 海森矩阵 saddle point 鞍点",
+      "key": "mathematics-for-economics:math-hessian",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-lagrange",
+      "unit": 3,
+      "title": "Constrained choice & shadow values",
+      "search": "约束选择与影子价值 lagrange multiplier 拉格朗日乘子 shadow value 影子价值",
+      "key": "mathematics-for-economics:math-lagrange",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-integrals",
+      "unit": 4,
+      "title": "Accumulation, area & integration",
+      "search": "累积、面积与积分 definite integral 定积分 antiderivative 原函数 improper integral 反常积分",
+      "key": "mathematics-for-economics:math-integrals",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-discounting",
+      "unit": 4,
+      "title": "Present value & timing",
+      "search": "现值与时间价值 present value 现值 discount factor 折现因子",
+      "key": "mathematics-for-economics:math-discounting",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-difference",
+      "unit": 4,
+      "title": "Difference equations & stability",
+      "search": "差分方程与稳定性 difference equation 差分方程 steady state 稳态 asymptotic stability 渐近稳定性",
+      "key": "mathematics-for-economics:math-difference",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-differential",
+      "unit": 4,
+      "title": "Differential equations & adjustment",
+      "search": "微分方程与动态调整 differential equation 微分方程 initial condition 初始条件",
+      "key": "mathematics-for-economics:math-differential",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-vectors",
+      "unit": 5,
+      "title": "Vectors, directions & dot products",
+      "search": "向量、方向与点积 vector 向量 dot product 点积 euclidean norm 欧几里得范数",
+      "key": "mathematics-for-economics:math-vectors",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-matrices",
+      "unit": 5,
+      "title": "Matrices, inverses & production networks",
+      "search": "矩阵、逆矩阵与生产网络 matrix 矩阵 determinant 行列式 inverse matrix 逆矩阵",
+      "key": "mathematics-for-economics:math-matrices",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-systems",
+      "unit": 5,
+      "title": "Elimination, rank & consistency",
+      "search": "消元、秩与方程组相容性 rank 秩 pivot 主元 consistent system 相容方程组",
+      "key": "mathematics-for-economics:math-systems",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-spaces",
+      "unit": 5,
+      "title": "Span, bases & the hidden kernel",
+      "search": "张成、基与核空间 basis 基 span 张成空间 kernel 核空间 nullity 零度",
+      "key": "mathematics-for-economics:math-spaces",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-eigenvalues",
+      "unit": 6,
+      "title": "Eigenvectors & invariant directions",
+      "search": "特征向量与不变方向 eigenvector 特征向量 eigenvalue 特征值",
+      "key": "mathematics-for-economics:math-eigenvalues",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-diagonal",
+      "unit": 6,
+      "title": "Diagonalisation & transition models",
+      "search": "对角化与转移模型 diagonalisation 对角化 transition matrix 转移矩阵 stationary distribution 平稳分布",
+      "key": "mathematics-for-economics:math-diagonal",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-projection",
+      "unit": 6,
+      "title": "Orthogonality, projection & least squares",
+      "search": "正交、投影与最小二乘 orthogonal 正交 orthogonal projection 正交投影 least squares 最小二乘",
+      "key": "mathematics-for-economics:math-projection",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "mathematics-for-economics",
+      "id": "math-quadratic",
+      "unit": 6,
+      "title": "Quadratic forms & curvature decisions",
+      "search": "二次型与曲率判断 quadratic form 二次型 positive definite 正定 positive semidefinite 半正定",
+      "key": "mathematics-for-economics:math-quadratic",
+      "bookTitle": "经济学数学",
+      "path": "/maths.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-evidence",
+      "unit": 1,
+      "title": "From a question to evidence",
+      "search": "从问题到数据证据 data 数据 variable 变量 population 总体 sample 样本 parameter 总体参数 statistic 统计量 selection bias 选择偏差 confounder 混杂因素",
+      "key": "intro-statistics:stat-evidence",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-graphs",
+      "unit": 1,
+      "title": "Read a distribution, not just a chart",
+      "search": "读懂分布与图形 frequency 频数 histogram 直方图 frequency density 频数密度 skewness 偏度 percentage point 百分点",
+      "key": "intro-statistics:stat-graphs",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-centre",
+      "unit": 1,
+      "title": "Find a typical value",
+      "search": "怎样描述典型水平 mean 均值 median 中位数 weighted mean 加权平均数 geometric mean 几何平均数",
+      "key": "intro-statistics:stat-centre",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-spread",
+      "unit": 1,
+      "title": "How different are the observations?",
+      "search": "离散程度与异常值 range 极差 variance 方差 standard deviation 标准差 interquartile range 四分位距 outlier 异常值",
+      "key": "intro-statistics:stat-spread",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-association",
+      "unit": 1,
+      "title": "When two things move together",
+      "search": "关联、相关与因果 scatterplot 散点图 covariance 协方差 correlation 相关系数 causation 因果关系",
+      "key": "intro-statistics:stat-association",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-events",
+      "unit": 2,
+      "title": "A language for uncertainty",
+      "search": "用概率描述不确定性 sample space 样本空间 event 事件 complement 补事件 union 并集 intersection 交集 combination 组合",
+      "key": "intro-statistics:stat-events",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-conditional",
+      "unit": 2,
+      "title": "What changes when you learn something?",
+      "search": "条件概率与贝叶斯更新 conditional probability 条件概率 independence 独立性 prior 先验概率 posterior 后验概率 bayes’ rule 贝叶斯法则",
+      "key": "intro-statistics:stat-conditional",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-random-variables",
+      "unit": 2,
+      "title": "Turn outcomes into a distribution",
+      "search": "随机变量与概率分布 random variable 随机变量 probability mass function 概率质量函数 cumulative distribution function 累积分布函数 probability density 概率密度",
+      "key": "intro-statistics:stat-random-variables",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-expectation",
+      "unit": 2,
+      "title": "Expected value and risk",
+      "search": "期望、方差与风险 expected value 期望值 linearity of expectation 期望的线性性质 risk 风险",
+      "key": "intro-statistics:stat-expectation",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-joint",
+      "unit": 2,
+      "title": "Two random variables, one joint model",
+      "search": "联合、边际与条件分布 joint distribution 联合分布 marginal distribution 边际分布 conditional distribution 条件分布",
+      "key": "intro-statistics:stat-joint",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-binomial",
+      "unit": 3,
+      "title": "Count successes in a fixed number of trials",
+      "search": "伯努利试验与二项分布 bernoulli trial 伯努利试验 binomial distribution 二项分布",
+      "key": "intro-statistics:stat-binomial",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-poisson",
+      "unit": 3,
+      "title": "Count arrivals over an exposure",
+      "search": "泊松分布与发生率 poisson distribution 泊松分布 exposure 观察暴露量 overdispersion 过度离散",
+      "key": "intro-statistics:stat-poisson",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-continuous",
+      "unit": 3,
+      "title": "Area, waiting and continuous models",
+      "search": "连续模型、面积与等待时间 uniform distribution 均匀分布 support 支持集 exponential distribution 指数分布 memorylessness 无记忆性",
+      "key": "intro-statistics:stat-continuous",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-normal",
+      "unit": 3,
+      "title": "Standardise and read the normal curve",
+      "search": "正态分布与标准化 normal distribution 正态分布 z-score 标准分数 continuity correction 连续性修正",
+      "key": "intro-statistics:stat-normal",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-reference-distributions",
+      "unit": 3,
+      "title": "Why t, chi-square and F appear",
+      "search": "t、卡方与 f 分布的来由 degrees of freedom 自由度 student’s t distribution t 分布 chi-square distribution 卡方分布 f distribution f 分布",
+      "key": "intro-statistics:stat-reference-distributions",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-sampling",
+      "unit": 4,
+      "title": "Samples change; so do their averages",
+      "search": "抽样分布、大数定律与中心极限定理 sampling distribution 抽样分布 standard error 标准误 law of large numbers 大数定律 central limit theorem 中心极限定理",
+      "key": "intro-statistics:stat-sampling",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-estimators",
+      "unit": 4,
+      "title": "What makes an estimate good?",
+      "search": "估计量的偏差、精度与一致性 estimator 估计量 bias 偏差 mean squared error 均方误差 consistency 一致性 likelihood 似然",
+      "key": "intro-statistics:stat-estimators",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-mean-intervals",
+      "unit": 4,
+      "title": "Estimate a mean with an interval",
+      "search": "总体均值的置信区间 confidence interval 置信区间 margin of error 误差范围 critical value 临界值",
+      "key": "intro-statistics:stat-mean-intervals",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-difference-intervals",
+      "unit": 4,
+      "title": "Compare two means without losing the design",
+      "search": "两个均值之差与配对设计 paired data 配对数据 welch’s t method welch t 方法 mean difference 均值差",
+      "key": "intro-statistics:stat-difference-intervals",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-proportion-intervals",
+      "unit": 4,
+      "title": "Estimate a proportion and compare rates",
+      "search": "比例的区间估计 sample proportion 样本比例 wald interval wald 区间 wilson interval wilson 区间",
+      "key": "intro-statistics:stat-proportion-intervals",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-testing",
+      "unit": 5,
+      "title": "Ask what the null model would predict",
+      "search": "假设检验的推理结构 null hypothesis 零假设 p-value p 值 significance level 显著性水平 type i error 第一类错误 type ii error 第二类错误 power 检验功效",
+      "key": "intro-statistics:stat-testing",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-mean-tests",
+      "unit": 5,
+      "title": "Test one mean or a mean difference",
+      "search": "单均值与均值差检验 test statistic 检验统计量 paired t test 配对 t 检验 two-sided test 双尾检验",
+      "key": "intro-statistics:stat-mean-tests",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-proportion-tests",
+      "unit": 5,
+      "title": "Test a rate using the null model",
+      "search": "单比例与两比例检验 pooled proportion 合并比例 exact binomial test 精确二项检验",
+      "key": "intro-statistics:stat-proportion-tests",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-categorical-tests",
+      "unit": 5,
+      "title": "Compare observed counts with expected counts",
+      "search": "分类频数的卡方检验 goodness of fit 拟合优度 contingency table 列联表 expected count 期望频数",
+      "key": "intro-statistics:stat-categorical-tests",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-variance-anova",
+      "unit": 5,
+      "title": "Compare variation, then compare several means",
+      "search": "方差推断与方差分析 analysis of variance 方差分析 mean square 均方 equal variance 等方差性",
+      "key": "intro-statistics:stat-variance-anova",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-regression",
+      "unit": 6,
+      "title": "Fit a line and explain what it means",
+      "search": "简单线性回归与解释 regression 回归 residual 残差 least squares 最小二乘 r-squared 决定系数",
+      "key": "intro-statistics:stat-regression",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-diagnostics",
+      "unit": 6,
+      "title": "Listen to what the residuals say",
+      "search": "残差诊断与模型边界 heteroscedasticity 异方差性 leverage 杠杆值 influence 影响度 extrapolation 外推",
+      "key": "intro-statistics:stat-diagnostics",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-regression-inference",
+      "unit": 6,
+      "title": "Uncertainty around a slope and a prediction",
+      "search": "回归斜率与预测的不确定性 residual standard error 残差标准误 prediction interval 预测区间 mean response 均值响应",
+      "key": "intro-statistics:stat-regression-inference",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-paired-ranks",
+      "unit": 6,
+      "title": "Use signs and ranks with care",
+      "search": "符号检验与 wilcoxon 符号秩检验 sign test 符号检验 wilcoxon signed-rank test wilcoxon 符号秩检验 rank 秩",
+      "key": "intro-statistics:stat-paired-ranks",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-statistics",
+      "id": "stat-independent-ranks",
+      "unit": 6,
+      "title": "Compare groups and make a defensible conclusion",
+      "search": "独立样本秩检验与完整研究报告 wilcoxon rank-sum test wilcoxon 秩和检验 mann–whitney statistic mann–whitney 统计量 exchangeability 可交换性 spearman correlation spearman 秩相关",
+      "key": "intro-statistics:stat-independent-ranks",
+      "bookTitle": "统计学导论",
+      "path": "/statistics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-questions",
+      "unit": 1,
+      "title": "What can the evidence tell us?",
+      "search": "数据究竟能告诉我们什么？ econometrics 计量经济学 counterfactual 反事实 confounding 混杂",
+      "key": "intro-econometrics:em-questions",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-data",
+      "unit": 1,
+      "title": "Build a dataset you can trust",
+      "search": "先把数据整理明白 panel data 面板数据 cross section 横截面 missing data 缺失数据",
+      "key": "intro-econometrics:em-data",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-averages",
+      "unit": 1,
+      "title": "Read patterns before fitting models",
+      "search": "先看数据，再拟合模型 mean 均值 standard deviation 标准差 sd correlation 相关系数 conditional probability 条件概率",
+      "key": "intro-econometrics:em-averages",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-uncertainty",
+      "unit": 1,
+      "title": "From one sample to uncertainty",
+      "search": "从一个样本到不确定性 estimator 估计量 standard error 标准误 se · standard errors confidence interval 置信区间 confidence intervals p-value p 值 consistency 一致性 central limit theorem 中心极限定理 clt",
+      "key": "intro-econometrics:em-uncertainty",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-lines",
+      "unit": 2,
+      "title": "Read a regression line",
+      "search": "读懂一条回归线 fitted value 拟合值 residual 残差 residuals extrapolation 外推",
+      "key": "intro-econometrics:em-lines",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-ols",
+      "unit": 2,
+      "title": "Why this line? Least squares",
+      "search": "为什么选这条线？最小二乘 ordinary least squares 普通最小二乘 ols zero conditional mean 零条件均值 exogeneity unbiasedness 无偏性",
+      "key": "intro-econometrics:em-ols",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-regression-inference",
+      "unit": 2,
+      "title": "How uncertain is the slope?",
+      "search": "斜率有多不确定？ t statistic t 统计量 degrees of freedom 自由度 joint test 联合检验",
+      "key": "intro-econometrics:em-regression-inference",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-fit",
+      "unit": 2,
+      "title": "A useful model is more than a high R²",
+      "search": "好模型不只是高 r² r-squared 决定系数 r² · r2 overfitting 过拟合 prediction interval 预测区间",
+      "key": "intro-econometrics:em-fit",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-controls",
+      "unit": 3,
+      "title": "Compare like with like—carefully",
+      "search": "控制变量，让比较更合理 partial regression coefficient 偏回归系数 omitted-variable bias 遗漏变量偏差 ovb · omitted variable bias post-treatment control 处理后控制变量 partialling out 剔除控制变量的线性影响 frisch–waugh–lovell · fwl",
+      "key": "intro-econometrics:em-controls",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-categories",
+      "unit": 3,
+      "title": "Groups, baselines and interactions",
+      "search": "组别、基准与交互作用 indicator variable 指示变量 reference group 基准组 interaction term 交互项",
+      "key": "intro-econometrics:em-categories",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-forms",
+      "unit": 3,
+      "title": "Choose a shape and read its units",
+      "search": "选择函数形式，读清系数单位 natural logarithm 自然对数 elasticity 弹性 functional form 函数形式",
+      "key": "intro-econometrics:em-forms",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-diagnostics",
+      "unit": 3,
+      "title": "Check the model’s weak spots",
+      "search": "检查模型的薄弱环节 heteroskedasticity 异方差 robust standard errors 稳健标准误 clustering 聚类相关 multicollinearity 多重共线性",
+      "key": "intro-econometrics:em-diagnostics",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-experiments",
+      "unit": 4,
+      "title": "A fair comparison by design",
+      "search": "通过设计获得公平比较 random assignment 随机分配 intention-to-treat effect 意向处理效应 itt attrition 失访",
+      "key": "intro-econometrics:em-experiments",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-instruments",
+      "unit": 4,
+      "title": "An instrument is a reason, not a shortcut",
+      "search": "工具变量需要理由，不是捷径 instrumental variable 工具变量 iv · instrumental variables exclusion restriction 排除限制 local average treatment effect 局部平均处理效应 late two-stage least squares 两阶段最小二乘 2sls · tsls",
+      "key": "intro-econometrics:em-instruments",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-discontinuity",
+      "unit": 4,
+      "title": "Learn from a policy cutoff",
+      "search": "利用政策门槛进行比较 regression discontinuity 断点回归 rd running variable 运行变量 bandwidth 带宽",
+      "key": "intro-econometrics:em-discontinuity",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-differences",
+      "unit": 4,
+      "title": "Compare changes, not just levels",
+      "search": "比较变化，而不只是水平 difference-in-differences 双重差分 did · did parallel trends 平行趋势 anticipation 提前反应",
+      "key": "intro-econometrics:em-differences",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-panels",
+      "unit": 5,
+      "title": "Follow the same people over time",
+      "search": "跟踪同一批对象 fixed effects 固定效应 fe within variation 组内变动 strict exogeneity 严格外生性",
+      "key": "intro-econometrics:em-panels",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-binary",
+      "unit": 5,
+      "title": "When the outcome is yes or no",
+      "search": "当结果只有“是”或“否” linear probability model 线性概率模型 lpm logit logit 模型 marginal effect 边际效应",
+      "key": "intro-econometrics:em-binary",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-measurement",
+      "unit": 5,
+      "title": "What if the data get something wrong?",
+      "search": "如果数据测错了呢？ measurement error 测量误差 attenuation bias 衰减偏差 sample selection 样本选择",
+      "key": "intro-econometrics:em-measurement",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-research-report",
+      "unit": 5,
+      "title": "Write a claim someone can audit",
+      "search": "写出经得起核查的结论 estimand 估计对象 reproducibility 可复现性 multiple testing 多重检验",
+      "key": "intro-econometrics:em-research-report",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-time",
+      "unit": 6,
+      "title": "Time order changes the analysis",
+      "search": "时间顺序会改变分析 time series 时间序列 lag 滞后 first difference 一阶差分 seasonality 季节性",
+      "key": "intro-econometrics:em-time",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-dynamics",
+      "unit": 6,
+      "title": "Let yesterday matter",
+      "search": "让昨天进入模型 autoregression 自回归 ar(1) serial correlation 序列相关 distributed lag 分布滞后 hac standard errors hac 标准误 hac dynamic multiplier 动态乘数",
+      "key": "intro-econometrics:em-dynamics",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-stationarity",
+      "unit": 6,
+      "title": "Trends can fool a regression",
+      "search": "趋势也会误导回归 stationarity 平稳性 unit root 单位根 cointegration 协整 error-correction model 误差修正模型 ecm",
+      "key": "intro-econometrics:em-stationarity",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intro-econometrics",
+      "id": "em-forecasting",
+      "unit": 6,
+      "title": "Make a forecast someone can trust",
+      "search": "做出可以检验的预测 forecast origin 预测起点 rolling-origin evaluation 滚动起点验证 root mean squared error 均方根误差 rmse calibration 校准",
+      "key": "intro-econometrics:em-forecasting",
+      "bookTitle": "计量经济学导论",
+      "path": "/econometrics.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-toolkit",
+      "unit": 1,
+      "title": "A small toolkit for bigger questions",
+      "search": "先备好工具，再研究选择 constraint 约束 derivative 导数 concavity 凹性",
+      "key": "intermediate-microeconomics:im-toolkit",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-choice",
+      "unit": 1,
+      "title": "Preferences, budgets and a best affordable bundle",
+      "search": "偏好、预算与买得起的最佳组合 ordinal utility 序数效用 marginal rate of substitution 边际替代率 mrs compensated demand 补偿需求 marshallian demand 马歇尔需求",
+      "key": "intermediate-microeconomics:im-choice",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-exchange",
+      "unit": 1,
+      "title": "Two people, one box of possibilities",
+      "search": "两个人、一张盒状图 edgeworth box 埃奇沃思盒状图 pareto efficiency 帕累托效率 endowment 初始禀赋",
+      "key": "intermediate-microeconomics:im-exchange",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-equilibrium",
+      "unit": 1,
+      "title": "When separate plans fit together",
+      "search": "每个人的计划怎样彼此相容 walrasian equilibrium 瓦尔拉斯均衡 numeraire 计价物 excess demand 超额需求",
+      "key": "intermediate-microeconomics:im-equilibrium",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-production",
+      "unit": 1,
+      "title": "Making goods changes the feasible set",
+      "search": "生产如何改变可行范围 marginal product 边际产量 mpl returns to scale 规模报酬 economic profit 经济利润 isoquant 等产量线 isocost line 等成本线 avoidable cost 可避免成本 sunk cost 沉没成本",
+      "key": "intermediate-microeconomics:im-production",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-welfare",
+      "unit": 2,
+      "title": "What efficient markets promise—and assume",
+      "search": "市场效率承诺背后的条件 first welfare theorem 福利第一定理 lump-sum transfer 总额转移 convexity 凸性 marginal revenue 边际收益",
+      "key": "intermediate-microeconomics:im-welfare",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-externalities",
+      "unit": 2,
+      "title": "When someone else pays part of the bill",
+      "search": "当一部分成本由别人承担 externality 外部性 pigouvian tax 庇古税 transaction cost 交易成本",
+      "key": "intermediate-microeconomics:im-externalities",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-public-goods",
+      "unit": 2,
+      "title": "One service, many beneficiaries",
+      "search": "同一项服务，许多受益人 public good 公共品 samuelson condition 萨缪尔森条件 lindahl prices 林达尔价格",
+      "key": "intermediate-microeconomics:im-public-goods",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-voting",
+      "unit": 2,
+      "title": "When reasonable voters produce a cycle",
+      "search": "每个人都合理，集体为何绕圈 condorcet winner 孔多塞胜者 independence of irrelevant alternatives 无关选项独立性 iia strategy-proofness 防策略性",
+      "key": "intermediate-microeconomics:im-voting",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-bargaining",
+      "unit": 2,
+      "title": "Divide a surplus without forgetting the fallback",
+      "search": "谈分配之前，先看谈崩会怎样 disagreement point 分歧点 nash bargaining solution 纳什谈判解 transferable utility 可转移效用",
+      "key": "intermediate-microeconomics:im-bargaining",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-lotteries",
+      "unit": 3,
+      "title": "A choice before the outcome is known",
+      "search": "结果未知时怎样选择 lottery 彩票型风险方案 expected utility 期望效用 positive affine transformation 正仿射变换",
+      "key": "intermediate-microeconomics:im-lotteries",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-risk",
+      "unit": 3,
+      "title": "What certainty is worth",
+      "search": "确定性究竟值多少 risk aversion 风险厌恶 certainty equivalent 确定性等价 risk premium 风险溢价",
+      "key": "intermediate-microeconomics:im-risk",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-insurance",
+      "unit": 3,
+      "title": "Insurance moves money between states",
+      "search": "保险把资源从好状态移到坏状态 indemnity 赔偿额 actuarially fair premium 精算公平保费 insurance loading 保险附加费",
+      "key": "intermediate-microeconomics:im-insurance",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-games",
+      "unit": 3,
+      "title": "Your best choice depends on theirs",
+      "search": "你的最佳选择取决于对方 best response 最佳回应 nash equilibrium 纳什均衡 dominant strategy 占优策略",
+      "key": "intermediate-microeconomics:im-games",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-cournot",
+      "unit": 3,
+      "title": "Competing quantities change the market price",
+      "search": "数量竞争如何改变市场价格 cournot competition 古诺竞争 reaction function 反应函数 residual demand 剩余需求",
+      "key": "intermediate-microeconomics:im-cournot",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-mixing",
+      "unit": 4,
+      "title": "Why a player might deliberately randomise",
+      "search": "为什么有时故意随机选择 mixed strategy 混合策略 support 支持集 indifference condition 无差异条件",
+      "key": "intermediate-microeconomics:im-mixing",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-correlation",
+      "unit": 4,
+      "title": "A signal can coordinate without commanding",
+      "search": "建议如何协调行动而不强迫 correlated equilibrium 相关均衡 obedience constraint 服从约束 joint distribution 联合分布",
+      "key": "intermediate-microeconomics:im-correlation",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-dynamic",
+      "unit": 4,
+      "title": "Credible choices along a game tree",
+      "search": "沿着博弈树检查可信的选择 extensive form 扩展式 backward induction 逆向归纳 subgame-perfect equilibrium 子博弈精炼均衡 spe",
+      "key": "intermediate-microeconomics:im-dynamic",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-repetition",
+      "unit": 4,
+      "title": "A future relationship can change today’s choice",
+      "search": "未来关系如何影响今天的选择 discount factor 贴现因子 grim trigger 冷酷触发策略 one-shot deviation 单次偏离",
+      "key": "intermediate-microeconomics:im-repetition",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-offers",
+      "unit": 4,
+      "title": "Delay has a price in alternating offers",
+      "search": "轮流出价时，拖延本身有成本 alternating offers 交替出价 continuation value 继续价值 stationary strategy 平稳策略",
+      "key": "intermediate-microeconomics:im-offers",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-bayesian",
+      "unit": 5,
+      "title": "Best responses when the other player has a private type",
+      "search": "对方掌握私人信息时怎样回应 private type 私人类型 bayesian nash equilibrium 贝叶斯纳什均衡 posterior belief 后验信念",
+      "key": "intermediate-microeconomics:im-bayesian",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-auctions",
+      "unit": 5,
+      "title": "What should you bid when the price rule changes?",
+      "search": "付款规则变了，出价该怎样变 second-price auction 二价拍卖 bid shading 压低报价 winner’s curse 赢家诅咒",
+      "key": "intermediate-microeconomics:im-auctions",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-signalling",
+      "unit": 5,
+      "title": "When an action communicates a hidden type",
+      "search": "行动如何传递隐藏类型 signalling 信号传递 separating equilibrium 分离均衡 perfect bayesian equilibrium 完美贝叶斯均衡 pbe",
+      "key": "intermediate-microeconomics:im-signalling",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-screening",
+      "unit": 5,
+      "title": "Let a menu reveal who chooses it",
+      "search": "用合同菜单让类型自行显现 adverse selection 逆向选择 screening 甄别 incentive compatibility 激励相容 ic",
+      "key": "intermediate-microeconomics:im-screening",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-moral-hazard",
+      "unit": 5,
+      "title": "A contract can change what people do next",
+      "search": "签合同后，行为也可能改变 moral hazard 道德风险 deductible 免赔额 contractibility 可合约性",
+      "key": "intermediate-microeconomics:im-moral-hazard",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-shapley",
+      "unit": 6,
+      "title": "Who contributed to a team result?",
+      "search": "团队成果该如何分配？ coalition 联盟 characteristic function 特征函数 shapley value shapley 值",
+      "key": "intermediate-microeconomics:im-shapley",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-core",
+      "unit": 6,
+      "title": "An agreement that no group can improve on",
+      "search": "没有小团体想退出的协议 core 核心 blocking coalition 阻挡联盟 transferable utility 可转移效用",
+      "key": "intermediate-microeconomics:im-core",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-entry",
+      "unit": 6,
+      "title": "Entry, business stealing and total surplus",
+      "search": "进入、抢生意与总福利 business stealing 业务转移效应 entry cost 进入成本 free entry condition 自由进入条件",
+      "key": "intermediate-microeconomics:im-entry",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-input-prices",
+      "unit": 6,
+      "title": "When competitors also change your costs",
+      "search": "竞争者也会改变你的成本时 endogenous input price 内生投入价格 comparative statics 比较静态 robustness check 稳健性检查",
+      "key": "intermediate-microeconomics:im-input-prices",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-microeconomics",
+      "id": "im-policy-audit",
+      "unit": 6,
+      "title": "Build a recommendation that survives questions",
+      "search": "写出经得起追问的政策建议 baseline 基准情景 transfer 转移支付 implementation cost 实施成本",
+      "key": "intermediate-microeconomics:im-policy-audit",
+      "bookTitle": "中级微观经济学",
+      "path": "/intermediate-micro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-growth-measures",
+      "unit": 1,
+      "title": "What does a growing economy actually produce?",
+      "search": "经济增长，究竟增长了什么？ real output 实际产出 growth rate 增长率 returns to scale 规模报酬 value added 增加值",
+      "key": "intermediate-macroeconomics:am-growth-measures",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-solow",
+      "unit": 1,
+      "title": "Capital must be replaced before it can accumulate",
+      "search": "先补折旧，再谈资本积累 capital depreciation 资本折旧 steady state 稳态 capital deepening 资本深化",
+      "key": "intermediate-macroeconomics:am-solow",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-effective-labour",
+      "unit": 1,
+      "title": "Equip new workers and more effective workers",
+      "search": "给新增与效率更高的劳动配资本 effective labour 有效劳动 balanced growth path 平衡增长路径 capital dilution 资本稀释",
+      "key": "intermediate-macroeconomics:am-effective-labour",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-golden-rule",
+      "unit": 1,
+      "title": "More saving is not always more consumption",
+      "search": "储蓄更多，不一定消费更多 golden rule 黄金律 conditional convergence 条件收敛 transition path 过渡路径",
+      "key": "intermediate-macroeconomics:am-golden-rule",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-ideas",
+      "unit": 1,
+      "title": "Why a recipe is different from a machine",
+      "search": "为什么知识不同于机器 non-rivalry 非竞争性 total factor productivity 全要素生产率 tfp knowledge spillover 知识溢出",
+      "key": "intermediate-macroeconomics:am-ideas",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-consumption",
+      "unit": 2,
+      "title": "Move purchasing power through time",
+      "search": "把购买力在今天与明天之间安排 euler equation euler 方程 consumption smoothing 消费平滑 discount factor 贴现因子",
+      "key": "intermediate-macroeconomics:am-consumption",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-investment",
+      "unit": 2,
+      "title": "When is one more machine worth buying?",
+      "search": "什么时候值得再买一台机器？ net present value 净现值 npv user cost of capital 资本使用者成本 adjustment cost 调整成本",
+      "key": "intermediate-macroeconomics:am-investment",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-cycles",
+      "unit": 2,
+      "title": "A slowdown is not always a recession",
+      "search": "增长放缓不等于产出下降 output gap 产出缺口 procyclical 顺周期 detrending 去趋势",
+      "key": "intermediate-macroeconomics:am-cycles",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-rbc",
+      "unit": 2,
+      "title": "Work, leisure and a flexible-price benchmark",
+      "search": "劳动、休闲与灵活价格基准 real business cycle 实际经济周期 rbc real wage 实际工资 leisure 闲暇",
+      "key": "intermediate-macroeconomics:am-rbc",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-shocks-policy",
+      "unit": 2,
+      "title": "A shock is a question about a mechanism",
+      "search": "冲击分析必须说明传导机制 persistence 持续性 supply shock 供给冲击 counterfactual 反事实",
+      "key": "intermediate-macroeconomics:am-shocks-policy",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-money",
+      "unit": 3,
+      "title": "Money pays in currency; interest pays in purchasing power",
+      "search": "货币金额与购买力回报 real money balances 实际货币余额 fisher relation fisher 关系 velocity of money 货币流通速度 lm relation lm 关系",
+      "key": "intermediate-macroeconomics:am-money",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-sticky-prices",
+      "unit": 3,
+      "title": "Why a spending shock can change real activity",
+      "search": "支出变化为什么会影响实际活动 nominal rigidity 名义粘性 natural real interest rate 自然实际利率 dynamic is relation 动态 is 关系 is relation is 关系 spending multiplier 支出乘数",
+      "key": "intermediate-macroeconomics:am-sticky-prices",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-phillips",
+      "unit": 3,
+      "title": "Inflation has expectations and cost pressures",
+      "search": "通胀包含预期与成本压力 new keynesian phillips curve 新凯恩斯菲利普斯曲线 cost-push shock 成本推动冲击 disinflation 通胀回落 wage-setting relation 工资设定关系",
+      "key": "intermediate-macroeconomics:am-phillips",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-policy-rule",
+      "unit": 3,
+      "title": "A policy rule is a reaction, not autopilot",
+      "search": "政策规则是反应方式，不是自动驾驶 taylor rule taylor 规则 effective lower bound 有效利率下限 forward guidance 前瞻指引",
+      "key": "intermediate-macroeconomics:am-policy-rule",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-policy-episodes",
+      "unit": 3,
+      "title": "Compare crises without treating them as copies",
+      "search": "比较危机，不把每次危机当复制品 policy stance 政策立场 identification 识别 policy endogeneity 政策内生性",
+      "key": "intermediate-macroeconomics:am-policy-episodes",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-labour-flows",
+      "unit": 4,
+      "title": "Unemployment is a stock fed by two flows",
+      "search": "失业是由流入和流出决定的存量 labour-force participation 劳动参与 separation rate 离职率 job-finding rate 找工率",
+      "key": "intermediate-macroeconomics:am-labour-flows",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-search",
+      "unit": 4,
+      "title": "Why a worker may decline a job offer",
+      "search": "为什么求职者会拒绝一份工作 reservation wage 保留工资 bellman value bellman 价值 match quality 匹配质量",
+      "key": "intermediate-macroeconomics:am-search",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-matching",
+      "unit": 4,
+      "title": "Vacancies and unemployment can coexist",
+      "search": "有空缺，也有人找不到工作 matching function 匹配函数 labour-market tightness 劳动力市场紧张度 beveridge curve beveridge 曲线",
+      "key": "intermediate-macroeconomics:am-matching",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-wage-bargaining",
+      "unit": 4,
+      "title": "Share a match’s surplus without forgetting job creation",
+      "search": "分配匹配剩余，也要考虑岗位创造 match surplus 匹配剩余 bargaining share 谈判份额 vacancy posting cost 岗位发布成本",
+      "key": "intermediate-macroeconomics:am-wage-bargaining",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-labour-policy",
+      "unit": 4,
+      "title": "Preserve a job, support a worker, or speed a new match?",
+      "search": "保岗位、保收入，还是促进新匹配？ additionality 额外性 hysteresis 滞后效应 job retention scheme 岗位保留计划",
+      "key": "intermediate-macroeconomics:am-labour-policy",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-external-accounts",
+      "unit": 5,
+      "title": "A country’s spending and its transactions abroad",
+      "search": "一个经济体的支出与对外往来 current account 经常账户 ca national saving 国民储蓄 net exports 净出口 nx",
+      "key": "intermediate-macroeconomics:am-external-accounts",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-foreign-assets",
+      "unit": 5,
+      "title": "Today’s external balance changes tomorrow’s asset position",
+      "search": "今天的对外收支与明天的资产位置 net foreign assets 对外净资产 nfa valuation effect 估值效应 gross exposure 总额风险敞口",
+      "key": "intermediate-macroeconomics:am-foreign-assets",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-current-account-choice",
+      "unit": 5,
+      "title": "Borrow abroad to smooth a temporary shock",
+      "search": "通过对外借贷平滑暂时冲击 small open economy 小型开放经济 endowment economy 禀赋经济 intertemporal trade 跨期贸易",
+      "key": "intermediate-macroeconomics:am-current-account-choice",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-investment-account",
+      "unit": 5,
+      "title": "A productive investment can widen a deficit",
+      "search": "有回报的投资也会扩大赤字 maturity mismatch 期限错配 productivity news 生产率消息 external financing 对外融资",
+      "key": "intermediate-macroeconomics:am-investment-account",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-precaution",
+      "unit": 5,
+      "title": "Save for a future you do not know",
+      "search": "为不确定的未来留出余地 precautionary saving 预防性储蓄 prudence 谨慎性 buffer stock 缓冲存量",
+      "key": "intermediate-macroeconomics:am-precaution",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-world-rate",
+      "unit": 6,
+      "title": "The world interest rate must clear a world market",
+      "search": "世界利率要让全球资金市场相容 world market clearing 世界市场出清 general-equilibrium feedback 一般均衡反馈 risk premium 风险溢价",
+      "key": "intermediate-macroeconomics:am-world-rate",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-twin-deficits",
+      "unit": 6,
+      "title": "Does a government deficit become an external deficit?",
+      "search": "财政赤字一定变成对外赤字吗？ ricardian equivalence 李嘉图等价 twin deficits 双赤字 government saving 政府储蓄 primary deficit 初级赤字",
+      "key": "intermediate-macroeconomics:am-twin-deficits",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-integration",
+      "unit": 6,
+      "title": "Financial openness is not the same as complete insurance",
+      "search": "金融开放不等于风险被充分分担 state-contingent claim 状态依赖债权 international risk sharing 国际风险分担 feldstein–horioka correlation feldstein–horioka 相关性",
+      "key": "intermediate-macroeconomics:am-integration",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-real-exchange",
+      "unit": 6,
+      "title": "One currency price, two baskets of goods",
+      "search": "货币价格与两地商品篮子 currency depreciation 货币贬值 nominal depreciation · real depreciation · domestic depreciation real exchange rate 实际汇率 purchasing-power parity 购买力平价 ppp balassa–samuelson mechanism balassa–samuelson 机制 uncovered interest parity 非抛补利率平价 uip j-curve j 曲线",
+      "key": "intermediate-macroeconomics:am-real-exchange",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    },
+    {
+      "book": "intermediate-macroeconomics",
+      "id": "am-sudden-stops",
+      "unit": 6,
+      "title": "When external financing stops abruptly",
+      "search": "外部融资突然停止时 sudden stop 资本流入骤停 currency mismatch 货币错配 downward nominal-wage rigidity 名义工资向下刚性",
+      "key": "intermediate-macroeconomics:am-sudden-stops",
+      "bookTitle": "中级宏观经济学",
+      "path": "/intermediate-macro.html"
+    }
+  ]
+}

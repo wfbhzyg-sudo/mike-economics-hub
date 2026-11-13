@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {bookselfTarget} from './homework-server/review-links.mjs';
 import {readFile,stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {resolve,dirname,extname,sep} from 'node:path';
@@ -16,7 +17,7 @@ const pages=new Set(['index.html','login.html','login.css','login.js','portal-na
 for(const file of ['index.html','app.js','style.css','workspace.css','homework.css','graphs.js','graph-projections.js'])pages.add('teacher/'+file);
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.webp':'image/webp','.jpg':'image/jpeg','.png':'image/png','.woff2':'font/woff2','.ttf':'font/ttf','.wasm':'application/wasm','.bcmap':'application/octet-stream','.pfb':'application/octet-stream'};
 const publicAssets=new Set(['login.css','login.js','assets/mike-hub-mark.svg','assets/hub-serif-84bab7c8.woff2','assets/micro-v1-640-1ed9d14e.webp','assets/macro-v1-640-dba44291.webp','assets/maths-v1-640-f58ee996.webp','assets/scene-mobile-1db46873.webp','assets/econ-quest-logo-816e8870.webp','assets/teachers-34cadd1a.webp']);
-for(const f of ['companion.js','companion.css','homework/choice-correction.js','homework/mcq.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
+for(const f of ['companion.js','companion.css','homework/review-links.js','homework/choice-correction.js','homework/mcq.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
 for(const f of ['companion.js','companion.css','assets/mike-pixel.png'])publicAssets.add(f);
 const compressed=new Map();
 const server=http.createServer(async(req,res)=>{
@@ -38,7 +39,7 @@ const server=http.createServer(async(req,res)=>{
    if(!signed){auth.redirect(res,'/?next='+encodeURIComponent(safePath(req.url)));return;}
    if(signed.role!=='teacher'){res.writeHead(403,{'Content-Type':'text/html; charset=utf-8'}).end('<!doctype html><html lang="zh-CN"><title>教师工作台</title><meta name="viewport" content="width=device-width"><body><h1>此页面仅供教师使用</h1><p>你的作业与学习记录仍保存在原入口。</p><a href="/">返回经济一页通</a></body></html>');return;}
   }
-  if(path==='/enter/bookself'||path==='/enter/econquest'){const target=new URL('/sso/start',auth.coreOrigin);target.searchParams.set('next',path.endsWith('econquest')?'/quest/':'/');auth.redirect(res,target.href);return;}
+  if(path==='/enter/bookself'||path==='/enter/econquest'){const target=new URL('/sso/start',auth.coreOrigin);const chapter=u.searchParams.get('chapter'),book=u.searchParams.get('book');const next=chapter||book?bookselfTarget(book,chapter):'/';if(path.endsWith('bookself')&&!next){res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}).end('未找到该复习章节，请返回错题集。');return;}target.searchParams.set('next',path.endsWith('econquest')?'/quest/':next);auth.redirect(res,target.href);return;}
   let relative=path==='/'?'index.html':path==='/homework'||path==='/homework/'?'homework/index.html':path.slice(1);
   if(path==='/teacher'||path==='/teacher/')relative='teacher/index.html';
   if(signed&&path==='/'&&u.searchParams.get('account')==='password')relative='login.html';

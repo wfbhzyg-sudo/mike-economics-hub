@@ -1,3 +1,4 @@
+import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
 import {choiceScore,combineScores} from './mcq-model.mjs';
 import {createMCQ} from './mcq.mjs';
 import {createCompanion} from './companion.mjs';
@@ -648,6 +649,11 @@ export async function createHomework({externalAuth} = {}) {
         const submissions=allSubmissions.filter(s=>user.role==='teacher'?assignments.some(a=>a.id===s.assignmentId):s.studentId===user.id);
         return {assignments,submissions};
       };
+      if(route[0]==='assignments'&&route[1]&&route[2]==='review-links'&&!route[3]){
+        teacher();const a=await requireAssignment(route[1],user),key='review-links:'+hash(a.id);
+        if(method==='GET'){const binding=await db.get(key)||{defaults:[],questions:[],revision:0};return (json(res,{catalog:BOOKSELF_CHAPTERS,revision:binding.revision,defaults:binding.defaults,questions:(a.rubric||[]).map(q=>{const saved=binding.questions.find(r=>r.id===q.id&&r.fingerprint===questionFingerprint(q));return {id:q.id,prompt:q.prompt||'',knowledge:q.knowledge||'',fingerprint:questionFingerprint(q),chapters:saved?.chapters??null,...reviewLinksFor(q,a,binding)};})}),true);}
+        assert(method==='PUT','不支持的操作',405);const b=await body(req);const saved=await db.tx(async c=>{const currentAssignment=await requireAssignment(route[1],user,c),current=await db.get(key,c),value={id:key,assignmentId:a.id,...validateReviewBinding(b,currentAssignment,current),updatedAt:now(),updatedBy:user.id};await db.put('review-links',value,c);await db.audit(user.id,'review_links_update',a.id,c);return value;});return (json(res,{revision:saved.revision}),true);
+      }
       if(route[0]==='learning'&&method==='GET'){
         const {assignments,submissions}=await accessibleWork();
         const roster=user.role==='teacher'?(externalAuth?await externalAuth.students(auth.signed):(await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(x=>assignments.some(a=>a.classIds.includes(x))))):[];
@@ -656,7 +662,7 @@ export async function createHomework({externalAuth} = {}) {
         if(user.role==='teacher')for(const a of assignments)for(const u of a.recipients?.students||[])if(!students.some(s=>s.id===u.id))students.push({...u,historical:true});
         for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
         const privateDrafts=user.role==='student'?(await db.list('mistake-draft')).filter(d=>d.studentId===user.id):[];
-        return (json(res,{students,assignments:assignments.map(a=>({...publicAssignment(a),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}})),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.list('mistake-note')).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
+        return (json(res,{students,assignments:assignments.map(a=>({...publicAssignment(a),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}})),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.list('mistake-note'),await db.list('review-links')).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);
