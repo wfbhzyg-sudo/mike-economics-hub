@@ -28,6 +28,9 @@ export function passwordMatches(value, encoded) {
 export function createStore(connectionString, schema = "homework") {
   if (!/^[a-z][a-z0-9_]*$/.test(schema))
     throw new Error("Invalid database schema");
+  // Keep a bounded connection budget while allowing simultaneous classroom
+  // saves to progress during network waits. Scope locks still serialize retries.
+  const requestedPoolMax=Number(process.env.HOMEWORK_DB_POOL_MAX || 16);
   const pool = new pg.Pool({
     connectionString,
     ...(process.env.HOMEWORK_DB_TLS_CERT ? {ssl:{
@@ -35,7 +38,8 @@ export function createStore(connectionString, schema = "homework") {
       rejectUnauthorized:true,
       checkServerIdentity:(_host,cert)=>cert.fingerprint256===process.env.HOMEWORK_DB_TLS_FINGERPRINT?undefined:new Error('Database TLS certificate changed; connection refused'),
     }} : {}),
-    max: 8,
+    max: Number.isInteger(requestedPoolMax) && requestedPoolMax > 0
+      ? Math.min(32, requestedPoolMax) : 16,
     connectionTimeoutMillis: 10000,
   });
   const table = `${schema}.records`,

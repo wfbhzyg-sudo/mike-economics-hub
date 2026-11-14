@@ -1,5 +1,6 @@
 import {sendJSON} from './json-response.mjs';
 import {byteRange} from './file-range.mjs';
+import {courseFileETag,matchesETag} from './file-cache.mjs';
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
 import {choiceScore,combineScores} from './mcq-model.mjs';
 import {createLibrary} from './library.mjs';
@@ -751,11 +752,16 @@ export async function createHomework({externalAuth} = {}) {
           const size = download ? (f.originalSize || f.size) : f.size;
           const range = method === 'GET' ? byteRange(req.headers.range, size) : null;
           if (range === false) {res.writeHead(416, {'Content-Range':`bytes */${size}`, 'Accept-Ranges':'bytes'}).end();return true;}
+          const etag=courseFileETag(f,{download,range:Boolean(req.headers.range)});
+          const cacheHeaders={'Cache-Control':'private, no-cache', 'Vary':'Cookie', ...(etag?{'ETag':etag}:{})};
+          if(matchesETag(req.headers['if-none-match'],etag)){
+            res.writeHead(304,cacheHeaders).end();return true;
+          }
           const downloadName=(download?(f.originalMime||f.mime):f.mime)==='application/pdf'&&!/\.pdf$/i.test(f.name)?f.name+'.pdf':f.name;
           const headers = {
             'Content-Type':download ? (f.originalMime || f.mime) : f.mime,
             'Content-Length':range ? range.length : size,
-            'Accept-Ranges':'bytes', 'Cache-Control':'private, no-cache',
+            'Accept-Ranges':'bytes', ...cacheHeaders,
             'Content-Disposition':`${download?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
             ...(range ? {'Content-Range':`bytes ${range.start}-${range.end}/${size}`} : {})
           };
