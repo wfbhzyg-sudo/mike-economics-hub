@@ -37,7 +37,7 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
   catch{if(!stopped&&generation===textVersion)output.textContent='文字暂未读取，请切回原页后重试。';}
   finally{if(!stopped&&generation===textVersion)output.setAttribute('aria-busy','false');}
  }
- $('[data-transcript]').onclick=()=>{textMode=!textMode;stage.hidden=textMode;$('.lib-page-text').hidden=!textMode;$('[data-transcript]').textContent=textMode?'查看原页':'查看本页文字';$('[data-transcript]').setAttribute('aria-pressed',String(textMode));$('[data-zoom]').disabled=textMode;$('.lib-reader-more').open=false;if(textMode&&lease)void readText(page);(textMode?$('.lib-page-text'):area).focus({preventScroll:true});};
+ $('[data-transcript]').onclick=()=>{textMode=!textMode;stage.hidden=textMode;$('.lib-page-text').hidden=!textMode;$('[data-transcript]').textContent=textMode?'查看原页':'查看本页文字';$('[data-transcript]').setAttribute('aria-pressed',String(textMode));$('[data-zoom]').disabled=textMode;$('.lib-reader-more').open=false;if(textMode){if(lease)void readText(page);else $('.lib-page-text').textContent='正在打开原件，完成后显示本页文字…';}(textMode?$('.lib-page-text'):area).focus({preventScroll:true});};
  async function paint(p,canvas){const original=p.getViewport({scale:1}),width=Math.max(320,area.clientWidth-24),scale=Math.min(2.3,width/original.width*Math.min(devicePixelRatio||1,2)*zoom);const viewport=p.getViewport({scale});canvas.width=viewport.width;canvas.height=viewport.height;const task=p.render({canvasContext:canvas.getContext('2d'),viewport});renders.add(task);try{await task.promise;}finally{renders.delete(task);}}
  async function render(n,restore=false){
   const generation=++renderVersion;let nextInk,frame;
@@ -64,7 +64,7 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
  $('[data-focus]').onclick=()=>{if(project){window.close();location.replace(`/teacher/#library/${unitId}/${topic.id}/slides`);}else focus(!full);};
  if($('[data-play]'))$('[data-play]').onclick=()=>{focus(true);reader.focus({preventScroll:true});};
  if($('[data-full]'))$('[data-full]').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await reader.requestFullscreen();}catch{focus(!full);}};
- async function load(){try{lease ||= await acquire(r.fileId,state.user.id);if(stopped){lease.release();return;}await render(requested,true);if(project)channel?.postMessage({type:'ready',resource:r.fileId});}catch(e){fail(e);}}
+ async function load(){status.textContent='正在打开原件…';try{lease ||= await acquire(r.fileId,state.user.id);if(stopped){lease.release();return;}await render(requested,true);if(project)channel?.postMessage({type:'ready',resource:r.fileId});}catch(e){fail(e);}}
  $('[data-retry]').onclick=()=>void load();
  reader.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!project)focus(false);reader.querySelectorAll('details').forEach(d=>d.open=false);return;}if(e.target.closest('input,textarea,select,button,summary')||!['ArrowLeft','ArrowRight','PageDown','PageUp'].includes(e.key))return;e.preventDefault();void change(requested+(['ArrowRight','PageDown'].includes(e.key)?1:-1));},{signal:events.signal});
  const connect=sid=>{channel?.close();channel=new BroadcastChannel('mike-project:'+sid);channel.onmessage=e=>{const m=e.data;if(m.resource!==r.fileId)return;if(m.type==='ready'&&!project){status.textContent='投影已连接';$('[data-project-fallback]').hidden=true;channel.postMessage({type:'page',resource:r.fileId,page});}if(project&&m.type==='page'&&m.page!==page&&Number.isInteger(m.page))void change(m.page);};};
