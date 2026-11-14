@@ -1,4 +1,5 @@
 import {sendJSON} from './json-response.mjs';
+import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
 import {courseFileETag,matchesETag} from './file-cache.mjs';
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
@@ -145,15 +146,8 @@ export async function createHomework({externalAuth} = {}) {
   };
   const sessionFor = async (req) => {
     if(externalAuth){
-      const signed=await externalAuth.session(req);if(!signed)return null;
-      const registeredClasses=await externalAuth.classrooms(signed);
-      // A normal authenticated read must not join the global write queue.
-      let stored = await db.get('bookself:'+signed.id);
-      if (!stored) stored = await db.tx(async c=>{
-        let u=await db.get('bookself:'+signed.id,c);
-        if(!u){u={id:'bookself:'+signed.id,bookselfId:signed.id,username:signed.username,name:signed.name,role:signed.role,classIds:[],createdAt:now()};await db.put('user',u,c);}
-        return u;
-      });
+      const identity=await loadUnifiedIdentity(externalAuth,req,db,now);if(!identity)return null;
+      const {signed,registeredClasses,stored}=identity;
       assert(stored && ['student','teacher'].includes(stored.role),'账号关联异常，请联系老师',409);
       // New homework belongs only to the signed-in Bookself identity.
       // Legacy records and mappings remain untouched in storage.

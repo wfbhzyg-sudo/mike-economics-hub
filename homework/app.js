@@ -1,4 +1,5 @@
 import {submissionLabel} from './ui-labels.js';
+import {loadWorkspaceData} from './route-data.js';
 import {showLibrary} from './library-ui.js';
 import {createMCQUI} from './mcq.js';
 import {prepareForm,validateForm} from './form-feedback.js';
@@ -239,16 +240,9 @@ function showLogin(register = false) {
     loginResult(await post(register ? "register" : "login", b)),
   );
 }
-async function refresh() {
-  const [a, s, c] = await Promise.all([
-    api("assignments"),
-    api("submissions"),
-    api("classes"),
-  ]);
-  state.assignments = a.assignments;
-  state.submissions = s.submissions;
-  state.classes = c.classes;
-  if(embedded && embeddedContext.classId){const id="bookself-class:"+embeddedContext.classId;state.assignments=state.assignments.filter(a=>a.classIds.includes(id));state.submissions=state.submissions.filter(s=>state.assignments.some(a=>a.id===s.assignmentId));}
+async function refresh(route = 'assignments', version = state.routeVersion) {
+  const data = await loadWorkspaceData(api, route, embedded ? embeddedContext.classId : '');
+  if (version === state.routeVersion) Object.assign(state, data);
 }
 function chooseAssignmentMode(){
  main.innerHTML=`<section class="paper assignment-start">${head('','新建作业','选择学生的作答方式',link('assignments','返回作业列表'))}<div class="assignment-modes">${link('mcq-import','<span class="mode-number">01</span><strong>在线作答</strong><span>上传 PDF，裁切原题与选项，核对答案后布置。</span><b>选择题 · 可含简答题 →</b>','assignment-mode')}${link('new/upload','<span class="mode-number">02</span><strong>上传作答</strong><span>上传学生题纸与教师答案，学生拍照、上传 PDF 或填写文字。</span><b>纸笔作答 · AI 给分后复核 →</b>','assignment-mode')}</div><p class="hint">已有切题任务和核对草稿，可在「在线作答」内继续。</p></section>`;
@@ -760,7 +754,7 @@ async function render(scroll = true) {
   main.setAttribute("aria-busy", "true");
   const [route = "assignments", id, questionId, libraryMode, libraryDetail] = (embedded?embeddedRoute:location.hash.slice(1)).split("/").map(x=>{try{return decodeURIComponent(x)}catch{return x}});
   try {
-    await refresh();
+    await refresh(embedded ? embeddedRoute : location.hash.slice(1), version);
     if (version !== state.routeVersion) return;
     const teacher = state.user.role === "teacher";
     if (
@@ -814,7 +808,8 @@ async function render(scroll = true) {
 export async function mountTeacherHomework(route="assignments",context={}) {
   if(!embedded)throw Error("请从教师工作台打开");
   embeddedRoute=route;embeddedContext=context;state.workspaceClassId=context.classId?"bookself-class:"+context.classId:"";const generation=++embeddedGeneration;
-  const session=await api("me");if(generation!==embeddedGeneration)return;state.user=session.user;state.csrf=session.csrf;
+  const pending=context.session || api("me");
+  const session=await pending;if(generation!==embeddedGeneration)return;state.user=session.user;state.csrf=session.csrf;
   if(state.user?.role!=="teacher")throw Error("此页面仅供教师使用");
   await render();
 }
