@@ -52,7 +52,7 @@ const server=http.createServer(async(req,res)=>{
   if(!file.startsWith(root+sep)||!type||!(pages.has(relative)||relative.startsWith('assets/'))){res.writeHead(404).end();return;}
   const info=await stat(file);if(!info.isFile()){res.writeHead(404).end();return;}
   res.setHeader('Content-Type',type);res.setHeader('Vary','Cookie, Accept-Encoding');
-  if(publicAssets.has(relative))res.setHeader('Cache-Control','public, max-age=86400');
+  if(publicAssets.has(relative))res.setHeader('Cache-Control',/^companion\.(js|css)$/.test(relative)?'public, no-cache':'public, max-age=86400');
   if(/\.(html|css|m?js|svg)$/.test(file)&&info.size>512&&/\bgzip\b/.test(req.headers['accept-encoding']||'')){
    let cached=compressed.get(file);if(!cached||cached.mtime!==info.mtimeMs){cached={mtime:info.mtimeMs,bytes:gzipSync(await readFile(file))};compressed.set(file,cached);}
    res.setHeader('Content-Encoding','gzip');res.setHeader('Content-Length',cached.bytes.length);res.writeHead(200).end(req.method==='HEAD'?undefined:cached.bytes);return;
