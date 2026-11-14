@@ -108,3 +108,13 @@ body[data-mcq-active=true] .mcq-top{padding-right:48px}
 body[data-mcq-active=true][data-mcq-question-type] .mike-launcher{top:8px!important;right:10px!important;bottom:auto!important;left:auto!important;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;place-content:center}
 body[data-mcq-active=true] .mike-launcher img{width:38px;height:38px}
 body[data-mcq-active=true] .mike-launcher span{display:none}
+
+.mcq-preflight>h2{font:500 15px/1.5 var(--sans);color:var(--ui-muted)}
+
+/* Give the companion a navigation slot on student overview screens. */
+@media(max-width:760px){
+ body:has(> #main)[data-work-task=false]:not([data-work-route=library]) #dock{padding-right:64px}
+ body:has(> #main)[data-work-task=false]:not([data-work-route=library]) .mike-launcher{top:auto!important;right:8px!important;left:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;min-width:44px;min-height:44px;width:44px;height:44px;padding:4px}
+ body:has(> #main)[data-work-task=false]:not([data-work-route=library]) .mike-launcher img{width:36px;height:36px}
+ body:has(> #main)[data-work-task=false]:not([data-work-route=library]) .mike-launcher span{display:none}
+}

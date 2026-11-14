@@ -27,7 +27,7 @@ test('Practice opens published feedback or pending review rather than restarting
   const published={id:'s1',assignmentId:'a',studentId:'s',status:'published',submittedAt:'2026-11-13T12:00:00Z',publishedGrade:{total:2,maxPoints:3}};
   assert.equal(studentAssignmentAction(a,[]).target,'submit/a');
   assert.equal(studentAssignmentAction(a,[published]).target,'result/s1');
-  assert.equal(studentAssignmentAction(a,[published]).action,'查看反馈');
+  assert.equal(studentAssignmentAction(a,[published]).action,'查看成绩');
   const pending={...published,id:'s2',status:'needs_review',submittedAt:'2026-11-13T13:00:00Z'};
   assert.equal(studentAssignmentAction(a,[published,pending]).action,'查看进度');
   assert.equal(studentAssignmentAction(a,[published,pending]).target,'result/s2');

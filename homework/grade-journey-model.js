@@ -1,3 +1,4 @@
+import {submissionLabel} from './ui-labels.js';
 import {assignmentRecords,gradeSummary} from './learning-model.js';
 export const rateOf=g=>g?.maxPoints>0&&Number.isFinite(g.total)?Math.round(g.total/g.maxPoints*1000)/10:null;
 export const workDate=a=>a.dueAt||a.createdAt||'';
@@ -5,7 +6,8 @@ export function visibleAssignments(data){const used=new Set(data.submissions.fil
 export function cellFor(a,student,record,time=Date.now()){
  const rate=rateOf(record?.grade),latest=record?.latest,required=a.audience?.required??a.audience?.students?.some(u=>u.id===student.id),inClass=student.classIds?.some(c=>a.classIds?.includes(c)),known=a.audience?.confirmedAt;
  let status,label;if(rate!==null){status='graded';label=rate+'%';}
- else if(latest){status=['needs_review','returned','failed'].includes(latest.status)?'attention':'pending';label=status==='attention'?'待处理':'待批阅';}
+ else if(latest){status=['needs_review','returned','failed'].includes(latest.status)?'attention':'pending';label=submissionLabel(latest.status);}
+ else if(required&&a.opensAt&&Date.parse(a.opensAt)>time){status='todo';label='尚未开放';}
  else if(required){status=a.dueAt&&Date.parse(a.dueAt)<time?'missing':'todo';label=status==='missing'?'未交':'待完成';}
  else if(inClass&&!a.deletedAt){status='unconfirmed';label='待确认';}
  else{status='unassigned';label='—';}

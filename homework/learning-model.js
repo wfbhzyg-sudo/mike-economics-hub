@@ -1,3 +1,5 @@
+import {submissionLabel} from './ui-labels.js';
+
 // One effective result per assignment. Pending replacements do not erase a grade.
 export function assignmentRecords(submissions, assignments = []) {
   const grouped = new Map();
@@ -36,10 +38,10 @@ export function assignmentState(a, submissions, time=Date.now()) {
   const closed=Boolean(a.dueAt&&Date.parse(a.dueAt)<time&&!a.allowLate&&latest?.status!=='returned');
   const canSubmit=!closed&&(!latest||latest.status==='returned'||a.allowResubmit!==false);
   const base={latest,draft,canSubmit};
-  if(latest?.status==='returned')return {...base,key:'todo',label:'需补充'};
+  if(latest?.status==='returned')return {...base,key:'todo',label:submissionLabel('returned')};
   if(draft&&canSubmit)return {...base,key:'todo',label:'草稿待提交'};
-  if(latest?.status==='published')return {...base,key:'done',label:'已出成绩'};
-  if(latest)return {...base,key:'processing',label:latest.status==='needs_review'?'待教师确认':latest.status==='grading'?'正在批阅':'已提交'};
+  if(latest?.status==='published')return {...base,key:'done',label:'已出分'};
+  if(latest)return {...base,key:'processing',label:submissionLabel(latest.status)};
   if(closed)return {...base,key:'closed',label:'已截止'};
   return {...base,key:'todo',label:draft?'草稿待提交':a.dueAt&&Date.parse(a.dueAt)<time?'可补交':'待完成'};
 }

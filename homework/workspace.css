@@ -1,10 +1,10 @@
 /* V3 workspaces: task-first layout, semantic sections and stable touch targets. */
 :root {
-  --navy: #213e55;
+  --navy: var(--ui-primary);
   --paper: #f8f9f6;
-  --ink: #203446;
-  --muted: #53636c;
-  --line: #d5dcd8;
+  --ink: var(--ui-ink);
+  --muted: var(--ui-muted);
+  --line: var(--ui-line);
   --accent: #2c536e;
   --blue: #dfe9ef;
   --blue-ink: #2c536e;
@@ -44,7 +44,7 @@ h1 {
   line-height: 1.4;
 }
 h2 {
-  font-size: 17px;
+  font-size: var(--ui-section-title);
   line-height: 1.45;
 }
 h3 {
@@ -145,7 +145,7 @@ main {
   min-width: 0;
 }
 .paper-head h1 {
-  font-size: 22px;
+  font-size: var(--ui-page-title);
 }
 .paper-head p {
   font-size: 13px;
@@ -167,8 +167,8 @@ main {
   min-width: 44px;
   padding: 8px 13px;
   gap: 6px;
-  border-radius: 7px;
-  font-size: 14px;
+  border-radius: var(--ui-control-radius);
+  font-size: var(--ui-control-size);
   line-height: 1.4;
   transition:
     background-color 0.16s,
@@ -254,7 +254,7 @@ main {
   min-height: 0;
 }
 .empty h2 {
-  font-size: 18px;
+  font-size: var(--ui-section-title);
 }
 .empty p {
   font-size: 14px;
@@ -295,6 +295,7 @@ legend {
   touch-action: auto;
   height: auto;
   overflow: visible;
+  filter: none;
 }
 .work-nav-label {
   font-size: 11px;
@@ -997,7 +998,7 @@ legend {
   padding: 0;
 }
 .result-layout h2 {
-  font-size: 17px;
+  font-size: var(--ui-section-title);
 }
 .review-layout {
   gap: 16px;
@@ -1043,7 +1044,7 @@ legend {
   margin-bottom: 12px;
 }
 .work-dialog-head h2 {
-  font-size: 18px;
+  font-size: var(--ui-section-title);
   overflow-wrap: anywhere;
 }
 .work-dialog-head button {

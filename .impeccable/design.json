@@ -1741,6 +1741,43 @@
         "policy": "Preserve renderer geometry and content-specific colors; do not convert them into teacher UI tokens."
       },
       "scopeBoundary": "Preserve original gallery, login, standalone homework, identity assets, existing tokens and existing sidecar entries. No broad drift repair."
+    },
+    "taskInterface": {
+      "updated": "2026-11-14",
+      "scope": "teacher and student task interfaces; preserve gallery and English lesson typography",
+      "source": "homework/ui-tokens.css",
+      "colors": {
+        "task-primary": "#213e55",
+        "task-primary-hover": "#1b3c5c",
+        "task-ink": "#203446",
+        "task-muted": "#53636c",
+        "task-line": "#d5dcd8",
+        "task-selected": "#dfe9ef",
+        "task-selected-ink": "#2c536e",
+        "task-focus": "#337caf"
+      },
+      "control": {
+        "radius": "7px",
+        "fontSize": "14px",
+        "mobileMinHitSize": "44px"
+      },
+      "titles": {
+        "page": "22px",
+        "section": "18px"
+      },
+      "teacherNavigation": [
+        "课程教学包",
+        "作业管理",
+        "作业批阅",
+        "更多功能"
+      ],
+      "studentNavigation": [
+        "作业",
+        "成绩",
+        "错题",
+        "课程"
+      ],
+      "statusSource": "homework/ui-labels.js"
     }
   },
   "components": [

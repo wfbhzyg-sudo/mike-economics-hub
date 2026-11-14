@@ -2,6 +2,14 @@
 name: "Mike 的经济一页通"
 description: "One Bookself account opens seven learning destinations in an original editorial frame."
 colors:
+  task-primary: "#213e55"
+  task-primary-hover: "#1b3c5c"
+  task-ink: "#203446"
+  task-muted: "#53636c"
+  task-line: "#d5dcd8"
+  task-selected: "#dfe9ef"
+  task-selected-ink: "#2c536e"
+  task-focus: "#337caf"
   navy: "#0b1f3a"
   ink: "#203d36"
   cream: "#eee7d6"
@@ -82,6 +90,15 @@ colors:
   teacher-primary-hover: "#1b3c5c"
   teacher-secondary-hover: "#e2e4dd"
 typography:
+  task-page-title:
+    fontSize: "22px"
+    fontWeight: 600
+  task-section-title:
+    fontSize: "18px"
+    fontWeight: 600
+  task-control:
+    fontSize: "14px"
+    fontWeight: 500
   headline:
     fontFamily: "HubSerif, 'Songti SC', serif"
     fontSize: "25px"
@@ -266,7 +283,7 @@ rounded:
   folio: "1px 3px 3px 1px"
   homework-paper: "9px"
   homework-paper-mobile: "7px"
-  homework-control: "5px"
+  homework-control: "7px"
   homework-badge: "3px"
   login-paper: "20px"
   login-paper-mobile: "17px"
@@ -786,3 +803,19 @@ Teacher navigation color changes use (160 ms) transitions and the transient noti
 - Don’t add autoplay decoration, a second phone momentum engine, an entrance blocker, or a cursor replacement.
 - Don’t introduce repeated uppercase eyebrows, Unicode action glyphs or synthetic document decoration into the homework form hierarchy.
 - Don’t copy the standalone homework outer shell into the teacher host or replace native teacher modules with iframes.
+
+
+## Task-interface consistency amendment · 2026-11-14
+
+This scoped amendment and the task-prefixed frontmatter tokens supersede earlier homework/teacher control and shell specifications for the current task interfaces; authentic gallery scenes, lesson typography, original question images and source documents retain their existing treatment.
+
+- Teacher destinations: **课程教学包 / 作业管理 / 作业批阅**. “新建作业” creates a task; “上传作答” describes a student response method. Desktop and phone expose the same **更多功能** destinations: class roster, grade records and authorized grading settings.
+- Student destinations: **作业 / 成绩 / 错题 / 课程**. 教材 is the inner document tab, not the outer course workspace. Published grade states say **已出分**; the action says **查看成绩**. Correction entry says **原题与订正**. An inline correction closes with **保存并收起**, keeping the grade view and original grade intact.
+- Submission state language lives in `homework/ui-labels.js`: queued, grading, teacher review, returned and interrupted processing have distinct labels. **批阅暂未完成** still links to the saved submission; it never implies the work was lost or asks for duplicate submission. The grade journey and teacher profile reuse the same vocabulary.
+- Initial teacher scores retain **Indicative score**; a released result says **已发布成绩**. Do not restore rubrics or explanations to the score-only review panel.
+- Shared task color and control tokens live in `homework/ui-tokens.css`: primary #213e55, ink #203446, muted #53636c, line #d5dcd8, selected #dfe9ef, focus #337caf, action text 14px, page title 22px, section title 18px, control radius 7px. Dense reading tools can have compact labels; mobile action targets remain at least 44px high. English lesson serif typography is content, not an alternative button system.
+- Student selected navigation is flat; the inherited gallery dock drop-shadow is explicitly removed. On phone overview pages, Mike receives a reserved navigation slot rather than covering task buttons. Course reading and active exam/review views keep their existing context-specific helper placement.
+- At ≤360px, textbook focus mode moves into More. Slides retain their frequent Start Teaching control and move zoom into More. The same underlying actions handle both responsive placements, with synchronized pressed/text state.
+- Course overflow shows a compact, teacher-only **资料开放 · N 班** state. The release dialog clearly adds access: existing released classes stay checked/disabled, newly selected classes are added, and the visible count updates from the server response. It does not suggest that unchecking revokes access. Assignment publication remains separate.
+- Original-question, answer and correction viewers derive all accessible labels, album captions and empty-state messages from the current document kind. Browser tab titles follow the actual task. The common helper identity is **Mike 经济学伙伴**, launched by **问问 Mike**.
+- Generate `teacher/homework.css` through `node scripts/scope-homework.mjs`; never edit that generated copy alone. The authenticated asset list must include every shared module and stylesheet.

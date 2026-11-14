@@ -1736,11 +1736,11 @@
 
 /* V3 workspaces: task-first layout, semantic sections and stable touch targets. */
 .homework-surface{
-  --navy: #213e55;
+  --navy: var(--ui-primary);
   --paper: #f8f9f6;
-  --ink: #203446;
-  --muted: #53636c;
-  --line: #d5dcd8;
+  --ink: var(--ui-ink);
+  --muted: var(--ui-muted);
+  --line: var(--ui-line);
   --accent: #2c536e;
   --blue: #dfe9ef;
   --blue-ink: #2c536e;
@@ -1778,7 +1778,7 @@
   line-height: 1.4;
 }
 .homework-surface h2{
-  font-size: 17px;
+  font-size: var(--ui-section-title);
   line-height: 1.45;
 }
 .homework-surface h3{
@@ -1872,7 +1872,7 @@
   min-width: 0;
 }
 .homework-surface .paper-head h1{
-  font-size: 22px;
+  font-size: var(--ui-page-title);
 }
 .homework-surface .paper-head p{
   font-size: 13px;
@@ -1891,8 +1891,8 @@
   min-width: 44px;
   padding: 8px 13px;
   gap: 6px;
-  border-radius: 7px;
-  font-size: 14px;
+  border-radius: var(--ui-control-radius);
+  font-size: var(--ui-control-size);
   line-height: 1.4;
   transition:
     background-color 0.16s,
@@ -1973,7 +1973,7 @@
   min-height: 0;
 }
 .homework-surface .empty h2{
-  font-size: 18px;
+  font-size: var(--ui-section-title);
 }
 .homework-surface .empty p{
   font-size: 14px;
@@ -2014,6 +2014,7 @@
   touch-action: auto;
   height: auto;
   overflow: visible;
+  filter: none;
 }
 .homework-surface .work-nav-label{
   font-size: 11px;
@@ -2699,7 +2700,7 @@
   padding: 0;
 }
 .homework-surface .result-layout h2{
-  font-size: 17px;
+  font-size: var(--ui-section-title);
 }
 .homework-surface .review-layout{
   gap: 16px;
@@ -2745,7 +2746,7 @@
   margin-bottom: 12px;
 }
 .homework-surface .work-dialog-head h2{
-  font-size: 18px;
+  font-size: var(--ui-section-title);
   overflow-wrap: anywhere;
 }
 .homework-surface .work-dialog-head button{

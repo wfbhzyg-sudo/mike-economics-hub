@@ -1,10 +1,10 @@
 /* V3 shared teacher shell, keeping all teaching tools in the same workspace. */
 :root {
-  --tw-navy: #213e55;
+  --tw-navy: var(--ui-primary);
   --tw-paper: #f1f2ee;
-  --tw-ink: #203446;
-  --tw-muted: #53636c;
-  --tw-line: #d5dcd8;
+  --tw-ink: var(--ui-ink);
+  --tw-muted: var(--ui-muted);
+  --tw-line: var(--ui-line);
   --tw-blue: #2c536e;
   --tw-soft: #dfe9ef;
 }
@@ -67,12 +67,27 @@ body {
   gap: 4px;
   top: 14px;
 }
-.tw-sidebar a {
+.tw-sidebar a,
+.tw-sidebar button[data-open-more] {
   padding: 10px;
   min-height: 46px;
   font-size: 13px;
   gap: 9px;
 }
+.tw-sidebar button[data-open-more] {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--tw-ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tw-sidebar button[data-open-more]:hover { background: var(--tw-soft); }
+.tw-sidebar button[data-open-more]:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .tw-sidebar a[aria-current="page"] {
   background: #dfe9ef;
   color: #2c536e;
@@ -92,7 +107,7 @@ body {
   gap: 12px;
 }
 .tw-page-heading h1 {
-  font: 650 24px/1.4 var(--tw-sans);
+  font: 650 var(--ui-page-title)/1.4 var(--tw-sans);
 }
 .tw-page-heading p {
   font-size: 13px;
@@ -134,8 +149,9 @@ body {
   border-color: #c2d3df;
 }
 .tw-button {
-  min-height: 44px;
-  font-size: 13px;
+  min-height: var(--ui-hit-size);
+  border-radius: var(--ui-control-radius);
+  font-size: var(--ui-control-size);
   padding: 8px 12px;
 }
 .tw-small {
@@ -146,7 +162,7 @@ body {
 }
 .tw-section-head h2,
 h2 {
-  font: 650 18px/1.4 var(--tw-sans);
+  font: 650 var(--ui-section-title)/1.4 var(--tw-sans);
 }
 h3 {
   font-size: 15px;
@@ -498,7 +514,8 @@ body[data-work-task="true"] .homework-surface {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tw-sidebar a {
+  .tw-sidebar a,
+.tw-sidebar button[data-open-more] {
     transition: none;
   }
 }
@@ -672,3 +689,13 @@ html{-webkit-text-size-adjust:100%;scroll-padding-bottom:100px}
  .homework-surface .answer-editor .split>section{padding:10px}
 }
 @media(hover:hover) and (pointer:fine){.tw-page .tw-button:hover{background:#e3eaf0}.tw-page .tw-primary:hover{background:#284d67}}
+
+/* Keep the assistant beside navigation, away from assignment row actions. */
+@media(max-width:760px){
+ body:not([data-library=true]):not([data-work-task=true]) .tw-mobile-nav{padding-right:60px}
+ body:not([data-library=true]):not([data-work-task=true]) .mike-launcher{top:auto!important;right:8px!important;left:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;min-width:44px;min-height:44px;width:44px;height:44px;padding:4px}
+ body:not([data-library=true]):not([data-work-task=true]) .mike-launcher img{width:36px;height:36px}
+ body:not([data-library=true]):not([data-work-task=true]) .mike-launcher span{display:none}
+}
+
+.tw-page-heading[hidden]{display:none}

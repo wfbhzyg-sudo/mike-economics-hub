@@ -1,0 +1,16 @@
+/* Shared task controls for teacher and student workspaces. */
+:root {
+  --ui-primary: #213e55;
+  --ui-primary-hover: #1b3c5c;
+  --ui-ink: #203446;
+  --ui-muted: #53636c;
+  --ui-line: #d5dcd8;
+  --ui-selected: #dfe9ef;
+  --ui-selected-ink: #2c536e;
+  --ui-focus: #337caf;
+  --ui-control-radius: 7px;
+  --ui-control-size: 14px;
+  --ui-page-title: 22px;
+  --ui-section-title: 18px;
+  --ui-hit-size: 44px;
+}
