@@ -49,3 +49,5 @@
 /* Make the reading-to-writing handoff explicit in both standalone and inline correction. */
 .correction-reference-head strong{margin-right:auto}.correction-reference-head button{padding-inline:8px}.correction-editor h2{display:flex;align-items:center;justify-content:space-between;gap:8px}.correction-back-reference{font-size:12px;flex-shrink:0;min-height:44px}.correction-editor,.correction-reference{scroll-margin-top:12px}
 @media(max-width:700px){.correction-workspace>.paper-head{padding-top:0}.correction-reference-head{gap:3px}.correction-reference-head strong,.correction-reference-head button{font-size:12px}.correction-reference-head button{padding-inline:6px}}
+
+.correction-answer-text{margin:0;max-height:45dvh;overflow:auto;user-select:text}

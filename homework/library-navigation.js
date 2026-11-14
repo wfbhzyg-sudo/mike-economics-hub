@@ -14,3 +14,7 @@ export function packQuestions(questions, ids) {
   const byId = new Map(questions.map(question => [question.id, question]));
   return ids.map(id => byId.get(id)).filter(Boolean);
 }
+
+export function pdfPageText(items = []) {
+ return items.map(item => typeof item.str === 'string' ? item.str + (item.hasEOL ? '\n' : ' ') : '').join('').replace(/[ \t]+\n/g,'\n').trim();
+}

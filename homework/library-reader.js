@@ -1,3 +1,4 @@
+import {pdfPageText} from './library-navigation.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {pdfLibrary,openPDF} from './pdf-reader.js';
 import {mountInk} from './ink.js';
@@ -11,12 +12,13 @@ async function acquire(fileId,userId){
  catch(e){documents.delete(key);item.used--;throw e;}
 }
 export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,project=false,state,api,post,put,toast}){
- const events=new AbortController(),renders=new Set();let stopped=false,lease,ink,activeFrame,renderVersion=0,page,requested,zoom=1,channel,timer,full=false,repaint=Promise.resolve(),resizeObserver,resizeTimer;
+ const teacher=state.user.role==='teacher',playLabel=teacher?'开始授课':'专注阅读';
+ const events=new AbortController(),renders=new Set();let stopped=false,lease,ink,activeFrame,renderVersion=0,page,requested,zoom=1,channel,timer,full=false,repaint=Promise.resolve(),resizeObserver,resizeTimer,textMode=false,textVersion=0;
  const posKey=`lib-position:${state.user.id}:${r.fileId}:${topic.id}`,range=topic[kind]||[1,r.pages];
  let saved;try{saved=JSON.parse(localStorage.getItem(posKey)||'null')}catch{}
  const restored=typeof saved==='number'?saved:saved?.page;
  page=Number.isInteger(restored)&&restored>=1&&restored<=r.pages?restored:range[0];requested=page;zoom=Math.max(1,Math.min(3,Number(saved?.zoom)||1));
- root.innerHTML=`<section class="lib-reader ${project?'lib-project':''}" data-kind="${kind}" tabindex="0" aria-label="${kind==='slides'?'课件':'教材'}阅读器"><div class="lib-reader-tools"><button data-prev aria-label="上一页">‹</button><details class="lib-page-menu"><summary aria-label="页码与页面目录"><span data-page-label>${page}</span> / ${r.pages} ▾</summary><div class="lib-page-popover"><label>前往页码<input data-page type="number" min="1" max="${r.pages}" value="${page}"></label><div class="lib-page-thumbs"></div></div></details><button data-next aria-label="下一页">›</button><span class="lib-tool-separator"></span><button data-zoom aria-pressed="false">放大</button><button data-focus>${project?'退出投影':'专注'}</button>${kind==='slides'&&!project?'<button class="primary" data-play>开始授课</button>':''}<details class="lib-reader-more"><summary aria-label="更多阅读操作">···</summary><div>${!project?'<button data-full>全屏</button>':''}<a href="/api/homework/files/${encodeURIComponent(r.fileId)}?download=1">下载原件</a>${state.user.role==='teacher'&&kind==='slides'&&!project?'<button data-project>打开投影窗口</button>':''}</div></details><span data-status role="status"></span><a data-project-fallback hidden target="_blank" rel="noopener">打开投影页 ↗</a></div><div class="lib-pdf-area" tabindex="0" aria-label="原页阅读区域"><div class="lib-page-stage"></div></div><p class="lib-reader-error" role="alert"></p><button data-retry hidden>重新读取当前页</button></section>`;
+ root.innerHTML=`<section class="lib-reader ${project?'lib-project':''}" data-kind="${kind}" tabindex="0" aria-label="${kind==='slides'?'课件':'教材'}阅读器"><div class="lib-reader-tools"><button data-prev aria-label="上一页">‹</button><details class="lib-page-menu"><summary aria-label="页码与页面目录"><span data-page-label>${page}</span> / ${r.pages} ▾</summary><div class="lib-page-popover"><label>前往页码<input data-page type="number" min="1" max="${r.pages}" value="${page}"></label><div class="lib-page-thumbs"></div></div></details><button data-next aria-label="下一页">›</button><span class="lib-tool-separator"></span><button data-zoom aria-pressed="false">放大</button><button data-focus>${project?'退出投影':'专注'}</button>${kind==='slides'&&!project?`<button class="primary" data-play>${playLabel}</button>`:''}<details class="lib-reader-more"><summary aria-label="更多阅读操作">···</summary><div><button data-transcript aria-pressed="false">查看本页文字</button>${!project?'<button data-full>全屏</button>':''}<a href="/api/homework/files/${encodeURIComponent(r.fileId)}?download=1">下载原件</a>${state.user.role==='teacher'&&kind==='slides'&&!project?'<button data-project>打开投影窗口</button>':''}</div></details><span data-status role="status"></span><a data-project-fallback hidden target="_blank" rel="noopener">打开投影页 ↗</a></div><div class="lib-pdf-area" tabindex="0" aria-label="原页阅读区域"><div class="lib-page-stage"></div><article class="lib-page-text" tabindex="0" aria-label="当前页面文字" hidden></article></div><p class="lib-reader-error" role="alert"></p><button data-retry hidden>重新读取当前页</button></section>`;
  const $=s=>root.querySelector(s),reader=$('.lib-reader'),area=$('.lib-pdf-area'),stage=$('.lib-page-stage'),status=$('[data-status]');
  const closeMenus=bindDisclosureMenus(reader,'.lib-page-menu,.lib-reader-more');
  const locked=[];
@@ -26,9 +28,16 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
  root.libraryDispose=dispose;
  function fail(e){if(stopped||e.name==='RenderingCancelledException')return;$('.lib-reader-error').textContent=e.message||'读取失败，请重试';$('[data-retry]').hidden=false;status.textContent='读取失败';}
  function persist(){try{localStorage.setItem(posKey,JSON.stringify({page,zoom,offset:area.scrollTop}))}catch{}}
- function focus(on){full=on;lockBackground(on||project);reader.classList.toggle('lib-expanded',on);document.body.classList.toggle('library-focused',on);$('[data-focus]').textContent=on?'退出专注':project?'退出投影':'专注';wake();}
+ function focus(on){full=on;const play=$('[data-play]');if(play)play.textContent=on&&teacher?'授课中':playLabel;lockBackground(on||project);reader.classList.toggle('lib-expanded',on);document.body.classList.toggle('library-focused',on);$('[data-focus]').textContent=on?'退出专注':project?'退出投影':'专注';wake();}
  function wake(){clearTimeout(timer);reader.classList.remove('controls-hidden');if(full||project)timer=setTimeout(()=>{if(reader.querySelector('details[open],.ink-text-editor:not([hidden])')||reader.querySelector('.lib-reader-tools:focus-within,.ink-tools:focus-within')||reader.dataset.drawing==='true')return;reader.classList.add('controls-hidden');},2500);}
  reader.addEventListener('pointermove',wake,{signal:events.signal,passive:true});reader.addEventListener('pointerdown',wake,{signal:events.signal,passive:true});reader.addEventListener('focusin',wake,{signal:events.signal});reader.addEventListener('focusout',wake,{signal:events.signal});
+ async function readText(n){
+  const generation=++textVersion,output=$('.lib-page-text');output.textContent='正在读取本页文字…';output.setAttribute('aria-busy','true');
+  try{const p=await lease.pdf.getPage(n),content=await p.getTextContent();if(stopped||generation!==textVersion)return;output.textContent=pdfPageText(content.items)||'本页没有可提取的文字。可切回原页或下载原件查看图表与扫描内容。';}
+  catch{if(!stopped&&generation===textVersion)output.textContent='文字暂未读取，请切回原页后重试。';}
+  finally{if(!stopped&&generation===textVersion)output.setAttribute('aria-busy','false');}
+ }
+ $('[data-transcript]').onclick=()=>{textMode=!textMode;stage.hidden=textMode;$('.lib-page-text').hidden=!textMode;$('[data-transcript]').textContent=textMode?'查看原页':'查看本页文字';$('[data-transcript]').setAttribute('aria-pressed',String(textMode));$('[data-zoom]').disabled=textMode;$('.lib-reader-more').open=false;if(textMode&&lease)void readText(page);(textMode?$('.lib-page-text'):area).focus({preventScroll:true});};
  async function paint(p,canvas){const original=p.getViewport({scale:1}),width=Math.max(320,area.clientWidth-24),scale=Math.min(2.3,width/original.width*Math.min(devicePixelRatio||1,2)*zoom);const viewport=p.getViewport({scale});canvas.width=viewport.width;canvas.height=viewport.height;const task=p.render({canvasContext:canvas.getContext('2d'),viewport});renders.add(task);try{await task.promise;}finally{renders.delete(task);}}
  async function render(n,restore=false){
   const generation=++renderVersion;let nextInk,frame;
@@ -43,7 +52,7 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
    oldInk?.destroy();activeFrame?.remove();ink=nextInk;activeFrame=frame;frame.classList.remove('lib-preparing');page=n;requested=n;
    area.scrollTop=restore?(saved?.offset||0):0;area.scrollLeft=0;stage.style.setProperty('--reader-zoom',zoom);stage.classList.toggle('zoom',zoom>1);
    const zoomButton=$('[data-zoom]');zoomButton.textContent=zoom>1?'适应宽度':'放大';zoomButton.setAttribute('aria-pressed',String(zoom>1));$('[data-page]').value=page;$('[data-page-label]').textContent=page;$('[data-prev]').disabled=page<=1;$('[data-next]').disabled=page>=r.pages;status.textContent='';persist();
-   channel?.postMessage({type:'page',page,resource:r.fileId});
+   if(textMode)void readText(page);channel?.postMessage({type:'page',page,resource:r.fileId});
    // Warm adjacent PDF page/operator caches only. No offscreen full-document canvas allocation.
    for(const adjacent of [page+1,page-1])if(adjacent>0&&adjacent<=r.pages)void lease.pdf.getPage(adjacent).then(p=>p.getOperatorList()).catch(()=>{});
   }catch(e){nextInk?.destroy();frame?.remove();if(generation===renderVersion)fail(e);}
@@ -53,7 +62,7 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
  $('[data-prev]').onclick=()=>change(requested-1);$('[data-next]').onclick=()=>change(requested+1);$('[data-page]').onchange=e=>{void change(+e.target.value);$('.lib-page-menu').open=false;};
  $('[data-zoom]').onclick=e=>{zoom=zoom===1?(matchMedia('(max-width:700px)').matches?2.25:1.5):1;stage.style.setProperty('--reader-zoom',zoom);stage.classList.toggle('zoom',zoom>1);e.currentTarget.textContent=zoom>1?'适应宽度':'放大';e.currentTarget.setAttribute('aria-pressed',String(zoom>1));persist();refreshResolution();};
  $('[data-focus]').onclick=()=>{if(project){window.close();location.replace(`/teacher/#library/${unitId}/${topic.id}/slides`);}else focus(!full);};
- if($('[data-play]'))$('[data-play]').onclick=()=>{focus(true);$('[data-play]').textContent='授课中';reader.focus({preventScroll:true});};
+ if($('[data-play]'))$('[data-play]').onclick=()=>{focus(true);reader.focus({preventScroll:true});};
  if($('[data-full]'))$('[data-full]').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await reader.requestFullscreen();}catch{focus(!full);}};
  async function load(){try{lease ||= await acquire(r.fileId,state.user.id);if(stopped){lease.release();return;}await render(requested,true);if(project)channel?.postMessage({type:'ready',resource:r.fileId});}catch(e){fail(e);}}
  $('[data-retry]').onclick=()=>void load();

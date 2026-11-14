@@ -36,3 +36,8 @@ body:has(.library-work) .mike-launcher{top:4px!important;right:8px!important;lef
 .lib-preview-nav[hidden],.lib-bank-directory[hidden],.lib-bank-scope[hidden]{display:none}.lib-bank:has(.lib-bank-directory[hidden]){grid-template-columns:minmax(0,1fr)}.lib-preview-heading [data-preview-select]{font-size:12px;margin-left:auto}.lib-preview-heading [data-preview-select]+button{margin-left:0}.lib-preview-heading [data-preview-select][aria-pressed=true]{background:var(--lib-sage);border-color:#729481;color:#284d3a}@media(max-width:900px){.lib-reader-tools>button,.lib-preview-nav button,.lib-bank-top>button,.lib-bank-top>details>summary{min-height:44px}.lib-reader-tools>button{min-width:36px}.lib-preview-heading{gap:7px}}
 /* Reserve header space for the companion instead of covering the account menu. */
 body:has(.library-work) .brand{padding-right:58px}
+
+/* The fixed phone navigation must never cover the last lesson paragraph. */
+@media(max-width:760px){body[data-library=true] .library-work{padding-bottom:calc(76px + env(safe-area-inset-bottom))}}
+.lib-page-stage[hidden],.lib-page-text[hidden]{display:none!important}
+.lib-page-text{white-space:pre-wrap;overflow-wrap:anywhere;max-width:75ch;margin:0 auto;padding:20px;background:#fff;color:var(--lib-ink);font:16px/1.8 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;user-select:text}

@@ -1,3 +1,4 @@
+import {correctionAnswerEvidence} from './choice-correction.js';
 import {mountPDFReader} from './pdf-reader.js';
 import {mountReviewGallery} from './review-gallery.js';
 export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact=false,onEdit}){
@@ -17,7 +18,11 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
    }else{host.className='review-studio correction-gallery'+(imageParts?' question-fit-gallery':'');host.innerHTML='<div class="rv-gallery"></div>';questionGallery=mountReviewGallery(host.firstElementChild,{files:imageParts?files:[file],label:'题目原件',fullscreen:false,fitContent:imageParts,storageKey:'correction-question:'+state.user.id+':'+file.id});}}
   if(first)show(first);const select=panel.querySelector('[data-correction-file]');if(select)select.onchange=()=>show(files.find(f=>f.id===select.value));
  }
- async function answer(panel){const s=await getSubmission();await metadata(s.files||[]);if(destroyed)return;panel.innerHTML='<div class="review-studio correction-gallery"><div class="rv-gallery"></div></div>';gallery=mountReviewGallery(panel.querySelector('.rv-gallery'),{files:(s.files||[]).map(id=>state.files.get(id)).filter(Boolean),text:s.text||'',label:'我的原作答',fullscreen:false,storageKey:'correction-answer:'+state.user.id+':'+m.submissionId});}
+ async function answer(panel){
+  const s=await getSubmission(),evidence=correctionAnswerEvidence(s,m);await metadata(evidence.files);if(destroyed)return;
+  if(!evidence.files.length){panel.innerHTML=`<p class="correction-prompt correction-answer-text">${h(evidence.text||'本题没有保存的文字或附件。')}</p>`;return;}
+  panel.innerHTML='<div class="review-studio correction-gallery"><div class="rv-gallery"></div></div>';gallery=mountReviewGallery(panel.querySelector('.rv-gallery'),{files:evidence.files.map(id=>state.files.get(id)).filter(Boolean),text:evidence.text,label:'我的原作答',fullscreen:false,storageKey:'correction-answer:'+state.user.id+':'+m.submissionId+':'+m.questionId});
+ }
  async function history(panel){await metadata(m.corrections.flatMap(c=>c.files||[]));if(destroyed)return;panel.innerHTML=m.corrections.length?[...m.corrections].reverse().map(c=>`<article class="correction"><p class="hint">${date(c.createdAt)}</p><p class="instructions">${h(c.text||'订正见附件')}</p><div class="file-list">${fileMarkup(c.files||[])}</div></article>`).join(''):'<p class="correction-prompt">还没有已保存的订正记录。右侧或下方的草稿会自动保存，完成后点击“保存订正”。</p>';bindPreviews(panel);}
  function load(id){const panel=$('#correction-panel-'+id);if(panel.dataset.ready||tasks.has(id))return;panel.setAttribute('aria-busy','true');panel.innerHTML='<p class="hint" role="status">正在打开参考资料…</p>';const task=({question,answer,history}[id])(panel).then(()=>{if(!destroyed)panel.dataset.ready='true';}).catch(e=>{if(destroyed)return;panel.innerHTML=`<p class="error" role="alert">${h(e.message)}</p><button type="button" class="secondary">重试加载</button>`;panel.querySelector('button').onclick=()=>load(id);}).finally(()=>{tasks.delete(id);if(!destroyed)panel.setAttribute('aria-busy','false');});tasks.set(id,task);}
  const buttons=[...root.querySelectorAll('[role=tab]')];function select(id){buttons.forEach(b=>{const active=b.dataset.reference===id;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;$('#correction-panel-'+b.dataset.reference).hidden=!active;});load(id);}

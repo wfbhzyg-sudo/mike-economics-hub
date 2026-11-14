@@ -7,3 +7,13 @@ export function splitChoiceCorrection(value=''){
 export function joinChoiceCorrection(choice,explanation=''){
  return /^[A-E]$/.test(choice)?'新答案：'+choice+(explanation?'\n'+explanation:''):explanation;
 }
+
+// Use explicit question links; never infer a photo or answer from its list position.
+export function correctionAnswerEvidence(submission, question) {
+ if(question.type==='choice' && submission.choices && typeof submission.choices==='object' && !Array.isArray(submission.choices)) {
+  return {files:[],text:'本次选择：'+(submission.choices[question.questionId] || '未作答')};
+ }
+ const response=submission.responses?.[question.questionId];
+ return response ? {files:response.files||[],text:response.text||''}
+   : {files:submission.files||[],text:submission.text||''};
+}
