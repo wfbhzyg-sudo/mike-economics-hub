@@ -1,6 +1,8 @@
 import {submissionLabel} from './ui-labels.js';
 
 // One effective result per assignment. Pending replacements do not erase a grade.
+const normalizeGrade = (grade) => grade ? { ...grade, maxPoints: grade.maxPoints ?? (grade.questions || []).reduce((n, q) => n + Number(q.maxPoints || 0), 0) } : grade;
+
 export function assignmentRecords(submissions, assignments = []) {
   const grouped = new Map();
   for (const s of submissions.filter(s => s.status !== 'draft')) {
@@ -13,7 +15,7 @@ export function assignmentRecords(submissions, assignments = []) {
     const latest = attempts[0], effective = attempts.find(s => s.publishedGrade?.total != null);
     return {assignmentId:latest.assignmentId, studentId:latest.studentId,
       assignment: assignments.find(a => a.id === latest.assignmentId) || latest.assignment || {},
-      latest, effective, grade:effective?.publishedGrade || null, attempts,
+      latest, effective, grade:normalizeGrade(effective?.publishedGrade) || null, attempts,
       pendingUpdate: Boolean(effective && (effective.id !== latest.id || latest.status !== 'published'))};
   }).sort((a,b) => (b.latest.submittedAt || '').localeCompare(a.latest.submittedAt || ''));
 }

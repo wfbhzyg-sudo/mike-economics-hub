@@ -273,3 +273,18 @@ test('assignment diagnosis reports published count, choices and weak written que
   assert.deepEqual(diag.weakWritten.map(item => item.id), ['q2']);
   assert.deepEqual(diag.knowledge.map(item => [item.knowledge, item.rate]), [['2.3', 66.7], ['FRQ 分析', 75]]);
 });
+
+
+test('class scope accepts bookself-class prefixes on either side', () => {
+  const data = {
+    students: [{ id: 's1', classIds: ['bookself-class:c1'] }],
+    assignments: [{
+      id: 'a1', title: 'A', published: true, dueAt: new Date(2026, 9, 10).toISOString(),
+      classIds: ['bookself-class:c1'], audience: { students: [{ id: 's1', classIds: ['bookself-class:c1'] }] }, questions: []
+    }],
+    submissions: []
+  };
+  assert.deepEqual(scopedAssignments(data, { classId: 'c1' }).map(a => a.id), ['a1']);
+  assert.equal(scopedStudents(data, { classId: 'c1', assignments: data.assignments }).length, 1);
+  assert.deepEqual(scopedAssignments(data, { classId: 'bookself-class:c1' }).map(a => a.id), ['a1']);
+});

@@ -24,12 +24,15 @@ export function periodRange(period, now = new Date()) {
   return {from: '', to: ''};
 }
 
+const classKey = id => String(id || '').replace(/^bookself-class:/, '');
+const inClass = (ids, classId) => (ids || []).some(id => classKey(id) === classKey(classId));
+
 export function scopedAssignments(data, {classId = '', unit = '', period = 'all', assignmentId = ''} = {}, now = new Date()) {
   const range = periodRange(period, now);
   const all = visibleAssignments(data);
   return all.filter(assignment =>
     inRange(assignment, range) &&
-    (!classId || assignment.classIds?.includes(classId)) &&
+    (!classId || inClass(assignment.classIds, classId)) &&
     (!unit || assignment.libraryUnit === unit) &&
     (!assignmentId || assignment.id === assignmentId));
 }
@@ -49,7 +52,7 @@ export function scopedStudents(data, {classId = '', assignments = []} = {}) {
     }
   }
   return data.students.filter(student =>
-    student.classIds?.includes(classId) || Boolean(snapshot.get(student.id)?.has(classId)));
+    inClass(student.classIds, classId) || Boolean([...snapshot.get(student.id) || []].some(id => classKey(id) === classKey(classId))));
 }
 
 // Short, stable matrix column label. The full title always stays in the tooltip.
