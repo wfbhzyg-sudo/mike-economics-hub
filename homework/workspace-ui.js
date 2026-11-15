@@ -1,7 +1,6 @@
 import {studentAssignmentAction,assignmentOpensLater} from './assignment-navigation.js';
 import {highlightText} from './search-text.js';
 import { assignmentState, assignmentRecords } from "./learning-model.js";
-import {studentHomeMarkup} from "./student-home.js";
 export function createWorkspaceUI(ctx) {
   const {
     state,
@@ -138,6 +137,46 @@ export function createWorkspaceUI(ctx) {
       },
     );
   }
+  function studentSummaryMarkup() {
+    const now = Date.now();
+    const counted = state.assignments.map((a) => assignmentState(a, state.submissions, now));
+    const todo = counted.filter((s) => s.key === "todo").length;
+    const submitted = counted.filter((s) => s.key === "processing").length;
+    const graded = counted.filter((s) => s.key === "done").length;
+    const week = state.assignments.filter((a) => {
+      const due = Date.parse(a.dueAt || "");
+      return Number.isFinite(due) && due > now && due - now <= 7 * 86400000 && assignmentState(a, state.submissions, now).key !== "done";
+    }).length;
+    const item = (label, value) => `<div><span>${label}</span><strong>${value}</strong></div>`;
+    return `<div class="sh-summary" role="group" aria-label="本班作业概况">${item("待完成", todo)}${item("已提交", submitted)}${item("已评分", graded)}${item("本周截止", week)}</div>`;
+  }
+  function studentCard(a) {
+    const info = assignmentState(a, state.submissions),
+      action = studentAssignmentAction(a, state.submissions),
+      questions = a.questions || [],
+      grade = info.latest?.publishedGrade,
+      gradeMax = (grade?.questions || []).reduce((n, q) => n + Number(q.maxPoints || 0), 0),
+      max = gradeMax || questions.reduce((n, q) => n + Number(q.maxPoints || 0), 0),
+      tone = { todo: "blue", processing: "lilac", done: "sage", closed: "sand" }[info.key] || "blue";
+    const due = action.opensLater ? `开放 ${date(a.opensAt)}` : a.dueAt ? `截止 ${date(a.dueAt)}` : "不限截止时间";
+    let detail = "";
+    if (info.key === "done" && grade) {
+      const total = Number(grade.total ?? 0),
+        wrong = (grade.questions || []).filter((q) => q.score != null && q.score < q.maxPoints).length,
+        rate = max ? Math.round((total / max) * 100) : null;
+      detail = `<p class="card-score"><strong>${total}</strong><span>/ ${max || "?"}</span>${rate != null ? `<em>${rate}%</em>` : ""}${wrong ? `<span class="card-correct">需订正 ${wrong} 题</span>` : ""}</p>`;
+    } else if (info.key === "processing") {
+      detail = `<p class="card-progress">已提交 · ${h(info.label)}</p>`;
+    } else {
+      const total = a.format === "mcq" ? questions.filter((q) => q.type === "choice").length : 0,
+        answered = Math.max(Number(a.attemptProgress?.answered || 0), info.draft ? Object.values(info.draft.choices || {}).filter(Boolean).length : 0);
+      detail = total
+        ? `<p class="card-progress">${info.draft ? "草稿已保存" : "作答进度"} · ${answered}/${total} 题 ${Math.round((answered / total) * 100)}%</p>`
+        : `<p class="card-progress">${action.opensLater ? "尚未开放" : "尚未开始"}</p>`;
+    }
+    const title = action.target ? link(action.target, highlightText(a.title, state.assignmentSearch), "card-title") : `<span class="card-title">${highlightText(a.title, state.assignmentSearch)}</span>`;
+    return `<article class="assignment-card" data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${a.course ? `<span>${h(a.course)}</span>` : ""}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : `<button class="secondary" disabled>${h(action.action)}</button>`}</footer></article>`;
+  }
   function dashboard() {
     const t = teacher(),
       key =
@@ -164,7 +203,7 @@ export function createWorkspaceUI(ctx) {
       ...new Set(state.assignments.map((a) => a.course).filter(Boolean)),
     ];
     if (!courses.includes(state.assignmentCourse)) state.assignmentCourse = "";
-    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", state.classes.map((c) => c.name).join(" · "), t ? link("trash", "回收站") + link("new", "新建作业", "primary") : "")}${t ? "" : studentHomeMarkup({state, h, link, date})}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div><div class="assignment-search-controls">${courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option ${state.assignmentCourse === c ? "selected" : ""}>${h(c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
+    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", state.classes.map((c) => c.name).join(" · "), t ? link("trash", "回收站") + link("new", "新建作业", "primary") : "")}${t ? "" : studentSummaryMarkup()}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div><div class="assignment-search-controls">${courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option ${state.assignmentCourse === c ? "selected" : ""}>${h(c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
     function draw() {
       state.assignmentSearch = $("#assignment-search").value;
       const term = state.assignmentSearch.trim().toLocaleLowerCase(),
@@ -208,6 +247,11 @@ export function createWorkspaceUI(ctx) {
           sessionStorage.removeItem(key);
           dashboard();
         });
+        return;
+      }
+      if (!t) {
+        pane.innerHTML = `<div class="assignment-grid">${rows.map(studentCard).join("")}</div>`;
+        bindActions();
         return;
       }
       if (state.assignmentFilter !== "all" || term) {
