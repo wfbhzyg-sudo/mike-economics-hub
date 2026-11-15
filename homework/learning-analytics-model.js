@@ -34,15 +34,22 @@ export function scopedAssignments(data, {classId = '', unit = '', period = 'all'
     (!assignmentId || assignment.id === assignmentId));
 }
 
-// Mirrors the gradebook audience rule: current class members plus anyone with work
-// in scope, so historical students never disappear from an existing report.
+// Current class members plus students whose publish-time audience snapshot belongs
+// to this class. A shared assignment must not pull another class's students in, and
+// a submission alone is not evidence of class membership without a snapshot.
 export function scopedStudents(data, {classId = '', assignments = []} = {}) {
-  const inScope = new Set(assignments.map(assignment => assignment.id));
+  if (!classId) return data.students.slice();
+  const snapshot = new Map();
+  for (const assignment of assignments) {
+    for (const member of assignment.audience?.students || []) {
+      if (!member?.id) continue;
+      const classes = snapshot.get(member.id) || new Set();
+      for (const id of member.classIds || []) classes.add(id);
+      snapshot.set(member.id, classes);
+    }
+  }
   return data.students.filter(student =>
-    !classId ||
-    student.classIds?.includes(classId) ||
-    assignments.some(assignment => assignment.audience?.students?.some(member => member.id === student.id)) ||
-    data.submissions.some(submission => submission.studentId === student.id && inScope.has(submission.assignmentId)));
+    student.classIds?.includes(classId) || Boolean(snapshot.get(student.id)?.has(classId)));
 }
 
 // Short, stable matrix column label. The full title always stays in the tooltip.

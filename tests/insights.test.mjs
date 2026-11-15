@@ -118,3 +118,67 @@ test('published personal reports are visible to that student only', () => {
   assert.equal(canViewReport({...report, status: 'draft'}, {id: 'u1'}), false);
   assert.equal(canViewReport({...report, audience: {kind: 'class'}}, {id: 'u1'}), false);
 });
+
+
+test('personal knowledge facts never include another student tag on a shared assignment', () => {
+  const data = fixture();
+  data.assignments[0].classIds = ['c1', 'c2'];
+  data.students.push({id: 'u3', name: '学生三', classIds: ['c2']});
+  data.assignments[0].audience.students.push({id: 'u3', classIds: ['c2']});
+  data.submissions.push({id: 's9', assignmentId: 'a1', studentId: 'u3', status: 'published', submittedAt: day(-4), updatedAt: day(-4),
+    publishedGrade: {total: 0, maxPoints: 3, questions: [
+      {id: 'q9', score: 0, maxPoints: 1, type: 'choice', knowledge: '外班私有标签'},
+      {id: 'q10', score: 0, maxPoints: 1, type: 'choice', knowledge: '外班私有标签'},
+      {id: 'q11', score: 0, maxPoints: 1, type: 'choice', knowledge: '外班私有标签'}]}});
+  const scope = insightScope({classId: 'c1', unit: 'Unit 2', period: 'all', studentId: 'u1'});
+  const texts = buildInsightFacts({scope, data}).facts.map(fact => fact.text).join('\n');
+  assert.ok(!texts.includes('外班私有标签'));
+  assert.match(texts, /知识标签「2.1 供给」/);
+});
+
+test('zero scores stay in knowledge facts and class scope excludes other-class students', () => {
+  const zero = fixture();
+  zero.submissions[0].publishedGrade = {total: 0, maxPoints: 15, questions: [
+    {id: 'q1', score: 0, maxPoints: 5, type: 'choice', knowledge: 'ZERO 标签'},
+    {id: 'q2', score: 0, maxPoints: 5, type: 'choice', knowledge: 'ZERO 标签'},
+    {id: 'q3', score: 0, maxPoints: 5, type: 'choice', knowledge: 'ZERO 标签'}]};
+  const personal = buildInsightFacts({scope: insightScope({classId: 'c1', unit: 'Unit 2', period: 'all', studentId: 'u1'}), data: zero});
+  assert.ok(personal.facts.some(fact => fact.text.includes('ZERO 标签')));
+
+  const shared = fixture();
+  shared.assignments[0].classIds = ['c1', 'c2'];
+  shared.students.push({id: 'u3', name: '学生三', classIds: ['c2']});
+  shared.assignments[0].audience.students.push({id: 'u3', classIds: ['c2']});
+  shared.submissions.push({id: 's9', assignmentId: 'a1', studentId: 'u3', status: 'published', submittedAt: day(-4), updatedAt: day(-4),
+    publishedGrade: {total: 3, maxPoints: 3, questions: [
+      {id: 'q9', score: 1, maxPoints: 1, type: 'choice', knowledge: '外班私有标签'},
+      {id: 'q10', score: 1, maxPoints: 1, type: 'choice', knowledge: '外班私有标签'},
+      {id: 'q11', score: 1, maxPoints: 1, type: 'choice', knowledge: '外班私有标签'}]}});
+  const classBuilt = buildInsightFacts({scope: insightScope({classId: 'c1', unit: 'Unit 2', period: 'all'}), data: shared});
+  assert.deepEqual(classBuilt.rows.map(row => row.student.id), ['u1', 'u2']);
+  assert.ok(!classBuilt.facts.map(fact => fact.text).join('\n').includes('外班私有标签'));
+});
+
+test('data version covers corrections, per-question scores and stable ordering', () => {
+  const data = fixture();
+  const scope = insightScope({classId: 'c1', unit: 'Unit 2', period: 'all', studentId: 'u1'});
+  const base = insightVersion({scope, data});
+
+  const corrected = fixture();
+  corrected.mistakes.push({assignmentId: 'a1', studentId: 'u1', questionId: 'q2', status: 'todo'});
+  assert.notEqual(base, insightVersion({scope, data: corrected}));
+
+  const redistributed = fixture();
+  redistributed.submissions[0].publishedGrade.total = 12;
+  redistributed.submissions[0].publishedGrade.questions = [
+    {id: 'q1', score: 5, maxPoints: 5, type: 'choice', knowledge: '2.1 供给'},
+    {id: 'q2', score: 4, maxPoints: 5, type: 'choice', knowledge: '2.1 供给'},
+    {id: 'q3', score: 3, maxPoints: 5, type: 'choice', knowledge: '2.1 供给'}];
+  assert.notEqual(base, insightVersion({scope, data: redistributed}));
+
+  const reordered = fixture();
+  reordered.submissions.reverse();
+  reordered.mistakes.reverse();
+  reordered.students.reverse();
+  assert.equal(base, insightVersion({scope, data: reordered}));
+});

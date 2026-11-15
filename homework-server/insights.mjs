@@ -29,18 +29,79 @@ export function insightData({assignments, submissions, mistakes = [], students})
   };
 }
 
+// Rules version is part of the data version so a report generated under older
+// fact-building rules is treated as stale instead of silently re-used.
+const FACTS_RULES_VERSION = 2;
+const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
+
 export function insightVersion({scope, data}) {
-  const ids = new Set(scopedAssignments(data, scope).map(a => a.id));
-  const rows = data.assignments.filter(a => ids.has(a.id)).map(a => ({id: a.id, version: a.version ?? null, published: a.published !== false, dueAt: a.dueAt || null}));
-  const submissions = data.submissions.filter(s => ids.has(s.assignmentId)).map(s => ({id: s.id, status: s.status, updatedAt: s.updatedAt || null, total: s.publishedGrade?.total ?? null}));
-  return createHash('sha256').update(JSON.stringify({scope, rows, submissions})).digest('hex').slice(0, 16);
+  const assignments = scopedAssignments(data, scope);
+  const ids = new Set(assignments.map(a => a.id));
+  const studentInScope = submission => !scope.studentId || submission.studentId === scope.studentId;
+  const rows = sorted(assignments.map(a => ({
+    id: a.id,
+    version: a.version ?? null,
+    published: a.published !== false,
+    dueAt: a.dueAt || null,
+    classIds: sorted(a.classIds || [], value => value),
+    audience: a.audience ? {
+      confirmedAt: a.audience.confirmedAt || null,
+      students: sorted((a.audience.students || []).map(u => ({id: u.id, classIds: sorted(u.classIds || [], value => value)}))),
+    } : null,
+  })));
+  const submissions = sorted(data.submissions
+    .filter(s => ids.has(s.assignmentId) && studentInScope(s))
+    .map(s => {
+      const grade = s.publishedGrade;
+      const questions = grade?.questionsSnapshot || grade?.rubricSnapshot || grade?.questions || [];
+      return {
+        id: s.id,
+        assignmentId: s.assignmentId,
+        studentId: s.studentId,
+        status: s.status,
+        version: s.version ?? null,
+        submittedAt: s.submittedAt || null,
+        updatedAt: s.updatedAt || null,
+        total: grade?.total ?? null,
+        maxPoints: grade?.maxPoints ?? null,
+        revision: grade?.revision ?? null,
+        publishedAt: grade?.publishedAt || null,
+        questions: sorted(questions.map(q => ({
+          id: q.id,
+          score: Number.isFinite(q.score) ? q.score : null,
+          maxPoints: Number.isFinite(q.maxPoints) ? q.maxPoints : null,
+          type: q.type || null,
+          knowledge: q.knowledge || null,
+        }))),
+      };
+    }));
+  const mistakes = sorted((data.mistakes || [])
+    .filter(m => ids.has(m.assignmentId) && studentInScope(m))
+    .map(m => ({
+      id: m.id || null,
+      assignmentId: m.assignmentId,
+      studentId: m.studentId,
+      questionId: m.questionId,
+      status: m.status || null,
+      note: m.note || null,
+      revision: m.revision ?? null,
+      corrections: sorted((m.corrections || []).map(c => ({id: c.id, text: c.text || null, createdAt: c.createdAt || null}))),
+    })), m => `${m.assignmentId}:${m.studentId}:${m.questionId}`);
+  return createHash('sha256').update(JSON.stringify({
+    rulesVersion: FACTS_RULES_VERSION,
+    scope,
+    assignments: rows,
+    submissions,
+    mistakes,
+  })).digest('hex').slice(0, 16);
 }
 
-function knowledgeFacts(data, assignments) {
+function knowledgeFacts(data, assignments, studentIds) {
   const scores = new Map();
   for (const assignment of assignments) {
     for (const s of data.submissions) {
-      if (s.assignmentId !== assignment.id || s.status === 'draft' || !s.publishedGrade?.total) continue;
+      if (s.assignmentId !== assignment.id || !studentIds.has(s.studentId)) continue;
+      if (s.status === 'draft' || s.publishedGrade?.total === null || s.publishedGrade?.total === undefined) continue;
       for (const q of s.publishedGrade.questionsSnapshot || s.rubricSnapshot || s.publishedGrade.questions || []) {
         const tag = clean(q.knowledge, 40);
         if (!tag || !Number.isFinite(q.score) || !Number.isFinite(q.maxPoints) || !q.maxPoints) continue;
@@ -83,7 +144,7 @@ export function buildInsightFacts({scope, data}) {
     const types = typeBreakdown(data, student.id);
     if (types.choice.rate !== null) add('s.choice', `选择题 ${pct(types.choice.rate)}`, `选择题平均得分率 ${pct(types.choice.rate)}（${types.choice.questions} 题）。`);
     if (types.written.rate !== null) add('s.written', `书面题 ${pct(types.written.rate)}`, `书面题平均得分率 ${pct(types.written.rate)}（${types.written.questions} 题）。`);
-    const weak = knowledgeFacts(data, assignments);
+    const weak = knowledgeFacts(data, assignments, new Set([student.id]));
     for (const [index, item] of weak.entries()) add(`k.${index}`, `${item.tag} ${pct(item.rate)}`, `知识标签「${item.tag}」得分率 ${pct(item.rate)}（${item.graded} 题次）。`);
     profile.weak.slice(0, 2).forEach((item, index) => add(`w.${index}`, clean(item.prompt, 24), `薄弱题：${clean(item.prompt, 60)}（得分率 ${pct(item.scoreRate ?? item.rate)}）。`));
     return {facts, data, assignments, rows, student, profile};
@@ -93,7 +154,8 @@ export function buildInsightFacts({scope, data}) {
   add('c.average', `平均 ${pct(stats.average)}`, `班级平均得分率 ${pct(stats.average)}（仅计已发布成绩）。`);
   add('c.missing', `未交 ${stats.missing}`, `未交 ${stats.missing} 人次。`);
   add('c.review', `待复核 ${stats.needsReview}`, `${stats.needsReview} 份提交等待复核，暂不计入平均。`);
-  const corrections = (data.mistakes || []).filter(item => item.status === 'todo' && assignments.some(a => a.id === item.assignmentId));
+  const studentIds = new Set(rows.map(row => row.student.id));
+  const corrections = (data.mistakes || []).filter(item => item.status === 'todo' && studentIds.has(item.studentId) && assignments.some(a => a.id === item.assignmentId));
   add('c.corrections', `待订正 ${corrections.length}`, `${new Set(corrections.map(item => item.studentId)).size} 名学生共有 ${corrections.length} 道题待订正。`);
   const per = assignments.map(assignment => {
     const rates = rows.map(row => row.cells.find(cell => cell.assignment.id === assignment.id)?.rate).filter(rate => rate !== null && rate !== undefined);
@@ -101,7 +163,7 @@ export function buildInsightFacts({scope, data}) {
   }).filter(entry => entry.graded >= 2);
   per.sort((a, b) => a.average - b.average);
   if (per[0] && stats.average !== null && stats.average - per[0].average >= 8) add('c.lowest', `最低 ${assignmentLabel(per[0].assignment)}`, `最低一次是「${assignmentLabel(per[0].assignment)}」，平均 ${pct(per[0].average)}。`);
-  for (const [index, item] of knowledgeFacts(data, assignments).entries()) add(`k.${index}`, `${item.tag} ${pct(item.rate)}`, `知识标签「${item.tag}」班级得分率 ${pct(item.rate)}（${item.graded} 题次）。`);
+  for (const [index, item] of knowledgeFacts(data, assignments, studentIds).entries()) add(`k.${index}`, `${item.tag} ${pct(item.rate)}`, `知识标签「${item.tag}」班级得分率 ${pct(item.rate)}（${item.graded} 题次）。`);
   return {facts, data, assignments, rows, stats};
 }
 

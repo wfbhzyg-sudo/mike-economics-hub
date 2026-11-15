@@ -39,13 +39,28 @@ test('scope keeps only assignments for the class, unit and period', () => {
   assert.deepEqual(scopedAssignments(fixture, {classId: CLASS, period: 'all'}).map(item => item.id), ['early', 'a1', 'deleted', 'other']);
 });
 
-test('students are kept for the class or for work in scope only', () => {
+test('students are kept for the current class or its publish-time audience snapshot', () => {
   const outsider = {id: 'old', name: 'old', classIds: ['class-2']};
   const unrelated = {...submission('old', 'x', {score: 4}), assignmentId: 'other'};
   const fixture = data({students: [student('s1'), outsider], submissions: [unrelated]});
   assert.deepEqual(scopedStudents(fixture, {classId: CLASS, assignments: [assignment('a1')]}).map(item => item.id), ['s1']);
-  const withHistory = data({students: [student('s1'), outsider], submissions: [submission('old', 'x', {score: 4})]});
-  assert.deepEqual(scopedStudents(withHistory, {classId: CLASS, assignments: [assignment('a1')]}).map(item => item.id), ['s1', 'old']);
+  // A submission alone is not proof of class membership: no snapshot means no guess.
+  const withSubmission = data({students: [student('s1'), outsider], submissions: [submission('old', 'x', {score: 4})]});
+  assert.deepEqual(scopedStudents(withSubmission, {classId: CLASS, assignments: [assignment('a1')]}).map(item => item.id), ['s1']);
+  // Historical members stay through the audience class snapshot; another class on a
+  // shared assignment must not be pulled into this class.
+  const moved = {id: 'moved', name: 'moved', classIds: ['class-2']};
+  const other = {id: 'other', name: 'other', classIds: ['class-2']};
+  const shared = assignment('a1', {
+    classIds: [CLASS, 'class-2'],
+    audience: {confirmedAt: '2026-10-01', students: [
+      {id: 's1', classIds: [CLASS]},
+      {id: 'moved', classIds: [CLASS]},
+      {id: 'other', classIds: ['class-2']},
+    ]},
+  });
+  const sharedData = data({students: [student('s1'), moved, other], assignments: [shared]});
+  assert.deepEqual(scopedStudents(sharedData, {classId: CLASS, assignments: [shared]}).map(item => item.id), ['s1', 'moved']);
 });
 
 test('rows separate submitted, published, missing and neutrality without zero-filling', () => {
