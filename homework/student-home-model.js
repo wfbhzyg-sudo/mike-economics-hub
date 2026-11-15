@@ -3,6 +3,10 @@ import {studentAssignmentAction} from './assignment-navigation.js';
 
 const DAY = 86400000;
 
+function titleOf(assignment) {
+  return assignment?.title || '作业';
+}
+
 function rateOf(grade) {
   if (!grade || !(grade.maxPoints > 0) || !Number.isFinite(grade.total)) return null;
   return Math.round((grade.total / grade.maxPoints) * 1000) / 10;
@@ -104,16 +108,16 @@ export function learningReminders({next, corrections, recent, now = Date.now()})
       const days = Math.round((target - start) / DAY);
       const when = due < now ? '已过截止' : days <= 0 ? '今天截止'
         : days === 1 ? '明天截止' : `还有 ${days} 天截止`;
-      out.push(`《${next.assignment.title}》${when}，${next.progress.total
+      out.push(`《${titleOf(next.assignment)}》${when}，${next.progress.total
         ? `已保存 ${next.progress.answered}/${next.progress.total} 题。`
         : '尚未保存作答。'}`);
     } else if (next.state.key === 'todo') {
-      out.push(`《${next.assignment.title}》还没有提交。`);
+      out.push(`《${titleOf(next.assignment)}》还没有提交。`);
     }
   }
   if (recent.length >= 2 && recent[0].rate != null && recent[1].rate != null) {
     const delta = Math.round((recent[0].rate - recent[1].rate) * 10) / 10;
-    out.push(`最近一次《${recent[0].assignment.title}》得分率 ${recent[0].rate}%，`
+    out.push(`最近一次《${titleOf(recent[0].assignment)}》得分率 ${recent[0].rate}%，`
       + (delta === 0 ? '与上一次持平。' : `比上一次${delta > 0 ? '高' : '低'} ${Math.abs(delta)} 个百分点。`));
   }
   if (!out.length) {

@@ -48,7 +48,7 @@ function hero(summary, {h, link, date, now}) {
       <div class="sh-actions">${primary}${summary.corrections.open ? link('mistakes', `待订正 ${summary.corrections.open} 题`, 'secondary') : ''}</div>
     </div>
     <div class="sh-hero-side">
-      <a class="sh-stat" href="#grades"><span>最近成绩</span><strong>${summary.recent[0]?.rate != null ? summary.recent[0].rate + '%' : '—'}</strong><small>${summary.recent[0] ? h(summary.recent[0].assignment.title) : '还没有已发布成绩'}</small></a>
+      <a class="sh-stat" href="#grades"><span>最近成绩</span><strong>${summary.recent[0]?.rate != null ? summary.recent[0].rate + '%' : '—'}</strong><small>${summary.recent[0] ? h(summary.recent[0].assignment?.title || '最近一次作业') : '还没有已发布成绩'}</small></a>
       <a class="sh-stat" href="#mistakes"><span>待订正</span><strong>${summary.corrections.open}</strong><small>${summary.corrections.review ? `另有 ${summary.corrections.review} 题待复核` : '去错题集 ›'}</small></a>
     </div>
   </article>`;
