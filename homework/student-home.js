@@ -73,7 +73,7 @@ function reminders(summary, h) {
   </section>`;
 }
 
-function insightsMarkup(state, h) {
+export function insightsMarkup(state, h) {
   const insights = Array.isArray(state.learning?.insights) ? state.learning.insights.slice(0, 1) : [];
   if (!insights.length) return '';
   return insights.map(report => `<section class="sh-insights" aria-label="老师的学习建议">

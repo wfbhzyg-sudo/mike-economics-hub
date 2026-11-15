@@ -666,7 +666,8 @@ export async function createHomework({externalAuth} = {}) {
           const b = await body(req);
           const classId = boundedText(b.classId, 80, '班级');
           assert(classId, '请选择班级');
-          assert((await availableClasses()).some(c => c.id === classId), '无权访问该班级', 403);
+          const classKey = value => String(value || '').replace(/^bookself-class:/, '');
+          assert((await availableClasses()).some(c => classKey(c.id) === classKey(classId)), '无权访问该班级', 403);
           const scope = insightScope({classId, unit: boundedText(b.unit || '', 40, '单元'), period: b.period, studentId: b.studentId ? boundedText(b.studentId, 120, '学生') : null});
           const data = insightData({assignments: work.assignments, submissions: work.submissions, mistakes, students});
           const built = buildInsightFacts({scope, data});
@@ -727,6 +728,7 @@ export async function createHomework({externalAuth} = {}) {
           assert(report.teacherId === user.id, '无权发布这份报告', 403);
           const b = await body(req);
           const target = publishTarget(report, b);
+          assert(report.status !== 'revoked', '已撤回的报告不能重新发布，请重新生成报告', 409);
           if (report.status === 'published') return (json(res, {report, reused: true}), true);
           const data = insightData({assignments: work.assignments, submissions: work.submissions, mistakes, students});
           const current = insightVersion({scope: report.scope, data});

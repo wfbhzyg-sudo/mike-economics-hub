@@ -8,11 +8,14 @@ const OBS_MAX = 3;
 const STEP_MAX = 3;
 const TEXT_MAX = 120;
 
-const clean = (value, max = TEXT_MAX) => String(value ?? '')
-  .replace(/<[^>]*>/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .slice(0, max);
+const clean = (value, max = TEXT_MAX) => {
+  const text = String(value ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, Math.max(1, max - 1));
+  const space = cut.lastIndexOf(' ');
+  const base = space > max * 0.6 ? cut.slice(0, space) : cut;
+  return base.replace(/[\s,;:.!?，；：。！？-]+$/, '') + '…';
+};
 
 const pct = value => value === null || value === undefined ? '暂无' : formatPercent(value);
 
@@ -35,6 +38,12 @@ const FACTS_RULES_VERSION = 2;
 const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
 
 export function insightVersion({scope, data}) {
+  const scopeKey = {
+    classId: scope.classId || '',
+    unit: scope.unit || '',
+    period: scope.period || '4w',
+    studentId: scope.studentId || null,
+  };
   const assignments = scopedAssignments(data, scope);
   const ids = new Set(assignments.map(a => a.id));
   const studentInScope = submission => !scope.studentId || submission.studentId === scope.studentId;
@@ -89,7 +98,7 @@ export function insightVersion({scope, data}) {
     })), m => `${m.assignmentId}:${m.studentId}:${m.questionId}`);
   return createHash('sha256').update(JSON.stringify({
     rulesVersion: FACTS_RULES_VERSION,
-    scope,
+    scope: scopeKey,
     assignments: rows,
     submissions,
     mistakes,

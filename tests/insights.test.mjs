@@ -43,6 +43,9 @@ test('personal facts include published count and version is stable', () => {
   assert.match(texts, /知识标签「2.1 供给」/);
   const first = insightVersion({scope, data});
   assert.equal(first, insightVersion({scope, data}));
+  // jsonb does not preserve object key order; the report version must.
+  const reordered = {studentId: scope.studentId, period: scope.period, classId: scope.classId, unit: scope.unit};
+  assert.equal(first, insightVersion({scope: reordered, data}));
   const changed = fixture();
   changed.submissions[0].submittedAt = day(-3);
   assert.notEqual(first, insightVersion({scope, data: changed}));
