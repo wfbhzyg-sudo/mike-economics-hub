@@ -7,6 +7,17 @@ import {mountPDFReader} from "./pdf-reader.js";
 import {createWorkspaceUI} from "./workspace-ui.js";
 import {assignmentRecords,assignmentState,questionTotals} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
+// Keep the floating assistant above the on-screen keyboard on student pages.
+if (window.visualViewport) {
+  const viewport = window.visualViewport;
+  const syncKeyboardInset = () => {
+    const inset = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+    document.documentElement.style.setProperty("--mike-keyboard-inset", inset > 80 ? `${inset}px` : "0px");
+  };
+  viewport.addEventListener("resize", syncKeyboardInset);
+  viewport.addEventListener("scroll", syncKeyboardInset);
+  syncKeyboardInset();
+}
 const embedded = document.documentElement.dataset.teacherWorkspace === "true";
 let embeddedRoute="assignments", embeddedContext={},embeddedGeneration=0;
 const $ = (q, root = document) => root.querySelector(q),

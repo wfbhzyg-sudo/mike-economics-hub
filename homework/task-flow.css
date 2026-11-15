@@ -118,3 +118,21 @@ body[data-mcq-active=true] .mike-launcher span{display:none}
  body:has(> #main)[data-work-task=false]:not([data-work-route=library]) .mike-launcher img{width:36px;height:36px}
  body:has(> #main)[data-work-task=false]:not([data-work-route=library]) .mike-launcher span{display:none}
 }
+
+/* Student overview pages: one assistant slot beside the four-tab dock. */
+@media (max-width: 760px) {
+  body:has(> #main) #dock { padding-right: 56px; }
+  body:has(> #main) .mike-launcher {
+    top: auto !important; left: auto !important;
+    right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom) + var(--mike-keyboard-inset, 0px)) !important;
+    width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 4px;
+  }
+  body:has(> #main) .mike-launcher img { width: 36px; height: 36px; }
+  body:has(> #main) .mike-launcher span { display: none; }
+  html[data-homework-route="library"]:not(.library-focused) .mike-launcher {
+    top: auto !important;
+    bottom: calc(8px + env(safe-area-inset-bottom) + var(--mike-keyboard-inset, 0px)) !important;
+    right: 8px !important; left: auto !important;
+  }
+}
