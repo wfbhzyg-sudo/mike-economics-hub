@@ -51,3 +51,21 @@
 @media(max-width:700px){.correction-workspace>.paper-head{padding-top:0}.correction-reference-head{gap:3px}.correction-reference-head strong,.correction-reference-head button{font-size:12px}.correction-reference-head button{padding-inline:6px}}
 
 .correction-answer-text{margin:0;max-height:45dvh;overflow:auto;user-select:text}
+
+/* Mobile: keep the correction save action reachable above the student dock */
+@media (max-width: 899px) {
+  .correction-save-actions {
+    position: sticky;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    z-index: 6;
+    margin: 4px -12px 0;
+    padding: 10px 12px calc(8px + env(safe-area-inset-bottom));
+    background: #f9faf6;
+    border-top: 1px solid #d6dfd2;
+    box-shadow: 0 -10px 18px rgba(7, 23, 45, .10);
+  }
+  .correction-save-actions > * { flex: 1 1 100%; min-height: 48px; }
+  .gj-inline-correction .correction-save-actions,
+  .mistake-inline .correction-save-actions { background: #edf1ec; }
+  .correction-workspace { padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
+}

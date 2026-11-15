@@ -1,4 +1,4 @@
-import {scoreBadge,scoreLegend} from './score-bands.js';
+import {scoreBand,scoreBadge,scoreLegend} from './score-bands.js';
 import {viewMemory} from './view-memory.js';
 import {highlightText} from './search-text.js';
 import {cellsFor,cellSummary,progressChange,timeRange,inRange,visibleAssignments} from './grade-journey-model.js';
@@ -23,7 +23,15 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
   $('.gj-summary').innerHTML=`<span>平均 ${scoreBadge(summary.average)}</span><span>已出分 <strong>${summary.count} / ${visible.length}</strong> 次</span>${change===null?'':`<span>近3次较前3次 <strong>${change>0?'+':''}${change}</strong> 个百分点</span>`}`;
   $('.gj-range-hint').textContent=range.from||range.to?`${range.from||'最早'} 至 ${range.to||'最新'}`:'';$('.gj-filter-state').textContent=term||filter.period!=='all'?'已筛选':'';const layout=$('.gj-focus-layout');layout.dataset.density=!visible.length?'empty':visible.length===1?'single':visible.length<=3?'sparse':'full';layout.style.setProperty('--gj-sparse-width',(visible.length*180+48)+'px');layout.dataset.journeyView=mode;layout.dataset.count=visible.length;
   const node=c=>`<button type="button" class="gj-node" data-assignment="${h(c.assignment.id)}" aria-pressed="false" title="${h(c.assignment.title)}"><strong>${highlightText(c.assignment.title||'历史作业',filter.query)}</strong>${statusMarkup(c,h)}${c.pendingUpdate?'<small>新版本待更新</small>':c.late?'<small>迟交</small>':''}</button>`;
-  $('.gj-fish').innerHTML=(visible.length>1?visible:[]).map(c=>`<div class="gj-branch">${node(c)}<time>${date(c.assignment.dueAt||c.assignment.createdAt).split(' ')[0]}</time><span class="gj-dot" aria-hidden="true"></span></div>`).join('');
+  let previousMonth = '';
+  $('.gj-fish').innerHTML=(visible.length>1?visible:[]).map(c=>{
+    const when = new Date(c.assignment.dueAt || c.assignment.createdAt || Date.now());
+    const month = `${when.getMonth() + 1} 月`;
+    const fresh = month !== previousMonth;
+    previousMonth = month;
+    const level = c.rate === null ? '' : scoreBand(c.rate).level;
+    return `<div class="gj-branch"${level ? ` data-band="${level}"` : ''}>${fresh ? `<span class="gj-month">${month}</span>` : ''}${node(c)}<time>${date(c.assignment.dueAt||c.assignment.createdAt).split(' ')[0]}</time><span class="gj-dot" aria-hidden="true"></span></div>`;
+  }).join('');
   $('.gj-list').innerHTML=(visible.length>1?visible:[]).map(c=>`<button type="button" class="gj-list-row" data-assignment="${h(c.assignment.id)}"><span><strong>${highlightText(c.assignment.title||'历史作业',filter.query)}</strong><small>${date(c.assignment.dueAt||c.assignment.createdAt)}</small></span>${statusMarkup(c,h)}</button>`).join('');
   $('#journey-first').disabled=$('#journey-last').disabled=!visible.length;selection();setMode();detail();boundaries();
  }

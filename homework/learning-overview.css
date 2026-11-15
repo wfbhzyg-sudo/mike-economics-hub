@@ -1484,3 +1484,20 @@ body[data-section="analytics"] #workspace {
 @media (max-width: 767px) {
   #lo-ai { display: none; }
 }
+
+/* ---- report history ---- */
+.lo-hist-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lo-hist-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--lo-line); border-radius: 10px; background: var(--lo-panel); }
+.lo-hist-main { min-width: 0; }
+.lo-hist-main strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.lo-hist-meta { color: var(--lo-muted); font-size: 12px; }
+.lo-hist-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.lo-hist-actions .lo-btn { min-height: 36px; padding: 0 12px; }
+.lo-btn.lo-danger { color: #8a3730; border-color: #c9a8a3; }
+.lo-btn.lo-danger:hover { background: #f8e7e4; }
+.lo-hist-sheet .lo-ai-body { min-height: 120px; }
+@media (max-width: 600px) {
+  .lo-hist-row { grid-template-columns: minmax(0, 1fr) auto; padding: 10px; }
+  .lo-hist-actions { grid-column: 1 / -1; }
+  .lo-hist-actions .lo-btn { flex: 1 1 0; min-height: 44px; }
+}

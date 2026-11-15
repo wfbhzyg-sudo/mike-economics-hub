@@ -685,11 +685,40 @@ export async function createHomework({externalAuth} = {}) {
           await db.put('insight-report', report);
           return (json(res, {report}), true);
         }
+        if (method === 'GET' && !route[2]) {
+          const classes = await availableClasses();
+          const classNames = new Map(classes.map(c => [c.id, c.name || c.title || '']));
+          const studentNames = new Map(students.map(u => [u.id, u.name]));
+          const reports = (await db.find('insight-report', {teacherId: user.id}))
+            .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+            .slice(0, 50)
+            .map(report => ({
+              id: report.id, scope: report.scope, dataVersion: report.dataVersion, source: report.source,
+              status: report.status, stats: report.stats, createdAt: report.createdAt,
+              publishedAt: report.publishedAt || null, revokedAt: report.revokedAt || null,
+              studentName: report.studentId ? (studentNames.get(report.studentId) || report.scope?.studentName || '') : '',
+              className: classNames.get(report.scope?.classId) || report.scope?.classId || '',
+              title: report.observations?.[0]?.text || '',
+            }));
+          return (json(res, {reports}), true);
+        }
         if (route[2] && !route[3] && method === 'GET') {
           const report = await db.get(route[2]);
           assert(report?.kind === 'insight-report', '报告不存在', 404);
-          assert(canViewReport(report, user), '无权查看这份报告', 403);
+          assert(report.teacherId === user.id || canViewReport(report, user), '无权查看这份报告', 403);
           return (json(res, {report}), true);
+        }
+        if (route[2] && route[3] === 'revoke' && method === 'POST') {
+          const report = await db.get(route[2]);
+          assert(report?.kind === 'insight-report', '报告不存在', 404);
+          assert(report.teacherId === user.id, '无权撤回这份报告', 403);
+          assert(report.status === 'published', '只有已发布的报告可以撤回', 409);
+          const b = await body(req);
+          assert(b.confirm === true, '请确认撤回这份报告', 422);
+          const revoked = {...report, status: 'revoked', revokedAt: now()};
+          await db.put('insight-report', revoked);
+          await db.audit(user.id, 'insight_report_revoked', report.id);
+          return (json(res, {report: revoked}), true);
         }
         if (route[2] && route[3] === 'publish' && method === 'POST') {
           const report = await db.get(route[2]);

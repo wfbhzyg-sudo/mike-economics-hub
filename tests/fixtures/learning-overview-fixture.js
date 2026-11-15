@@ -43,12 +43,28 @@ const aiDraft = {
   limitations: '基于本范围已发布成绩；未交与待复核不计入平均。',
   stats: {students: 50, assignments: 8, average: 67},
 };
+const history = [
+  {...aiDraft, id: 'hist-class', status: 'published', publishedAt: '2026-11-15T10:20:00Z', className: '微观 1 班', studentName: ''},
+  {...aiDraft, id: 'hist-person', status: 'published', publishedAt: '2026-11-15T09:05:00Z', scope: {classId: 'c1', unit: '', period: '4w', studentId: 's50'}, studentName: '白敬亭'},
+  {...aiDraft, id: 'hist-draft', status: 'draft', createdAt: '2026-11-14T15:40:00Z', stats: {students: 50, assignments: 8, average: 67}},
+];
 const ai = async (path, options = {}) => {
+  if (path === 'analytics/reports' && (!options.method || options.method === 'GET')) return {reports: history};
   if (path === 'analytics/reports') {
     const scope = {classId: 'c1', unit: '', period: '4w', studentId: null, ...(typeof options.body === 'string' ? JSON.parse(options.body || '{}') : options.body || {})};
     return {report: {...aiDraft, scope, stats: {...aiDraft.stats, students: scope.studentId ? 1 : 50}}};
   }
+  if (/^analytics\/reports\/[^/]+$/.test(path)) {
+    const id = decodeURIComponent(path.split('/').pop());
+    return {report: history.find(item => item.id === id) || aiDraft};
+  }
   if (/^analytics\/reports\/.+\/publish$/.test(path)) return {report: {...aiDraft, scope: {studentId: null}, status: 'published'}};
+  if (/^analytics\/reports\/.+\/revoke$/.test(path)) {
+    const id = decodeURIComponent(path.split('/')[2]);
+    const report = history.find(item => item.id === id);
+    if (report) { report.status = 'revoked'; report.revokedAt = '2026-11-15T11:00:00Z'; }
+    return {report: report || aiDraft};
+  }
   throw new Error('unexpected AI path: ' + path);
 };
 

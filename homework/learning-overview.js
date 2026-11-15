@@ -83,7 +83,7 @@ export function mountLearningOverview(ctx, initialData) {
       <summary class="lo-btn lo-icon" title="更多操作" aria-label="更多操作"><span aria-hidden="true">⋯</span></summary>
       <div class="lo-menu" role="menu">
         <button type="button" role="menuitem" data-action="export">导出当前范围 CSV</button>
-        ${ai ? '<button type="button" role="menuitem" data-action="ai-report">生成学情分析</button>' : ''}
+        ${ai ? '<button type="button" role="menuitem" data-action="ai-report">生成学情分析</button><button type="button" role="menuitem" data-action="report-history">报告历史</button>' : ''}
         <button type="button" role="menuitem" data-action="class-report">班级学情摘要</button>
         <button type="button" role="menuitem" data-action="legend">五色分档说明</button>
         <button type="button" role="menuitem" data-action="clear">清除筛选与排序</button>
@@ -151,6 +151,10 @@ export function mountLearningOverview(ctx, initialData) {
     <div class="lo-sheet-bar"><strong id="lo-ai-title">学情分析草稿</strong><button type="button" class="lo-btn" data-close-ai>关闭</button></div>
     <div class="lo-ai-body" id="lo-ai-body"></div>
   </dialog>
+  <dialog class="lo-sheet lo-hist-sheet" id="lo-hist-sheet" aria-label="报告历史">
+    <div class="lo-sheet-bar"><strong>报告历史</strong><button type="button" class="lo-btn" data-close-history>关闭</button></div>
+    <div class="lo-ai-body" id="lo-hist-body"></div>
+  </dialog>
 </section>`;
 
   const root = document.getElementById('lo-page');
@@ -169,6 +173,8 @@ export function mountLearningOverview(ctx, initialData) {
   const reportSheet = $('#lo-report-sheet');
   const aiSheet = $('#lo-ai-sheet');
   const aiBody = $('#lo-ai-body');
+  const histSheet = $('#lo-hist-sheet');
+  const histBody = $('#lo-hist-body');
   const diagLayout = $('#lo-diag-layout');
   const diagList = $('#lo-diag-list');
   const diagHost = $('#lo-diag');
@@ -711,7 +717,65 @@ export function mountLearningOverview(ctx, initialData) {
     }
   }
 
-  function renderDetail() {
+  function historyRowMarkup(report) {
+  const status = report.status === 'published' ? '已发布' : report.status === 'revoked' ? '已撤回' : '草稿';
+  const kind = report.scope?.studentId ? '个人建议' : '班级分析';
+  const localClass = (state.meta?.classes || []).find(item => item.id === report.scope?.classId);
+  const who = report.scope?.studentId ? (report.studentName || '学生') : (report.className || localClass?.name || report.scope?.classId || '班级');
+  const when = report.publishedAt || report.revokedAt || report.createdAt || '';
+  const dateText = when ? new Date(when).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
+  const actions = report.status === 'published'
+    ? `<button type="button" class="lo-btn lo-small" data-hist-view="${h(report.id)}">查看</button><button type="button" class="lo-btn lo-small lo-danger" data-hist-revoke="${h(report.id)}">撤回</button>`
+    : `<button type="button" class="lo-btn lo-small" data-hist-view="${h(report.id)}">查看</button>`;
+  return `<li class="lo-hist-row"><div class="lo-hist-main"><strong>${kind} · ${h(who)}</strong><span class="lo-hist-meta">${h(dateText)} · ${report.stats?.students ?? '?'} 名学生 · ${report.stats?.assignments ?? '?'} 次作业</span></div><span class="lo-chip" data-tone="${report.status === 'published' ? 'good' : report.status === 'revoked' ? 'muted' : 'warn'}">${status}</span><div class="lo-hist-actions">${actions}</div></li>`;
+}
+
+async function openHistory() {
+  if (!ai) return;
+  histSheet.showModal();
+  histBody.innerHTML = '<div class="lo-ai-loading"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在读取报告…</p></div>';
+  try {
+    const {reports} = await ai('analytics/reports');
+    renderHistory(reports || []);
+  } catch (error) {
+    histBody.innerHTML = `<div class="lo-ai-error"><h3>读取报告失败</h3><p>${h(error.message || '请稍后重试。')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-close-history>关闭</button><button type="button" class="lo-btn lo-primary" data-hist-retry>重试</button></div></div>`;
+  }
+}
+
+function renderHistory(reports) {
+  if (!reports.length) {
+    histBody.innerHTML = `<div class="lo-ai-done"><h3>还没有报告</h3><p>在「生成学情分析」或「生成学习建议」里生成草稿，确认发布后会出现在这里。</p></div>`;
+    return;
+  }
+  histBody.innerHTML = `<ul class="lo-hist-list">${reports.map(historyRowMarkup).join('')}</ul><p class="lo-note">已撤回的个人建议会立即从学生「我的学习」消失；班级分析只作为教师档案。</p>`;
+}
+
+async function openHistoryReport(reportId) {
+  histBody.innerHTML = '<div class="lo-ai-loading"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在读取报告…</p></div>';
+  try {
+    const {report} = await ai('analytics/reports/' + encodeURIComponent(reportId));
+    const published = report.publishedAt ? new Date(report.publishedAt).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
+    histBody.innerHTML = `<div class="lo-ai-report"><p class="lo-ai-meta"><span class="lo-chip">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${report.scope?.studentId ? '个人学习建议' : '班级学情分析'}</span>${published ? `<span>${h(published)} 发布</span>` : ''}</p><h3>学习观察</h3>${observationsMarkup(report.observations || [])}${(report.nextSteps || []).length ? `<h3>下一步</h3><ol class="lo-ai-steps">${report.nextSteps.map(item => `<li>${h(item.text)}</li>`).join('')}</ol>` : ''}<p class="lo-note">${h(report.limitations || '')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
+  } catch (error) {
+    histBody.innerHTML = `<div class="lo-ai-error"><h3>读取失败</h3><p>${h(error.message || '请稍后重试。')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
+  }
+}
+
+function confirmHistoryRevoke(reportId) {
+  histBody.innerHTML = `<div class="lo-ai-confirm"><h3>撤回这份报告？</h3><p>撤回后学生不再看到这份建议；历史记录会保留为「已撤回」，可以查看但不能恢复。</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>取消</button><button type="button" class="lo-btn lo-danger" data-hist-confirm="${h(reportId)}">确认撤回</button></div></div>`;
+}
+
+async function revokeHistoryReport(reportId) {
+  try {
+    await ai('analytics/reports/' + encodeURIComponent(reportId) + '/revoke', {method: 'POST', body: {confirm: true}});
+    toast('报告已撤回');
+    await openHistory();
+  } catch (error) {
+    toast(error.message || '撤回失败');
+  }
+}
+
+function renderDetail() {
     if (tab === 'diagnosis') {
       const markup = diagDetailMarkup();
       detailHost.innerHTML = markup;
@@ -1056,6 +1120,13 @@ export function mountLearningOverview(ctx, initialData) {
     if (target.closest('[data-ai-publish]')) { renderAiConfirm(); return; }
     if (target.closest('[data-ai-back]')) { if (aiReport) renderAiDraft(aiReport); return; }
     if (target.closest('[data-ai-confirm]')) { void publishAiReport(); return; }
+    if (target.closest('[data-action="report-history"]')) { void openHistory(); return; }
+    if (target.closest('[data-close-history]')) { histSheet.close(); return; }
+    if (target.closest('[data-hist-retry]')) { void openHistory(); return; }
+    if (target.closest('[data-hist-view]')) { void openHistoryReport(target.closest('[data-hist-view]').dataset.histView); return; }
+    if (target.closest('[data-hist-revoke]')) { confirmHistoryRevoke(target.closest('[data-hist-revoke]').dataset.histRevoke); return; }
+    if (target.closest('[data-hist-confirm]')) { void revokeHistoryReport(target.closest('[data-hist-confirm]').dataset.histConfirm); return; }
+    if (target.closest('[data-hist-back]')) { void openHistory(); return; }
     if (target.closest('[data-close-ai]')) { aiSheet.close(); return; }
     if (target.closest('[data-close-report]')) { reportSheet.close(); return; }
     if (target.closest('#lo-filter')) { openFilterSheet(); return; }
