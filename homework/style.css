@@ -1873,3 +1873,8 @@ main:focus,main:focus-visible {outline:none;}
   .assignment-card { max-width:none; min-height:0; }
   .assignment-card footer .primary, .assignment-card footer .secondary { min-height:44px; }
 }
+
+/* pending cards fade from calm green to warm red as the deadline approaches */
+.assignment-card[data-urgency] { background:var(--card-tint); border-color:var(--card-tint-border); }
+.assignment-card[data-urgency]:hover { background:var(--card-tint-hover); }
+.assignment-card[data-urgency] .card-meta { color:#5c665f; }

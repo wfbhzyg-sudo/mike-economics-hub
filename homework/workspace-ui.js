@@ -150,6 +150,21 @@ export function createWorkspaceUI(ctx) {
     const item = (label, value) => `<div><span>${label}</span><strong>${value}</strong></div>`;
     return `<div class="sh-summary" role="group" aria-label="本班作业概况">${item("待完成", todo)}${item("已提交", submitted)}${item("已评分", graded)}${item("本周截止", week)}</div>`;
   }
+  const DAY_MS = 86400000;
+  function cardTint(a, now = Date.now()) {
+    const due = Date.parse(a.dueAt || "");
+    if (!Number.isFinite(due) || due <= now) return null;
+    const days = Math.min(14, (due - now) / DAY_MS);
+    const t = 1 - days / 14;
+    const hue = Math.round(118 - 112 * t);
+    const sat = Math.round(31 + 13 * t);
+    const light = Math.round(95 - 4 * t);
+    return {
+      base: `hsl(${hue} ${sat}% ${light}%)`,
+      border: `hsl(${hue} ${sat + 6}% ${light - 7}%)`,
+      hover: `hsl(${hue} ${sat + 6}% ${light - 2}%)`,
+    };
+  }
   function studentCard(a) {
     const info = assignmentState(a, state.submissions),
       action = studentAssignmentAction(a, state.submissions),
@@ -175,7 +190,11 @@ export function createWorkspaceUI(ctx) {
         : `<p class="card-progress">${action.opensLater ? "尚未开放" : "尚未开始"}</p>`;
     }
     const title = action.target ? link(action.target, highlightText(a.title, state.assignmentSearch), "card-title") : `<span class="card-title">${highlightText(a.title, state.assignmentSearch)}</span>`;
-    return `<article class="assignment-card" data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${a.course ? `<span>${h(a.course)}</span>` : ""}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : `<button class="secondary" disabled>${h(action.action)}</button>`}</footer></article>`;
+    const tint = info.key === "todo" ? cardTint(a) : null,
+      tintAttrs = tint
+        ? ` data-urgency="1" style="--card-tint:${tint.base};--card-tint-border:${tint.border};--card-tint-hover:${tint.hover}"`
+        : "";
+    return `<article class="assignment-card"${tintAttrs} data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${a.course ? `<span>${h(a.course)}</span>` : ""}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : `<button class="secondary" disabled>${h(action.action)}</button>`}</footer></article>`;
   }
   function dashboard() {
     const t = teacher(),
