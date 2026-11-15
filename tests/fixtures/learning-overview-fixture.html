@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学情总览 · 浏览器夹具</title>
+<link rel="stylesheet" href="/homework/ui-tokens.css">
+<link rel="stylesheet" href="/teacher/homework.css">
+<link rel="stylesheet" href="/teacher/style.css">
+<link rel="stylesheet" href="/teacher/workspace.css">
+<link rel="stylesheet" href="/homework/grade-journey.css">
+<link rel="stylesheet" href="/homework/learning-overview.css">
+<link rel="stylesheet" href="/companion.css">
+<style>
+  body.fixture { background: #f1f2ee; }
+  .fixture-note { position: fixed; right: 8px; bottom: 8px; z-index: 90; padding: 3px 8px; border-radius: 4px; background: #193449; color: #fff; font: 11px/1.4 system-ui; opacity: .72; }
+</style>
+</head>
+<body class="fixture" data-section="analytics">
+<a class="tw-skip" href="#teacher-content">跳到主要内容</a>
+<header class="tw-brand"><a href="/"><img src="/assets/mike-hub-mark.svg" width="36" height="36" alt="">Mike 的经济一页通</a></header>
+<div class="tw-shell">
+  <aside class="tw-sidebar" aria-label="教师导航">
+    <nav id="teacher-navigation" aria-label="教师工作台"></nav>
+    <div class="tw-sidebar-end"><button type="button" data-open-more>更多功能</button><a href="/">返回一页通</a></div>
+  </aside>
+  <main class="tw-page" id="teacher-content" tabindex="-1">
+    <header class="tw-page-heading"><div><h1 id="page-title">学情总览</h1><p id="page-description">看全班进度、成绩与需要关注的学生。</p></div><a class="tw-button tw-primary" href="#work/new" id="publish-shortcut">发布作业</a></header>
+    <div class="tw-top-controls">
+      <div id="context-controls" hidden></div>
+      <p id="workspace-status"></p>
+      <div id="workspace" tabindex="-1" aria-busy="true"><p class="tw-loading">正在读取教学记录…</p></div>
+    </div>
+    <section class="homework-surface" hidden></section>
+  </main>
+</div>
+<nav id="mobile-navigation" class="tw-mobile-nav" aria-label="教师功能"></nav>
+<div id="tw-toast" role="status" aria-live="polite"></div>
+<dialog id="more-menu" aria-label="更多教师功能"></dialog>
+<div id="mike-companion"><button class="mike-launcher" type="button" aria-label="打开 Mike 经济学伙伴"><img src="/assets/mike-pixel.png" alt="" width="56" height="56"><span>问问 Mike</span></button></div>
+<p class="fixture-note" aria-hidden="true">夹具：50 名学生 × 9 次作业</p>
+<script type="module" src="./learning-overview-fixture.js"></script>
+</body>
+</html>
