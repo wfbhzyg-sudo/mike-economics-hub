@@ -241,8 +241,15 @@ function showLogin(register = false) {
   );
 }
 async function refresh(route = 'assignments', version = state.routeVersion) {
-  const data = await loadWorkspaceData(api, route, embedded ? embeddedContext.classId : '');
-  if (version === state.routeVersion) Object.assign(state, data);
+  const studentHome = state.user?.role !== 'teacher' && route === 'assignments';
+  const [data, learning] = await Promise.all([
+    loadWorkspaceData(api, route, embedded ? embeddedContext.classId : ''),
+    studentHome ? api('learning').catch(() => null) : Promise.resolve(null),
+  ]);
+  if (version === state.routeVersion) {
+    Object.assign(state, data);
+    if (studentHome) state.learning = learning;
+  }
 }
 function chooseAssignmentMode(){
  main.innerHTML=`<section class="paper assignment-start">${head('','新建作业','选择学生的作答方式',link('assignments','返回作业列表'))}<div class="assignment-modes">${link('mcq-import','<span class="mode-number">01</span><strong>在线作答</strong><span>上传 PDF，裁切原题与选项，核对答案后布置。</span><b>选择题 · 可含简答题 →</b>','assignment-mode')}${link('new/upload','<span class="mode-number">02</span><strong>上传作答</strong><span>上传学生题纸与教师答案，学生拍照、上传 PDF 或填写文字。</span><b>纸笔作答 · AI 给分后复核 →</b>','assignment-mode')}</div><p class="hint">已有切题任务和核对草稿，可在「在线作答」内继续。</p></section>`;

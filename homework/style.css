@@ -1771,3 +1771,61 @@ main:focus,main:focus-visible {outline:none;}
  .reader-is-fullscreen .reader-body {min-height:0;}
 }
 @media(min-width:641px){.reader-more:not([open])>summary {display:block;}}
+
+/* Student home: one place for the next deadline, saved progress and reminders. */
+.sh-home { margin: 0 0 18px; }
+.sh-hero { display:grid; grid-template-columns:minmax(0,1fr) 264px; gap:18px; padding:18px 20px 16px; background:#fff; border:1px solid var(--line); border-radius:12px; }
+.sh-hero-empty { align-items:center; }
+.sh-hero-main { min-width:0; }
+.sh-eyebrow { margin:0 0 4px; color:var(--muted); font-size:12px; letter-spacing:.04em; }
+.sh-hero h2 { margin:0; font-family:var(--serif); font-size:24px; line-height:1.25; text-wrap:balance; }
+.sh-meta { margin:4px 0 0; color:var(--muted); font-size:13px; }
+.sh-meter { margin:12px 0 6px; height:8px; border-radius:999px; background:#e7e2d6; overflow:hidden; }
+.sh-meter span { display:block; height:100%; min-width:2px; border-radius:999px; background:#5c7a63; transition:width .16s ease; }
+.sh-saved { margin:0; color:var(--muted); font-size:13px; }
+.sh-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+.sh-actions .primary, .sh-actions .secondary { min-height:42px; display:inline-flex; align-items:center; justify-content:center; padding:0 16px; }
+.sh-action-disabled { display:inline-flex; align-items:center; min-height:42px; padding:0 16px; border:1px dashed var(--line); border-radius:8px; color:var(--muted); }
+.sh-hero-side { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.sh-stat { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#faf8f2; color:inherit; text-decoration:none; min-height:88px; }
+.sh-stat:hover { background:#f4efe2; }
+.sh-stat span { color:var(--muted); font-size:12px; }
+.sh-stat strong { font-size:24px; line-height:1.1; font-variant-numeric:tabular-nums; }
+.sh-stat small { margin-top:auto; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.sh-home-lower { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px; margin-top:14px; }
+.sh-trail, .sh-reminders { padding:14px 16px; background:#fff; border:1px solid var(--line); border-radius:12px; }
+.sh-trail header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.sh-trail h2, .sh-reminders h2 { margin:0 0 8px; font-size:15px; }
+.sh-trail header h2 { margin:0; }
+.sh-trail-count { color:var(--muted); font-size:12px; }
+.sh-trail ol { display:flex; gap:8px; margin:10px 0 0; padding:0; list-style:none; overflow-x:auto; scrollbar-width:thin; }
+.sh-trail li { display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; column-gap:7px; align-items:center; min-width:112px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#faf8f2; }
+.sh-dot { width:8px; height:8px; border-radius:50%; background:#b8b3a6; grid-row:1; }
+.sh-trail li[data-state="done"] .sh-dot { background:#5c7a63; }
+.sh-trail li[data-state="processing"] .sh-dot { background:#b5893f; }
+.sh-trail li[data-state="todo"] .sh-dot { background:#37597a; }
+.sh-trail-name { font-size:12px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sh-trail-meta { grid-column:2; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.sh-reminders ul { margin:0; padding-left:18px; display:grid; gap:6px; }
+.sh-reminders li { font-size:13px; line-height:1.55; }
+@media (max-width: 900px) {
+  .sh-hero { grid-template-columns:1fr; }
+  .sh-home-lower { grid-template-columns:1fr; }
+}
+@media (max-width: 720px) {
+  .sh-hero { padding:14px 14px 12px; gap:14px; }
+  .sh-hero h2 { font-size:21px; }
+  .sh-actions { display:grid; grid-template-columns:1fr; }
+  .sh-actions .primary, .sh-actions .secondary, .sh-action-disabled { width:100%; min-height:46px; }
+  .sh-stat { min-height:74px; padding:9px 10px; }
+  .sh-stat strong { font-size:21px; }
+  .sh-home-lower { margin-top:12px; }
+  .sh-trail li { min-width:104px; padding:7px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-meter span { transition:none; }
+}
+.sh-hero-side { align-items:start; }
+.sh-hero-side .sh-stat { align-self:start; }
+.sh-home-lower-single { grid-template-columns:1fr; }
+.sh-home-lower-single .sh-reminders { max-width:none; }

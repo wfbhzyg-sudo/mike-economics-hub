@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>学生首页 · 浏览器夹具</title>
+  <link rel="stylesheet" href="/homework/ui-tokens.css">
+  <link rel="stylesheet" href="/homework/style.css">
+  <link rel="stylesheet" href="/homework/workspace.css">
+</head>
+<body class="homework-body" data-work-route="assignments">
+  <header class="lab-banner">学生端「我的学习」· 浏览器夹具 · 示例数据</header>
+  <main id="homework-main">
+    <section class="paper workspace-home" id="shell">
+      <header class="paper-head"><div><h1>我的学习</h1><p class="hint">微观 1 班</p></div></header>
+      <div id="student-home"></div>
+    </section>
+  </main>
+  <nav id="dock" class="dock" aria-label="作业导航">
+    <a href="#assignments" aria-current="page">作业</a>
+    <a href="#grades">成绩</a>
+    <a href="#mistakes">错题</a>
+    <a href="#library">课程</a>
+  </nav>
+  <script type="module">
+    import {studentHomeMarkup} from '/homework/student-home.js';
+
+    const h = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const link = (route, label, kind = 'secondary') => `<a class="${kind}" href="#${route}">${label}</a>`;
+    const date = value => value ? new Date(value).toLocaleDateString('zh-CN', {month:'numeric', day:'numeric'}) : '';
+
+    const now = Date.now();
+    const day = 86400000;
+    const iso = offset => new Date(now + offset * day).toISOString();
+    const assignments = [
+      {id:'a1', title:'Unit 2 MCQ', libraryUnit:'Unit 2', course:'微观', format:'mcq', published:true,
+        dueAt:iso(1), createdAt:iso(-6), attemptProgress:2,
+        questions:[{id:'q1',maxPoints:1},{id:'q2',maxPoints:1},{id:'q3',maxPoints:1}], audience:{required:true,students:[]}},
+      {id:'a2', title:'Unit 1 MCQ', libraryUnit:'Unit 1', course:'微观', format:'mcq', published:true,
+        dueAt:iso(-4), createdAt:iso(-12), questions:[{id:'q1'},{id:'q2'},{id:'q3'}], audience:{required:true,students:[]}},
+      {id:'a3', title:'Quiz 01', libraryUnit:'Unit 1', course:'微观', format:'mcq', published:true,
+        dueAt:iso(-2), createdAt:iso(-9), questions:[{id:'q1'},{id:'q2'},{id:'q3'},{id:'q4'},{id:'q5'}], audience:{required:true,students:[]}},
+      {id:'a4', title:'FRQ 01', libraryUnit:'Unit 2', course:'微观', format:'upload', published:true,
+        dueAt:iso(5), createdAt:iso(-1), questions:[], audience:{required:true,students:[]}},
+    ];
+    const submissions = [
+      {id:'d1', assignmentId:'a1', studentId:'me', status:'draft', updatedAt:iso(-0.2), choices:{q1:'A', q2:'B'}, text:'',
+        publishedGrade:null},
+      {id:'s2', assignmentId:'a2', studentId:'me', status:'published', submittedAt:iso(-4),
+        publishedGrade:{total:2, maxPoints:3, questions:[
+          {id:'q1',score:1,maxPoints:1,type:'choice'},{id:'q2',score:1,maxPoints:1,type:'choice'},{id:'q3',score:0,maxPoints:1,type:'short'}]}},
+      {id:'s3', assignmentId:'a3', studentId:'me', status:'published', submittedAt:iso(-2),
+        publishedGrade:{total:4, maxPoints:5, questions:[
+          {id:'q1',score:1,maxPoints:1,type:'choice'},{id:'q2',score:1,maxPoints:1,type:'choice'},
+          {id:'q3',score:1,maxPoints:1,type:'choice'},{id:'q4',score:1,maxPoints:1,type:'choice'},
+          {id:'q5',score:0,maxPoints:1,type:'short'}]}},
+    ];
+    const mistakes = [
+      {id:'m1', status:'todo'}, {id:'m2', status:'todo'}, {id:'m3', status:'review'}, {id:'m4', status:'mastered'},
+    ];
+    const state = {user:{id:'student-fixture', role:'student'}, assignments, submissions, mistakes, learning:{mistakes}};
+
+    const empty = new URLSearchParams(location.search).has('empty');
+    const shell = document.getElementById('student-home');
+    shell.innerHTML = studentHomeMarkup({
+      state: empty ? {user:state.user, assignments:[], submissions:[], learning:{mistakes:[]}} : state,
+      h, link, date, now,
+    });
+    window.__ready = true;
+    window.__fixture = {state, now};
+  </script>
+  <style>
+    .lab-banner { padding:8px 16px; background:#193449; color:#fff; font:12px/1.4 -apple-system,sans-serif; }
+    .homework-body { background:#e9e4d8; }
+    #homework-main { max-width:1180px; margin:0 auto; padding:18px 18px 96px; }
+    #dock { display:none; position:fixed; left:0; right:0; bottom:0; display:none; grid-template-columns:repeat(4,1fr); background:#fff; border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+    .dock a { min-height:56px; display:flex; align-items:center; justify-content:center; color:var(--muted); text-decoration:none; font-size:12px; }
+    .dock a[aria-current="page"] { color:var(--navy); font-weight:600; }
+    @media (max-width:760px) {
+      #dock { display:grid; }
+      #homework-main { padding:12px 12px 88px; }
+    }
+  </style>
+</body>
+</html>
