@@ -73,6 +73,17 @@ function reminders(summary, h) {
   </section>`;
 }
 
+function insightsMarkup(state, h) {
+  const insights = Array.isArray(state.learning?.insights) ? state.learning.insights.slice(0, 1) : [];
+  if (!insights.length) return '';
+  return insights.map(report => `<section class="sh-insights" aria-label="老师的学习建议">
+    <header class="sh-insights-head"><h2>老师的学习建议</h2><span class="sh-insights-date">${h(new Date(report.publishedAt).toLocaleDateString('zh-CN'))} 发布</span></header>
+    <ul class="sh-insight-obs">${(report.observations || []).map(item => `<li><p>${h(item.text)}</p>${(item.evidence || []).length ? `<span class="sh-insight-evidence">${item.evidence.map(text => `<span>${h(text)}</span>`).join('')}</span>` : ''}</li>`).join('')}</ul>
+    ${(report.nextSteps || []).length ? `<h3>下一步</h3><ol class="sh-insight-steps">${report.nextSteps.map(item => `<li>${h(item.text)}</li>`).join('')}</ol>` : ''}
+    <p class="sh-insight-note">${h(report.limitations || '基于已发布成绩。')}</p>
+  </section>`).join('');
+}
+
 export function studentHomeMarkup({state, h, link, date, now = Date.now()}) {
   const summary = studentHomeSummary({
     assignments: state.assignments || [],
@@ -84,5 +95,6 @@ export function studentHomeMarkup({state, h, link, date, now = Date.now()}) {
   return `<div class="sh-home" id="student-home">
     ${hero(summary, {h, link, date, now})}
     <div class="sh-home-lower${trailMarkup ? '' : ' sh-home-lower-single'}">${trailMarkup}${reminders(summary, h)}</div>
+    ${insightsMarkup(state, h)}
   </div>`;
 }

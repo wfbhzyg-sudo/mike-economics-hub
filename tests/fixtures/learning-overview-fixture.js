@@ -35,12 +35,30 @@ const toast = message => {
 };
 const link = (route, text, primary = false) => `<a class="tw-button ${primary ? 'tw-primary' : ''}" href="#${route}">${escape(text)}</a>`;
 
+// Deterministic stand-in for the teacher-portal AI endpoints used by the fixture.
+const aiDraft = {
+  id: 'fixture-report', dataVersion: 'fixture-v1', source: 'rules', aiError: '未配置模型，已生成规则草稿',
+  observations: [{text: '「2.3 MCQ」得分率 61%，比本期平均低 6 个百分点。', evidence: ['2.3 MCQ', '61%']}, {text: '有 12 名学生共 23 人次未交。', evidence: ['未交 23 人次']}],
+  nextSteps: [{text: '围绕「2.3 税收归宿」安排一次 10 分钟回顾。', evidence: ['2.3 税收归宿 71%']}],
+  limitations: '基于本范围已发布成绩；未交与待复核不计入平均。',
+  stats: {students: 50, assignments: 8, average: 67},
+};
+const ai = async (path, options = {}) => {
+  if (path === 'analytics/reports') {
+    const scope = {classId: 'c1', unit: '', period: '4w', studentId: null, ...(typeof options.body === 'string' ? JSON.parse(options.body || '{}') : options.body || {})};
+    return {report: {...aiDraft, scope, stats: {...aiDraft.stats, students: scope.studentId ? 1 : 50}}};
+  }
+  if (/^analytics\/reports\/.+\/publish$/.test(path)) return {report: {...aiDraft, scope: {studentId: null}, status: 'published'}};
+  throw new Error('unexpected AI path: ' + path);
+};
+
 const view = mountLearningOverview({
   state,
   main: document.querySelector('#workspace'),
   h: escape,
   toast,
   link,
+  ai,
   load: () => Promise.resolve(data),
 }, data);
 

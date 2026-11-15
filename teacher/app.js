@@ -139,7 +139,7 @@ async function analytics(){
  const version=state.version;
  const data=await hw('learning');if(version!==state.version)return;
  main.innerHTML='';
- const view=mountLearningOverview({state,main,h,toast,link:button,load:()=>hw('learning')},data);
+ const view=mountLearningOverview({state,main,h,toast,link:button,load:()=>hw('learning'),ai:(path,options={})=>hw(path,{...options,signal:AbortSignal.timeout(130000)})},data);
  state.viewCleanup=()=>view.destroy();
 }
 const titles={library:['课程教学包','从备课到订正，沿同一条学习路径。'],home:['教师工作台','备课、批阅与学情，在同一处完成。'],classes:['班级与学生','同一份名单，连接每一步学习。'],student:['学生学习档案','教材、游戏与作业，分别查看，完整保留。'],books:['教材与题库','核对内容，追踪当前版本的审核状态。'],question:['题目详情','原始模型、图表、答案与解释。'],work:['作业与批阅','发布题纸、确认答案，回应每一份思考。'],games:['游戏与补练','从课堂尝试出发，安排下一步练习。'],feedback:['反馈中心','把学生遇到的问题，变成可跟进的改进。'],analytics:['学情总览','看全班进度、成绩与需要关注的学生。'],settings:['批改设置','批改方式与教学操作记录。']};

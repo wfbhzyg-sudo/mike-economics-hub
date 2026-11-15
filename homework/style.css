@@ -1829,3 +1829,20 @@ main:focus,main:focus-visible {outline:none;}
 .sh-hero-side .sh-stat { align-self:start; }
 .sh-home-lower-single { grid-template-columns:1fr; }
 .sh-home-lower-single .sh-reminders { max-width:none; }
+
+/* Published teacher advice on the student home */
+.sh-insights { margin: 17px 0 0; padding: 18px 20px; border: 1px solid var(--line, #d7ddd9); border-radius: 12px; background: var(--panel, #fff); }
+.sh-insights-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sh-insights-head h2 { margin: 0; font-size: 17px; }
+.sh-insights-date { color: var(--muted, #53616b); font-size: 12px; white-space: nowrap; }
+.sh-insight-obs { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.sh-insight-obs li p { margin: 0; font-size: 15px; line-height: 1.55; }
+.sh-insight-evidence { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.sh-insight-evidence span { padding: 1px 7px; border-radius: 999px; background: #e6eee8; color: #193449; font-size: 11px; }
+.sh-insights h3 { margin: 14px 0 4px; font-size: 13px; color: #53616b; font-weight: 700; }
+.sh-insight-steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; }
+.sh-insight-note { margin: 12px 0 0; color: #53616b; font-size: 12px; }
+@media (max-width: 720px) {
+  .sh-insights { padding: 15px 16px; }
+  .sh-insight-obs li p, .sh-insight-steps { font-size: 16px; }
+}

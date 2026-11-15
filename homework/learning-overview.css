@@ -1444,3 +1444,43 @@ body[data-section="analytics"] #workspace {
   .lo-qrow { min-height: 44px; }
   .lo-diag-head h2 { font-size: 15px; }
 }
+
+/* ---- AI draft sheet (teacher reviews before publish) ---- */
+.lo-profile-head-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.lo-btn.lo-ai { min-height: 36px; padding: 0 12px; white-space: nowrap; }
+.lo-ai-body { padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); overflow: auto; max-height: min(72dvh, calc(100dvh - 130px)); min-height: 180px; }
+.lo-ai-report h3, .lo-ai-confirm h3, .lo-ai-done h3 { margin: 16px 0 6px; font-size: 14px; }
+.lo-ai-report h3:first-of-type { margin-top: 12px; }
+.lo-ai-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 4px; color: var(--lo-muted); font-size: 12px; }
+.lo-ai-meta .lo-chip { font-size: 12px; }
+.lo-ai-steps { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 8px; }
+.lo-ai-steps li { font-size: 14px; line-height: 1.5; }
+.lo-ai-steps p { margin: 0 0 4px; }
+.lo-ai-loading { display: grid; justify-items: center; gap: 10px; padding: 38px 16px; text-align: center; color: var(--lo-muted); }
+.lo-ai-loading p { margin: 0; max-width: 320px; font-size: 13px; }
+.lo-ai-spinner { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--lo-line); border-top-color: var(--lo-navy); animation: lo-spin .8s linear infinite; }
+@keyframes lo-spin { to { transform: rotate(360deg); } }
+.lo-ai-error, .lo-ai-confirm, .lo-ai-done { padding: 4px 0; }
+.lo-ai-error p, .lo-ai-confirm p, .lo-ai-done p { margin: 8px 0 12px; font-size: 14px; line-height: 1.55; }
+.lo-ai-error .lo-sheet-actions, .lo-ai-confirm .lo-sheet-actions, .lo-ai-done .lo-sheet-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.lo-ai-report .lo-sheet-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .lo-btn.lo-ai { min-height: 44px; }
+  .lo-ai-body .lo-btn, .lo-sheet-actions .lo-btn { min-height: 44px; }
+  .lo-ai-report .lo-sheet-actions, .lo-ai-confirm .lo-sheet-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .lo-profile-head-actions { justify-content: stretch; }
+  .lo-profile-head-actions .lo-btn { flex: 1 1 auto; }
+}
+@media (max-width: 420px) {
+  .lo-ai-report .lo-sheet-actions, .lo-ai-confirm .lo-sheet-actions { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lo-ai-spinner { animation-duration: 1.6s; }
+}
+@media (max-width: 1279px) {
+  .lo-btn.lo-ai { padding: 0 10px; }
+  .lo-btn.lo-ai .lo-ai-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-width: 767px) {
+  #lo-ai { display: none; }
+}

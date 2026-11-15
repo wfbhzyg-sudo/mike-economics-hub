@@ -34,6 +34,7 @@ const initial = name => String(name || '?').trim().slice(0, 1).toUpperCase();
 export function mountLearningOverview(ctx, initialData) {
   const {state, main, h, toast} = ctx;
   const link = ctx.link;
+  const ai = ctx.ai || null;
   let data = initialData;
   let destroyed = false;
   const classes = state.meta?.classes || [];
@@ -63,6 +64,7 @@ export function mountLearningOverview(ctx, initialData) {
   // the teacher the same facts that are on screen without re-querying anything.
   let classReport = null;
   let profileReports = new Map();
+  let aiReport = null;
   let sheetTrigger = null;
   let diagTrigger = null;
   const wide = matchMedia('(min-width:1280px)');
@@ -81,11 +83,13 @@ export function mountLearningOverview(ctx, initialData) {
       <summary class="lo-btn lo-icon" title="更多操作" aria-label="更多操作"><span aria-hidden="true">⋯</span></summary>
       <div class="lo-menu" role="menu">
         <button type="button" role="menuitem" data-action="export">导出当前范围 CSV</button>
+        ${ai ? '<button type="button" role="menuitem" data-action="ai-report">生成学情分析</button>' : ''}
         <button type="button" role="menuitem" data-action="class-report">班级学情摘要</button>
         <button type="button" role="menuitem" data-action="legend">五色分档说明</button>
         <button type="button" role="menuitem" data-action="clear">清除筛选与排序</button>
       </div>
     </details>
+    ${ai ? '<button type="button" class="lo-btn lo-primary lo-ai" id="lo-ai" data-action="ai-report" aria-label="生成学情分析"><span aria-hidden="true">✦</span><span class="lo-ai-label">生成学情分析</span></button>' : ''}
   </div>
   <div class="lo-stats" id="lo-stats" aria-live="polite"></div>
   <div class="lo-tabs" role="tablist" aria-label="学情视图">
@@ -143,6 +147,10 @@ export function mountLearningOverview(ctx, initialData) {
     <div class="lo-sheet-bar"><strong>班级学情摘要</strong><button type="button" class="lo-btn" data-close-report>关闭</button></div>
     <div class="lo-report-body" id="lo-report-body"></div>
   </dialog>
+  <dialog class="lo-sheet lo-ai-sheet" id="lo-ai-sheet" aria-label="学情分析草稿">
+    <div class="lo-sheet-bar"><strong id="lo-ai-title">学情分析草稿</strong><button type="button" class="lo-btn" data-close-ai>关闭</button></div>
+    <div class="lo-ai-body" id="lo-ai-body"></div>
+  </dialog>
 </section>`;
 
   const root = document.getElementById('lo-page');
@@ -159,6 +167,8 @@ export function mountLearningOverview(ctx, initialData) {
   const filterSheet = $('#lo-filter-sheet');
   const legendSheet = $('#lo-legend-sheet');
   const reportSheet = $('#lo-report-sheet');
+  const aiSheet = $('#lo-ai-sheet');
+  const aiBody = $('#lo-ai-body');
   const diagLayout = $('#lo-diag-layout');
   const diagList = $('#lo-diag-list');
   const diagHost = $('#lo-diag');
@@ -421,7 +431,7 @@ export function mountLearningOverview(ctx, initialData) {
     });
     host.innerHTML = `<div class="lo-profile-head">
       <button type="button" class="lo-back lo-mobile-only" data-profile-back>← 返回学生列表</button>
-      <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div>
+      <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><div class="lo-profile-head-actions">${ai ? `<button type="button" class="lo-btn lo-primary" data-ai-profile="${h(row.student.id)}">生成学习建议</button>` : ''}<a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div></div>
       <div class="lo-profile-metrics">
         <div><span>平均</span><strong>${formatPercent(profile.row.average)}</strong></div>
         <div><span>已出分</span><strong>${profile.row.published}<small>/${profile.row.total}</small></strong></div>
@@ -626,6 +636,79 @@ export function mountLearningOverview(ctx, initialData) {
     if (!row) return null;
     const cell = row.cells.find(item => item.assignment.id === selected.assignmentId);
     return cell ? {row, cell} : null;
+  }
+
+  // ---------- AI drafts (teacher reviews before anything is published) ----------
+  function aiScopePayload() {
+    const studentId = tab === 'students' && profileId ? profileId : null;
+    return {classId: filter.classId, unit: filter.unit || '', period: filter.period, ...(studentId ? {studentId} : {})};
+  }
+
+  function aiLoadingMarkup() {
+    return '<div class="lo-ai-loading" role="status"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在根据本范围已发布成绩生成草稿，可能需要十几秒。</p><p class="lo-note">只发送匿名统计与题目编号，不发送学生姓名、附件或作答原文。</p></div>';
+  }
+
+  function aiErrorMarkup(message) {
+    return `<div class="lo-ai-error" role="alert"><p>${h(message)}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重试</button><button type="button" class="lo-btn" data-close-ai>关闭</button></div></div>`;
+  }
+
+  async function openAiReport(studentId = null) {
+    if (!ai) return;
+    if (!aiSheet.open) aiSheet.showModal();
+    const payload = {...aiScopePayload(), ...(studentId ? {studentId} : {})};
+    $('#lo-ai-title').textContent = payload.studentId ? '个人学习建议草稿' : '班级学情分析草稿';
+    aiBody.innerHTML = aiLoadingMarkup();
+    try {
+      const {report} = await ai('analytics/reports', {method: 'POST', body: payload});
+      aiReport = report;
+      renderAiDraft(report);
+    } catch (error) {
+      aiBody.innerHTML = aiErrorMarkup(error.message || '暂时无法生成分析');
+    }
+  }
+
+  function aiStepsMarkup(items) {
+    return `<ol class="lo-ai-steps">${items.map(item => `<li><p>${h(item.text)}</p>${(item.evidence || []).length ? `<span class="lo-obs-evidence">${item.evidence.map(text => `<span class="lo-evidence">${h(text)}</span>`).join('')}</span>` : ''}</li>`).join('')}</ol>`;
+  }
+
+  function renderAiDraft(report) {
+    const stats = report.stats || {};
+    const scopeText = report.scope.studentId ? '个人建议（仅该学生可见，需确认发布）' : '班级汇总（只作为教师存档）';
+    aiBody.innerHTML = `<div class="lo-ai-report">
+      <p class="lo-ai-meta"><span class="lo-chip" data-tone="${report.source === 'ai' ? 'ok' : 'neutral'}">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${h(scopeText)}</span><span>${stats.students ?? 0} 名学生 · ${stats.assignments ?? 0} 次作业${stats.average === null || stats.average === undefined ? '' : ` · 平均 ${formatPercent(stats.average)}`}</span></p>
+      ${report.aiError ? `<p class="lo-note">${h(report.aiError)}</p>` : ''}
+      <h3>学习观察</h3>${observationsMarkup(report.observations)}
+      <h3>下一步建议</h3>${aiStepsMarkup(report.nextSteps)}
+      <p class="lo-note">${h(report.limitations)} · 数据版本 ${h(report.dataVersion)}</p>
+      <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重新生成</button><button type="button" class="lo-btn lo-primary" data-ai-publish>确认发布</button></div>
+    </div>`;
+  }
+
+  function renderAiConfirm() {
+    if (!aiReport) return;
+    const personal = Boolean(aiReport.scope.studentId);
+    aiBody.innerHTML = `<div class="lo-ai-confirm">
+      <h3>确认发布这份草稿？</h3>
+      <p>${personal ? '发布后，该学生会在「我的学习 > 老师的学习建议」看到这份内容。' : '班级汇总只作为教师存档，不会显示给学生。'}</p>
+      <p class="lo-note">发布后数据变化不会自动改写已发布内容；如需更新请重新生成并再次发布。</p>
+      <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-back>返回草稿</button><button type="button" class="lo-btn lo-primary" data-ai-confirm>确认发布</button></div>
+    </div>`;
+  }
+
+  async function publishAiReport() {
+    if (!aiReport || !ai) return;
+    const personal = Boolean(aiReport.scope.studentId);
+    aiBody.innerHTML = '<div class="lo-ai-loading" role="status"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在发布…</p></div>';
+    try {
+      const {report} = await ai(`analytics/reports/${encodeURIComponent(aiReport.id)}/publish`, {method: 'POST', body: {confirm: true, ...(personal ? {audience: 'student'} : {audience: 'class'})}});
+      aiReport = report;
+      aiBody.innerHTML = `<div class="lo-ai-done" role="status"><h3>已发布</h3><p>${personal ? '学生现在可以在「我的学习」看到这份建议。' : '班级汇总已存档。'}</p></div>`;
+      const title = $('#lo-ai-title');
+      if (title) title.textContent = personal ? '个人学习建议 · 已发布' : '班级学情分析 · 已发布';
+      toast('已发布');
+    } catch (error) {
+      aiBody.innerHTML = aiErrorMarkup(error.message || '发布失败');
+    }
   }
 
   function renderDetail() {
@@ -966,6 +1049,14 @@ export function mountLearningOverview(ctx, initialData) {
     if (action === 'clear') { clearFilters(); return; }
     if (action === 'legend') { if (!legendSheet.open) legendSheet.showModal(); return; }
     if (action === 'class-report') { openClassReport(); return; }
+    if (action === 'ai-report') { void openAiReport(); return; }
+    const aiProfile = target.closest('[data-ai-profile]');
+    if (aiProfile) { void openAiReport(aiProfile.dataset.aiProfile); return; }
+    if (target.closest('[data-ai-again]')) { void openAiReport(aiReport?.scope?.studentId || null); return; }
+    if (target.closest('[data-ai-publish]')) { renderAiConfirm(); return; }
+    if (target.closest('[data-ai-back]')) { if (aiReport) renderAiDraft(aiReport); return; }
+    if (target.closest('[data-ai-confirm]')) { void publishAiReport(); return; }
+    if (target.closest('[data-close-ai]')) { aiSheet.close(); return; }
     if (target.closest('[data-close-report]')) { reportSheet.close(); return; }
     if (target.closest('#lo-filter')) { openFilterSheet(); return; }
     if (target.closest('#lo-refresh')) { void refresh(); return; }
