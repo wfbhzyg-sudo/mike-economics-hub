@@ -701,8 +701,41 @@ html{-webkit-text-size-adjust:100%;scroll-padding-bottom:100px}
 
 .tw-page-heading[hidden]{display:none}
 
-#student-account{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;align-items:end}#student-account .tw-account-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}#student-account .tw-account-actions .tw-check{flex:1 1 260px;margin:0}#student-account .tw-form-error{grid-column:1/-1;margin:0}@media(max-width:900px){#student-account{grid-template-columns:1fr}}
+
 
 #student-account .tw-check input{width:18px;min-height:18px;height:18px;flex:0 0 auto;margin-top:2px}
 
-#student-account input{width:100%;max-width:360px}#student-account .tw-button{min-height:44px}@media(max-width:600px){#student-account .tw-account-actions{display:grid;gap:12px}#student-account .tw-account-actions .tw-button{width:100%}}
+#student-account input{width:100%}#student-account .tw-button{min-height:44px}@media(max-width:600px){#student-account .tw-account-actions{display:grid;gap:12px}#student-account .tw-account-actions .tw-button{width:100%}}
+
+/* student account editor */
+.tw-account-section .tw-section-head{align-items:flex-start}
+.tw-account-layout{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1.35fr) minmax(250px,.85fr);gap:18px;align-items:start;margin-top:18px}
+.tw-account-summary,.tw-account-edit,.tw-account-class{background:#fff;border:1px solid var(--tw-line);border-radius:12px;padding:20px}
+.tw-account-summary{display:grid;gap:6px;justify-items:start}
+.tw-account-avatar{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--tw-soft,#dfe9ef);color:var(--tw-navy,#193449);font:600 24px/1 var(--tw-serif,Georgia,serif);margin-bottom:6px}
+.tw-account-summary h3{font-size:21px;line-height:1.25;margin:0}
+.tw-account-username{margin:0;color:var(--tw-muted);font-size:14px;word-break:break-all}
+.tw-account-meta{display:grid;gap:0;margin:10px 0 4px;width:100%}
+.tw-account-meta>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--tw-line);font-size:13px}
+.tw-account-meta dt{color:var(--tw-muted)}
+.tw-account-meta dd{margin:0;text-align:right;font-weight:550}
+.tw-account-main{display:grid;gap:18px;min-width:0}
+.tw-account-edit h3,.tw-account-class h3{font-size:18px;margin:0 0 12px}
+.tw-account-form{display:grid;gap:14px}
+.tw-account-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.tw-password-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+.tw-password-row .tw-button{min-height:44px;white-space:nowrap}
+.tw-account-form .tw-account-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding-top:2px}
+.tw-account-form .tw-account-actions .tw-primary{min-width:132px}
+.tw-account-class{display:grid;gap:6px}
+.tw-account-class .tw-inline-form{margin-top:8px;align-items:end}
+.tw-account-class .tw-inline-form .tw-field{flex:1 1 180px}
+@media(max-width:1180px){.tw-account-layout{grid-template-columns:minmax(210px,260px) minmax(0,1fr)}.tw-account-class{grid-column:2}}
+@media(max-width:900px){.tw-account-layout{grid-template-columns:1fr}.tw-account-class{grid-column:auto}.tw-account-fields{grid-template-columns:1fr}}
+@media(max-width:600px){.tw-password-row{grid-template-columns:1fr 1fr}.tw-password-row input{grid-column:1/-1}.tw-account-form .tw-account-actions .tw-button{width:100%}}
+
+.tw-account-edit{background:#fff;border:1px solid var(--tw-line);border-radius:12px;padding:20px}
+.tw-account-class .tw-account-meta{margin:0 0 10px}
+.tw-account-class .tw-account-meta code{font-size:13px;letter-spacing:.04em;background:#f1f2ee;border-radius:4px;padding:2px 5px}
+.tw-account-class .tw-button.tw-small{min-height:36px}
+@media(max-width:900px){.tw-account-class .tw-button.tw-small{min-height:44px}}
