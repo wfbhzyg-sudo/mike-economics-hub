@@ -44,8 +44,8 @@ const OPTIONS = [
 ];
 
 const FRQ_QUESTIONS = [
-  { id: 'f1', prompt: 'Draw a correctly labeled graph of a competitive market in long-run equilibrium. Then show the effect of a per-unit tax on sellers.', maxPoints: 5, type: 'frq' },
-  { id: 'f2', prompt: 'Explain how the elasticity of demand affects the share of the tax borne by consumers. Use your graph from part (a).', maxPoints: 5, type: 'frq' },
+  { id: 'f1', prompt: 'Draw a correctly labeled graph of a competitive market in long-run equilibrium. Then show the effect of a per-unit tax on sellers.', maxPoints: 5, type: 'short' },
+  { id: 'f2', prompt: 'Explain how the elasticity of demand affects the share of the tax borne by consumers. Use your graph from part (a).', maxPoints: 5, type: 'short' },
 ];
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E'];
@@ -86,7 +86,7 @@ export function buildData(now = new Date()) {
           id: `q${qIndex + 1}`,
           prompt: PROMPTS[(index + qIndex) % PROMPTS.length],
           maxPoints: 1,
-          type: 'mcq',
+          type: 'choice',
           knowledge: `${plan.unit || '2.3'} · ${['供求基础', '税收归宿', '价格管制'][qIndex % 3]}`,
           options: OPTIONS[(index + qIndex) % OPTIONS.length],
         }));
@@ -123,9 +123,9 @@ export function buildData(now = new Date()) {
       const difficulty = assignmentIndex === 4 ? -0.06 : 0;
       const choices = {};
       const graded = assignment.questions.map((question, questionIndex) => {
-        if (question.type === 'frq') {
+        if (question.type === 'short') {
           const chance = Math.max(0.15, Math.min(0.95, ability + difficulty + random() * 0.18 - 0.09));
-          return { id: question.id, score: Math.round(chance * question.maxPoints), maxPoints: question.maxPoints, type: 'frq' };
+          return { id: question.id, score: Math.round(chance * question.maxPoints), maxPoints: question.maxPoints, type: 'short' };
         }
         // 2.3 MCQ · 40 published papers, B is correct for 45% (design sample).
         const hit = questionIndex === 1 && assignmentIndex === 4
@@ -133,7 +133,7 @@ export function buildData(now = new Date()) {
           : LETTERS[Math.floor(random() * 5)];
         choices[question.id] = hit;
         const chance = Math.max(0.12, Math.min(0.97, ability + difficulty + random() * 0.16 - 0.08));
-        return { id: question.id, score: random() < chance ? question.maxPoints : 0, maxPoints: question.maxPoints, type: 'mcq' };
+        return { id: question.id, score: random() < chance ? question.maxPoints : 0, maxPoints: question.maxPoints, type: 'choice' };
       });
       const total = graded.reduce((sum, item) => sum + item.score, 0);
       const max = graded.reduce((sum, item) => sum + item.maxPoints, 0);

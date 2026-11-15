@@ -9,6 +9,8 @@ import {
   PERIODS, STATUS_FILTERS, scopedAssignments, scopedStudents, assignmentLabel,
   buildRows, overviewStats, questionStats, studentProfile, rowStatus,
   formatPercent, trendLabel, unitsOf, scopeCaption, workDate,
+  typeBreakdown, correctionSummary, assignmentHistory, studentObservations,
+  classObservations, reportText,
 } from './learning-analytics-model.js';
 
 const SORTS = [['name', '学生姓名'], ['average', '平均分'], ['attention', '待处理'], ['trend', '近期变化']];
@@ -53,6 +55,10 @@ export function mountLearningOverview(ctx, initialData) {
   let profileId = memory.get('profileId', '');
   let questionCache = new Map();
   let context = {assignments: [], rows: [], visible: [], stats: null};
+  // Reports are deterministic rule summaries, kept so the copy button can hand
+  // the teacher the same facts that are on screen without re-querying anything.
+  let classReport = null;
+  let profileReports = new Map();
   let sheetTrigger = null;
   const wide = matchMedia('(min-width:1280px)');
   const small = matchMedia('(max-width:767px)');
@@ -70,6 +76,7 @@ export function mountLearningOverview(ctx, initialData) {
       <summary class="lo-btn lo-icon" title="更多操作" aria-label="更多操作"><span aria-hidden="true">⋯</span></summary>
       <div class="lo-menu" role="menu">
         <button type="button" role="menuitem" data-action="export">导出当前范围 CSV</button>
+        <button type="button" role="menuitem" data-action="class-report">班级学情摘要</button>
         <button type="button" role="menuitem" data-action="legend">五色分档说明</button>
         <button type="button" role="menuitem" data-action="clear">清除筛选与排序</button>
       </div>
@@ -120,6 +127,10 @@ export function mountLearningOverview(ctx, initialData) {
     <div class="lo-sheet-bar"><strong>五色分档 · 课堂参考</strong><button type="button" class="lo-btn" data-close-legend>关闭</button></div>
     <div class="lo-legend-body"></div>
   </dialog>
+  <dialog class="lo-sheet lo-report-sheet" id="lo-report-sheet" aria-label="班级学情摘要">
+    <div class="lo-sheet-bar"><strong>班级学情摘要</strong><button type="button" class="lo-btn" data-close-report>关闭</button></div>
+    <div class="lo-report-body" id="lo-report-body"></div>
+  </dialog>
 </section>`;
 
   const root = document.getElementById('lo-page');
@@ -135,6 +146,7 @@ export function mountLearningOverview(ctx, initialData) {
   const sheetBody = $('#lo-sheet-body');
   const filterSheet = $('#lo-filter-sheet');
   const legendSheet = $('#lo-legend-sheet');
+  const reportSheet = $('#lo-report-sheet');
 
   // ---------- options and filters ----------
   function fill(select, options, value) {
@@ -381,6 +393,15 @@ export function mountLearningOverview(ctx, initialData) {
     const profile = studentProfile(data, row.student, context.assignments);
     const chip = rowStatus(profile.row);
     const recent = profile.recent;
+    const types = typeBreakdown(data, row.student.id);
+    const corrections = correctionSummary(data, row.student.id);
+    const history = assignmentHistory(data, row.student, context.assignments);
+    const observations = studentObservations(data, row.student, context.assignments, profile);
+    profileReports.set(row.student.id, {
+      title: `${row.student.name} · 学习建议`,
+      items: observations,
+      caption: `${profile.row.published}/${profile.row.total} 次已发布 · ${scopeCaption(context.stats)}`,
+    });
     host.innerHTML = `<div class="lo-profile-head">
       <button type="button" class="lo-back lo-mobile-only" data-profile-back>← 返回学生列表</button>
       <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div>
@@ -393,11 +414,80 @@ export function mountLearningOverview(ctx, initialData) {
       <p class="lo-profile-chip"><span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>${profile.openCorrections ? `<span class="lo-chip" data-tone="warn">待订正 ${profile.openCorrections}</span>` : ''}</p>
     </div>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>最近成绩</h3><small>${recent.length ? `最近 ${recent.length} 次已发布` : ''}</small></div>${recent.length ? `<ul class="lo-recent">${recent.map(cell => `<li><a href="#work/review/${encodeURIComponent(cell.record?.latest?.id || '')}"><span class="lo-recent-name">${h(assignmentLabel(cell.assignment))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span><span class="lo-recent-score">${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : '—'}</span><span class="lo-band-pill" data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></a></li>`).join('')}</ul>` : '<p class="lo-note">还没有已发布成绩。待复核的提交不会显示为 0 分。</p>'}</section>
-    <section class="lo-profile-section"><div class="lo-section-head"><h3>优先复习的题</h3><small>${profile.weak.length ? `按得分率排序 · ${profile.mistakes} 道失分题` : ''}</small></div>${profile.weak.length ? `<ul class="lo-weak">${profile.weak.map(item => `<li><button type="button" data-open-question data-s="${h(row.student.id)}" data-a="${h(item.assignmentId)}" data-q="${h(item.questionId)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 58))}</span><span class="lo-weak-meta">${h(item.assignmentTitle || '')} · ${item.score}/${item.maxPoints}</span></button></li>`).join('')}</ul>` : '<p class="lo-note">这个范围内没有失分题记录。</p>'}</section>`;
+    <section class="lo-profile-section"><div class="lo-section-head"><h3>优先复习的题</h3><small>${profile.weak.length ? `按得分率排序 · ${profile.mistakes} 道失分题` : ''}</small></div>${profile.weak.length ? `<ul class="lo-weak">${profile.weak.map(item => `<li><button type="button" data-open-question data-s="${h(row.student.id)}" data-a="${h(item.assignmentId)}" data-q="${h(item.questionId)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 58))}</span><span class="lo-weak-meta">${h(item.assignmentTitle || '')} · ${item.score}/${item.maxPoints}</span></button></li>`).join('')}</ul>` : '<p class="lo-note">这个范围内没有失分题记录。</p>'}</section>
+    <section class="lo-profile-section"><div class="lo-section-head"><h3>成绩构成</h3><small>只统计已发布成绩</small></div>
+      <dl class="lo-breakdown">
+        <div><dt>选择题</dt><dd>${formatPercent(types.choice.rate)}<small>${types.choice.score}/${types.choice.total} 分 · ${types.choice.questions} 题</small></dd></div>
+        <div><dt>书面题</dt><dd>${formatPercent(types.written.rate)}<small>${types.written.score}/${types.written.total} 分 · ${types.written.questions} 题</small></dd></div>
+        <div><dt>订正状态</dt><dd>${corrections.open}<small>道待订正 · ${corrections.review} 道待复核 · ${corrections.mastered} 道已掌握</small></dd></div>
+      </dl>
+    </section>
+    <section class="lo-profile-section"><div class="lo-section-head"><h3>作业记录</h3><small>${history.length} 次</small></div>
+      ${history.length ? `<ul class="lo-history">${history.map(cell => {
+        const own = cell.record?.grade;
+        const statusChip = rowStatus(profile.row);
+        return `<li><button type="button" class="lo-history-row" data-history-cell data-s="${h(row.student.id)}" data-a="${h(cell.assignment.id)}">
+          <span class="lo-history-name">${h(assignmentLabel(cell.assignment))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span>
+          <span class="lo-chip" data-tone="${chipTone(cell.status === 'graded' ? statusChip.key : cell.status === 'missing' ? 'missing' : cell.status === 'pending' || cell.status === 'attention' ? 'review' : 'neutral')}">${h(cell.status === 'graded' ? '已出分' : cell.label)}</span>
+          <span class="lo-history-score">${own ? `${own.total}<small>/${own.maxPoints}</small>` : '—'}</span>
+          <span class="lo-band-pill" data-band="${cell.rate === null ? '' : (scoreBand(cell.rate)?.level || '')}">${formatPercent(cell.rate)}</span>
+        </button></li>`;
+      }).join('')}</ul>` : '<p class="lo-note">这个范围内还没有作业记录。</p>'}
+    </section>
+    <section class="lo-profile-section"><div class="lo-section-head"><h3>学习提醒</h3><button type="button" class="lo-btn lo-small" data-copy-report="profile">复制建议</button></div>
+      ${observationsMarkup(observations)}
+      <p class="lo-note">规则摘要 · 基于已发布成绩 · 非 AI 结论</p>
+    </section>`;
   }
 
   function classLabel() {
     return classes.find(item => item.id === filter.classId)?.name || '';
+  }
+
+  function observationsMarkup(items) {
+    return `<ul class="lo-observations">${items.map(item => `<li class="lo-obs"><p>${h(item.text)}</p>${(item.evidence || []).filter(Boolean).length ? `<span class="lo-obs-evidence">${item.evidence.filter(Boolean).map(text => `<span class="lo-evidence">${h(text)}</span>`).join('')}</span>` : ''}</li>`).join('')}</ul>`;
+  }
+
+  function buildClassReport() {
+    const items = classObservations(data, context.visible, context.assignments, context.stats);
+    classReport = {title: `班级学情摘要 · ${classLabel() || '全部班级'}`, items, caption: scopeCaption(context.stats)};
+    return classReport;
+  }
+
+  function classObservationsMarkup() {
+    if (!context.stats) return '';
+    const report = buildClassReport();
+    return `<section class="lo-class-report"><div class="lo-report-head"><h3>班级学情摘要</h3><button type="button" class="lo-btn lo-small" data-copy-report="class">复制摘要</button></div>${observationsMarkup(report.items)}<p class="lo-note">规则摘要 · 基于本次范围已发布成绩 · 非 AI 结论</p></section>`;
+  }
+
+  function openClassReport() {
+    if (!context.stats) return;
+    const report = buildClassReport();
+    $('#lo-report-body').innerHTML = `${observationsMarkup(report.items)}<p class="lo-note">${h(report.caption)} · 规则摘要，非 AI 结论。</p><button type="button" class="lo-btn lo-primary lo-report-copy" data-copy-report="class">复制摘要</button>`;
+    if (!reportSheet.open) reportSheet.showModal();
+  }
+
+  async function copyReport(kind) {
+    const report = kind === 'profile' ? profileReports.get(profileId) : classReport;
+    if (!report) { toast('暂无可复制的摘要'); return; }
+    const text = reportText(report.title, report.items, report.caption);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(text);
+      toast('已复制摘要');
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.append(area);
+      area.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      area.remove();
+      toast(ok ? '已复制摘要' : '复制失败，请手动选择文本');
+    }
   }
 
   // ---------- detail ----------
@@ -425,8 +515,8 @@ export function mountLearningOverview(ctx, initialData) {
       <h2>从矩阵选择一名学生</h2>
       <p>点击任一成绩可查看原题、本人作答与班级数据。矩阵内可用方向键移动，Enter 打开。</p>
       ${attention.length ? `<h3>优先关注</h3><ul class="lo-attention-list">${attention.map(row => `<li><button type="button" class="lo-attention" data-profile="${h(row.student.id)}"><span>${h(row.student.name)}</span><small>${row.missing ? `待交 ${row.missing}` : ''}${row.missing && row.needsReview ? ' · ' : ''}${row.needsReview ? `待复核 ${row.needsReview}` : ''}${row.openCorrections ? `${row.missing || row.needsReview ? ' · ' : ''}待订正 ${row.openCorrections}` : ''}</small></button></li>`).join('')}</ul>` : ''}
-      <div class="lo-legend-inline"><span class="lo-band-pill" data-band="1">0–<20%</span><span class="lo-band-pill" data-band="2">20–40%</span><span class="lo-band-pill" data-band="3">40–60%</span><span class="lo-band-pill" data-band="4">60–80%</span><span class="lo-band-pill" data-band="5">80–100%</span></div>
-      <p class="lo-note">五色为课堂得分率参考分档，非 AP 官方换算；待复核与未交都不计 0 分。</p>
+      ${classObservationsMarkup()}
+      <p class="lo-note">五色为课堂得分率参考分档（见「更多 → 图例」），非 AP 官方换算；待复核与未交都不计 0 分。</p>
     </div>`;
   }
 
@@ -705,11 +795,17 @@ export function mountLearningOverview(ctx, initialData) {
       activeCell?.focus({preventScroll: true});
       return;
     }
+    const copy = target.closest('[data-copy-report]');
+    if (copy) { void copyReport(copy.dataset.copyReport); return; }
+    const historyRow = target.closest('[data-history-cell]');
+    if (historyRow) { setTab('matrix', false); selectCell(historyRow.dataset.s, historyRow.dataset.a); return; }
     if (target.closest('[data-profile-back]')) { profileId = ''; memory.set({profileId: ''}); renderStudents(context.visible); $('#lo-profile-list button')?.focus({preventScroll: true}); return; }
     const action = target.closest('[data-action]')?.dataset.action;
     if (action === 'export') { exportCSV(); return; }
     if (action === 'clear') { clearFilters(); return; }
     if (action === 'legend') { if (!legendSheet.open) legendSheet.showModal(); return; }
+    if (action === 'class-report') { openClassReport(); return; }
+    if (target.closest('[data-close-report]')) { reportSheet.close(); return; }
     if (target.closest('#lo-filter')) { openFilterSheet(); return; }
     if (target.closest('#lo-refresh')) { void refresh(); return; }
     if (target.closest('[data-close-filter]')) { filterSheet.close(); return; }
@@ -814,6 +910,7 @@ export function mountLearningOverview(ctx, initialData) {
       if (sheet.open) sheet.close();
       if (filterSheet.open) filterSheet.close();
       if (legendSheet.open) legendSheet.close();
+      if (reportSheet.open) reportSheet.close();
       root.remove();
     },
   };

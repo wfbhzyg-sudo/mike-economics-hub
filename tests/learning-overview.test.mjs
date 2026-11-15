@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   periodRange, scopedAssignments, scopedStudents, assignmentLabel, buildRows, overviewStats,
   questionStats, studentProfile, rowStatus, formatPercent, trendLabel, unitsOf,
+  typeBreakdown, correctionSummary, assignmentHistory, studentObservations, classObservations, reportText,
 } from '../homework/learning-analytics-model.js';
 
 const CLASS = 'class-1';
@@ -146,4 +147,92 @@ test('percent formatting rounds half up and never prints a fake zero', () => {
 test('unit options are unique and numerically sorted', () => {
   const list = [assignment('a', {libraryUnit: '2.10'}), assignment('b', {libraryUnit: '2.2'}), assignment('c', {libraryUnit: '2.2'}), assignment('d', {libraryUnit: ''})];
   assert.deepEqual(unitsOf(list), ['2.2', '2.10']);
+});
+
+
+const graded = (studentId, id, score, maxPoints, {assignmentId = 'a1', at = '2026-10-02T10:00:00Z', type = 'short', questions} = {}) => ({
+  id, studentId, assignmentId, status: 'published', submittedAt: at, version: 1, choices: {},
+  publishedGrade: {total: score, maxPoints, revision: 1, publishedAt: at,
+    questions: questions || [{id: 'q1', score, maxPoints, type}]},
+});
+
+test('type breakdown separates automatically scored choices from written answers', () => {
+  const fixture = data({submissions: [
+    graded('s1', 'x', 6, 10, {questions: [
+      {id: 'q1', score: 1, maxPoints: 1, type: 'choice'},
+      {id: 'q2', score: 1, maxPoints: 1, type: 'choice'},
+      {id: 'q3', score: 4, maxPoints: 8, type: 'short'},
+    ]}),
+  ]});
+  const types = typeBreakdown(fixture, 's1');
+  assert.deepEqual([types.choice.questions, types.choice.score, types.choice.total, types.choice.rate], [2, 2, 2, 100]);
+  assert.deepEqual([types.written.questions, types.written.score, types.written.total, types.written.rate], [1, 4, 8, 50]);
+  assert.equal(typeBreakdown(fixture, 's2').choice.rate, null);
+});
+
+test('correction summary counts each state without inventing records', () => {
+  const fixture = data({mistakes: [
+    {studentId: 's1', assignmentId: 'a1', questionId: 'q1', status: 'todo'},
+    {studentId: 's1', assignmentId: 'a1', questionId: 'q2', status: 'review'},
+    {studentId: 's1', assignmentId: 'a1', questionId: 'q3', status: 'mastered'},
+    {studentId: 's2', assignmentId: 'a1', questionId: 'q1', status: 'todo'},
+  ]});
+  assert.deepEqual(correctionSummary(fixture, 's1'), {total: 3, open: 1, review: 1, mastered: 1});
+  assert.deepEqual(correctionSummary(fixture, 'missing'), {total: 0, open: 0, review: 0, mastered: 0});
+});
+
+test('assignment history is newest first and keeps each cell status', () => {
+  const early = assignment('early', {dueAt: '2026-09-01T23:59:00Z'});
+  const late = assignment('late', {dueAt: '2026-10-20T23:59:00Z'});
+  const fixture = data({assignments: [early, late], submissions: [
+    {...graded('s1', 'x', 8, 10), assignmentId: 'early'},
+    {...graded('s1', 'y', 9, 10), assignmentId: 'late'},
+  ]});
+  const history = assignmentHistory(fixture, fixture.students[0], [early, late]);
+  assert.deepEqual(history.map(cell => [cell.assignment.id, cell.status, cell.rate]), [['late', 'graded', 90], ['early', 'graded', 80]]);
+});
+
+test('student observations name the facts behind each sentence', () => {
+  const a1 = assignment('a1', {libraryUnit: '2.1'});
+  const a2 = assignment('a2', {libraryUnit: '2.3'});
+  const fixture = data({assignments: [a1, a2], submissions: [
+    {...graded('s1', 'x', 9, 10), assignmentId: 'a1'},
+    {...graded('s1', 'y', 4, 10), assignmentId: 'a2'},
+  ], mistakes: [
+    {studentId: 's1', assignmentId: 'a2', questionId: 'q1', status: 'todo'},
+    {studentId: 's1', assignmentId: 'a2', questionId: 'q2', status: 'review'},
+  ]});
+  const profile = studentProfile(fixture, fixture.students[0], [a1, a2]);
+  const items = studentObservations(fixture, fixture.students[0], [a1, a2], profile);
+  assert.equal(items[0].key, 'correction');
+  assert.match(items[0].text, /1 道失分题未订正，1 道已提交待复核/);
+  assert.deepEqual(items[0].evidence.filter(Boolean), ['待订正 1', '待复核 1']);
+  assert.equal(items[1].key, 'lowest');
+  assert.match(items[1].text, /2\.3/);
+  assert.match(items[1].text, /40%.*比个人平均低/);
+  assert.ok(items.length <= 3);
+});
+
+test('class observations report the weakest assignment, corrections and missing work', () => {
+  const a1 = assignment('a1', {libraryUnit: '2.1'});
+  const a2 = assignment('a2', {libraryUnit: '2.3'});
+  const fixture = data({students: [student('s1'), student('s2')], assignments: [a1, a2], submissions: [
+    {...graded('s1', 'x', 9, 10), assignmentId: 'a1'},
+    {...graded('s2', 'y', 9, 10), assignmentId: 'a1'},
+    {...graded('s1', 'z', 3, 10), assignmentId: 'a2'},
+    {...graded('s2', 'w', 5, 10), assignmentId: 'a2'},
+  ], mistakes: [
+    {studentId: 's1', assignmentId: 'a2', questionId: 'q1', status: 'todo'},
+    {studentId: 's2', assignmentId: 'a2', questionId: 'q1', status: 'todo'},
+  ]});
+  const rows = buildRows(fixture, fixture.students, [a1, a2]);
+  const items = classObservations(fixture, rows, [a1, a2], overviewStats(rows, [a1, a2]));
+  assert.equal(items[0].key, 'lowest');
+  assert.match(items[0].text, /2\.3.*平均 40%.*低 25 个百分点/);
+  assert.equal(items[1].key, 'correction');
+  assert.match(items[1].text, /2 名学生共有 2 道题待订正/);
+  const text = reportText('班级学情摘要', items, '2 人 · 2 次作业');
+  assert.match(text, /^班级学情摘要\n1\. /);
+  assert.match(text, /数据范围：2 人 · 2 次作业/);
+  assert.match(text, /非 AI 结论/);
 });

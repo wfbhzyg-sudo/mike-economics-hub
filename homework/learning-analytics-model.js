@@ -192,3 +192,131 @@ export function scopeCaption(stats) {
 }
 
 export {workDate};
+
+// ---------- report facts (deterministic, no model call) ----------
+const pct = value => formatPercent(value);
+
+function latestSubmitted(data, studentId) {
+  const latest = new Map();
+  for (const submission of data.submissions) {
+    if (submission.studentId !== studentId || submission.status === 'draft') continue;
+    const previous = latest.get(submission.assignmentId);
+    if (!previous || stampOf(submission) > stampOf(previous) || (stampOf(submission) === stampOf(previous) && submission.id > previous.id)) latest.set(submission.assignmentId, submission);
+  }
+  return latest;
+}
+
+// Split a student's published points by question type. Choice answers are scored
+// automatically; written answers carry teacher-reviewed points in the same grade.
+export function typeBreakdown(data, studentId) {
+  const buckets = {choice: {score: 0, total: 0, questions: 0}, written: {score: 0, total: 0, questions: 0}};
+  for (const submission of latestSubmitted(data, studentId).values()) {
+    const grade = submission.publishedGrade;
+    if (!grade) continue;
+    for (const question of grade.questions || []) {
+      if (!(question.maxPoints > 0) || !Number.isFinite(question.score)) continue;
+      const bucket = question.type === 'choice' ? buckets.choice : buckets.written;
+      bucket.score += question.score;
+      bucket.total += question.maxPoints;
+      bucket.questions += 1;
+    }
+  }
+  for (const bucket of Object.values(buckets)) bucket.rate = bucket.total ? round1(bucket.score / bucket.total * 100) : null;
+  return buckets;
+}
+
+export function correctionSummary(data, studentId) {
+  const rows = (data.mistakes || []).filter(item => item.studentId === studentId);
+  const by = status => rows.filter(item => item.status === status).length;
+  return {total: rows.length, open: by('todo'), review: by('review'), mastered: by('mastered')};
+}
+
+export function assignmentHistory(data, student, assignments) {
+  return cellsFor(data, student, assignments)
+    .slice()
+    .sort((a, b) => workDate(b.assignment).localeCompare(workDate(a.assignment)) || String(b.assignment.id).localeCompare(String(a.assignment.id)));
+}
+
+// Up to three teacher-facing observations, each with the facts that produced it.
+export function studentObservations(data, student, assignments, profile = studentProfile(data, student, assignments)) {
+  const items = [];
+  const row = profile.row;
+  const corrections = correctionSummary(data, student.id);
+  if (corrections.open > 0) {
+    items.push({
+      key: 'correction',
+      text: `还有 ${corrections.open} 道失分题未订正${corrections.review ? `，${corrections.review} 道已提交待复核` : ''}。`,
+      evidence: [`待订正 ${corrections.open}`, corrections.review ? `待复核 ${corrections.review}` : ''],
+    });
+  }
+  const graded = row.cells.filter(cell => cell.rate !== null);
+  if (graded.length >= 2) {
+    const lowest = graded.reduce((worst, cell) => (cell.rate < worst.rate ? cell : worst), graded[0]);
+    const gap = round1(row.average - lowest.rate);
+    if (gap >= 8) {
+      items.push({
+        key: 'lowest',
+        text: `「${assignmentLabel(lowest.assignment)}」得分率 ${pct(lowest.rate)}，比个人平均低 ${gap} 个百分点。`,
+        evidence: [assignmentLabel(lowest.assignment), `${lowest.rate}%`],
+      });
+    }
+  }
+  if (row.missing > 0) {
+    items.push({key: 'missing', text: `有 ${row.missing} 次作业未交，补交会进入教师复核。`, evidence: [`未交 ${row.missing}`]});
+  }
+  if (row.trend !== null && Math.abs(row.trend) >= 3) {
+    items.push({
+      key: 'trend',
+      text: `最近三次平均比更早三次${row.trend > 0 ? '高' : '低'} ${Math.abs(row.trend)} 分。`,
+      evidence: [`近期变化 ${trendLabel(row.trend)}`],
+    });
+  }
+  const types = typeBreakdown(data, student.id);
+  if (types.choice.rate !== null && types.written.rate !== null && types.choice.questions >= 3 && types.written.questions >= 3) {
+    const gap = round1(Math.abs(types.choice.rate - types.written.rate));
+    if (gap >= 15) items.push({
+      key: 'type',
+      text: `选择题平均 ${pct(types.choice.rate)}%，书面题 ${pct(types.written.rate)}%，相差 ${gap} 个百分点。`,
+      evidence: [`选择题 ${pct(types.choice.rate)}`, `书面题 ${pct(types.written.rate)}`],
+    });
+  }
+  if (!items.length) items.push({key: 'steady', text: '本范围内没有待订正、待交或明显波动的记录。', evidence: [`已出分 ${row.published}/${row.total}`]});
+  return items.slice(0, 3);
+}
+
+export function classObservations(data, rows, assignments, stats = overviewStats(rows, assignments)) {
+  const items = [];
+  const per = assignments.map(assignment => {
+    const rates = rows.map(row => row.cells.find(cell => cell.assignment.id === assignment.id)).filter(cell => cell?.rate !== null && cell?.rate !== undefined).map(cell => cell.rate);
+    return {assignment, graded: rates.length, average: rates.length ? round1(mean(rates)) : null};
+  }).filter(entry => entry.graded >= 2 && entry.average !== null);
+  per.sort((a, b) => a.average - b.average || String(a.assignment.id).localeCompare(String(b.assignment.id)));
+  const lowest = per[0];
+  if (lowest && stats.average !== null && round1(stats.average - lowest.average) >= 8) {
+    items.push({
+      key: 'lowest',
+      text: `「${assignmentLabel(lowest.assignment)}」已发布 ${lowest.graded} 份，平均 ${pct(lowest.average)}，比本次范围平均（${pct(stats.average)}）低 ${round1(stats.average - lowest.average)} 个百分点。`,
+      evidence: [assignmentLabel(lowest.assignment), `${lowest.graded} 份已发布`],
+    });
+  }
+  const mistakes = (data.mistakes || []).filter(item => assignments.some(assignment => assignment.id === item.assignmentId));
+  const open = mistakes.filter(item => item.status === 'todo');
+  if (open.length) {
+    const students = new Set(open.map(item => item.studentId)).size;
+    items.push({key: 'correction', text: `${students} 名学生共有 ${open.length} 道题待订正。`, evidence: [`待订正 ${open.length} 题`]});
+  }
+  if (stats.missing > 0) {
+    const students = rows.filter(row => row.missing > 0).length;
+    items.push({key: 'missing', text: `${students} 名学生共 ${stats.missing} 人次未交。`, evidence: [`未交 ${stats.missing} 人次`]});
+  }
+  if (stats.needsReview > 0) {
+    items.push({key: 'review', text: `${stats.needsReview} 份提交等待复核，暂不计入平均。`, evidence: [`待复核 ${stats.needsReview}`]});
+  }
+  if (!items.length) items.push({key: 'steady', text: `本次范围平均 ${pct(stats.average)}%，没有待订正或未交记录。`, evidence: [`${stats.students} 人`]});
+  return items.slice(0, 3);
+}
+
+export function reportText(title, items, caption) {
+  const lines = items.map((item, index) => `${index + 1}. ${item.text}`);
+  return [title, ...lines, '', `数据范围：${caption}`, '规则摘要，基于已发布成绩统计，非 AI 结论。'].join('\n');
+}
