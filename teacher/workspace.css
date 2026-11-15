@@ -739,3 +739,28 @@ html{-webkit-text-size-adjust:100%;scroll-padding-bottom:100px}
 .tw-account-class .tw-account-meta code{font-size:13px;letter-spacing:.04em;background:#f1f2ee;border-radius:4px;padding:2px 5px}
 .tw-account-class .tw-button.tw-small{min-height:36px}
 @media(max-width:900px){.tw-account-class .tw-button.tw-small{min-height:44px}}
+
+.tw-account-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.tw-account-head .tw-field-compact{gap:4px;min-width:220px}
+.tw-account-head .tw-field-compact span{font-size:12px;color:var(--tw-muted)}
+.tw-account-head select{min-height:42px;padding:8px 32px 8px 10px;border:1px solid #b3b3a9;border-radius:7px;background:#fff;color:var(--tw-ink);max-width:340px}
+.tw-account-head .tw-badge{align-self:center}
+@media(max-width:600px){.tw-account-head{width:100%;align-items:stretch}.tw-account-head .tw-field-compact{min-width:0;width:100%}.tw-account-head select{max-width:none;min-height:44px}.tw-account-head .tw-badge{align-self:flex-start;justify-self:start;width:max-content}}
+
+
+.tw-dialog{border:0;border-radius:14px;padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 48px);background:#fff;color:var(--tw-ink);box-shadow:0 24px 60px rgba(7,23,45,.28)}
+.tw-dialog::backdrop{background:rgba(9,24,34,.42)}
+.tw-dialog-form{display:grid;gap:14px;padding:22px 24px}
+.tw-dialog-form h2{font-size:20px;line-height:1.3}
+.tw-dialog-form .tw-field{gap:6px}
+.tw-dialog-form input:not([type=checkbox]),.tw-dialog-form select{width:100%;min-height:44px}
+.tw-dialog-form .tw-check{display:flex;align-items:flex-start;gap:9px}
+.tw-dialog-form .tw-check input{width:18px;height:18px;min-height:0;flex:0 0 auto;margin-top:2px}
+.tw-dialog-form small{display:block}
+.tw-dialog-row{display:flex;gap:10px;flex-wrap:wrap}
+.tw-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
+.tw-danger-solid{background:#a53429;border-color:#a53429;color:#fff}
+.tw-danger-solid:hover{background:#8d2a21;border-color:#8d2a21}
+.tw-danger-zone{margin-top:14px;padding-top:12px;border-top:1px solid #e3ded4}
+.tw-danger-zone .tw-note{margin:0 0 8px}
+@media(max-width:600px){.tw-dialog-form{padding:18px;gap:12px}.tw-dialog-actions{flex-direction:column-reverse}.tw-dialog-actions .tw-button{width:100%}}
