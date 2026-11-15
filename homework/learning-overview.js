@@ -93,9 +93,9 @@ export function mountLearningOverview(ctx, initialData) {
   </div>
   <div class="lo-stats" id="lo-stats" aria-live="polite"></div>
   <div class="lo-tabs" role="tablist" aria-label="学情视图">
-    <button type="button" role="tab" id="lo-tab-matrix" aria-controls="lo-panel-matrix" aria-selected="${tab === 'matrix'}" tabindex="${tab === 'matrix' ? 0 : -1}" data-tab="matrix">班级矩阵</button>
-    <button type="button" role="tab" id="lo-tab-diagnosis" aria-controls="lo-panel-diagnosis" aria-selected="${tab === 'diagnosis'}" tabindex="${tab === 'diagnosis' ? 0 : -1}" data-tab="diagnosis">作业诊断</button>
-    <button type="button" role="tab" id="lo-tab-students" aria-controls="lo-panel-students" aria-selected="${tab === 'students'}" tabindex="${tab === 'students' ? 0 : -1}" data-tab="students">学生档案</button>
+    <button type="button" role="tab" id="lo-tab-matrix" aria-controls="lo-panel-matrix" aria-selected="${tab === 'matrix'}" tabindex="${tab === 'matrix' ? 0 : -1}" data-tab="matrix">成绩总览</button>
+    <button type="button" role="tab" id="lo-tab-diagnosis" aria-controls="lo-panel-diagnosis" aria-selected="${tab === 'diagnosis'}" tabindex="${tab === 'diagnosis' ? 0 : -1}" data-tab="diagnosis">题目诊断</button>
+    <button type="button" role="tab" id="lo-tab-students" aria-controls="lo-panel-students" aria-selected="${tab === 'students'}" tabindex="${tab === 'students' ? 0 : -1}" data-tab="students">学情报告</button>
     <span class="lo-tab-note" id="lo-count"></span>
   </div>
   <div class="lo-body" id="lo-body">
