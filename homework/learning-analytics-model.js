@@ -117,23 +117,30 @@ export function questionStats(data, assignmentId) {
   }
   const graded = [...latest.values()].filter(submission => submission.publishedGrade && Number.isFinite(submission.publishedGrade.total));
   const questions = (assignment.questions || []).map(question => {
-    let gradedCount = 0, correct = 0, answered = 0;
+    let gradedCount = 0, correct = 0, answered = 0, scoreSum = 0;
     const counts = new Map();
     for (const submission of graded) {
       const hit = (submission.publishedGrade.questions || []).find(item => item.id === question.id);
       if (!hit || hit.score == null) continue;
       gradedCount += 1;
+      scoreSum += Number(hit.score) || 0;
       if (hit.score >= hit.maxPoints) correct += 1;
       const sameVersion = assignment.version == null || submission.version === assignment.version;
       const choice = sameVersion ? submission.choices?.[question.id] : null;
       if (choice) { counts.set(choice, (counts.get(choice) || 0) + 1); answered += 1; }
     }
     const labels = (question.options || []).map(option => option.label);
-    const order = labels.length ? labels : ['A', 'B', 'C', 'D', 'E'];
+    const base = labels.length ? labels : ['A', 'B', 'C', 'D', 'E'];
+    // Keep the bars honest if a same-version paper recorded a label the current
+    // options no longer list: count it instead of silently dropping the answer.
+    const order = base.concat([...counts.keys()].filter(label => !base.includes(label)).sort());
     return {
       id: question.id, prompt: question.prompt || '', type: question.type || 'short',
       maxPoints: question.maxPoints, knowledge: question.knowledge || '',
-      graded: gradedCount, correct, rate: gradedCount ? round1(correct / gradedCount * 100) : null,
+      graded: gradedCount, correct, scoreSum: round1(scoreSum),
+      rate: gradedCount ? round1(correct / gradedCount * 100) : null,
+      average: gradedCount ? round1(scoreSum / gradedCount) : null,
+      scoreRate: gradedCount && question.maxPoints ? round1(scoreSum / (gradedCount * question.maxPoints) * 100) : null,
       options: question.options || [], answered,
       distribution: order.map(label => ({label, count: counts.get(label) || 0})),
       unanswered: Math.max(0, gradedCount - answered),
@@ -319,4 +326,49 @@ export function classObservations(data, rows, assignments, stats = overviewStats
 export function reportText(title, items, caption) {
   const lines = items.map((item, index) => `${index + 1}. ${item.text}`);
   return [title, ...lines, '', `数据范围：${caption}`, '规则摘要，基于已发布成绩统计，非 AI 结论。'].join('\n');
+}
+
+/**
+ * Per-assignment diagnosis used by the teacher "作业诊断" tab: published count,
+ * equal-weight average, per-question accuracy/distribution (via questionStats),
+ * the weakest written-response questions and the weakest knowledge tags.
+ */
+export function assignmentDiagnostics(data, assignments) {
+  return assignments.map(assignment => {
+    const stats = questionStats(data, assignment.id) || {graded: 0, questions: []};
+    const questions = stats.questions.slice();
+    const latest = new Map();
+    for (const submission of data.submissions) {
+      if (submission.assignmentId !== assignment.id || submission.status === 'draft') continue;
+      const previous = latest.get(submission.studentId);
+      if (!previous || stampOf(submission) > stampOf(previous)) latest.set(submission.studentId, submission);
+    }
+    const rates = [];
+    for (const submission of latest.values()) {
+      const grade = submission.publishedGrade;
+      if (!grade || !Number.isFinite(grade.total) || !grade.maxPoints) continue;
+      rates.push(grade.total / grade.maxPoints * 100);
+    }
+    const average = rates.length ? round1(rates.reduce((sum, value) => sum + value, 0) / rates.length) : null;
+    const weakWritten = questions
+      .filter(question => question.type !== 'choice' && question.scoreRate !== null && question.graded >= 2)
+      .sort((a, b) => a.scoreRate - b.scoreRate)
+      .slice(0, 3);
+    const byKnowledge = new Map();
+    for (const question of questions) {
+      const knowledge = (question.knowledge || '').trim();
+      if (!knowledge || !question.graded) continue;
+      const entry = byKnowledge.get(knowledge) || {knowledge, graded: 0, score: 0, max: 0};
+      entry.graded += question.graded;
+      entry.score += question.scoreSum;
+      entry.max += question.maxPoints * question.graded;
+      byKnowledge.set(knowledge, entry);
+    }
+    const knowledge = [...byKnowledge.values()]
+      .filter(entry => entry.graded >= 3)
+      .map(entry => ({knowledge: entry.knowledge, graded: entry.graded, rate: entry.max ? round1(entry.score / entry.max * 100) : null}))
+      .sort((a, b) => a.rate - b.rate)
+      .slice(0, 4);
+    return {assignment, published: stats.graded, totalStudents: stats.totalStudents, average, questions, weakWritten, knowledge};
+  });
 }

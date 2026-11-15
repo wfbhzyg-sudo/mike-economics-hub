@@ -4,6 +4,7 @@ import {
   periodRange, scopedAssignments, scopedStudents, assignmentLabel, buildRows, overviewStats,
   questionStats, studentProfile, rowStatus, formatPercent, trendLabel, unitsOf,
   typeBreakdown, correctionSummary, assignmentHistory, studentObservations, classObservations, reportText,
+  assignmentDiagnostics,
 } from '../homework/learning-analytics-model.js';
 
 const CLASS = 'class-1';
@@ -235,4 +236,25 @@ test('class observations report the weakest assignment, corrections and missing 
   assert.match(text, /^班级学情摘要\n1\. /);
   assert.match(text, /数据范围：2 人 · 2 次作业/);
   assert.match(text, /非 AI 结论/);
+});
+
+test('assignment diagnosis reports published count, choices and weak written questions', () => {
+  const a1 = assignment('a1', {
+    questions: [
+      {id: 'q1', prompt: '选择题', type: 'choice', maxPoints: 1, knowledge: '2.3', options: [{label: 'A', text: '甲'}, {label: 'B', text: '乙'}, {label: 'C', text: '丙'}]},
+      {id: 'q2', prompt: '简答题', type: 'short', maxPoints: 4, knowledge: 'FRQ 分析'},
+    ],
+  });
+  const grade = (id, q1, q2, total) => ({id: `g-${id}`, studentId: id, assignmentId: 'a1', status: 'published', submittedAt: '2026-10-02T10:00:00Z', version: 1,
+    choices: {q1: q1 ? 'A' : 'B'},
+    publishedGrade: {total, maxPoints: 5, revision: 1, publishedAt: '2026-10-03T10:00:00Z', questions: [{id: 'q1', score: q1, maxPoints: 1, type: 'choice'}, {id: 'q2', score: q2, maxPoints: 4, type: 'short'}]}});
+  const fixture = data({assignments: [a1], submissions: [grade('s1', 1, 3, 4), grade('s2', 0, 2, 2), grade('s3', 1, 4, 5)]});
+  const [diag] = assignmentDiagnostics(fixture, [a1]);
+  assert.equal(diag.published, 3);
+  assert.equal(diag.average, 73.3);
+  assert.deepEqual(diag.questions.map(item => item.id), ['q1', 'q2']);
+  assert.deepEqual(diag.questions[0].distribution.map(item => [item.label, item.count]), [['A', 2], ['B', 1], ['C', 0]]);
+  assert.equal(diag.questions[1].average, 3);
+  assert.deepEqual(diag.weakWritten.map(item => item.id), ['q2']);
+  assert.deepEqual(diag.knowledge.map(item => [item.knowledge, item.rate]), [['2.3', 66.7], ['FRQ 分析', 75]]);
 });

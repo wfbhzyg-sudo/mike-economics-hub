@@ -129,8 +129,8 @@ export function buildData(now = new Date()) {
         }
         // 2.3 MCQ · 40 published papers, B is correct for 45% (design sample).
         const hit = questionIndex === 1 && assignmentIndex === 4
-          ? weightedLetter(random, ['B', 'D', 'C', 'A', 'E'], [0.45, 0.25, 0.15, 0.10, 0.05])
-          : LETTERS[Math.floor(random() * 5)];
+          ? weightedLetter(random, ['B', 'D', 'C', 'A'], [0.45, 0.30, 0.15, 0.10])
+          : question.options[Math.floor(random() * question.options.length)].label;
         choices[question.id] = hit;
         const chance = Math.max(0.12, Math.min(0.97, ability + difficulty + random() * 0.16 - 0.08));
         return { id: question.id, score: random() < chance ? question.maxPoints : 0, maxPoints: question.maxPoints, type: 'choice' };

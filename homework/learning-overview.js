@@ -10,11 +10,11 @@ import {
   buildRows, overviewStats, questionStats, studentProfile, rowStatus,
   formatPercent, trendLabel, unitsOf, scopeCaption, workDate,
   typeBreakdown, correctionSummary, assignmentHistory, studentObservations,
-  classObservations, reportText,
+  classObservations, reportText, assignmentDiagnostics,
 } from './learning-analytics-model.js';
 
 const SORTS = [['name', '学生姓名'], ['average', '平均分'], ['attention', '待处理'], ['trend', '近期变化']];
-const TYPES = {mcq: 'MCQ', choice: '选择', frq: 'FRQ', short: '简答'};
+const TYPES = {mcq: 'MCQ', choice: '选择题', frq: 'FRQ', short: '简答题'};
 const TYPE_ORDER = ['graded', 'attention', 'pending', 'todo', 'missing', 'unconfirmed', 'unassigned'];
 const round = value => Math.round(value * 10) / 10;
 const monthDay = value => {
@@ -49,7 +49,11 @@ export function mountLearningOverview(ctx, initialData) {
     direction: storedFilter.direction === 'desc' ? 'desc' : 'asc',
   };
   if (filter.sort !== 'name') filter.direction = filter.direction === 'asc' ? 'asc' : 'desc';
-  let tab = memory.get('tab', 'matrix') === 'students' ? 'students' : 'matrix';
+  const storedTab = memory.get('tab', 'matrix');
+  let tab = ['matrix', 'students', 'diagnosis'].includes(storedTab) ? storedTab : 'matrix';
+  let diagId = typeof memory.get('diagId', '') === 'string' ? memory.get('diagId', '') : '';
+  let diagQuestion = typeof memory.get('diagQuestion', '') === 'string' ? memory.get('diagQuestion', '') : '';
+  let diagOpen = memory.get('diagOpen', false) === true;
   let mobileView = memory.get('mobileView', 'list') === 'grid' ? 'grid' : 'list';
   let selected = storedSelection && typeof storedSelection === 'object' ? storedSelection : null;
   let profileId = memory.get('profileId', '');
@@ -60,6 +64,7 @@ export function mountLearningOverview(ctx, initialData) {
   let classReport = null;
   let profileReports = new Map();
   let sheetTrigger = null;
+  let diagTrigger = null;
   const wide = matchMedia('(min-width:1280px)');
   const small = matchMedia('(max-width:767px)');
 
@@ -85,6 +90,7 @@ export function mountLearningOverview(ctx, initialData) {
   <div class="lo-stats" id="lo-stats" aria-live="polite"></div>
   <div class="lo-tabs" role="tablist" aria-label="学情视图">
     <button type="button" role="tab" id="lo-tab-matrix" aria-controls="lo-panel-matrix" aria-selected="${tab === 'matrix'}" tabindex="${tab === 'matrix' ? 0 : -1}" data-tab="matrix">班级矩阵</button>
+    <button type="button" role="tab" id="lo-tab-diagnosis" aria-controls="lo-panel-diagnosis" aria-selected="${tab === 'diagnosis'}" tabindex="${tab === 'diagnosis' ? 0 : -1}" data-tab="diagnosis">作业诊断</button>
     <button type="button" role="tab" id="lo-tab-students" aria-controls="lo-panel-students" aria-selected="${tab === 'students'}" tabindex="${tab === 'students' ? 0 : -1}" data-tab="students">学生档案</button>
     <span class="lo-tab-note" id="lo-count"></span>
   </div>
@@ -99,6 +105,12 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
       <div class="lo-list" id="lo-list"></div>
       <div class="lo-empty" id="lo-empty" hidden></div>
+    </div>
+    <div class="lo-panel" id="lo-panel-diagnosis" role="tabpanel" aria-labelledby="lo-tab-diagnosis" ${tab === 'diagnosis' ? '' : 'hidden'}>
+      <div class="lo-diag-layout" id="lo-diag-layout">
+        <div class="lo-diag-list" id="lo-diag-list" aria-label="作业列表"></div>
+        <div class="lo-diag" id="lo-diag" tabindex="-1"></div>
+      </div>
     </div>
     <div class="lo-panel" id="lo-panel-students" role="tabpanel" aria-labelledby="lo-tab-students" ${tab === 'students' ? '' : 'hidden'}>
       <div class="lo-profile-layout" id="lo-profile-layout">
@@ -147,6 +159,9 @@ export function mountLearningOverview(ctx, initialData) {
   const filterSheet = $('#lo-filter-sheet');
   const legendSheet = $('#lo-legend-sheet');
   const reportSheet = $('#lo-report-sheet');
+  const diagLayout = $('#lo-diag-layout');
+  const diagList = $('#lo-diag-list');
+  const diagHost = $('#lo-diag');
 
   // ---------- options and filters ----------
   function fill(select, options, value) {
@@ -179,6 +194,7 @@ export function mountLearningOverview(ctx, initialData) {
     const students = scopedStudents(data, {classId: filter.classId, assignments});
     const rows = buildRows(data, students, assignments);
     const stats = overviewStats(rows, assignments);
+    const diagnoses = assignmentDiagnostics(data, assignments);
     questionCache = new Map();
 
     const needle = filter.query.trim().toLowerCase();
@@ -189,16 +205,17 @@ export function mountLearningOverview(ctx, initialData) {
     visible = sortRows(visible);
     if (profileId && !visible.some(row => row.student.id === profileId)) profileId = '';
 
-    context = {assignments, rows, visible, stats};
+    context = {assignments, rows, visible, stats, diagnoses};
     if (selected && !findSelection()) selected = null;
     const {timer, ...savedFilter} = filter;
-    memory.set({filter: savedFilter, tab, mobileView, profileId, selection: selected});
+    memory.set({filter: savedFilter, tab, mobileView, profileId, selection: selected, diagId, diagQuestion, diagOpen});
 
     renderStats(stats, assignments);
     renderCount(visible.length, rows.length);
     renderMatrix(assignments, visible);
     renderList(visible);
     renderStudents(visible);
+    renderDiagnosis(diagnoses);
     renderDetail();
     renderFilterState(units, unitScope);
     updateEmpty(rows, visible);
@@ -490,6 +507,118 @@ export function mountLearningOverview(ctx, initialData) {
     }
   }
 
+  // ---------- assignment diagnosis ----------
+  function ensureDiag(diagnoses) {
+    if (diagId && diagnoses.some(item => item.assignment.id === diagId)) return;
+    const preferred = diagnoses.find(item => item.assignment.id === filter.assignmentId);
+    const current = preferred || diagnoses.find(item => item.published > 0) || diagnoses[0];
+    diagId = current ? current.assignment.id : '';
+    diagQuestion = '';
+    if (preferred) diagOpen = true;
+  }
+
+  function renderDiagnosis(diagnoses) {
+    if (!diagnoses.length) {
+      diagList.innerHTML = '';
+      diagHost.innerHTML = `<div class="lo-detail-empty"><h2>这个范围还没有作业</h2><p>调整单元、时间范围或作业筛选后再看诊断。</p></div>`;
+      diagLayout.dataset.open = 'false';
+      return;
+    }
+    ensureDiag(diagnoses);
+    diagList.innerHTML = diagnoses.map(item => {
+      const assignment = item.assignment;
+      return `<button type="button" class="lo-diag-item" data-diag="${h(assignment.id)}" aria-pressed="${assignment.id === diagId}">
+        <span class="lo-diag-name">${h(assignmentLabel(assignment))}</span>
+        <span class="lo-diag-date">${h(monthDay(workDate(assignment)))} · ${h(TYPES[assignment.format] || assignment.format || '作业')}</span>
+        <span class="lo-diag-meta">${item.published ? `${item.published} 份已发布 · 平均 ${formatPercent(item.average)}` : '尚无已发布成绩'}</span>
+      </button>`;
+    }).join('');
+    const current = diagnoses.find(item => item.assignment.id === diagId);
+    diagHost.innerHTML = current ? diagMarkup(current) : '';
+    diagLayout.dataset.open = String(wide.matches || diagOpen);
+  }
+
+  function questionRowMarkup(diagnosis, question, index) {
+    const choice = question.type === 'choice';
+    const rate = choice ? question.rate : question.scoreRate;
+    const top = Math.max(1, ...question.distribution.map(item => item.count));
+    return `<button type="button" class="lo-qrow" data-diag-question="${h(question.id)}" title="查看第 ${index + 1} 题原题与班级数据">
+      <span class="lo-qrow-index">${index + 1}</span>
+      <span class="lo-qrow-prompt">${h(trim(question.prompt, 56))}</span>
+      <span class="lo-qrow-type">${h(TYPES[question.type] || question.type || '题')}</span>
+      <span class="lo-qrow-rate" data-band="${rate === null ? '' : (scoreBand(rate)?.level || '')}">${formatPercent(rate)}</span>
+      <span class="lo-qrow-sample">${question.graded}</span>
+      <span class="lo-mini-dist" aria-hidden="true">${choice ? question.distribution.map(item => `<i style="height:${Math.max(6, Math.round(item.count / top * 100))}%"></i>`).join('') : '—'}</span>
+    </button>`;
+  }
+
+  function diagMarkup(diagnosis) {
+    const assignment = diagnosis.assignment;
+    const unit = assignment.libraryUnit ? `${assignment.libraryUnit} · ` : '';
+    return `<div class="lo-diag-body">
+      <button type="button" class="lo-back lo-mobile-only" data-diag-back>← 返回作业列表</button>
+      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div>${link(`work/overview/${assignment.id}`, '作业设置')}</header>
+      <div class="lo-diag-metrics">
+        <div><span>已发布</span><strong>${diagnosis.published}<small> 份</small></strong></div>
+        <div><span>平均</span><strong>${formatPercent(diagnosis.average)}</strong></div>
+        <div><span>题目</span><strong>${diagnosis.questions.length}<small> 题</small></strong></div>
+        <div><span>书面薄弱</span><strong>${diagnosis.weakWritten.length || '—'}</strong></div>
+      </div>
+      <section class="lo-diag-section"><div class="lo-section-head"><h3>每题正确率与选项分布</h3><small>选择题看正确率，书面题看得分率</small></div>
+        ${diagnosis.questions.length ? `<div class="lo-qtable" role="table" aria-label="题目诊断">
+          <div class="lo-qtable-head" role="row"><span role="columnheader">题</span><span role="columnheader">题目</span><span role="columnheader">类型</span><span role="columnheader">${diagnosis.questions.every(question => question.type === 'choice') ? '正确率' : diagnosis.questions.every(question => question.type !== 'choice') ? '得分率' : '正确率/得分率'}</span><span role="columnheader">样本</span><span role="columnheader">选项分布</span></div>
+          ${diagnosis.questions.map((question, index) => questionRowMarkup(diagnosis, question, index)).join('')}
+        </div>` : '<p class="lo-note">这份作业没有题目级评分数据，附件与作答可在复核页查看。</p>'}
+      </section>
+      <section class="lo-diag-section"><div class="lo-section-head"><h3>FRQ 薄弱点</h3><small>得分率最低的书面题</small></div>
+        ${diagnosis.weakWritten.length ? `<ul class="lo-weak">${diagnosis.weakWritten.map(question => `<li><button type="button" data-diag-question="${h(question.id)}"><span class="lo-weak-prompt">${h(trim(question.prompt, 64))}</span><span class="lo-weak-meta">${h(TYPES[question.type] || '简答')} · 平均 ${question.average}/${question.maxPoints} · 得分率 ${formatPercent(question.scoreRate)}</span></button></li>`).join('')}</ul>` : `<p class="lo-note">${diagnosis.questions.some(question => question.type !== 'choice') ? '书面题样本不足，暂不排序。' : '这份作业没有书面题；选择题的薄弱项见上方正确率。'}</p>`}
+      </section>
+      <section class="lo-diag-section"><div class="lo-section-head"><h3>知识标签薄弱项</h3><small>按题目标签聚合得分率</small></div>
+        ${diagnosis.knowledge.length ? `<ul class="lo-tags">${diagnosis.knowledge.map(item => `<li><span class="lo-chip">${h(item.knowledge)}</span><strong>${formatPercent(item.rate)}</strong><small>${item.graded} 题次</small></li>`).join('')}</ul>` : '<p class="lo-note">题目标签不足，暂不能聚合。</p>'}
+      </section>
+    </div>`;
+  }
+
+  function diagDetailMarkup() {
+    const found = diagQuestion ? (context.diagnoses || []).map(item => ({diagnosis: item, question: item.questions.find(question => question.id === diagQuestion)})).find(item => item.question) : null;
+    if (!found) {
+      const current = (context.diagnoses || []).find(item => item.assignment.id === diagId);
+      const weak = current ? current.weakWritten.slice(0, 3) : (context.diagnoses || []).flatMap(item => item.weakWritten.slice(0, 1)).slice(0, 3);
+      return `<div class="lo-detail-empty"><h2>${current ? `作业诊断 · ${h(current.assignment.title || assignmentLabel(current.assignment))}` : '作业诊断'}</h2><p>点左侧任一题查看原题、选项分布与班级正确率。此视图不修改成绩，也不发布报告。</p>${current ? `<h3>本份作业</h3><p class="lo-note">已发布 ${current.published} 份 · 平均 ${formatPercent(current.average)} · ${current.questions.length} 题${current.knowledge.length ? ` · 最弱标签「${h(current.knowledge[0].knowledge)}」${formatPercent(current.knowledge[0].rate)}` : ''}</p>` : ''}${weak.length ? `<h3>最薄弱的书面题</h3><ul class="lo-weak">${weak.map(item => `<li><button type="button" data-diag-question="${h(item.id)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 48))}</span><span class="lo-weak-meta">${h(TYPES[item.type] || '简答')} · 得分率 ${formatPercent(item.scoreRate)}</span></button></li>`).join('')}</ul>` : ''}</div>`;
+    }
+    const {diagnosis, question} = found;
+    const choice = question.type === 'choice';
+    const rate = choice ? question.rate : question.scoreRate;
+    const total = question.distribution.reduce((sum, item) => sum + item.count, 0) || 1;
+    const options = question.options?.length ? question.options : question.distribution.filter(item => item.count).map(item => ({label: item.label, text: ''}));
+    return `<div class="lo-detail-inner">
+      <header class="lo-detail-head"><div><h2>第 ${diagnosis.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || '题目')}</h2><p>${h(assignmentLabel(diagnosis.assignment))}${question.knowledge ? ` · ${h(question.knowledge)}` : ''}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
+      <div class="lo-detail-score"><strong>${formatPercent(rate)}</strong><span class="lo-chip">${choice ? '班级正确率' : '班级得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
+      <p class="lo-prompt">${h(question.prompt || '未记录题干')}</p>
+      ${question.options?.length ? `<ol class="lo-options" aria-label="选项">${options.map(option => `<li><span class="lo-option-label">${h(option.label)}</span><span>${h(option.text || '')}</span></li>`).join('')}</ol>` : '<p class="lo-note">该题没有选项结构，可能为简答或材料题。</p>'}
+      <div class="lo-qstats">
+        <div><span>${choice ? '班级正确率' : '平均得分'}</span><strong>${choice ? formatPercent(question.rate) : `${question.average}/${question.maxPoints}`}</strong><small>${question.correct}/${question.graded} 份${choice ? '完全正确' : '达到满分'}</small></div>
+        <div><span>有效样本</span><strong>${question.answered}</strong><small>${question.unanswered ? `${question.unanswered} 份未记录选项` : '全部已记录'}</small></div>
+      </div>
+      ${choice ? `<div class="lo-distribution" role="list" aria-label="选项分布">
+        ${question.distribution.map(item => `<div class="lo-dist-row" role="listitem"><span class="lo-dist-label">${h(item.label)}</span><div class="lo-dist-track"><i style="width:${Math.round(item.count / total * 100)}%"></i></div><span class="lo-dist-count">${item.count}</span></div>`).join('')}
+      </div>` : ''}
+      <p class="lo-note">选项分布只统计与当前发布版本一致的作答；未记录选项或版本不同的作答不计入。正确选项不在学情接口中暴露，需在复核页核对。</p>
+    </div>`;
+  }
+
+  function openDiagQuestion(id, trigger) {
+    diagQuestion = id;
+    diagTrigger = trigger || document.activeElement;
+    memory.set({diagQuestion: id});
+    renderDetail();
+    if (!wide.matches && !sheet.open) openSheet(diagTrigger);
+    if (sheet.open) {
+      $('#lo-sheet-title').textContent = '题目详情';
+      sheetBody.querySelector('[data-close-detail]')?.focus({preventScroll: true});
+    }
+  }
+
   // ---------- detail ----------
   function findSelection() {
     if (!selected) return null;
@@ -500,6 +629,15 @@ export function mountLearningOverview(ctx, initialData) {
   }
 
   function renderDetail() {
+    if (tab === 'diagnosis') {
+      const markup = diagDetailMarkup();
+      detailHost.innerHTML = markup;
+      if (sheet.open) {
+        sheetBody.innerHTML = markup;
+        $('#lo-sheet-title').textContent = diagQuestion ? '题目详情' : '作业诊断';
+      }
+      return;
+    }
     const found = findSelection();
     const markup = found ? detailMarkup(found.row, found.cell) : emptyDetailMarkup();
     detailHost.innerHTML = markup;
@@ -661,17 +799,16 @@ export function mountLearningOverview(ctx, initialData) {
   }
 
   function setTab(next, redraw = true) {
-    tab = next === 'students' ? 'students' : 'matrix';
+    tab = ['matrix', 'students', 'diagnosis'].includes(next) ? next : 'matrix';
     memory.set({tab});
     root.dataset.tab = tab;
-    const matrixTab = $('#lo-tab-matrix'), studentsTab = $('#lo-tab-students');
-    const isMatrix = tab === 'matrix';
-    matrixTab.setAttribute('aria-selected', String(isMatrix));
-    studentsTab.setAttribute('aria-selected', String(!isMatrix));
-    matrixTab.tabIndex = isMatrix ? 0 : -1;
-    studentsTab.tabIndex = isMatrix ? -1 : 0;
-    $('#lo-panel-matrix').hidden = !isMatrix;
-    $('#lo-panel-students').hidden = isMatrix;
+    for (const name of ['matrix', 'students', 'diagnosis']) {
+      const button = $(`#lo-tab-${name}`);
+      const active = tab === name;
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+      $(`#lo-panel-${name}`).hidden = !active;
+    }
     if (redraw) { renderDetail(); }
   }
 
@@ -757,7 +894,25 @@ export function mountLearningOverview(ctx, initialData) {
     const sort = target.closest('[data-sort]');
     if (sort) { sortBy(sort.dataset.sort); return; }
     const tabButton = target.closest('.lo-tabs [data-tab]');
-    if (tabButton) { setTab(tabButton.dataset.tab === 'students' ? 'students' : 'matrix'); return; }
+    if (tabButton) { setTab(tabButton.dataset.tab); return; }
+    const diagItem = target.closest('[data-diag]');
+    if (diagItem) {
+      diagId = diagItem.dataset.diag; diagQuestion = ''; diagOpen = true;
+      memory.set({diagId, diagQuestion, diagOpen});
+      renderDiagnosis(context.diagnoses);
+      renderDetail();
+      $('#lo-diag')?.focus({preventScroll: true});
+      return;
+    }
+    const diagQuestionButton = target.closest('[data-diag-question]');
+    if (diagQuestionButton) { openDiagQuestion(diagQuestionButton.dataset.diagQuestion, diagQuestionButton); return; }
+    if (target.closest('[data-diag-back]')) {
+      diagOpen = false; memory.set({diagOpen: false});
+      renderDiagnosis(context.diagnoses);
+      renderDetail();
+      diagList.querySelector('[data-diag]')?.focus({preventScroll: true});
+      return;
+    }
     const profileButton = target.closest('[data-profile]');
     if (profileButton) { openProfile(profileButton.dataset.profile); return; }
     const cardCell = target.closest('[data-card-cell]');
@@ -786,6 +941,12 @@ export function mountLearningOverview(ctx, initialData) {
       return;
     }
     if (target.closest('[data-close-detail]')) {
+      if (tab === 'diagnosis' && !sheet.open) {
+        diagQuestion = ''; memory.set({diagQuestion: ''});
+        renderDetail();
+        diagTrigger?.focus?.({preventScroll: true});
+        return;
+      }
       const activeCell = root.querySelector('[data-cell][aria-pressed="true"]');
       if (sheet.open) { closeSheet(); return; }
       selected = null;
@@ -875,7 +1036,9 @@ export function mountLearningOverview(ctx, initialData) {
   $('#lo-tab-matrix').parentElement.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     event.preventDefault();
-    const next = tab === 'matrix' ? 'students' : 'matrix';
+    const order = ['matrix', 'diagnosis', 'students'];
+    const index = Math.max(0, order.indexOf(tab));
+    const next = order[(index + (event.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length];
     setTab(next);
     root.querySelector(`[data-tab="${next}"]`)?.focus();
   });
