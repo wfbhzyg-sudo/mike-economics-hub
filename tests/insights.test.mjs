@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildInsightFacts, canViewReport, draftInsight, insightData, insightScope, insightVersion, publishTarget, ruleDraft, sanitizeAiDraft} from '../homework-server/insights.mjs';
 
-const day = offset => new Date(Date.now() + offset * 86400000).toISOString();
+const DAY_ZERO = Date.parse('2026-11-15T00:00:00.000Z');
+const day = offset => new Date(DAY_ZERO + offset * 86400000).toISOString();
 
 function fixture() {
   const students = [{id: 'u1', name: '学生一', classIds: ['c1']}, {id: 'u2', name: '学生二', classIds: ['c1']}];

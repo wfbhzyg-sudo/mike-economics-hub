@@ -10,6 +10,7 @@ import {captureRecipients} from './roster.mjs';
 import {validateTiming} from './mcq-model.mjs';
 import {questionFingerprint} from './review-links.mjs';
 import {UNIT,publicUnit,cleanDrawing,validateSelection} from './library-model.mjs';
+import {canonicalResourcePage} from '../homework/library-page-map.js';
 export function createLibrary({db,files,requireAssignment}){
  const visibleTo = (unit, user, releases) =>
    user.role === 'teacher'
@@ -36,7 +37,7 @@ export function createLibrary({db,files,requireAssignment}){
    const units = await db.list('library-unit');
    const releases = user.role === 'teacher' ? [] : await db.list('library-release');
    return units.some(unit => visibleTo(unit, user, releases) &&
-     unit.resources.some(resource => resource.fileId === file.id &&
+     unit.resources.some(resource => (resource.fileId === file.id || resource.sourceFileId === file.id) &&
        (user.role === 'teacher' || resource.audience !== 'teacher')));
  }
  async function handle({req,res,route,method,user,json,availableClasses,availableStudents}){
@@ -103,7 +104,7 @@ export function createLibrary({db,files,requireAssignment}){
  await db.put('assignment',a,c);await db.put('answer-version',{id:a.id+':v1',assignmentId:a.id,version:1,rubric,paper:a.publishedPaper,answerFiles:[],confirmedBy:user.id,confirmedAt:now()},c);await db.put('review-links',{id:'review-links:'+hash(a.id),assignmentId:a.id,defaults:[],questions:rubric.filter(q=>q.libraryChapter).map(q=>({id:q.id,fingerprint:questionFingerprint(q),chapters:[q.libraryChapter]})),revision:1},c);await db.put('library-publication',{id:key,assignmentId:a.id,createdAt:now()},c);await db.audit(user.id,'library_publish',a.id,c);return a;});json(res,{assignment:{id:a.id,title:a.title}},201);return true;}
  if(route[1]==='notes'){
  const query=new URL(req.url,'http://local').searchParams,b=method==='GET'?Object.fromEntries(query):await bdy();let scope;
- if(b.resourceId){const u=await unitFor(user,b.unitId),r=u.resources.find(r=>r.fileId===b.resourceId);assert(r&&(user.role==='teacher'||r.audience!=='teacher'),'无法查看这份资料',403);const page=Number(b.page);assert(Number.isInteger(page)&&page>=1&&page<=r.pages,'页码无效');scope='resource:'+r.fileId+':'+page;}
+ if(b.resourceId){const u=await unitFor(user,b.unitId);let r=u.resources.find(r=>r.fileId===b.resourceId),canonical=r?canonicalResourcePage(r,b.page):null;if(!canonical){r=u.resources.find(r=>r.sourceFileId===b.resourceId);const page=Number(b.page),max=Number(r?.sourcePages||r?.pages||0);if(r&&Number.isInteger(page)&&page>=1&&page<=max)canonical={fileId:b.resourceId,page};}assert(r&&canonical&&(user.role==='teacher'||r.audience!=='teacher'),'无法查看这份资料',403);scope='resource:'+canonical.fileId+':'+canonical.page;}
  else{const a=await requireAssignment(b.assignmentId,user);assert(user.role==='student','手写作答仅用于自己的作业',403);if(b.correctionId){const submission=await db.get(b.correctionId);assert(submission?.studentId===user.id&&submission.assignmentId===a.id&&submission.publishedGrade&&submission.rubricSnapshot?.some(q=>q.id===b.questionId),'无法打开这份订正',403);scope='correction:'+submission.id+':'+b.questionId;}else{const q=a.rubric?.find(q=>q.id===b.questionId);assert(q?.type==='short','请在简答题内手写作答');scope='assignment:'+a.id+':v'+a.version+':'+q.id;}}
  const key='library-note:'+hash(user.id+':'+scope);
  if(method==='GET'){const n=await db.get(key);json(res,{note:n||{id:key,pages:[[]],text:'',revision:0}});return true;}
