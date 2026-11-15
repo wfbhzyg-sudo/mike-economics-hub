@@ -153,7 +153,8 @@ export async function createHomework({externalAuth} = {}) {
       // New homework belongs only to the signed-in Bookself identity.
       // Legacy records and mappings remain untouched in storage.
       const classIds=registeredClasses.map(x=>x.id);
-      const canManageGrading=signed.role==='teacher'&&signed.id===process.env.HOMEWORK_OWNER_BOOKSELF_ID;
+      const ownerId=process.env.HOMEWORK_OWNER_UNIVERSAL_ID||process.env.HOMEWORK_OWNER_BOOKSELF_ID;
+      const canManageGrading=signed.role==='teacher'&&signed.id===ownerId;
       const user = {...stored,classIds,name:signed.name,role:signed.role,unified:true,canManageGrading};
       return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed,registeredClasses};
     }

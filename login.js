@@ -5,7 +5,7 @@ function next(){const a=params.get('authorize');if(a?.startsWith('/sso/authorize
 function setMode(value){
  mode=value;$('#form-error').textContent='';form.hidden=false;$('#recovery-result').hidden=true;
  $('#form-title').textContent={login:'登录一页通',register:'加入你的班级',recover:'找回密码',password:'修改密码'}[mode];
- $('#form-description').textContent={login:'使用现有 Bookself 账号',register:'注册后，三个学习平台共用此账号',recover:'使用你的 Bookself 恢复码',password:'修改后，所有设备需要重新登录'}[mode];
+ $('#form-description').textContent={login:'使用现有 Mike 通用账号',register:'注册后，三个学习平台共用此账号',recover:'使用你的 Mike 通用账号恢复码',password:'修改后，所有设备需要重新登录'}[mode];
  $('#registration-fields').hidden=mode!=='register';$('#recovery-field').hidden=mode!=='recover';$('#current-field').hidden=mode!=='password';$('#username-field').hidden=mode==='password';$('#login-options').hidden=mode!=='login';$('#consent-field').hidden=mode!=='register';$('#register').hidden=mode!=='login';$('#back-login').hidden=mode==='login';
  $('#back-login').textContent=mode==='password'?'返回一页通':'返回登录';
  $('#password-label').textContent=mode==='recover'||mode==='password'?'新密码':'密码';$('#password').autocomplete=mode==='login'?'current-password':'new-password';$('#password').minLength=mode==='login'?1:12;
@@ -26,7 +26,7 @@ form.addEventListener('submit',async e=>{
  }catch(e){$('#form-error').textContent=e.name==='TimeoutError'?'连接较慢，请稍后重试。':e.message==='Failed to fetch'?'网络暂时不可用，请检查连接后重试。':e.message;}
  finally{button.disabled=false;button.textContent=label;}
 });
-$('#save-code').onclick=()=>{const blob=new Blob(['Bookself 恢复码\n'+recovery+'\n请妥善保存，不要与他人分享。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Bookself-恢复码.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('#save-code').onclick=()=>{const blob=new Blob(['Mike 通用账号恢复码\n'+recovery+'\n请妥善保存，不要与他人分享。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Mike通用账号-恢复码.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('#finish-recovery').onclick=()=>signed?next():location.replace('/');
 setMode('login');
 try{const r=await fetch('/api/portal/session',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();csrf=data.csrf;if(data.user){if(params.get('account')==='password')setMode('password');else next();}else if(params.get('account')==='password')$('#form-description').textContent='请先登录，再修改密码';}catch{$('#form-error').textContent='账号服务暂时不可用。你可以稍后重试。';}

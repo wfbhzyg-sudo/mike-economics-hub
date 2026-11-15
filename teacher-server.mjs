@@ -2,7 +2,7 @@ import {readBody} from './homework-server/files.mjs';
 const allowed=new Map([
  ['teacher/workspace/routes',['GET']],
  ['teacher/workspace',['GET']],['teacher/workspace/class',['PATCH']],['teacher/workspace/questions',['GET']],['teacher/workspace/review-log',['GET']],['teacher/workspace/student',['GET']],['teacher/workspace/audit',['GET']],
- ['teacher/classes',['GET','POST','PATCH']],['teacher/students',['PATCH','DELETE']],['teacher/performance',['GET']],['teacher/inbox',['GET']],['teacher/feedback',['PATCH']],['teacher/question',['GET']],['teacher/reviews',['POST']],
+ ['teacher/classes',['GET','POST','PATCH']],['teacher/students',['PATCH','DELETE']],['teacher/students/account',['PATCH']],['teacher/performance',['GET']],['teacher/inbox',['GET']],['teacher/feedback',['PATCH']],['teacher/question',['GET']],['teacher/reviews',['POST']],
  ['quest/content-review',['GET']],['quest/assignments',['POST']],['quest/learning/diagnostics',['GET']],['quest/learning/task-preview',['GET']],['quest/learning/assign',['POST']],['quest/learning/feedback',['PUT']],['quest/learning/cooperation',['GET','POST']],
 ]);
 export const teacherRouteAllowed=(path,method)=>allowed.get(path)?.includes(method)===true;

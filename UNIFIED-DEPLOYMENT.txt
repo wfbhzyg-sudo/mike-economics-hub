@@ -9,11 +9,11 @@
 
 作业身份（用户于 2026-11-10 更新要求）：直接使用 Bookself 账号与注册班级记录新作业。不展示旧账号关联入口，不使用旧 identity 映射切换身份，旧账号、旧作业和附件原地保留存档。班级名称、班级码和转班关系直接读取原 Bookself 数据库。
 
-批改设置：只有 HOMEWORK_OWNER_BOOKSELF_ID 指定的 Bookself 教师可以配置全局模型、密钥及设备；其他教师可布置和复核自己班级的作业，学生无法访问模型设置。此值为原账号的稳定 ID，不能从客户端指定。
+批改设置：只有 HOMEWORK_OWNER_UNIVERSAL_ID（兼容旧名 HOMEWORK_OWNER_BOOKSELF_ID）指定的平台教师可以配置全局模型、密钥及设备；其他教师可布置和复核自己班级的作业，学生无法访问模型设置。此值为原账号的稳定 ID，不能从客户端指定。
 
 环境配置（值由 Railway 私密变量保存）：
 核心服务：PORTAL_ORIGIN、CORE_PUBLIC_ORIGIN、SSO_SIGNING_KEY；UNIFIED_LOGIN_GATE=1 时启用统一入口。
-新入口服务：UNIFIED_AUTH=1，HOMEWORK_OWNER_BOOKSELF_ID 指定平台管理员；IDENTITY_DATABASE_URL 指向原 Bookself 数据库，DATABASE_URL 指向原作业数据库；原作业加密密钥、附件桶和设备密钥保持不变；HOMEWORK_DB_TLS_CERT 与 HOMEWORK_DB_TLS_FINGERPRINT 验证跨项目数据库连接。
+新入口服务：UNIFIED_AUTH=1，HOMEWORK_OWNER_UNIVERSAL_ID（旧名 HOMEWORK_OWNER_BOOKSELF_ID 仍可用）指定平台管理员；IDENTITY_DATABASE_URL 指向通用账号身份库，DATABASE_URL 指向原作业数据库；原作业加密密钥、附件桶和设备密钥保持不变；HOMEWORK_DB_TLS_CERT 与 HOMEWORK_DB_TLS_FINGERPRINT 验证跨项目数据库连接。
 原入口服务：GATEWAY_TARGET 指向新入口服务的 HTTPS 地址。原项目和所有原私密变量保留。
 
 回退：先将核心服务 UNIFIED_LOGIN_GATE 设为 0 并重新部署，再将原入口服务回退至 188f2f82245ea754164ace3ed354a7ca8d780710（旧版本不使用 GATEWAY_TARGET）。原数据库始终是唯一数据源；不要导入旧快照覆盖上线后的新作业。新建 portal_sso 表可以保留，禁止通过删除数据库来回退。

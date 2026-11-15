@@ -200,7 +200,7 @@ export function createWorkspaceUI(ctx) {
       const pane = $("#task-workspace");
       pane.className = "";
       if (!rows.length) {
-        pane.innerHTML = `<div class="empty"><h2>${state.assignments.length ? "没有符合条件的作业" : t ? "准备第一份作业" : "老师发布后，作业会出现在这里"}</h2><p>${state.assignments.length ? "可以清空搜索或切换分类。" : t ? "从学生题纸开始，再确认参考答案。" : "已沿用你的 Bookself 班级，无需再次加入。"}</p>${state.assignments.length ? '<button class="secondary" data-reset>清空筛选</button>' : t ? link("new", "新建作业", "primary") : link("account", "查看我的班级")}</div>`;
+        pane.innerHTML = `<div class="empty"><h2>${state.assignments.length ? "没有符合条件的作业" : t ? "准备第一份作业" : "老师发布后，作业会出现在这里"}</h2><p>${state.assignments.length ? "可以清空搜索或切换分类。" : t ? "从学生题纸开始，再确认参考答案。" : "已沿用你的通用账号班级，无需再次加入。"}</p>${state.assignments.length ? '<button class="secondary" data-reset>清空筛选</button>' : t ? link("new", "新建作业", "primary") : link("account", "查看我的班级")}</div>`;
         $("[data-reset]")?.addEventListener("click", () => {
           state.assignmentFilter = "all";
           state.assignmentSearch = "";
