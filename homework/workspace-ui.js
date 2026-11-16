@@ -171,7 +171,7 @@ export function createWorkspaceUI(ctx) {
       action = studentAssignmentAction(a, state.submissions),
       questions = a.questions || [],
       grade = info.latest?.publishedGrade,
-      gradeMax = (grade?.questions || []).reduce((n, q) => n + Number(q.maxPoints || 0), 0),
+      gradeMax = Number.isFinite(Number(grade?.maxPoints)) && Number(grade.maxPoints) > 0 ? Number(grade.maxPoints) : (grade?.questions || []).reduce((n, q) => n + Number(q.maxPoints || 0), 0),
       max = gradeMax || questions.reduce((n, q) => n + Number(q.maxPoints || 0), 0),
       tone = { todo: "blue", processing: "lilac", done: "sage", closed: "sand" }[info.key] || "blue";
     const due = action.opensLater ? `开放 ${date(a.opensAt)}` : a.dueAt ? `截止 ${date(a.dueAt)}` : "不限截止时间";
