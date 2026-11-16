@@ -23,6 +23,7 @@ form.addEventListener('submit',async e=>{
   if(!r.ok)throw Error(messages[data.error]||data.error||'暂时无法登录，请稍后重试。');
   if(data.recoveryCode){recovery=data.recoveryCode;signed=mode==='register';form.hidden=true;$('#new-recovery-code').textContent=recovery;$('#recovery-result').hidden=false;$('#form-title').textContent=mode==='register'?'账号已创建':'密码已更新';$('#form-description').textContent='先保存恢复码，再继续学习';$('#back-login').hidden=true;$('#register').hidden=true;return;}
   if(data.user?.mustChangePassword&&mode==='login'){
+    try{const session=await fetch('/api/portal/session',{cache:'no-store'});if(session.ok){const fresh=await session.json();if(fresh.csrf)csrf=fresh.csrf;}}catch{}
     setMode('password');$('#form-description').textContent='首次登录，请先把密码改成至少 12 位。';$('#current-field').hidden=false;$('#username-field').hidden=true;$('#login-options').hidden=true;$('#register').hidden=true;$('#back-login').hidden=true;$('#password').value='';$('#password').focus();return;
   }
   next();
