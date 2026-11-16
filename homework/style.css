@@ -1878,3 +1878,9 @@ main:focus,main:focus-visible {outline:none;}
 .assignment-card[data-urgency] { background:var(--card-tint); border-color:var(--card-tint-border); }
 .assignment-card[data-urgency]:hover { background:var(--card-tint-hover); }
 .assignment-card[data-urgency] .card-meta { color:#5c665f; }
+.result-paper .result-score{justify-content:flex-start;gap:24px}
+.score-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 26px;padding:0;max-width:720px}
+.score-facts>div{padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.score-facts dt{font-size:12px;color:var(--muted)}
+.score-facts dd{margin:6px 0 0;font-size:15px}
+@media(max-width:760px){.score-facts{grid-template-columns:1fr}}

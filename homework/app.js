@@ -640,7 +640,13 @@ async function resultPage(id) {
  s.files||=[];s.reviewRequests||=[];
  const a=state.assignments.find(x=>x.id===s.assignmentId)||s.assignment||{title:'作业提交'};
  await metadata(s.files);if(version!==state.routeVersion)return;
- const g=s.publishedGrade,types=questionTotals(g,s.questions||[]),uncertain=s.status==='needs_review',interrupted=s.status==='failed';
+ const g=s.publishedGrade;
+ if(g?.scoreOnly||a.offline||a.format==='score'){
+  const total=Number(g?.total??0),max=Number(g?.maxPoints??0),rate=max?Math.round(total/max*1000)/10:null;
+  main.innerHTML=`<section class="paper result-paper">${head('', '本次成绩', a.title, link('grades','成绩档案'))}<div class="result-score"><strong>${total}<small>/${max}</small></strong>${rate!=null?`<span>${rate}%</span>`:''}</div><p class="hint">线下成绩，由老师录入。这份作业没有在线作答、附件或错题订正。</p><dl class="score-facts"><div><dt>成绩来源</dt><dd>教师线下录入</dd></div><div><dt>满分</dt><dd>${max}</dd></div><div><dt>公布时间</dt><dd>${g?.publishedAt?date(g.publishedAt):'—'}</dd></div></dl><div class="actions">${link('grades','返回我的成绩')}${link('assignments','返回作业列表','secondary')}</div></section>`;
+  return;
+ }
+ const types=questionTotals(g,s.questions||[]),uncertain=s.status==='needs_review',interrupted=s.status==='failed';
  const attachedPages=s.files.reduce((n,id)=>n+(state.files.get(id)?.pages||0),0);
  const statusTitle=interrupted?'批阅暂时中断':s.status==='returned'?'需要补充作答':uncertain?'等待老师确认':s.status==='grading'?'正在后台批阅':'作业已提交';
  const steps=`<ol class="grading-steps"><li class="complete"><span></span><div><strong>已保存原件</strong><p>提交编号 ${h(s.id.slice(0,12).toUpperCase())}</p></div></li><li class="${s.status==='grading'?'current':''}"><span></span><div><strong>${interrupted?'批阅暂时中断':s.status==='returned'?'需要补充作答':uncertain?'待教师复核':s.status==='grading'?'正在后台批阅':'排队等待批阅'}</strong><p>${interrupted?'作答已安全保存，等待老师重试或直接复核；无需重复交卷。':s.status==='returned'?h(s.returnedReason):uncertain?'老师核对后，成绩会显示在这里。':'可以关闭页面，任务会继续保留。'}</p></div></li><li><span></span><div><strong>成绩与错题自动归档</strong><p>结果返回后，在“成绩”中随时查看。</p></div></li></ol>`;
