@@ -16,7 +16,7 @@ function formatClock(seconds) {
 
 function duration(seconds) {
   const value = Math.max(0, Math.round(seconds));
-  if (value < 60) return `${value} 秒`;
+  if (value < 60) return '少于 1 分钟';
   const m = Math.floor(value / 60);
   const s = value % 60;
   return s ? `${m} 分 ${s} 秒` : `${m} 分钟`;
