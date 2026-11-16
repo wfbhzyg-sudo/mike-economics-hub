@@ -212,12 +212,20 @@ async function bank(){
 
 let cropState={queue:[],index:0,current:null,box:null,drag:null};
 const cropVisual=/(figure|graph|table|diagram|chart|shown|curve|axis|slope|shift)/i;
+function cropCandidate(q){
+  if(q.status!=='ready'||q.type!=='choice')return false;
+  const visual=cropVisual.test(String(q.prompt||q.searchText||''));
+  if(!(q.questionImages||[]).length)return visual;
+  if(!visual)return false;
+  const b=q.regions?.[0]?.bbox;
+  return Array.isArray(b)&&b.length===4&&(Number(b[3])-Number(b[1])>0)&&(Number(b[3])-Number(b[1])<130);
+}
 async function bankCrop(focusId=''){
   const data=await hw('library/questions?unit=all');
-  cropState.queue=data.questions.filter(q=>q.status==='ready'&&q.type==='choice'&&cropVisual.test(String(q.prompt||q.searchText||''))&&!(q.questionImages||[]).length);
+  cropState.queue=data.questions.filter(cropCandidate);
   if(focusId){const q=data.questions.find(x=>x.id===focusId);if(q){cropState.queue=cropState.queue.filter(x=>x.id!==focusId);cropState.queue.unshift(q);}}
   cropState.index=0;cropState.current=null;cropState.box=null;
-  main.innerHTML=`<div class="crop-head"><div><h2>图表补切</h2><p class="tw-note">已复核、题干提到图表但还没有题图的选择题。打开原卷页，拖框选中图表后保存；保存后立即用于组卷。</p></div><div class="tw-actions"><button class="tw-button" data-crop-back>返回题库</button></div></div><div class="crop-layout"><aside class="crop-queue"><div class="crop-queue-head"><strong>待补图表</strong><span>${cropState.queue.length}</span></div><div id="crop-list">${cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===0?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">没有待补图表的题。</p>'}</div></aside><section class="crop-stage-wrap"><div class="crop-toolbar"><button type="button" class="tw-button tw-small" data-crop-prev>上一题</button><span id="crop-title" class="crop-title">—</span><button type="button" class="tw-button tw-small" data-crop-next>下一题</button><span class="crop-spacer"></span><button type="button" class="tw-button tw-small" data-crop-skip>跳过</button><button type="button" class="tw-button tw-primary" data-crop-save>保存切片</button></div><div class="crop-stage" id="crop-stage"><div class="crop-empty">正在载入原卷…</div></div><div class="crop-hint">在页面上拖动框选图表；拖动后可用右侧数字微调。Esc 取消当前框。</div></section><aside class="crop-side"><h3>原卷页码</h3><div id="crop-pages" class="crop-pages"></div><h3>切片范围</h3><div class="crop-bbox"><label>左<input type="number" data-bbox="0" step="1"></label><label>上<input type="number" data-bbox="1" step="1"></label><label>右<input type="number" data-bbox="2" step="1"></label><label>下<input type="number" data-bbox="3" step="1"></label></div><p class="tw-note">坐标按原页 PDF 点计算；保存时会自动加 6pt 内边距。</p><h3>操作</h3><p class="tw-note">拖框后保存；失败可重试。已保存的题目会离开队列。</p></aside></div>`;
+  main.innerHTML=`<div class="crop-head"><div><h2>图表补切</h2><p class="tw-note">已复核、疑似缺少图表的选择题（无题图，或切片高度异常偏小）。打开原卷页，拖框选中图表后保存；保存后立即用于组卷。</p></div><div class="tw-actions"><button class="tw-button" data-crop-back>返回题库</button></div></div><div class="crop-layout"><aside class="crop-queue"><div class="crop-queue-head"><strong>待补图表</strong><span>${cropState.queue.length}</span></div><div id="crop-list">${cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===0?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||q.searchText||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">没有待补图表的题。</p>'}</div></aside><section class="crop-stage-wrap"><div class="crop-toolbar"><button type="button" class="tw-button tw-small" data-crop-prev>上一题</button><span id="crop-title" class="crop-title">—</span><button type="button" class="tw-button tw-small" data-crop-next>下一题</button><span class="crop-spacer"></span><button type="button" class="tw-button tw-small" data-crop-skip>跳过</button><button type="button" class="tw-button tw-primary" data-crop-save>保存切片</button></div><div class="crop-stage" id="crop-stage"><div class="crop-empty">正在载入原卷…</div></div><div class="crop-hint">在页面上拖动框选图表；拖动后可用右侧数字微调。Esc 取消当前框。</div></section><aside class="crop-side"><h3>原卷页码</h3><div id="crop-pages" class="crop-pages"></div><h3>切片范围</h3><div class="crop-bbox"><label>左<input type="number" data-bbox="0" step="1"></label><label>上<input type="number" data-bbox="1" step="1"></label><label>右<input type="number" data-bbox="2" step="1"></label><label>下<input type="number" data-bbox="3" step="1"></label></div><p class="tw-note">坐标按原页 PDF 点计算；保存时会自动加 6pt 内边距。</p><h3>操作</h3><p class="tw-note">拖框后保存；失败可重试。已保存的题目会离开队列。</p></aside></div>`;
   $('[data-crop-back]').onclick=()=>location.hash='bank';
   $('[data-crop-prev]').onclick=()=>moveCrop(-1);$('[data-crop-next]').onclick=()=>moveCrop(1);$('[data-crop-skip]').onclick=()=>moveCrop(1);
   $('[data-crop-save]').onclick=saveCrop;
@@ -274,7 +282,7 @@ async function saveCrop(){
     let page=Number(document.querySelector('.crop-page.active')?.dataset.cropPage||q.sourcePages?.[0]||1);if(!Number.isFinite(page)||page<1)page=1;
     const r=await hw(`library/questions/${q.id}/reslice`,{method:'POST',body:{bbox:box.map(Math.round),page}});
     toast('图表已保存，题目已离开待补队列');cropState.queue.splice(cropState.index,1);cropState.current=null;cropState.box=null;
-    $('#crop-list').innerHTML=cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===cropState.index?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">全部已补完。</p>';
+    $('#crop-list').innerHTML=cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===cropState.index?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||q.searchText||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">全部已补完。</p>';
     if(cropState.queue.length){cropState.index=Math.min(cropState.index,cropState.queue.length-1);await loadCrop();}else{$('#crop-title').textContent='—';$('#crop-stage').innerHTML='<div class="crop-empty">全部已补完。</div>';}
   }catch(e){toast(e.message);}
 }
