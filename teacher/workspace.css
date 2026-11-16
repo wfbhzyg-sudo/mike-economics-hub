@@ -816,3 +816,7 @@ html{-webkit-text-size-adjust:100%;scroll-padding-bottom:100px}
 .tw-new-class { margin-top:14px; }
 .tw-new-class summary { cursor:pointer; color:var(--tw-muted); font-size:14px; min-height:32px; display:flex; align-items:center; }
 .tw-new-class[open] summary { color:var(--tw-ink); }
+
+/* keep the account menu above library toolbars and their dropdowns */
+.tw-account { z-index: 80; }
+.tw-account > div { z-index: 81; box-shadow: 0 16px 34px #04102440; border: 1px solid var(--tw-line, #d7ddd9); }
