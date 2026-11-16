@@ -250,7 +250,7 @@ async function loadCropPage(q,page){
     $('#crop-pages').querySelectorAll('button').forEach(b=>b.classList.toggle('active',Number(b.dataset.cropPage)===page));
     $('#crop-stage').innerHTML=`<div class="crop-canvas" id="crop-canvas"><img id="crop-img" src="${data.image}" alt="原卷 p.${page}" draggable="false"><div class="crop-shade"></div><div class="crop-box" id="crop-box" hidden><span>图表区域</span></div></div>`;
     const img=$('#crop-img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});wireCropCanvas();drawCropBox();
-  }catch(e){toast(e.message);}
+  }catch(e){$('#crop-stage').innerHTML=`<div class="crop-empty">${h(e.message)}</div>`;}
 }
 function wireCropCanvas(){
   const canvas=$('#crop-canvas'),img=$('#crop-img');
