@@ -7,6 +7,7 @@ import {mountPDFReader} from "./pdf-reader.js";
 import {createWorkspaceUI} from "./workspace-ui.js";
 import {assignmentRecords,assignmentState,questionTotals} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
+import {createSelfPracticeUI} from "./self-practice.js";
 // Keep the floating assistant above the on-screen keyboard on student pages.
 if (window.visualViewport) {
   const viewport = window.visualViewport;
@@ -33,7 +34,7 @@ const h = (value) =>
       ],
   );
 const icon = (name) =>
-  `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${{ book: "M12 5v16M12 5C9 2 5 2 2 3v16c4-1 7-1 10 2 3-3 6-3 10-2V3c-3-1-7-1-10 2Z", work: "M8 3H4v18h16V3h-4M8 2h8v5H8ZM8 11h8M8 15h5", clock: "M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", check: "m5 12 4 4L19 6", up: "M12 20V4m-6 6 6-6 6 6", rotate: "M20 7V3m0 4h-4M20 7a8 8 0 1 0 0 10", close: "m6 6 12 12M18 6 6 18", left: "M19 12H5m6-6-6 6 6 6", right: "M5 12h14m-6-6 6 6-6 6", external: "M6 18 18 6M6 6h12v12" }[name]}"/></svg>`;
+  `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${{ practice: "M5 4h14M5 10h9M5 16h6M15 16l2 2 3-4", book: "M12 5v16M12 5C9 2 5 2 2 3v16c4-1 7-1 10 2 3-3 6-3 10-2V3c-3-1-7-1-10 2Z", work: "M8 3H4v18h16V3h-4M8 2h8v5H8ZM8 11h8M8 15h5", clock: "M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", check: "m5 12 4 4L19 6", up: "M12 20V4m-6 6 6-6 6 6", rotate: "M20 7V3m0 4h-4M20 7a8 8 0 1 0 0 10", close: "m6 6 12 12M18 6 6 18", left: "M19 12H5m6-6-6 6 6 6", right: "M5 12h14m-6-6 6 6-6 6", external: "M6 18 18 6M6 6h12v12" }[name]}"/></svg>`;
 const state = {
   user: null,
   csrf: "",
@@ -207,13 +208,14 @@ function installNavigation() {
         { label: "学情", route: "gradebook" },
       ]
     : [
-        { label: "作业", route: "assignments" },
-        { label: "成绩", route: "grades" },
-        { label: "错题", route: "mistakes" },
-        { label: "课程", route: "library" },
+        { label: "作业", route: "assignments", icon: "work" },
+        { label: "模考", route: "self-practice", icon: "practice" },
+        { label: "成绩", route: "grades", icon: "clock" },
+        { label: "错题", route: "mistakes", icon: "check" },
+        { label: "课程", route: "library", icon: "book" },
       ];
   dock.hidden = false;
-  dock.innerHTML = `<span class="work-nav-label">作业中心</span>`+items.map((item,i)=>`<a href="#${item.route}" class="work-nav-item" aria-current="${i===0?'page':'false'}"><span>${icon(['work','clock','check','book'][i])}</span>${item.label}</a>`).join('');
+  dock.innerHTML = `<span class="work-nav-label">作业中心</span>`+items.map((item,i)=>`<a href="#${item.route}" class="work-nav-item" aria-current="${i===0?'page':'false'}"><span>${icon(item.icon)}</span>${item.label}</a>`).join('');
   nav={select(index){dock.querySelectorAll('a').forEach((a,i)=>a.setAttribute('aria-current',i===index?'page':'false'));},destroy(){dock.replaceChildren();}};
   $("#account").hidden = false;
   $("#account").innerHTML = h(state.user.name) + icon("external");
@@ -787,14 +789,16 @@ async function render(scroll = true) {
       go("assignments");
       return;
     }
-    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='library'?3:route==='mistakes'?2:['grades','history','result'].includes(route)?1:0);
+    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='library'?4:route==='mistakes'?3:route==='self-practice'?1:['grades','history','result'].includes(route)?2:0);
     const workspace=createWorkspaceUI({state,main,h,head,link,date,api,post,put,go,toast,field,area,formHandler,uploadWidget,metadata});
     const task=['submit','paper','review','answer','new','edit','mcq-import','mcq'].includes(route);
     if(!embedded){document.body.dataset.workTask=task?'true':'false';document.body.dataset.workRoute=route;}
     document.documentElement.dataset.homeworkRoute=route;
     const learning=createLearningUI({state,main,api,post,put,h,head,link,badge,date,click,formHandler,area,field,bindPreviews,fileMarkup,metadata,uploadWidget,toast,go,paperSurface,bindPaperSurface});
     const mcqUI=createMCQUI({main,state,api,post,put,go,h,toast});
-    if(route === 'library')await showLibrary({main,state,api,post,put,go,toast},id,questionId,libraryMode,libraryDetail);
+    const spUI=createSelfPracticeUI({main,state,api,post,put,go,h,toast});
+    if(route === 'self-practice')await spUI.render(id || 'create', questionId);
+    else if(route === 'library')await showLibrary({main,state,api,post,put,go,toast},id,questionId,libraryMode,libraryDetail);
     else if(route === "mcq-import")await mcqUI.imports(id);
     else if(route === "mcq")await mcqUI.attempt(id);
     else if(route === "mcq-analysis")await mcqUI.analysis(id);

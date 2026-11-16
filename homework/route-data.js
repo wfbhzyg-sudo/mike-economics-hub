@@ -3,7 +3,7 @@
 export function workspaceCollections(route = 'assignments') {
   const [page, detail] = route.split('/');
   if (['library', 'mcq', 'mcq-analysis', 'device', 'trash', 'paper', 'grades',
-    'history', 'gradebook', 'mistakes', 'overview'].includes(page)) return [];
+    'history', 'gradebook', 'mistakes', 'overview', 'self-practice'].includes(page)) return [];
   if (page === 'new' && detail !== 'upload') return [];
   if (['new', 'edit', 'answer', 'mcq-import', 'account'].includes(page)) return ['classes'];
   return ['assignments', 'submissions', 'classes'];

@@ -7,6 +7,7 @@ import {choiceScore,combineScores} from './mcq-model.mjs';
 import {createLibrary} from './library.mjs';
 import {createMCQ} from './mcq.mjs';
 import {createCompanion} from './companion.mjs';
+import {createSelfPractice,startSelfPracticeSweeper} from './self-practice.mjs';
 import {
   createCipheriv,
   createDecipheriv,
@@ -258,6 +259,8 @@ export async function createHomework({externalAuth} = {}) {
   const library=createLibrary({db,files,requireAssignment});
   const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
   const companion=createCompanion({db,decrypt});
+  const selfPractice=createSelfPractice({db});
+  startSelfPracticeSweeper(selfPractice);
   return async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (!url.pathname.startsWith("/api/homework/")) return false;
@@ -562,7 +565,7 @@ export async function createHomework({externalAuth} = {}) {
       const teacher = () =>
         assert(user.role === "teacher", "此操作仅对教师开放", 403);
       const extensionContext={req,res,route,method,user,body,json,availableClasses,availableStudents};
-      if(await library.handle(extensionContext)||await mcq(extensionContext)||await companion(extensionContext))return true;
+      if(await library.handle(extensionContext)||await mcq(extensionContext)||await selfPractice.handle(extensionContext)||await companion(extensionContext))return true;
       if (route[0] === "me" && method === "GET")
         return (
           json(res, { user: safeUser(user), csrf: auth.session.csrf, teacherWorkspace:process.env.TEACHER_WORKSPACE_ENABLED==='1' }),
