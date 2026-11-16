@@ -89,7 +89,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   main.querySelectorAll('[data-source-id]').forEach(b=>b.onclick=()=>sourceView(ss.find(s=>s.id===b.dataset.sourceId)));
  }
  async function sourceView(source){
-  openSheet('核对原卷',`<p>${h(source.title)}</p><p>${h(source.reviewNote||'待核对')}</p><div class="lib-source-reader"></div>${source.originalFileId?`<a href="/api/homework/files/${encodeURIComponent(source.originalFileId)}?download=1">下载原始 DOCX</a>`:''}${source.answerFileId?`<a target="_blank" rel="noopener" href="/api/homework/files/${encodeURIComponent(source.answerFileId)}">查看答案原件</a>`:''}`,d=>{d.classList.add('lib-source-dialog');const mounted=mountPDFReader(d.querySelector('.lib-source-reader'),{fileId:source.fileId,title:source.title});sourceReader=mounted;d.addEventListener('close',()=>mounted.destroy(),{once:true});});
+  openSheet('核对原卷',`<div class="lib-source-meta"><strong>${h(source.title)}</strong><span>${h(source.reviewNote||'待核对')}</span></div><div class="lib-source-reader homework-surface"></div><div class="lib-source-links">${source.originalFileId?`<a href="/api/homework/files/${encodeURIComponent(source.originalFileId)}?download=1">下载原始 DOCX</a>`:''}${source.answerFileId?`<a target="_blank" rel="noopener" href="/api/homework/files/${encodeURIComponent(source.answerFileId)}">查看答案原件</a>`:''}</div>`,d=>{d.classList.add('lib-source-dialog');const mounted=mountPDFReader(d.querySelector('.lib-source-reader'),{fileId:source.fileId,title:source.title});sourceReader=mounted;d.addEventListener('close',()=>mounted.destroy(),{once:true});});
  }
  async function bank(initial={}){
   const qs=await getQuestions();if(disposed)return;
