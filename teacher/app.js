@@ -144,7 +144,7 @@ const bankState={course:'all',units:new Set(),initialized:false,type:'',status:'
 const bankTypeLabel={choice:'选择题',short:'简答题'};
 function bankFiltered(all){
  const term=bankState.q.trim().toLowerCase();
- return all.filter(q=>(bankState.course==='all'||q.course===bankState.course)&&(!bankState.units.size||bankState.units.has(q.unitId))&&(!bankState.type||q.type===bankState.type)&&(bankState.status==='all'||q.status===bankState.status)&&(!term||String(q.searchText||q.number||'').toLowerCase().includes(term)));
+ return all.filter(q=>(bankState.course==='all'||q.course===bankState.course)&&(!bankState.units.size||bankState.units.has(q.unitId))&&(!bankState.type||q.type===bankState.type)&&(bankState.status==='all'||q.status===bankState.status)&&(!term||String(q.searchText||q.prompt||q.number||'').toLowerCase().includes(term)));
 }
 function bankUnitLabel(t){return String(t||'').match(/Unit\s*\d+/i)?.[0]||t||'';}
 function bankQuestionRow(q){
