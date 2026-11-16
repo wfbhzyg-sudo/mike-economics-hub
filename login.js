@@ -23,11 +23,11 @@ form.addEventListener('submit',async e=>{
   if(!r.ok)throw Error(messages[data.error]||data.error||'暂时无法登录，请稍后重试。');
   if(data.recoveryCode){recovery=data.recoveryCode;signed=mode==='register';form.hidden=true;$('#new-recovery-code').textContent=recovery;$('#recovery-result').hidden=false;$('#form-title').textContent=mode==='register'?'账号已创建':'密码已更新';$('#form-description').textContent='先保存恢复码，再继续学习';$('#back-login').hidden=true;$('#register').hidden=true;return;}
   if(data.user?.mustChangePassword&&mode==='login'){
-    setMode('password');$('#form-description').textContent='首次登录，请先把密码改成至少 12 位。';$('#current-field').hidden=false;$('#username-field').hidden=true;$('#login-options').hidden=true;$('#register').hidden=true;$('#back-login').hidden=true;$('#password').focus();return;
+    setMode('password');$('#form-description').textContent='首次登录，请先把密码改成至少 12 位。';$('#current-field').hidden=false;$('#username-field').hidden=true;$('#login-options').hidden=true;$('#register').hidden=true;$('#back-login').hidden=true;$('#password').value='';$('#password').focus();return;
   }
   next();
  }catch(e){$('#form-error').textContent=e.name==='TimeoutError'?'连接较慢，请稍后重试。':e.message==='Failed to fetch'?'网络暂时不可用，请检查连接后重试。':e.message;}
- finally{button.disabled=false;button.textContent=label;}
+ finally{button.disabled=false;button.textContent=mode==='password'?'更新密码':label;}
 });
 $('#save-code').onclick=()=>{const blob=new Blob(['Mike 通用账号恢复码\n'+recovery+'\n请妥善保存，不要与他人分享。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Mike通用账号-恢复码.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('#finish-recovery').onclick=()=>signed?next():location.replace('/');
