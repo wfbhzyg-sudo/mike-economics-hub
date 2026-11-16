@@ -256,7 +256,7 @@ export async function createHomework({externalAuth} = {}) {
     if(user.role==='teacher')for(const n of await db.list('mistake-note'))if(n.corrections?.some(c=>c.files?.includes(file.id))&&(await db.get(n.assignmentId))?.teacherId===user.id)return true;
     return false;
   };
-  const library=createLibrary({db,files,requireAssignment});
+  const library=createLibrary({db,files,requireAssignment,decrypt});
   const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
   const companion=createCompanion({db,decrypt});
   const selfPractice=createSelfPractice({db});

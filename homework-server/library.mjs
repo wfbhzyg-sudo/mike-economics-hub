@@ -11,7 +11,10 @@ import {validateTiming} from './mcq-model.mjs';
 import {questionFingerprint} from './review-links.mjs';
 import {UNIT,publicUnit,cleanDrawing,validateSelection} from './library-model.mjs';
 import {canonicalResourcePage} from '../homework/library-page-map.js';
-export function createLibrary({db,files,requireAssignment}){
+import {deepseek} from './ai.mjs';
+import sharp from 'sharp';
+import {openPDF,renderPage} from './pdf-pages.mjs';
+export function createLibrary({db,files,requireAssignment,decrypt}){
  const visibleTo = (unit, user, releases) =>
    user.role === 'teacher'
      ? unit.owner === user.id
@@ -73,6 +76,95 @@ export function createLibrary({db,files,requireAssignment}){
    json(res, {questions: (await db.list('library-question', undefined, requestedUnit))
      .filter(q => q.unitId === requestedUnit)});
    return true;
+ }
+
+ if (route[1] === 'questions' && route[2]) {
+   const question = await db.get(route[2]);
+   assert(question && question.unitId, '题目不存在', 404);
+   if (method === 'PUT' || method === 'PATCH') {
+     teacher(); const unit = await unitFor(user, question.unitId); const b = await bdy();
+     const patch = {};
+     if (b.answer !== undefined) {
+       const answer = String(b.answer || '').toUpperCase();
+       assert(/^[A-E]$/.test(answer), '请选择 A–E 中的一个答案', 400);
+       patch.answer = answer;
+       patch.optionLabels = Array.isArray(question.optionLabels) && question.optionLabels.length ? question.optionLabels : ['A','B','C','D','E'];
+     }
+     if (b.answerFileId !== undefined) {
+       const file = await db.get(String(b.answerFileId));
+       assert(file && file.owner === user.id && ['answer','question','library'].includes(file.purpose), '答案文件无效', 400);
+       patch.answerFileId = file.id;
+     }
+     if (b.topic !== undefined) {
+       const topic = String(b.topic || '');
+       assert(!topic || (unit.topics || []).some(t => t.id === topic), 'Topic 不在本单元内', 400);
+       patch.topic = topic;
+     }
+     const confirm = b.confirm === true || b.status === 'ready';
+     const finalAnswer = patch.answer || question.answer;
+     if (confirm) {
+       assert(finalAnswer, '请先选择正确答案', 400);
+       assert((question.questionImages || []).length, '题目切片缺失，请先重新切片', 400);
+       patch.status = 'ready'; patch.reviewFlags = []; patch.reviewedAt = now(); patch.reviewedBy = user.id;
+     } else if (patch.answer) {
+       patch.reviewFlags = (question.reviewFlags || []).filter(flag => !/answer/i.test(flag));
+     }
+     patch.version = Number(question.version || 1) + 1;
+     patch.updatedAt = now();
+     const next = {...question, ...patch};
+     await db.put('library-question', next);
+     await db.audit(user.id, 'library_question_review', question.id);
+     json(res, {question: next});
+     return true;
+   }
+   if (method === 'POST' && route[3] === 'suggest') {
+     teacher(); await unitFor(user, question.unitId);
+     const body = String(question.searchText || '').trim();
+     assert(body.length >= 80, '这道题缺少可识别的题面文字，请直接选择答案', 422);
+     const messages = [
+       {role:'system', content:'你是 AP 微观/宏观经济学教师。只根据给出的题目与选项选出唯一正确选项。输出 JSON，字段 answer 为单个大写字母 A-E，reason 为不超过 40 字的中文理由。不要解释不确定，必须给出最可能的答案。'},
+       {role:'user', content:`来源：${question.source || '未标注'}，第 ${question.number || ''} 题。\n${body.slice(0, 6000)}`},
+     ];
+     const out = await deepseek(db, decrypt, messages, {json:true, maxTokens:400});
+     const answer = String(out?.answer || '').toUpperCase();
+     assert(/^[A-E]$/.test(answer), 'AI 未返回有效答案，请手动选择', 422);
+     const reason = text(out?.reason || '', 200);
+     const suggestion = {answer, reason, model:'deepseek-flash', at:now()};
+     await db.put('library-question', {...question, answerSuggestion:suggestion});
+     json(res, {answer, reason, model:'deepseek-flash'});
+     return true;
+   }
+   if (method === 'POST' && route[3] === 'reslice') {
+     teacher(); await unitFor(user, question.unitId); const b = await bdy();
+     const sources = await db.list('library-source');
+     const ownerKey = value => String(value || '').replace(/^bookself:/, '');
+     const candidates = sources.filter(s => ownerKey(s.owner) === ownerKey(user.id) && s.title === question.source &&
+       (s.unitId === question.unitId || (s.collection === 'exam' && s.course === question.unitId.split('-')[0])));
+     let source = null, sourceFile = null;
+     for (const candidate of candidates) {
+       const file = await db.get(candidate.fileId);
+       if (file && Number(file.pages || 0) >= Math.max(...(question.sourcePages || [1]))) { source = candidate; sourceFile = file; break; }
+     }
+     assert(sourceFile, '未找到这道题的原卷文件', 404);
+     const region = (question.regions || [])[0] || {page:(question.sourcePages || [1])[0], bbox:[0,0,600,800]};
+     const bbox = Array.isArray(b.bbox) && b.bbox.length === 4 ? b.bbox.map(Number) : region.bbox;
+     assert(bbox.every(Number.isFinite) && bbox[2] > bbox[0] && bbox[3] > bbox[1], '切片范围无效', 400);
+     const chunks = []; for await (const chunk of await files.read(sourceFile)) chunks.push(chunk);
+     const pdf = await openPDF(Buffer.concat(chunks));
+     const rendered = await renderPage(pdf, region.page || 1);
+     const sx = rendered.width / rendered.baseWidth, sy = rendered.height / rendered.baseHeight;
+     const left = Math.max(0, Math.round(bbox[0] * sx) - 6), top = Math.max(0, Math.round(bbox[1] * sy) - 6);
+     const right = Math.min(rendered.width, Math.round(bbox[2] * sx) + 6), bottom = Math.min(rendered.height, Math.round(bbox[3] * sy) + 6);
+     assert(right - left > 20 && bottom - top > 20, '切片范围过小', 400);
+     const cropped = await sharp(rendered.bytes).extract({left, top, width:right-left, height:bottom-top}).png().toBuffer();
+     const file = await files.upload(cropped, {owner:user.id, purpose:'question', name:`Question ${question.number || ''} slice.png`});
+     const regions = [{...region, bbox:[bbox[0],bbox[1],bbox[2],bbox[3]]}];
+     const next = {...question, questionImages:[file.id], regions, version:Number(question.version || 1) + 1, updatedAt:now()};
+     await db.put('library-question', next);
+     await db.audit(user.id, 'library_question_reslice', question.id);
+     json(res, {question: next});
+     return true;
+   }
  }
  if (route[1] === 'release' && method === 'POST') {
    teacher();
