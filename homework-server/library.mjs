@@ -279,8 +279,12 @@ export function createLibrary({db,files,requireAssignment,decrypt}){
      assert(/^[A-E]$/.test(answer), 'AI 未返回有效答案，请手动选择', 422);
      const reason = text(out?.reason || '', 200);
      const suggestion = {answer, reason, model:'deepseek-flash', at:now()};
-     await db.put('library-question', {...question, answerSuggestion:suggestion});
-     json(res, {answer, reason, model:'deepseek-flash'});
+     const next = {...question, answer, status:'ready', answerSuggestion:suggestion, answerSource:'ai-suggestion',
+       reviewedAt:now(), reviewedBy:'ai-auto-confirm', version:Number(question.version || 1) + 1, updatedAt:now()};
+     delete next.reviewFlags;
+     await db.put('library-question', next);
+     await db.audit(user.id, 'library_question_auto_confirm', question.id);
+     json(res, {answer, reason, model:'deepseek-flash', autoConfirmed:true, question:next});
      return true;
    }
    if (method === 'POST' && route[3] === 'reslice') {
