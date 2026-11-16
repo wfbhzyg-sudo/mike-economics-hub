@@ -22,6 +22,9 @@ form.addEventListener('submit',async e=>{
   const r=await fetch('/api/portal/'+mode,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify(body),credentials:'same-origin',signal:AbortSignal.timeout(65000)});const data=await r.json();
   if(!r.ok)throw Error(messages[data.error]||data.error||'暂时无法登录，请稍后重试。');
   if(data.recoveryCode){recovery=data.recoveryCode;signed=mode==='register';form.hidden=true;$('#new-recovery-code').textContent=recovery;$('#recovery-result').hidden=false;$('#form-title').textContent=mode==='register'?'账号已创建':'密码已更新';$('#form-description').textContent='先保存恢复码，再继续学习';$('#back-login').hidden=true;$('#register').hidden=true;return;}
+  if(data.user?.mustChangePassword&&mode==='login'){
+    setMode('password');$('#form-description').textContent='首次登录，请先把密码改成至少 12 位。';$('#current-field').hidden=false;$('#username-field').hidden=true;$('#login-options').hidden=true;$('#register').hidden=true;$('#back-login').hidden=true;$('#password').focus();return;
+  }
   next();
  }catch(e){$('#form-error').textContent=e.name==='TimeoutError'?'连接较慢，请稍后重试。':e.message==='Failed to fetch'?'网络暂时不可用，请检查连接后重试。':e.message;}
  finally{button.disabled=false;button.textContent=label;}
@@ -29,5 +32,5 @@ form.addEventListener('submit',async e=>{
 $('#save-code').onclick=()=>{const blob=new Blob(['Mike 通用账号恢复码\n'+recovery+'\n请妥善保存，不要与他人分享。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Mike通用账号-恢复码.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('#finish-recovery').onclick=()=>signed?next():location.replace('/');
 setMode('login');
-try{const r=await fetch('/api/portal/session',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();csrf=data.csrf;if(data.user){if(params.get('account')==='password')setMode('password');else next();}else if(params.get('account')==='password')$('#form-description').textContent='请先登录，再修改密码';}catch{$('#form-error').textContent='账号服务暂时不可用。你可以稍后重试。';}
+try{const r=await fetch('/api/portal/session',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();csrf=data.csrf;if(data.user){if(data.user.mustChangePassword||params.get('account')==='password'){setMode('password');if(data.user.mustChangePassword)$('#form-description').textContent='首次登录，请先把密码改成至少 12 位。';}else next();}else if(params.get('account')==='password')$('#form-description').textContent='请先登录，再修改密码';}catch{$('#form-error').textContent='账号服务暂时不可用。你可以稍后重试。';}
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});

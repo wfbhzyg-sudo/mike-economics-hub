@@ -10,13 +10,13 @@ export async function createPortalAuth(env=process.env){
   const teacher=user.role==='teacher';
   const rows=(await pool.query(teacher
    ? 'SELECT c.id,c.name,c.code FROM econquest.classes c WHERE c.teacher_id=$1 ORDER BY c.created_at,c.id'
-   : "SELECT c.id,c.name FROM econquest.users u JOIN econquest.classes c ON c.id=u.class_id WHERE u.id=$1 AND u.role='student'",[user.id])).rows;
+   : "SELECT c.id,c.name FROM econquest.users u JOIN econquest.classes c ON c.id=ANY(u.class_ids) WHERE u.id=$1 AND u.role='student'",[user.id])).rows;
   return rows.map(c=>({id:'bookself-class:'+c.id,name:c.name,source:'bookself',...(teacher?{invite:c.code}:{})}));
  }
  async function students(user){
   if(user.role!=='teacher')return [];
-  const rows=(await pool.query("SELECT u.id,u.name,u.username,u.class_id FROM econquest.users u JOIN econquest.classes c ON c.id=u.class_id WHERE c.teacher_id=$1 AND u.role='student' ORDER BY u.name,u.id",[user.id])).rows;
-  return rows.map(u=>({id:'bookself:'+u.id,name:u.name,username:u.username,classIds:['bookself-class:'+u.class_id]}));
+  const rows=(await pool.query("SELECT DISTINCT u.id,u.name,u.username,u.class_ids FROM econquest.users u JOIN econquest.classes c ON c.id=ANY(u.class_ids) WHERE c.teacher_id=$1 AND u.role='student' ORDER BY u.name,u.id",[user.id])).rows;
+  return rows.map(u=>({id:'bookself:'+u.id,name:u.name,username:u.username,classIds:(u.class_ids||[]).map(id=>'bookself-class:'+id)}));
  }
  const json=(res,value,status=200)=>res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}).end(JSON.stringify(value));
  async function handle(req,res){
