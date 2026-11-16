@@ -14,6 +14,15 @@ import {canonicalResourcePage} from '../homework/library-page-map.js';
 import {deepseek} from './ai.mjs';
 import sharp from 'sharp';
 import {openPDF,renderPage} from './pdf-pages.mjs';
+import {BOARD_KINDS,boardWallKey,validateBoardInput,validateBoardAttachments,publicBoardNote,sortBoardNotes,boardCounts} from './library-board-model.mjs';
+const boardClients = new Map();
+function broadcastBoard(wallKey, event='update'){
+  const clients = boardClients.get(wallKey);
+  if(!clients) return;
+  for(const client of clients){ try{ client.res.write(`event: ${event}\ndata: {}\n\n`); }catch{} }
+}
+const plainClass = value => String(value || '').replace(/^bookself-class:/, '');
+
 export function createLibrary({db,files,requireAssignment,decrypt}){
  const visibleTo = (unit, user, releases) =>
    user.role === 'teacher'
@@ -32,6 +41,15 @@ export function createLibrary({db,files,requireAssignment,decrypt}){
      ? '这份教学包尚未共享给你'
      : '老师尚未向本班开放此教学包', 403);
    return unit;
+ }
+
+ async function canReadBoardAttachment(file, user) {
+   if (file.purpose !== 'board') return false;
+   const note = (await db.list('library-board-note')).find(n => (n.attachments || []).some(a => a.fileId === file.id));
+   if (!note) return false;
+   if (note.authorId === user.id) return true;
+   if (note.status === 'hidden' && user.role !== 'teacher') return false;
+   try { await unitFor(user, note.unitId); return true; } catch (e) { return false; }
  }
 
  async function canReadFile(file, user) {
@@ -69,6 +87,137 @@ export function createLibrary({db,files,requireAssignment,decrypt}){
  if (route[1] === 'sources' && method === 'GET') {
    teacher();const unit=await unitFor(user, requestedUnit);
    json(res,{sources:(await db.list('library-source')).filter(s=>s.owner===user.id&&(s.unitId===unit.id||(s.collection==='exam'&&s.course===unit.id.split('-')[0])))});return true;
+ }
+ if (route[1] === 'board') {
+   const unitId = query.get('unit') || UNIT;
+   const unit = await unitFor(user, unitId);
+   const topicId = query.get('topic') || 'all';
+   if (topicId !== 'all') assert((unit.topics || []).some(t => t.id === topicId), '章节不存在', 404);
+   const wallKey = boardWallKey(unitId, topicId);
+   const canModerate = user.role === 'teacher';
+   const visibleNote = note => note.status !== 'hidden' || canModerate || note.authorId === user.id;
+   const noteList = async () => (await db.list('library-board-note', undefined, unitId))
+     .filter(n => n.wallKey === wallKey && visibleNote(n));
+   const authorsLeft = async notes => {
+     const ids = [...new Set(notes.map(n => n.authorId))];
+     const authors = new Map(await Promise.all(ids.map(async uid => [uid, await db.get(uid)])));
+     return note => {
+       const author = authors.get(note.authorId);
+       if (!author) return true;
+       if (note.authorRole === 'teacher') return false;
+       if (!note.authorClassId || !note.authorClassLabel) return false;
+       return !(author.classIds || []).map(plainClass).includes(plainClass(note.authorClassId));
+     };
+   };
+   if (route[2] === 'stream' && method === 'GET') {
+     res.writeHead(200, {'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});
+     res.write('retry: 6000\n\n');
+     if (!boardClients.has(wallKey)) boardClients.set(wallKey, new Set());
+     const client = {res}; boardClients.get(wallKey).add(client);
+     const timer = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
+     req.on('close', () => { clearInterval(timer); boardClients.get(wallKey)?.delete(client); });
+     return true;
+   }
+   if (!route[2] && method === 'GET') {
+     const all = await noteList();
+     const leftOf = await authorsLeft(all);
+     const reactions = (await db.list('library-board-reaction')).filter(r => r.active !== false && r.wallKey === wallKey);
+     const useful = new Map(); for (const r of reactions) useful.set(r.noteId, (useful.get(r.noteId) || 0) + 1);
+     const mineUseful = new Set(reactions.filter(r => r.userId === user.id).map(r => r.noteId));
+     const reports = (await db.list('library-board-report')).filter(r => r.wallKey === wallKey && r.status === 'open');
+     const reportCount = new Map(); for (const r of reports) reportCount.set(r.noteId, (reportCount.get(r.noteId) || 0) + 1);
+     const kind = query.get('kind') || 'all';
+     const q = (query.get('q') || '').trim().toLowerCase();
+     const sort = query.get('sort') === 'useful' ? 'useful' : 'latest';
+     let notes = all.filter(n => (kind === 'all' || n.kind === kind) && (!q || `${n.body} ${n.authorName}`.toLowerCase().includes(q)))
+       .map(n => ({...publicBoardNote(n, {viewerId:user.id, canModerate, authorLeft:leftOf(n), useful:useful.get(n.id) || 0, mine:n.authorId===user.id}), reports: reportCount.get(n.id) || 0, usefulByMe: mineUseful.has(n.id)}));
+     notes = sortBoardNotes(notes, sort);
+     const before = query.get('before');
+     if (before) notes = notes.filter(n => String(n.createdAt) < before);
+     const limit = Math.max(1, Math.min(50, Number(query.get('limit')) || 20));
+     const page = notes.slice(0, limit);
+     json(res, {notes:page, counts:boardCounts(all), total: all.length, nextCursor: notes.length > limit ? page.at(-1)?.createdAt : '', canModerate, kindLabels:{discovery:'发现',key:'重点',question:'疑问',resource:'资源',teacher:'老师提示'}});
+     return true;
+   }
+   if (route[2] === 'moderation' && method === 'GET') {
+     teacher();
+     const all = await noteList();
+     const leftOf = await authorsLeft(all);
+     const reports = (await db.list('library-board-report')).filter(r => r.wallKey === wallKey && r.status === 'open');
+     const reportBy = new Map(); for (const r of reports) reportBy.set(r.noteId, (reportBy.get(r.noteId) || 0) + 1);
+     json(res, {notes: all.filter(n => reportBy.has(n.id)).map(n => ({...publicBoardNote(n,{viewerId:user.id,canModerate:true,authorLeft:leftOf(n)}), reports:reportBy.get(n.id) || 0})), total:reports.length});
+     return true;
+   }
+   if (!route[2] && method === 'POST') {
+     const b = await bdy();
+     const check = validateBoardInput(b, {teacher: user.role === 'teacher'});
+     const attachments = validateBoardAttachments(check.attachments || []);
+     for (const a of attachments) {
+       const file = await db.get(a.fileId);
+       assert(file && file.owner === user.id && file.purpose === 'board', '附件无效', 400);
+       a.name = file.name || a.name; a.mime = file.mime || a.mime; a.size = file.size || a.size;
+     }
+     const classes = user.role === 'student' ? await availableClasses() : [];
+     const classId = (user.classIds || [])[0] || '';
+     const className = classes.find(c => plainClass(c.id) === plainClass(classId))?.name || '';
+     const note = {
+       id: 'board-'+hash(user.id+wallKey+Date.now()+Math.random()), type:'library-board-note', wallKey, unitId, topicId,
+       course: unitId.split('-')[0], authorId:user.id, authorName:user.name || user.username || '学生', authorRole:user.role,
+       authorClassId: classId, authorClassLabel: className, body:check.body, kind:check.kind, attachments,
+       pinned:false, status:'visible', createdAt:now(), updatedAt:now(), version:1, reports:[],
+     };
+     if (user.role === 'teacher' && check.kind === 'teacher') note.pinned = true;
+     await db.put('library-board-note', note);
+     await db.audit(user.id, 'library_board_post', note.id);
+     broadcastBoard(wallKey, 'update');
+     json(res, {note: publicBoardNote(note, {viewerId:user.id, canModerate, mine:true})}, 201);
+     return true;
+   }
+   if (route[2] && route[3] === 'useful' && method === 'POST') {
+     const note = await db.get(route[2]);
+     assert(note && note.wallKey === wallKey && visibleNote(note), '便签不存在', 404);
+     const rid = 'board-useful-'+hash(note.id+':'+user.id);
+     const existing = await db.get(rid);
+     const active = !(existing && existing.active !== false);
+     await db.put('library-board-reaction', {id:rid, type:'library-board-reaction', wallKey, noteId:note.id, userId:user.id, active, updatedAt:now()});
+     const reactions = (await db.list('library-board-reaction')).filter(r => r.noteId === note.id && r.active !== false);
+     json(res, {useful: reactions.length, active});
+     return true;
+   }
+   if (route[2] && route[3] === 'report' && method === 'POST') {
+     const note = await db.get(route[2]);
+     assert(note && note.wallKey === wallKey && visibleNote(note), '便签不存在', 404);
+     const b = await bdy();
+     const reason = text(b.reason || '').trim().slice(0, 300);
+     assert(reason, '请选择或填写举报原因', 400);
+     await db.put('library-board-report', {id:'board-report-'+hash(note.id+':'+user.id+':'+Date.now()), type:'library-board-report', wallKey, noteId:note.id, reporterId:user.id, reason, status:'open', createdAt:now()});
+     await db.audit(user.id, 'library_board_report', note.id);
+     broadcastBoard(wallKey, 'report');
+     json(res, {ok:true});
+     return true;
+   }
+   if (route[2] && (method === 'PATCH' || method === 'PUT')) {
+     teacher();
+     const note = await db.get(route[2]);
+     assert(note && note.wallKey === wallKey, '便签不存在', 404);
+     const b = await bdy();
+     const patch = {updatedAt:now(), version:(note.version||1)+1};
+     if (b.pinned !== undefined) patch.pinned = Boolean(b.pinned);
+     if (b.status === 'hidden') { patch.status='hidden'; patch.hiddenReason = text(b.hiddenReason || '').slice(0,200) || '教师隐藏'; patch.hiddenBy=user.id; patch.hiddenAt=now(); }
+     if (b.status === 'visible') { patch.status='visible'; patch.hiddenReason=''; }
+     Object.assign(note, patch);
+     await db.put('library-board-note', note);
+     if (patch.status) {
+       for (const report of (await db.list('library-board-report')).filter(r => r.noteId === note.id && r.status === 'open')) {
+         report.status = 'resolved'; report.resolvedAt = now(); report.resolvedBy = user.id;
+         await db.put('library-board-report', report);
+       }
+     }
+     await db.audit(user.id, 'library_board_moderate', note.id);
+     broadcastBoard(wallKey, 'update');
+     json(res, {note: publicBoardNote(note, {viewerId:user.id, canModerate:true, mine:note.authorId===user.id})});
+     return true;
+   }
  }
  if (route[1] === 'questions' && method === 'GET') {
    teacher();
@@ -208,5 +357,5 @@ export function createLibrary({db,files,requireAssignment,decrypt}){
  }
  assert(false,'没有这个教学包操作',404);
  }
- return {handle,canReadFile};
+ return {handle,canReadFile,canReadBoardAttachment};
 }

@@ -14,6 +14,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  const events=new AbortController();
  state.viewCleanup=()=>{disposed=true;events.abort();closeContextMenus?.();closeBankMenus?.();readerCleanup?.();content?.libraryDispose?.();sourceReader?.destroy?.();dialog?.close();dialog?.remove();document.body.classList.remove('library-focused','library-project');};
  const teacher=state.user.role==='teacher',$=s=>main.querySelector(s);
+ let boardCleanup=null;
  const {units}=await api('library/catalog');if(disposed)return;
  if(!units.length){main.innerHTML='<section class="library-work"><h1>课程教学包</h1><p>老师开放课程后，课件与教材会显示在这里。</p></section>';return;}
  const last=recall('lib-last:'+state.user.id,{}),resolved=libraryLocation(units,last,unitOrTopic,topicOrMode,readerMode);
@@ -45,11 +46,97 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  async function getSources(){if(!sources)sources=(await api('library/sources?unit='+unitId)).sources;return sources;}
  function overview(){
   const f=lessonFocus[group+':'+topic.id],termMarkup=f?.terms.map(([term,zh])=>`<div class="lib-term"><strong><u>${h(term)}</u></strong><span>${h(zh)}</span></div>`).join('')||'';
-  content.innerHTML=`<article class="lib-focus-grid"><section class="lib-goals"><h2>Learning goals</h2><ol>${(f?.goals||['Review '+(topic.name||'this lesson')+' using the source material.']).map(g=>`<li>${h(g)}</li>`).join('')}</ol></section><section class="lib-concepts"><h2>Key concepts</h2>${termMarkup}<p>${h(f?.concept||'Read the original lesson materials for this topic.')}</p></section><section class="lib-pitfalls"><h2>Common pitfalls</h2><ul>${(f?.pitfalls||['Check definitions, assumptions, and the labels on every diagram.']).map(p=>`<li>${h(p)}</li>`).join('')}</ul></section></article>`;
+  boardCleanup?.();boardCleanup=null;
+  content.innerHTML=`<article class="lib-focus-grid"><section class="lib-goals"><h2>Learning goals</h2><ol>${(f?.goals||['Review '+(topic.name||'this lesson')+' using the source material.']).map(g=>`<li>${h(g)}</li>`).join('')}</ol></section><section class="lib-concepts"><h2>Key concepts</h2>${termMarkup}<p>${h(f?.concept||'Read the original lesson materials for this topic.')}</p></section><section class="lib-pitfalls"><h2>Common pitfalls</h2><ul>${(f?.pitfalls||['Check definitions, assumptions, and the labels on every diagram.']).map(p=>`<li>${h(p)}</li>`).join('')}</ul></section></article>${boardMarkup()}`;
+  mountBoard();
  }
- async function openSheet(title,markup,bind){
+
+ const BOARD_LABEL={discovery:'发现',key:'重点',question:'疑问',resource:'资源',teacher:'老师提示'};
+ const boardTopic=()=>unitScope?'all':topic.id;
+ const timeAgo=iso=>{const ms=Date.now()-Date.parse(iso||'');if(!Number.isFinite(ms)||ms<60000)return '刚刚';const m=Math.floor(ms/60000);if(m<60)return m+' 分钟前';const h=Math.floor(m/60);if(h<24)return h+' 小时前';const d=Math.floor(h/24);return d<7?d+' 天前':new Date(iso).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'});};
+ function boardMarkup(){
+  const kinds=Object.entries(BOARD_LABEL).filter(([k])=>teacher||k!=='teacher').map(([k,label])=>`<button type="button" class="lib-board-kind" data-board-kind-pick="${k}" aria-pressed="${k==='discovery'}">${label}</button>`).join('');
+  return `<section class="lib-board" data-board data-topic="${h(boardTopic())}" aria-label="本章便签">
+   <header class="lib-board-head"><div><h2>本章便签</h2><p class="lib-board-meta" data-board-meta>正在加载便签…</p></div><button type="button" class="lib-board-all" data-board-all>全部便签</button></header>
+   <form class="lib-board-composer" data-board-form>
+    <label class="lib-board-body"><span class="sr-only">便签内容</span><textarea data-board-body maxlength="1000" rows="2" placeholder="写下这一章的发现、疑问或补充资料…"></textarea></label>
+    <div class="lib-board-tools"><div class="lib-board-kinds" role="group" aria-label="便签类型">${kinds}</div><label class="lib-board-attach">＋ 图片/PDF<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple hidden data-board-files></label><span class="lib-board-filelist" data-board-filelist></span><span class="lib-board-count" data-board-count>0/1000</span><button type="submit" class="lib-board-publish" data-board-publish>发布便签</button></div>
+    <p class="lib-board-error" data-board-error role="alert"></p>
+   </form>
+   <div class="lib-board-filters" data-board-filters role="group" aria-label="筛选便签"></div>
+   <div class="lib-board-new" data-board-new hidden><button type="button" data-board-newclick>有 <b>0</b> 条新便签</button></div>
+   <div class="lib-board-shelf" data-board-shelf></div>
+   <p class="lib-board-empty" data-board-empty hidden>还没有便签，先写下这一章的第一条发现吧。</p>
+  </section>`;
+ }
+ function boardCard(n,{full=false}={}){
+  const imgs=(n.attachments||[]).filter(a=>a.mime?.startsWith('image/')).length,pdfs=(n.attachments||[]).filter(a=>a.mime==='application/pdf').length;
+  return `<article class="lib-board-card${n.pinned?' is-pinned':''}" data-board-note="${h(n.id)}" data-kind="${h(n.kind)}" tabindex="0" role="button" aria-label="打开 ${h(n.authorName)} 的便签">
+   <header><span class="lib-board-ava">${h((n.authorName||'?').slice(0,1))}</span><div class="lib-board-who"><b>${h(n.authorName)}</b><small>${n.authorLeft?'<em>已离开班级</em>':h(n.authorClassLabel||'')}${n.authorLeft||n.authorClassLabel?' · ':''}${timeAgo(n.createdAt)}</small></div><span class="lib-board-tag">${n.authorRole==='teacher'?'老师提示':BOARD_LABEL[n.kind]||'便签'}</span></header>
+   <p class="lib-board-text">${highlightText(n.body,'')}</p>
+   ${(imgs||pdfs)?`<div class="lib-board-files">${imgs?`<span>🖼 ${imgs} 张图片</span>`:''}${pdfs?`<span>📄 PDF</span>`:''}</div>`:''}
+   <footer><button type="button" class="lib-board-useful${n.usefulByMe?' is-on':''}" data-board-useful aria-pressed="${n.usefulByMe?'true':'false'}">有用 ${n.useful||0}</button><span>${n.pinned?'已置顶':''}</span></footer>
+   ${full?'':''}
+  </article>`;
+ }
+ function boardSkeleton(){return '<div class="lib-board-loading" aria-hidden="true"><span></span><span></span><span></span></div>';}
+ async function mountBoard(){
+  const root=$('[data-board]');if(!root)return;
+  const st={unitId,topicId:boardTopic(),kind:'all',sort:'latest',notes:[],counts:{},total:0,newCount:0,es:null};
+  const el={meta:root.querySelector('[data-board-meta]'),shelf:root.querySelector('[data-board-shelf]'),empty:root.querySelector('[data-board-empty]'),filters:root.querySelector('[data-board-filters]'),newbox:root.querySelector('[data-board-new]'),form:root.querySelector('[data-board-form]'),body:root.querySelector('[data-board-body]'),count:root.querySelector('[data-board-count]'),filelist:root.querySelector('[data-board-filelist]'),files:root.querySelector('[data-board-files]'),error:root.querySelector('[data-board-error]'),publish:root.querySelector('[data-board-publish]')};
+  let pickedKind=teacher?'teacher':'discovery';let chosenFiles=[];
+  const qsObj=()=>new URLSearchParams({unit:st.unitId,topic:st.topicId,kind:st.kind,sort:st.sort,limit:'20'});
+  const paintKinds=()=>{root.querySelectorAll('[data-board-kind-pick]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.boardKindPick===pickedKind)));};
+  const paintCounts=()=>{const total=st.counts.all||0;el.meta.textContent=total?`${total} 条便签${teacher?` · ${st.counts.teacher||0} 条老师提示`:''}`:'本章还没有便签';el.filters.innerHTML=`<button type="button" class="lib-board-filter${st.kind==='all'?' is-on':''}" data-board-filter="all" aria-pressed="${st.kind==='all'}">全部 ${st.counts.all||0}</button>`+['teacher','discovery','key','question','resource'].filter(k=>k!=='teacher'||(st.counts.teacher||0)>0).map(k=>`<button type="button" class="lib-board-filter${st.kind===k?' is-on':''}" data-board-filter="${k}" aria-pressed="${st.kind===k}">${BOARD_LABEL[k]} ${st.counts[k]||0}</button>`).join('');};
+  const paintShelf=()=>{el.shelf.innerHTML=st.notes.length?st.notes.map(n=>boardCard(n)).join(''):'';el.empty.hidden=st.notes.length>0;el.empty.textContent=st.kind==='all'?'还没有便签，先写下这一章的第一条发现吧。':'这个筛选下还没有便签。';};
+  const paintNew=()=>{el.newbox.hidden=st.newCount===0;el.newbox.querySelector('b').textContent=String(st.newCount);};
+  async function load(){
+   el.shelf.innerHTML=boardSkeleton();el.empty.hidden=true;
+   try{const data=await api('library/board?'+qsObj());if(disposed)return;st.notes=data.notes||[];st.counts=data.counts||{};st.total=data.total||0;st.newCount=0;paintCounts();paintShelf();paintNew();}
+   catch(e){el.shelf.innerHTML='';el.empty.hidden=false;el.empty.textContent=e.message||'便签加载失败';}
+  }
+  function refreshCountsOnly(){api('library/board?'+qsObj()).then(d=>{st.counts=d.counts||{};st.total=d.total||0;paintCounts();}).catch(()=>{});}
+  function openDetail(n){
+   const att=(n.attachments||[]).map(a=>a.mime?.startsWith('image/')?`<a class="lib-board-img" href="/api/homework/files/${encodeURIComponent(a.fileId)}" target="_blank" rel="noopener"><img src="/api/homework/files/${encodeURIComponent(a.fileId)}" alt="${h(a.name)}" loading="lazy"></a>`:`<a class="lib-board-pdf" href="/api/homework/files/${encodeURIComponent(a.fileId)}" target="_blank" rel="noopener">📄 ${h(a.name)}</a>`).join('');
+   const reportForm=`<form class="lib-board-report" data-board-reportform hidden><label>举报原因<select name="reason"><option>与本章无关</option><option>不友善内容</option><option>疑似广告</option><option>其他</option></select></label><textarea name="detail" maxlength="200" placeholder="补充说明（可选）"></textarea><div><button type="submit">提交举报</button><button type="button" data-board-reportcancel>取消</button></div></form>`;
+   const moderate=teacher?`<div class="lib-board-moderate"><button type="button" data-board-pin>${n.pinned?'取消置顶':'置顶'}</button><button type="button" data-board-hide>${n.status==='hidden'?'恢复显示':'隐藏'}</button></div>`:'';
+   openSheet('便签详情',`<article class="lib-board-detail"><header><span class="lib-board-ava">${h((n.authorName||'?').slice(0,1))}</span><div><b>${h(n.authorName)}</b><small>${n.authorLeft?'已离开班级':h(n.authorClassLabel||'')} · ${timeAgo(n.createdAt)} · ${n.authorRole==='teacher'?'老师提示':BOARD_LABEL[n.kind]||''}</small></div></header><p class="lib-board-full">${highlightText(n.body,'')}</p>${att?`<div class="lib-board-attachments">${att}</div>`:''}<footer><button type="button" data-board-useful2 class="${n.usefulByMe?'is-on':''}">有用 ${n.useful||0}</button>${(n.mine||teacher)?'':`<button type="button" data-board-reportopen>举报</button>`}${moderate}</footer>${reportForm}</article>`,d=>{
+    d.querySelector('[data-board-useful2]')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;try{const out=await post(`library/board/${n.id}/useful`,{});b.textContent='有用 '+out.useful;b.classList.toggle('is-on',!!out.active);}catch(err){toast(err.message);}finally{b.disabled=false;}});
+    d.querySelector('[data-board-reportopen]')?.addEventListener('click',()=>{d.querySelector('[data-board-reportform]').hidden=false;});
+    d.querySelector('[data-board-reportcancel]')?.addEventListener('click',()=>{d.querySelector('[data-board-reportform]').hidden=true;});
+    d.querySelector('[data-board-reportform]')?.addEventListener('submit',async ev=>{ev.preventDefault();const f=ev.currentTarget;const reason=new FormData(f).get('reason');const detail=String(new FormData(f).get('detail')||'').trim();try{await post(`library/board/${n.id}/report`,{reason:detail?reason+'：'+detail:reason});toast('已提交举报，老师会尽快处理');d.close();}catch(err){toast(err.message);}});
+    d.querySelector('[data-board-pin]')?.addEventListener('click',async ev=>{const button=ev.currentTarget;button.disabled=true;try{await api(`library/board/${n.id}`,{method:'PATCH',body:{pinned:!n.pinned}});toast(n.pinned?'已取消置顶':'已置顶');d.close();d.remove();load();}catch(err){toast(err.message);button.disabled=false;}});
+    d.querySelector('[data-board-hide]')?.addEventListener('click',async ev=>{const button=ev.currentTarget;button.disabled=true;try{await api(`library/board/${n.id}`,{method:'PATCH',body:{status:n.status==='hidden'?'visible':'hidden'}});toast(n.status==='hidden'?'已恢复显示':'已隐藏便签');d.close();d.remove();load();}catch(err){toast(err.message);button.disabled=false;}});
+   },'lib-board-detail');
+  }
+  function openAll(){
+   const kinds=['all','teacher','discovery','key','question','resource'];
+   openSheet('全部便签',`<div class="lib-board-allwrap"><div class="lib-board-allbar"><input type="search" data-board-search placeholder="搜索便签或同学" aria-label="搜索便签"><div class="lib-board-allfilters">${kinds.map(k=>`<button type="button" data-board-allkind="${k}" class="${k==='all'?'is-on':''}">${k==='all'?'全部':BOARD_LABEL[k]}</button>`).join('')}</div><select data-board-sort aria-label="排序"><option value="latest">最新</option><option value="useful">最多有用</option></select></div><div class="lib-board-alllist" data-board-alllist>${boardSkeleton()}</div></div>`,d=>{
+    let kind='all',sort='latest',q='',timer;
+    const list=d.querySelector('[data-board-alllist]');
+    const render=async()=>{list.innerHTML=boardSkeleton();try{const params=new URLSearchParams({unit:st.unitId,topic:st.topicId,kind,sort,limit:'50'});if(q)params.set('q',q);const data=await api('library/board?'+params);list.innerHTML=(data.notes||[]).map(n=>boardCard(n,{full:true})).join('')||'<p class="lib-board-empty">没有匹配的便签。</p>';list.querySelectorAll('[data-board-note]').forEach(card=>{const n=(data.notes||[]).find(x=>x.id===card.dataset.boardNote);card.addEventListener('click',()=>{if(n)openDetail(n);});card.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(n)openDetail(n);}});});}catch(e){list.innerHTML=`<p class="lib-board-empty">${h(e.message)}</p>`;}};
+    d.querySelector('[data-board-search]').addEventListener('input',e=>{clearTimeout(timer);q=e.target.value.trim();timer=setTimeout(render,250);});
+    d.querySelectorAll('[data-board-allkind]').forEach(b=>b.onclick=()=>{kind=b.dataset.boardAllkind;d.querySelectorAll('[data-board-allkind]').forEach(x=>x.classList.toggle('is-on',x===b));render();});
+    d.querySelector('[data-board-sort]').onchange=e=>{sort=e.target.value;render();};
+    render();
+   },'lib-board-dialog');
+  }
+  // composer
+  el.body.addEventListener('input',()=>{el.count.textContent=el.body.value.length+'/1000';});
+  root.querySelectorAll('[data-board-kind-pick]').forEach(b=>b.onclick=()=>{pickedKind=b.dataset.boardKindPick;paintKinds();});
+  el.files.addEventListener('change',()=>{chosenFiles=[...el.files.files].slice(0,5);el.filelist.textContent=chosenFiles.map(f=>f.name).join('、');});
+  el.form.addEventListener('submit',async e=>{e.preventDefault();const body=el.body.value.trim();if(!body){el.error.textContent='先写点什么再发布。';return;}const images=chosenFiles.filter(f=>f.type!=='application/pdf').length,pdfs=chosenFiles.filter(f=>f.type==='application/pdf').length;if(images>4||pdfs>1){el.error.textContent='最多 4 张图片和 1 个 PDF。';return;}if(chosenFiles.some(f=>f.size>(f.type==='application/pdf'?25:8)*1024*1024)){el.error.textContent='文件过大：图片最多 8MB，PDF 最多 25MB。';return;}el.error.textContent='';el.publish.disabled=true;el.publish.textContent='发布中…';try{const attachments=[];for(const file of chosenFiles){const res=await fetch('/api/homework/files?purpose=board&name='+encodeURIComponent(file.name),{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':state.csrf},body:file});const data=await res.json();if(!res.ok)throw new Error(data.error||'附件上传失败');attachments.push({fileId:data.file.id,name:data.file.name,mime:data.file.mime,size:data.file.size});}await post('library/board',{unitId:st.unitId,topicId:st.topicId,body,kind:pickedKind,attachments});el.body.value='';el.count.textContent='0/1000';chosenFiles=[];el.files.value='';el.filelist.textContent='';toast('已发布便签');await load();}catch(err){el.error.textContent=err.message;}finally{el.publish.disabled=false;el.publish.textContent='发布便签';}});
+  el.shelf.addEventListener('click',e=>{const useful=e.target.closest('[data-board-useful]');const card=e.target.closest('[data-board-note]');if(useful&&card){e.stopPropagation();const n=st.notes.find(x=>x.id===card.dataset.boardNote);if(!n)return;useful.disabled=true;post(`library/board/${n.id}/useful`,{}).then(out=>{useful.textContent='有用 '+out.useful;useful.classList.toggle('is-on',!!out.active);n.useful=out.useful;n.usefulByMe=out.active;}).catch(err=>toast(err.message)).finally(()=>{useful.disabled=false;});return;}if(card){const n=st.notes.find(x=>x.id===card.dataset.boardNote);if(n)openDetail(n);}});
+  el.filters.addEventListener('click',e=>{const b=e.target.closest('[data-board-filter]');if(!b)return;st.kind=b.dataset.boardFilter;load();});
+  el.newbox.addEventListener('click',()=>load());
+  root.querySelector('[data-board-all]').addEventListener('click',openAll);
+  paintKinds();paintNew();await load();
+  try{const es=new EventSource(`/api/homework/library/board/stream?unit=${encodeURIComponent(st.unitId)}&topic=${encodeURIComponent(st.topicId)}`);es.addEventListener('update',()=>{st.newCount+=1;paintNew();refreshCountsOnly();});es.addEventListener('report',()=>{refreshCountsOnly();});st.es=es;}catch{}
+  boardCleanup=()=>{try{st.es?.close();}catch{}};
+ }
+ async function openSheet(title,markup,bind,extraClass=''){
   const active=document.activeElement,trigger=active?.closest('details')?.querySelector(':scope > summary')||active;
-  main.querySelectorAll('.lib-context-more[open],.lib-selection-more[open]').forEach(d=>d.open=false);dialog?.close();dialog?.remove();dialog=document.createElement('dialog');dialog.className='lib-dialog';dialog.setAttribute('aria-labelledby','library-dialog-title');dialog.innerHTML=`<header><h2 id="library-dialog-title">${h(title)}</h2><button type="button" data-close aria-label="关闭面板">×</button></header>${markup}`;document.body.append(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});dialog.addEventListener('close',()=>{if(!disposed&&trigger?.isConnected)trigger.focus({preventScroll:true});},{once:true});dialog.showModal();bind?.(dialog);
+  main.querySelectorAll('.lib-context-more[open],.lib-selection-more[open]').forEach(d=>d.open=false);dialog?.close();dialog?.remove();dialog=document.createElement('dialog');dialog.className='lib-dialog';dialog.setAttribute('aria-labelledby','library-dialog-title');dialog.innerHTML=`<header><h2 id="library-dialog-title">${h(title)}</h2><button type="button" data-close aria-label="关闭面板">×</button></header>${markup}`;if(extraClass)dialog.classList.add(extraClass);document.body.append(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});dialog.addEventListener('close',()=>{if(!disposed&&trigger?.isConnected)trigger.focus({preventScroll:true});},{once:true});dialog.showModal();bind?.(dialog);
  }
   async function release(){try{
    const classes=(await api('classes')).classes;if(disposed)return;

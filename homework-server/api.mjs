@@ -237,6 +237,7 @@ export async function createHomework({externalAuth} = {}) {
   const authorizeFile = async (file, user) => {
     if (file.owner === user.id) return true;
     if(await library.canReadFile(file,user))return true;
+    if(file.purpose==='board'&&await library.canReadBoardAttachment(file,user))return true;
     for (const a of await db.list("assignment"))
       if (
         (paperOf(a).questionFiles || []).includes(file.id) &&
@@ -272,7 +273,7 @@ export async function createHomework({externalAuth} = {}) {
     try {
       res.setHeader("Cache-Control", "no-store");
       res.setHeader("X-Frame-Options", "SAMEORIGIN");
-      if (!["GET", "HEAD", "POST", "PUT", "DELETE"].includes(method))
+      if (!["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"].includes(method))
         throw new HttpError(405, "不支持的请求方式");
       if (route[0] === "worker") {
         const device = await db.get("device"),
@@ -812,10 +813,10 @@ export async function createHomework({externalAuth} = {}) {
           rate(req, "upload", 100, user.id);
           const purpose = url.searchParams.get("purpose");
           assert(
-            ["answer", "question", "submission"].includes(purpose),
+            ["answer", "question", "submission", "board"].includes(purpose),
             "附件用途不正确",
           );
-          if (purpose !== "submission") teacher();
+          if (purpose !== "submission" && purpose !== "board") teacher();
           const f = await files.upload(await readBody(req, MAX_FILE), {
             owner: user.id,
             purpose,
