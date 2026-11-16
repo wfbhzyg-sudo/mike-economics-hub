@@ -224,3 +224,13 @@
 - Perusall（Villanova）：https://villanova.teamdynamix.com/TDClient/2759/UNIT/KB/PrintArticle?ID=162775
 - Perusall（Melbourne）：https://lms.unimelb.edu.au/learning-technologies/perusall
 - NYU 数字批注概览：https://technology.steinhardt.nyu.edu/hc/en-us/articles/16632192910107-Learner-Engagement-Digital-Annotation
+
+## 15. 已确认决策与实现状态（2026-11-16）
+
+- 可见范围：所有班级共享同一章节墙；首期不做「仅自己可见」。
+- 离班作者：内容保留，作者名后标「已离开班级」；教师内容不受影响。
+- 教师发帖：教师可选择「老师提示」，默认置顶。
+- 附件：最多 1 个 PDF + 4 张图片（JPG/PNG/WebP）。
+- 举报：学生可举报，进入教师审核队列，不自动删除。
+- 布局：采用方案 A —— 固定高度横向便签条 + 「全部便签」弹层，实时新便签用「N 条新便签」胶囊提示，不顶开正文。
+- 已实现：`homework-server/library-board-model.mjs`、`library.mjs` 的 board 路由与 SSE、`api.mjs` 的 board 附件授权、`library-ui.js` 与 `library.css` 的界面；测试 `tests/library-board.test.mjs`（6 项）。
