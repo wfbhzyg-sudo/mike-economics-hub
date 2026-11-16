@@ -5,7 +5,7 @@ export const workDate=a=>a.dueAt||a.createdAt||'';
 export function visibleAssignments(data){const used=new Set(data.submissions.filter(s=>s.status!=='draft').map(s=>s.assignmentId));return data.assignments.filter(a=>(a.published!==false&&!a.deletedAt)||used.has(a.id)).sort((a,b)=>workDate(a).localeCompare(workDate(b))||a.id.localeCompare(b.id));}
 export function cellFor(a,student,record,time=Date.now()){
  const rate=rateOf(record?.grade),latest=record?.latest,required=a.audience?.required??a.audience?.students?.some(u=>u.id===student.id),inClass=student.classIds?.some(c=>a.classIds?.includes(c)),known=a.audience?.confirmedAt;
- let status,label;if(rate!==null){status='graded';label=rate+'%';}
+ let status,label;if(record?.grade?.absent){status='absent';label='缺考';}else if(rate!==null){status='graded';label=rate+'%';}
  else if(latest){status=['needs_review','returned','failed'].includes(latest.status)?'attention':'pending';label=submissionLabel(latest.status);}
  else if(required&&a.opensAt&&Date.parse(a.opensAt)>time){status='todo';label='尚未开放';}
  else if(required){status=a.dueAt&&Date.parse(a.dueAt)<time?'missing':'todo';label=status==='missing'?'未交':'待完成';}

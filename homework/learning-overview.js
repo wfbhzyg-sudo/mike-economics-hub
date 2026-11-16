@@ -337,7 +337,7 @@ export function mountLearningOverview(ctx, initialData) {
 
   function cellMarkup(cell) {
     const band = cell.status === 'graded' && cell.rate !== null ? scoreBand(cell.rate) : null;
-    const short = {pending: '待复核', attention: '待处理', todo: '进行中', missing: '未交', unconfirmed: '待确认', unassigned: '未分配'};
+    const short = {pending: '待复核', attention: '待处理', todo: '进行中', missing: '未交', absent: '缺考', unconfirmed: '待确认', unassigned: '未分配'};
     const label = cell.rate === null ? short[cell.status] || cell.label : formatPercent(cell.rate);
     const isSelected = Boolean(selected && selected.studentId === cell.student.id && selected.assignmentId === cell.assignment.id);
     const detail = cell.rate === null ? cell.label : `${formatPercent(cell.rate)}${cell.pendingUpdate ? '，新版本待更新' : ''}`;

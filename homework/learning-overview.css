@@ -1518,3 +1518,4 @@ body[data-section="analytics"] #workspace {
 .lo-offline-error{min-height:18px;margin:0 0 6px;color:#a53429;font-size:12px}
 .lo-offline-actions{display:flex;justify-content:flex-end;gap:8px}
 .lo-offline-note{margin:12px 0 0;color:#8a978e;font-size:11px;line-height:1.5}
+.lo-cell[data-status="absent"]{color:#6b6258;background:#f4f0ea;border-style:dashed}
