@@ -226,17 +226,7 @@ export function createWorkspaceUI(ctx) {
     main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", state.classes.map((c) => c.name).join(" · "), t ? link("trash", "回收站") + `<button class="secondary" type="button" data-bank-start>从题库出题</button>` + link("new", "新建作业", "primary") : "")}${t ? "" : studentSummaryMarkup() + insightsMarkup(state, h)}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div><div class="assignment-search-controls">${courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option ${state.assignmentCourse === c ? "selected" : ""}>${h(c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
     function draw() {
       const bankStart = $("[data-bank-start]");
-      if (bankStart) bankStart.onclick = async () => {
-        bankStart.disabled = true;
-        try {
-          const { units } = await api("library/catalog");
-          const last = (() => { try { return JSON.parse(sessionStorage.getItem("lib-last:" + state.user.id) || "{}"); } catch { return {}; } })();
-          const unit = units.find((u) => u.id === last.unit) || units[0];
-          const topic = unit?.topics?.find((t) => t.id === last.topic) || unit?.topics?.[0];
-          if (!unit || !topic) throw Error("题库还没有可用章节，请先在课程教学包中核对题目。");
-          go(["library", unit.id, topic.id, "bank"].join("/"));
-        } catch (e) { toast(e.message); bankStart.disabled = false; }
-      };
+      if (bankStart) bankStart.onclick = () => { location.hash = "bank"; };
       state.assignmentSearch = $("#assignment-search").value;
       const term = state.assignmentSearch.trim().toLocaleLowerCase(),
         base = state.assignments.filter(

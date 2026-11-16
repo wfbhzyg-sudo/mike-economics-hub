@@ -1198,6 +1198,36 @@ export async function createHomework({externalAuth} = {}) {
               current.reviewRequests.push({id:id(),questionId:b.questionId,reason:boundedText(b.reason,1500,'复核说明'),status:'open',createdAt:now()});await db.put('submission',current,c);
             });return (json(res,{ok:true}),true);
           }
+          if (route[2] === "offline-score" && method === "PATCH") {
+            teacher();
+            const b = await body(req);
+            const a = await requireAssignment(s.assignmentId, user);
+            const result = await db.tx(async (c) => {
+              const current = await requireSubmission(s.id, user, c);
+              const g = current.publishedGrade;
+              assert(g && (g.scoreOnly || a.offline || a.format === "score"), "这份作业不是线下成绩", 400);
+              assert(Number(b.revision) === Number(g.revision || 1), "成绩已在别处更新，请刷新后再修改", 409);
+              const max = Number(g.maxPoints || a.maxPoints || 0);
+              assert(Number.isFinite(max) && max > 0, "这份成绩没有有效满分", 400);
+              const absent = b.absent === true;
+              let total = null;
+              if (!absent) {
+                assert(b.score !== null && b.score !== "" && Number.isFinite(Number(b.score)), "请输入 0–" + max + " 之间的分数");
+                total = Math.round(Number(b.score) * 10) / 10;
+                assert(total >= 0 && total <= max, "分数需在 0–" + max + " 之间");
+              }
+              current.gradeHistory = [...(current.gradeHistory || []), structuredClone(g)];
+              current.publishedGrade = {
+                ...g, total, absent, maxPoints: max,
+                revision: Number(g.revision || 1) + 1, updatedAt: now(), updatedBy: user.id,
+              };
+              current.updatedAt = now();
+              await db.put("submission", current, c);
+              await db.audit(user.id, "offline_score", s.id, c);
+              return current;
+            });
+            return (json(res, { submission: publicSubmission(result) }), true);
+          }
           if (method === "GET")
             return (
               json(res, {

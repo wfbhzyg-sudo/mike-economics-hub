@@ -9,9 +9,9 @@ import {assignmentRecords,gradeSummary} from '../homework/learning-model.js';
 import {mountLearningOverview} from '../homework/learning-overview.js';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const main=$('#workspace'),surface=$('.homework-surface'),status=$('#workspace-status');
-const paths={home:'M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 4a4 4 0 0 1 0 8m6 9v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',work:'M9 4H5v17h14V4h-4M9 2h6v5H9zM8 13l3 3 5-6',book:'M12 5v16M12 5C8 2 5 2 2 3v16c4-1 6 0 10 2 4-2 6-3 10-2V3c-3-1-6-1-10 2',game:'M6 8h12l4 10a2 2 0 0 1-3 2l-4-3H9l-4 3a2 2 0 0 1-3-2L6 8ZM7 10v5m-2-2.5h4m7-1h.01m3 2h.01',chat:'M21 11a9 8 0 0 1-9 8H9l-6 3 2-6a8 8 0 1 1 16-5ZM8 11h.01M12 11h.01M16 11h.01',settings:'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',more:'M5 12h.01M12 12h.01M19 12h.01',arrow:'M19 12H5m6-6-6 6 6 6',chart:'M4 21V11h4v10m4 0V6h4v15m4 0V2h2v19',bars:'M4 20h16M7 20v-7m5 7V8m5 12v-4'};
+const paths={home:'M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 4a4 4 0 0 1 0 8m6 9v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',work:'M9 4H5v17h14V4h-4M9 2h6v5H9zM8 13l3 3 5-6',book:'M12 5v16M12 5C8 2 5 2 2 3v16c4-1 6 0 10 2 4-2 6-3 10-2V3c-3-1-6-1-10 2',game:'M6 8h12l4 10a2 2 0 0 1-3 2l-4-3H9l-4 3a2 2 0 0 1-3-2L6 8ZM7 10v5m-2-2.5h4m7-1h.01m3 2h.01',chat:'M21 11a9 8 0 0 1-9 8H9l-6 3 2-6a8 8 0 1 1 16-5ZM8 11h.01M12 11h.01M16 11h.01',layers:'M12 2 2 7l10 5 10-5-10-5ZM2 12l10 5 10-5M2 17l10 5 10-5',settings:'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',more:'M5 12h.01M12 12h.01M19 12h.01',arrow:'M19 12H5m6-6-6 6 6 6',chart:'M4 21V11h4v10m4 0V6h4v15m4 0V2h2v19',bars:'M4 20h16M7 20v-7m5 7V8m5 12v-4'};
 const icon=n=>`<svg class="tw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[n]||paths.work}"/></svg>`;
-const sections=[['library','课程教学包','book','课程'],['work/assignments','作业管理','work','作业'],['work/reviews','作业批阅','chart','批阅'],['analytics','成绩与学情','bars','学情'],['classes','班级与学生','people','班级']];
+const sections=[['library','课程教学包','book','课程'],['work/assignments','作业管理','work','作业'],['bank','题库','layers','题库'],['work/reviews','作业批阅','chart','批阅'],['analytics','成绩与学情','bars','学情'],['classes','班级与学生','people','班级']];
 const courses=[['micro','AP 微观'],['macro','AP 宏观'],['as','AS 经济学'],['al','A Level 经济学']];
 const state={user:null,csrf:'',meta:null,classId:'',book:'ap-microeconomics',course:'micro',controller:null,version:0,homework:null,lastHash:'',dirty:false};
 const qs=o=>new URLSearchParams(Object.entries(o).filter(([,v])=>v!==undefined&&v!==null&&v!=='')).toString();
@@ -82,16 +82,17 @@ function navigation(section){
   :section==='work'&&!/work\/(review|overview|gradebook)/.test(current);
  const links=sections.map(([id,title,name])=>`<a href="#${id}" ${active(id)?'aria-current="page"':''}>${icon(name)}${title}</a>`).join('');
  const secondary=`<div class="tw-nav-secondary"><a href="#games" ${section==='games'?'aria-current="page"':''}>${icon('chart')}拓展学习记录</a>${state.meta.capabilities.admin?`<a href="#settings" ${section==='settings'?'aria-current="page"':''}>${icon('settings')}设置</a>`:''}</div>`;
- const mobileLinks=sections.map(([id,title,name,short])=>`<a href="#${id}" ${active(id)?'aria-current="page"':''}>${icon(name)}${short||title}</a>`).join('');
+ const mobileSections=sections.filter(([id])=>!['classes','work/reviews'].includes(id));
+ const mobileLinks=mobileSections.map(([id,title,name,short])=>`<a href="#${id}" ${active(id)?'aria-current="page"':''}>${icon(name)}${short||title}</a>`).join('');
  $('#teacher-navigation').innerHTML=links+secondary;
  $('#mobile-navigation').innerHTML=mobileLinks;
  $$('[data-open-more]').forEach(button=>button.onclick=()=>{state.moreTrigger=button;button.focus({preventScroll:true});$('#more-menu').showModal();});
- $('#more-navigation').innerHTML=(state.meta.capabilities.admin?`<a href="#settings">${icon('settings')}批改设置</a>`:'')+`<a href="/?account=password">${icon('settings')}修改密码</a><button type="button" data-more-logout>${icon('arrow')}退出登录</button><a href="/">${icon('arrow')}返回一页通</a>`;
+ $('#more-navigation').innerHTML=`<a href="#work/reviews">${icon('chart')}作业批阅</a><a href="#classes">${icon('people')}班级与学生</a><a href="#games">${icon('chart')}拓展学习记录</a>`+(state.meta.capabilities.admin?`<a href="#settings">${icon('settings')}批改设置</a>`:'')+`<a href="/?account=password">${icon('settings')}修改密码</a><button type="button" data-more-logout>${icon('arrow')}退出登录</button><a href="/">${icon('arrow')}返回一页通</a>`;
  $$('[data-more-logout]').forEach(b=>b.onclick=()=>{$('#more-menu')?.close();$('#teacher-logout')?.click();});
 
 }
 
-function controls(section){$('#context-controls').hidden=['feedback','settings','library','work','analytics','classes'].includes(section);const showBook=['home','books','student','question'].includes(section),showCourse=['home','games'].includes(section);$('#context-controls').innerHTML=`<label><span>班级</span><select id="context-class" aria-label="当前班级"><option value="">${state.meta.classes.length?'选择班级':'尚无班级'}</option>${state.meta.classes.map(c=>`<option value="${c.id}" ${state.classId===c.id?'selected':''}>${h(c.name)}${c.archived?' · 已归档':''}</option>`).join('')}</select></label>${showBook?`<label><span>教材</span><select id="context-book" aria-label="当前教材">${state.meta.books.map(b=>`<option value="${b.id}" ${state.book===b.id?'selected':''}>${h(b.title)}</option>`).join('')}</select></label>`:''}${showCourse?`<label><span>游戏课程</span><select id="context-course" aria-label="游戏课程">${courses.map(([id,t])=>`<option value="${id}" ${state.course===id?'selected':''}>${t}</option>`).join('')}</select></label>`:''}`;
+function controls(section){$('#context-controls').hidden=['feedback','settings','library','work','bank','analytics','classes'].includes(section);const showBook=['home','books','student','question'].includes(section),showCourse=['home','games'].includes(section);$('#context-controls').innerHTML=`<label><span>班级</span><select id="context-class" aria-label="当前班级"><option value="">${state.meta.classes.length?'选择班级':'尚无班级'}</option>${state.meta.classes.map(c=>`<option value="${c.id}" ${state.classId===c.id?'selected':''}>${h(c.name)}${c.archived?' · 已归档':''}</option>`).join('')}</select></label>${showBook?`<label><span>教材</span><select id="context-book" aria-label="当前教材">${state.meta.books.map(b=>`<option value="${b.id}" ${state.book===b.id?'selected':''}>${h(b.title)}</option>`).join('')}</select></label>`:''}${showCourse?`<label><span>游戏课程</span><select id="context-course" aria-label="游戏课程">${courses.map(([id,t])=>`<option value="${id}" ${state.course===id?'selected':''}>${t}</option>`).join('')}</select></label>`:''}`;
 for(const [id,key] of [['class','classId'],['book','book'],['course','course']]){const el=$('#context-'+id);if(el)el.onchange=()=>{if(state.dirty&&!confirm('有尚未保存的修改，确定切换教学范围？')){el.value=state[key];return;}state.dirty=false;state[key]=el.value;persist();void render();};}}
 function progress(title,value,total,note){return `<div class="tw-progress-row"><div><strong>${title}</strong><span>${value==null?'暂不可用':`${value}/${total}`}</span></div>${value==null?'':`<progress max="${Math.max(1,total)}" value="${value}" aria-label="${title}"></progress>`}<small>${h(note)}</small></div>`;}
 async function home(){
@@ -127,10 +128,157 @@ async function classes(){
   $('#account-detach').onclick=async()=>{const sid=accountDialog.dataset.studentId,name=accountDialog.dataset.oldName;if(!confirm('将 '+name+' 移出本班？这不会删除账号和历史记录。'))return;await mutate('teacher/students','DELETE',{classId:state.classId,studentId:sid,confirm:true});accountDialog.close();await metadata();toast('已移出本班，账号和记录保留');await render();};
   $('#export-class').onclick=()=>download(data,'班级学情-'+current.name+'.json');}
 }
-async function student(id){
- if(!classRequired())return;const [p,roster,profile,learning]=await Promise.all([api('teacher/performance?'+qs({class:state.classId,book:state.book,student:id})),api('teacher/performance?'+qs({class:state.classId,book:state.book})),api('teacher/workspace/student?'+qs({classId:state.classId,studentId:id})),hw('learning')]);const s=p.students.find(s=>s.id===id);if(!s)throw Error('该学生已不在当前班级，请刷新班级名单。');const records=assignmentRecords(learning.submissions,learning.assignments).filter(r=>r.studentId==='bookself:'+id),sum=gradeSummary(records);const concepts=profile.quest.concepts;
- main.innerHTML=`<div class="tw-student-header"><div class="tw-section-head"><div><h2>${h(s.name)}</h2><p class="tw-muted">${h(s.username)} · ${h(classroom().name)}</p></div>${button('classes','返回班级')}</div></div>${tabs([['student/'+id,'综合档案']],'student/'+id)}<section><h2>教材学习</h2><div class="tw-statline"><span><strong>${s.read}/${s.pages}</strong> 阅读页数</span><span><strong>${percent(s.overall.percent)}</strong> 最近答案正确率</span><span><strong>${s.attempts}</strong> 练习次数</span></div><p class="tw-note">每题取最后一次作答；重复尝试不重复计入正确率。无作答不计零分。</p>${table(['章节','阅读','已答题','正确率','复习'],p.columns.map(c=>{const v=s.cells.find(x=>x.topicId===c.id);return `<tr><td>${h(c.title)}</td><td>${v.read}/${v.pages}</td><td>${v.total}</td><td>${percent(v.percent)}</td><td>${v.practiced?'已练习':'待练习'} · 第 ${v.reviewStage} 阶段</td></tr>`;}))}</section><section class="tw-section"><h2>最近作答</h2>${s.recent.length?table(['题目','作答','时间'],s.recent.map(a=>`<tr><td><a href="#question/${encodeURIComponent(a.questionId)}">${h(a.preview)}</a></td><td>${h(a.optionId)} · ${a.correct?'正确':'需回顾'}</td><td>${when(a.at)}</td></tr>`)):empty('还没有教材作答','学生开始练习后，会在这里显示逐题记录。')}</section><section class="tw-section"><div class="tw-section-head"><h2>电子作业</h2>${button('analytics','打开成绩与学情')}</div><div class="tw-statline"><span><strong>${sum.count}</strong> 次已出分</span><span>${scoreBadge(sum.average)} 平均得分率</span><span><strong>${sum.wrong}</strong> 当前失分题</span></div>${scoreLegend()}${records.length?table(['作业','得分','状态','操作'],records.map(r=>`<tr><td>${h(r.assignment.title)}</td><td>${r.grade?r.grade.total+'/'+r.grade.maxPoints:'待批阅'}</td><td>${h(submissionLabel(r.latest.status, 'teacher'))}</td><td>${button('work/review/'+r.latest.id,'查看')}</td></tr>`)):empty('暂无作业提交','这位学生提交后，成绩、错题与原始附件会保存在同一份档案。')}</section><section class="tw-section"><h2>EconQuest 学习</h2><p class="tw-note">概念证据与游戏掌握独立记录，不与作业分数合并。</p><div class="tw-statline">${courses.map(([c,t])=>`<span><strong>${Object.keys(profile.quest.mastery[c]||{}).length}</strong> ${t} 已掌握路线</span>`).join('')}</div>${concepts.length?table(['概念','证据状态','尝试','回访通过'],concepts.map(c=>`<tr><td>${h(c.id)}</td><td>${h({repair:'需要补练',repaired:'已纠正',independent:'独立完成',revisited:'回访通过',practised:'已练习'}[c.status]||c.status)}</td><td>${c.attempts}</td><td>${c.revisitPasses}</td></tr>`)):empty('暂无游戏学习记录','完成游戏任务后会显示概念掌握与回访情况。')}</section>`;
+async function student(id,part=''){
+ if(!classRequired())return;const [p,profile,learning]=await Promise.all([api('teacher/performance?'+qs({class:state.classId,book:state.book,student:id})),api('teacher/workspace/student?'+qs({classId:state.classId,studentId:id})),hw('learning')]);const s=p.students.find(s=>s.id===id);if(!s)throw Error('该学生已不在当前班级，请刷新班级名单。');const records=assignmentRecords(learning.submissions,learning.assignments).filter(r=>r.studentId==='bookself:'+id),sum=gradeSummary(records),concepts=profile.quest.concepts,className=classroom().name;
+ const classAssignments=learning.assignments.filter(a=>a.published!==false&&!a.deletedAt&&a.classIds?.includes('bookself-class:'+state.classId)),total=classAssignments.length,graded=records.filter(r=>r.grade).length,offline=records.filter(r=>r.grade&&r.grade.scoreOnly).length,openCorrections=sum.wrong||0;
+ const routes=[['student/'+id,'作业与考试'],['student/'+id+'/extended','拓展学习记录']],active='student/'+id+(part==='extended'?'/extended':'');
+ const header=`<div class="tw-student-header"><div class="tw-section-head"><div><h2>${h(s.name)}</h2><p class="tw-muted">${h(s.username)} · ${h(className)}</p></div><div class="tw-actions">${button('classes','返回班级')}</div></div></div>`;
+ if(part==='extended'){
+  main.innerHTML=`${header}${tabs(routes,active)}<section><h2>教材学习</h2><div class="tw-statline"><span><strong>${s.read}/${s.pages}</strong> 阅读页数</span><span><strong>${percent(s.overall.percent)}</strong> 最近答案正确率</span><span><strong>${s.attempts}</strong> 练习次数</span></div><p class="tw-note">每题取最后一次作答；重复尝试不重复计入正确率。无作答不计零分。教材与游戏记录独立于作业成绩。</p>${table(['章节','阅读','已答题','正确率','复习'],p.columns.map(c=>{const v=s.cells.find(x=>x.topicId===c.id);return `<tr><td>${h(c.title)}</td><td>${v.read}/${v.pages}</td><td>${v.total}</td><td>${percent(v.percent)}</td><td>${v.practiced?'已练习':'待练习'} · 第 ${v.reviewStage} 阶段</td></tr>`;}))}</section><section class="tw-section"><h2>最近教材作答</h2>${s.recent.length?table(['题目','作答','时间'],s.recent.map(a=>`<tr><td><a href="#question/${encodeURIComponent(a.questionId)}">${h(a.preview)}</a></td><td>${h(a.optionId)} · ${a.correct?'正确':'需回顾'}</td><td>${when(a.at)}</td></tr>`)):empty('还没有教材作答','学生开始练习后，会在这里显示逐题记录。')}</section><section class="tw-section"><h2>EconQuest 学习</h2><p class="tw-note">概念证据与游戏掌握独立记录，不与作业分数合并。</p><div class="tw-statline">${courses.map(([c,t])=>`<span><strong>${Object.keys(profile.quest.mastery[c]||{}).length}</strong> ${t} 已掌握路线</span>`).join('')}</div>${concepts.length?table(['概念','证据状态','尝试','回访通过'],concepts.map(c=>`<tr><td>${h(c.id)}</td><td>${h({repair:'需要补练',repaired:'已纠正',independent:'独立完成',revisited:'回访通过',practised:'已练习'}[c.status]||c.status)}</td><td>${c.attempts}</td><td>${c.revisitPasses}</td></tr>`)):empty('暂无游戏学习记录','完成游戏任务后会显示概念掌握与回访情况。')}</section>`;
+  return;
+ }
+ main.innerHTML=`${header}${tabs(routes,active)}<section class="student-kpis"><div><span>作业平均</span><strong>${sum.average==null?'—':sum.average+'%'}</strong><small>${graded} 次已出分</small></div><div><span>已完成</span><strong>${graded}<em> / ${total}</em></strong><small>含线下作业</small></div><div><span>线下成绩</span><strong>${offline}</strong><small>已计入均分</small></div><div><span>待订正</span><strong>${openCorrections}</strong><small>线上失分题</small></div></section><section class="tw-section"><div class="tw-section-head"><h2>作业与考试记录</h2>${button('analytics','打开学情分析')}</div><p class="tw-note">按截止时间从近到远；线下作业只记分数，不产生题目作答或错题。</p>${records.length?table(['作业 / 考试','来源','得分','状态','操作'],records.slice().sort((a,b)=>String(b.assignment.dueAt||b.assignment.createdAt||'').localeCompare(String(a.assignment.dueAt||a.assignment.createdAt||''))).map(r=>{const isOffline=r.grade?.scoreOnly||r.assignment.offline||r.assignment.format==='score';return `<tr><td><strong>${h(r.assignment.title)}</strong><p>${h(r.assignment.course||'')}${r.assignment.dueAt?' · 截止 '+when(r.assignment.dueAt):''}</p></td><td>${isOffline?badge('线下','warn'):'线上'}</td><td>${r.grade?`${r.grade.total}/${r.grade.maxPoints}`:'待批阅'}</td><td>${h(submissionLabel(r.latest.status,'teacher'))}</td><td>${isOffline?'':button('work/review/'+r.latest.id,'查看')}</td></tr>`;})):empty('暂无作业或考试记录','学生提交或教师录入线下成绩后，会显示在这里。')}</section>`;
 }
+
+const bankState={course:'all',units:new Set(),initialized:false,type:'',status:'ready',q:'',page:1,selected:new Map(),catalog:null};
+const bankTypeLabel={choice:'选择题',short:'简答题'};
+function bankFiltered(all){
+ const term=bankState.q.trim().toLowerCase();
+ return all.filter(q=>(bankState.course==='all'||q.course===bankState.course)&&(!bankState.units.size||bankState.units.has(q.unitId))&&(!bankState.type||q.type===bankState.type)&&(bankState.status==='all'||q.status===bankState.status)&&(!term||String(q.searchText||q.number||'').toLowerCase().includes(term)));
+}
+function bankUnitLabel(t){return String(t||'').match(/Unit\s*\d+/i)?.[0]||t||'';}
+function bankQuestionRow(q){
+ const selected=bankState.selected.has(q.id),img=q.questionImages?.[0];
+ const stem=String(q.searchText||q.prompt||q.stem||q.title||'').replace(/\s+/g,' ').trim()||('题目 '+(q.number||''));
+ return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><div class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'<span>无图</span>'}</div><div class="bank-copy"><h3>${h(q.number||'')}. ${h(stem.slice(0,150))}</h3><p>${h(bankUnitLabel(q.unitTitle||q.unitId))}${q.topicTitle?' · '+h(q.topicTitle):''} · ${bankTypeLabel[q.type]||h(q.type)}${q.status!=='ready'?' · '+badge('待复核','warn'):''}</p></div><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span><button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button></article>`;
+}
+function bankSelectedMarkup(){
+ const items=[...bankState.selected.values()],points=items.reduce((sum,q)=>sum+(q.type==='choice'?1:Number(q.maxPoints)||2),0);
+ return {html:`<div class="bank-cart-head"><div><strong>已选 ${items.length} 道</strong><p>共 ${points} 分 · 上限 40 道</p></div>${items.length?`<button type="button" class="tw-text" data-bank-clear>清空</button>`:''}</div>${items.length?`<ol class="bank-cart-list">${items.slice(0,8).map(q=>`<li><span>${h(q.number||'')}</span><p>${h(String(q.searchText||q.prompt||'').replace(/\s+/g,' ').slice(0,54))}</p><button type="button" data-bank-remove="${h(q.id)}" aria-label="移除">×</button></li>`).join('')}</ol>${items.length>8?`<p class="tw-note">另有 ${items.length-8} 道未显示</p>`:''}`:'<div class="bank-cart-empty"><strong>还没有选题</strong><p>从左侧题库加入任意题目，可跨单元组合。</p></div>'}` ,count:items.length,points};
+}
+function drawBankCart(){
+ const root=$('#bank-cart');if(!root)return;const cart=bankSelectedMarkup();root.innerHTML=cart.html;
+ const bar=$('#bank-mobile-cart');if(bar){bar.hidden=cart.count===0;bar.querySelector('[data-bank-count]').textContent=cart.count;bar.querySelector('[data-bank-points]').textContent=cart.points+' 分';}
+ $('#bank-publish').disabled=cart.count===0;
+ $('[data-bank-publish-quick]')?.toggleAttribute('disabled',cart.count===0);
+}
+function drawBankList(){
+ const all=bankState.questions||[],list=bankFiltered(all),pageSize=40,pages=Math.max(1,Math.ceil(list.length/pageSize));bankState.page=Math.min(bankState.page,pages);
+ const page=list.slice((bankState.page-1)*pageSize,bankState.page*pageSize);
+ $('#bank-count').textContent=`共 ${list.length} 道可选`;
+ const box=$('#bank-list');box.innerHTML=page.length?page.map(bankQuestionRow).join(''):empty('没有匹配的题目','调整课程、单元、题型或关键词后再试。');
+ $('#bank-pager').innerHTML=`<button class="tw-button tw-small" data-bank-page="prev" ${bankState.page<=1?'disabled':''}>上一页</button><span>第 ${bankState.page} / ${pages} 页</span><button class="tw-button tw-small" data-bank-page="next" ${bankState.page>=pages?'disabled':''}>下一页</button>`;
+}
+function toggleBank(id){
+ if(bankState.selected.has(id))bankState.selected.delete(id);
+ else{if(bankState.selected.size>=40)return toast('一次最多选择 40 道题');const q=(bankState.questions||[]).find(x=>x.id===id);if(q)bankState.selected.set(id,q);}
+ drawBankList();drawBankCart();
+}
+function openBankPublish(){
+ const items=[...bankState.selected.values()];if(!items.length)return toast('先从题库选择题目');
+ const classes=state.meta.classes.filter(c=>!c.archived);
+ const dlg=document.createElement('dialog');dlg.className='tw-dialog bank-publish-dialog';
+ dlg.innerHTML=`<form class="tw-dialog-form"><h2>从题库组卷并布置</h2><p class="tw-note">已选 ${items.length} 道题，保存的是此刻的题目快照；题库后续修改不会改变这份作业。</p><label class="tw-field"><span>作业名称</span><input name="title" required maxlength="120" value="${h(items.length>1?'题库组卷 · '+new Date().toISOString().slice(0,10):'题库练习')}"></label><fieldset class="bank-class-field"><legend>布置到班级</legend>${classes.map(c=>`<label class="tw-check"><input type="checkbox" name="classIds" value="${c.id}" ${c.id===state.classId?'checked':''}>${h(c.name)}</label>`).join('')}</fieldset><label class="tw-field"><span>截止时间（可选）</span><input name="dueAt" type="datetime-local"></label><label class="tw-check"><input type="checkbox" name="allowLate" checked><span>允许逾期提交</span></label><p class="tw-form-error" role="alert"></p><div class="tw-dialog-actions"><button type="button" class="tw-button" data-bank-cancel>取消</button><button class="tw-button tw-primary" type="submit">发布作业</button></div></form>`;
+ document.body.append(dlg);dlg.showModal();dlg.querySelector('[data-bank-cancel]').onclick=()=>dlg.close();
+ dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,btn=f.querySelector('[type=submit]'),err=f.querySelector('.tw-form-error');err.textContent='';const classIds=[...f.querySelectorAll('[name=classIds]:checked')].map(x=>x.value);if(!classIds.length){err.textContent='请至少选择一个班级';return;}btn.disabled=true;btn.textContent='正在发布…';
+  try{await hw('library/publish',{method:'POST',body:{clientId:crypto.randomUUID(),title:f.elements.title.value.trim(),classIds,dueAt:f.elements.dueAt.value?new Date(f.elements.dueAt.value).toISOString():null,allowLate:f.elements.allowLate.checked,questionIds:items.map(q=>q.id)}});dlg.close();dlg.remove();bankState.selected.clear();toast('作业已发布，学生可在作业列表看到');location.hash='work/assignments';}
+  catch(error){err.textContent=error.message;btn.disabled=false;btn.textContent='发布作业';}
+ };
+}
+async function bank(){
+ const [catalog,data]=await Promise.all([hw('library/catalog'),hw('library/questions?unit=all')]);
+ bankState.catalog=catalog;bankState.questions=data.questions||[];
+ const units=catalog.units.filter(u=>!u.archived);
+ if(!bankState.initialized){bankState.initialized=true;bankState.units=new Set(units.map(u=>u.id));}
+ const coursesOf=[['all','全部'],['micro','AP 微观'],['macro','AP 宏观']];
+ const ready=data.questions.filter(q=>q.status==='ready').length;
+ const groups={micro:units.filter(u=>u.id.startsWith('micro-')),macro:units.filter(u=>u.id.startsWith('macro-'))};
+ main.innerHTML=`<div class="bank-head"><div><p class="tw-note">全部 ${data.questions.length} 道题 · ${ready} 道已复核 · 可跨 Unit 1–6 自由组合；教学包只是题库的预设视图。</p></div><div class="tw-actions"><a class="tw-button" href="#library">课程教学包</a><button class="tw-button tw-primary" id="bank-publish" disabled>组卷并布置</button></div></div><div class="bank-mobile-tabs">${coursesOf.map(([id,label])=>`<button type="button" class="bank-chip ${bankState.course===id?'is-active':''}" data-bank-course="${id}">${label}</button>`).join('')}</div><div class="bank-layout"><details class="bank-filters" ${matchMedia('(min-width:960px)').matches?'open':''}><summary>筛选题目</summary><div class="bank-filter-body"><p class="bank-filter-title">课程</p><div class="bank-seg">${coursesOf.map(([id,label])=>`<button type="button" class="${bankState.course===id?'is-active':''}" data-bank-course="${id}">${label}</button>`).join('')}</div><p class="bank-filter-title">单元 <button type="button" class="tw-text" data-bank-allunits>全选</button></p>${Object.entries(groups).map(([course,list])=>list.length?`<div class="bank-unit-group"><strong>${course==='micro'?'AP 微观':'AP 宏观'}</strong>${list.map(u=>`<label class="bank-unit"><input type="checkbox" data-bank-unit="${h(u.id)}" ${bankState.units.has(u.id)?'checked':''}><span>${h(u.title.replace(/^AP (Micro|Macro)economics /,''))}</span><small>${data.questions.filter(x=>x.unitId===u.id&&x.status==='ready').length}</small></label>`).join('')}</div>`:'').join('')}<p class="bank-filter-title">题型</p><div class="bank-seg"><button type="button" class="${bankState.type===''?'is-active':''}" data-bank-type="">全部</button><button type="button" class="${bankState.type==='choice'?'is-active':''}" data-bank-type="choice">选择题</button><button type="button" class="${bankState.type==='short'?'is-active':''}" data-bank-type="short">简答题</button></div><p class="bank-filter-title">状态</p><div class="bank-seg"><button type="button" class="${bankState.status==='ready'?'is-active':''}" data-bank-status="ready">已复核</button><button type="button" class="${bankState.status==='needs_review'?'is-active':''}" data-bank-status="needs_review">待复核</button><button type="button" class="${bankState.status==='all'?'is-active':''}" data-bank-status="all">全部</button></div></div></details><section class="bank-results"><div class="bank-search"><input type="search" id="bank-search" placeholder="搜索题干、知识点或题号" value="${h(bankState.q)}"><span id="bank-count"></span><button type="button" class="tw-button tw-small" data-bank-audit>图表待补</button></div><div id="bank-list" class="bank-list"></div><div id="bank-pager" class="bank-pager"></div></section><aside class="bank-cart" id="bank-cart"></aside></div><div class="bank-mobile-cart" id="bank-mobile-cart" hidden><div><strong data-bank-count>0</strong> 道 · <span data-bank-points>0 分</span></div><button type="button" class="tw-button tw-primary" data-bank-publish-quick>组卷并布置</button></div>`;
+ drawBankList();drawBankCart();
+ const rerender=()=>{drawBankList();drawBankCart();};
+ $$('[data-bank-course]').forEach(b=>b.onclick=()=>{bankState.course=b.dataset.bankCourse;bankState.page=1;void bank();});
+ $$('[data-bank-type]').forEach(b=>b.onclick=()=>{bankState.type=b.dataset.bankType;bankState.page=1;void bank();});
+ $$('[data-bank-status]').forEach(b=>b.onclick=()=>{bankState.status=b.dataset.bankStatus;bankState.page=1;void bank();});
+ $$('[data-bank-unit]').forEach(x=>x.onchange=()=>{x.checked?bankState.units.add(x.dataset.bankUnit):bankState.units.delete(x.dataset.bankUnit);bankState.page=1;rerender();});
+ $('[data-bank-allunits]').onclick=()=>{const all=units.every(u=>bankState.units.has(u.id));bankState.units=all?new Set():new Set(units.map(u=>u.id));$$('[data-bank-unit]').forEach(x=>x.checked=bankState.units.has(x.dataset.bankUnit));rerender();};
+ $('#bank-search').oninput=e=>{bankState.q=e.target.value;bankState.page=1;rerender();};
+ $('#bank-list').onclick=e=>{const crop=e.target.closest('[data-bank-crop]');if(crop){location.hash='bank/crop/'+encodeURIComponent(crop.dataset.bankCrop);return;}const pick=e.target.closest('[data-bank-pick]');if(pick){toggleBank(pick.dataset.bankPick);}};
+ $('#bank-pager').onclick=e=>{const b=e.target.closest('[data-bank-page]');if(!b)return;bankState.page+=b.dataset.bankPage==='next'?1:-1;drawBankList();};
+ $('#bank-cart').onclick=e=>{const rm=e.target.closest('[data-bank-remove]');if(rm){bankState.selected.delete(rm.dataset.bankRemove);drawBankList();drawBankCart();}if(e.target.closest('[data-bank-clear]')){bankState.selected.clear();drawBankList();drawBankCart();}};
+ $('#bank-publish').onclick=openBankPublish;
+ $('[data-bank-publish-quick]').onclick=openBankPublish;
+ $('[data-bank-audit]').onclick=()=>{location.hash='bank/crop';};
+}
+
+let cropState={queue:[],index:0,current:null,box:null,drag:null};
+const cropVisual=/(figure|graph|table|diagram|chart|shown|curve|axis|slope|shift)/i;
+async function bankCrop(focusId=''){
+  const data=await hw('library/questions?unit=all');
+  cropState.queue=data.questions.filter(q=>q.status==='ready'&&q.type==='choice'&&cropVisual.test(String(q.prompt||q.searchText||''))&&!(q.questionImages||[]).length);
+  if(focusId){const q=data.questions.find(x=>x.id===focusId);if(q){cropState.queue=cropState.queue.filter(x=>x.id!==focusId);cropState.queue.unshift(q);}}
+  cropState.index=0;cropState.current=null;cropState.box=null;
+  main.innerHTML=`<div class="crop-head"><div><h2>图表补切</h2><p class="tw-note">已复核、题干提到图表但还没有题图的选择题。打开原卷页，拖框选中图表后保存；保存后立即用于组卷。</p></div><div class="tw-actions"><button class="tw-button" data-crop-back>返回题库</button></div></div><div class="crop-layout"><aside class="crop-queue"><div class="crop-queue-head"><strong>待补图表</strong><span>${cropState.queue.length}</span></div><div id="crop-list">${cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===0?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">没有待补图表的题。</p>'}</div></aside><section class="crop-stage-wrap"><div class="crop-toolbar"><button type="button" class="tw-button tw-small" data-crop-prev>上一题</button><span id="crop-title" class="crop-title">—</span><button type="button" class="tw-button tw-small" data-crop-next>下一题</button><span class="crop-spacer"></span><button type="button" class="tw-button tw-small" data-crop-skip>跳过</button><button type="button" class="tw-button tw-primary" data-crop-save>保存切片</button></div><div class="crop-stage" id="crop-stage"><div class="crop-empty">正在载入原卷…</div></div><div class="crop-hint">在页面上拖动框选图表；拖动后可用右侧数字微调。Esc 取消当前框。</div></section><aside class="crop-side"><h3>原卷页码</h3><div id="crop-pages" class="crop-pages"></div><h3>切片范围</h3><div class="crop-bbox"><label>左<input type="number" data-bbox="0" step="1"></label><label>上<input type="number" data-bbox="1" step="1"></label><label>右<input type="number" data-bbox="2" step="1"></label><label>下<input type="number" data-bbox="3" step="1"></label></div><p class="tw-note">坐标按原页 PDF 点计算；保存时会自动加 6pt 内边距。</p><h3>操作</h3><p class="tw-note">拖框后保存；失败可重试。已保存的题目会离开队列。</p></aside></div>`;
+  $('[data-crop-back]').onclick=()=>location.hash='bank';
+  $('[data-crop-prev]').onclick=()=>moveCrop(-1);$('[data-crop-next]').onclick=()=>moveCrop(1);$('[data-crop-skip]').onclick=()=>moveCrop(1);
+  $('[data-crop-save]').onclick=saveCrop;
+  $('[data-crop-index]')?.addEventListener; // list uses delegation below
+  $('#crop-list').addEventListener('click',e=>{const b=e.target.closest('[data-crop-index]');if(!b)return;cropState.index=Number(b.dataset.cropIndex);loadCrop();});
+  document.addEventListener('keydown',cropKey,{once:false});
+  if(cropState.queue.length)await loadCrop();else $('#crop-stage').innerHTML='<div class="crop-empty">全部已补完。</div>';
+}
+function cropKey(e){if(e.key==='Escape'&&cropState.box){cropState.box=null;drawCropBox();}}
+function moveCrop(delta){if(!cropState.queue.length)return;cropState.index=(cropState.index+delta+cropState.queue.length)%cropState.queue.length;loadCrop();}
+async function loadCrop(){
+  const q=cropState.queue[cropState.index];if(!q)return;
+  $('#crop-title').textContent=`第 ${q.number||''} 题 · ${q.unitTitle||''}`;
+  [...document.querySelectorAll('.crop-item')].forEach((el,i)=>el.classList.toggle('active',i===cropState.index));
+  let page=Number(q.regions?.[0]?.page||q.sourcePages?.[0]||1);if(!Number.isFinite(page)||page<1)page=1;
+  $('#crop-stage').innerHTML='<div class="crop-empty">正在载入原卷…</div>';
+  try{
+    const data=await hw(`library/questions/${q.id}/source-page?page=${page}`);
+    cropState.current={q,data};cropState.box=q.regions?.[0]?.bbox||null;
+    const pages=Array.isArray(q.sourcePages)&&q.sourcePages.length?q.sourcePages:[page];
+    $('#crop-pages').innerHTML=pages.map(p=>`<button type="button" class="crop-page ${p===page?'active':''}" data-crop-page="${p}">p.${p}</button>`).join('');
+    $('#crop-pages').onclick=e=>{const b=e.target.closest('[data-crop-page]');if(!b)return;loadCropPage(q,Number(b.dataset.cropPage));};
+    $('#crop-stage').innerHTML=`<div class="crop-canvas" id="crop-canvas"><img id="crop-img" src="${data.image}" alt="原卷 p.${page}" draggable="false"><div class="crop-shade"></div><div class="crop-box" id="crop-box" hidden><span>图表区域</span><i class="crop-handle"></i></div></div>`;
+    const img=$('#crop-img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});
+    wireCropCanvas();drawCropBox();
+  }catch(e){$('#crop-stage').innerHTML=`<div class="crop-empty">${h(e.message)}</div>`;}
+}
+async function loadCropPage(q,page){
+  try{const data=await hw(`library/questions/${q.id}/source-page?page=${page}`);cropState.current.data=data;cropState.box=null;
+    $('#crop-pages').querySelectorAll('button').forEach(b=>b.classList.toggle('active',Number(b.dataset.cropPage)===page));
+    $('#crop-stage').innerHTML=`<div class="crop-canvas" id="crop-canvas"><img id="crop-img" src="${data.image}" alt="原卷 p.${page}" draggable="false"><div class="crop-shade"></div><div class="crop-box" id="crop-box" hidden><span>图表区域</span></div></div>`;
+    const img=$('#crop-img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});wireCropCanvas();drawCropBox();
+  }catch(e){toast(e.message);}
+}
+function wireCropCanvas(){
+  const canvas=$('#crop-canvas'),img=$('#crop-img');
+  const point=ev=>{const r=img.getBoundingClientRect();const d=cropState.current.data;return [Math.min(d.baseWidth,Math.max(0,(ev.clientX-r.left)/r.width*d.baseWidth)),Math.min(d.baseHeight,Math.max(0,(ev.clientY-r.top)/r.height*d.baseHeight))];};
+  canvas.onpointerdown=ev=>{if(ev.target.closest('.crop-box'))return;const [x,y]=point(ev);cropState.drag={x,y};cropState.box=[x,y,x,y];drawCropBox();canvas.setPointerCapture(ev.pointerId);};
+  canvas.onpointermove=ev=>{if(!cropState.drag)return;const [x,y]=point(ev);cropState.box=[Math.min(cropState.drag.x,x),Math.min(cropState.drag.y,y),Math.max(cropState.drag.x,x),Math.max(cropState.drag.y,y)];drawCropBox();};
+  canvas.onpointerup=ev=>{cropState.drag=null;if(cropState.box&&cropState.box[2]-cropState.box[0]<12)cropState.box=null;drawCropBox();};
+  document.querySelectorAll('[data-bbox]').forEach(input=>{input.onchange=()=>{if(!cropState.box)cropState.box=[0,0,0,0];cropState.box[Number(input.dataset.bbox)]=Number(input.value)||0;drawCropBox();};});
+}
+function drawCropBox(){
+  const box=cropState.box,el=$('#crop-box'),img=$('#crop-img');const d=cropState.current?.data;if(!d)return;
+  if(!box||!el){if(el)el.hidden=true;return;}
+  const r=img.getBoundingClientRect(),c=$('#crop-canvas').getBoundingClientRect();const sx=r.width/d.baseWidth,sy=r.height/d.baseHeight;
+  el.hidden=false;el.style.left=(r.left-c.left+box[0]*sx)+'px';el.style.top=(r.top-c.top+box[1]*sy)+'px';el.style.width=Math.max(4,(box[2]-box[0])*sx)+'px';el.style.height=Math.max(4,(box[3]-box[1])*sy)+'px';
+  document.querySelectorAll('[data-bbox]').forEach(input=>input.value=Math.round(box[Number(input.dataset.bbox)]));
+}
+async function saveCrop(){
+  const q=cropState.current?.q,data=cropState.current?.data,box=cropState.box;if(!q||!box)return toast('先在页面上框选图表区域');
+  if(box[2]-box[0]<20||box[3]-box[1]<20)return toast('框选区域太小');
+  try{
+    let page=Number(document.querySelector('.crop-page.active')?.dataset.cropPage||q.sourcePages?.[0]||1);if(!Number.isFinite(page)||page<1)page=1;
+    const r=await hw(`library/questions/${q.id}/reslice`,{method:'POST',body:{bbox:box.map(Math.round),page}});
+    toast('图表已保存，题目已离开待补队列');cropState.queue.splice(cropState.index,1);cropState.current=null;cropState.box=null;
+    $('#crop-list').innerHTML=cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===cropState.index?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">全部已补完。</p>';
+    if(cropState.queue.length){cropState.index=Math.min(cropState.index,cropState.queue.length-1);await loadCrop();}else{$('#crop-title').textContent='—';$('#crop-stage').innerHTML='<div class="crop-empty">全部已补完。</div>';}
+  }catch(e){toast(e.message);}
+}
+
 const reviewLabels={pending:'待审核',needs_revision:'需修改',approved:'已通过'};
 let questionFilter={q:'',status:'',topic:'',page:1};
 async function books(){
@@ -181,7 +329,7 @@ async function analytics(){
  const view=mountLearningOverview({state,main,h,toast,link:button,load:()=>hw('learning'),ai:(path,options={})=>hw(path,{...options,signal:AbortSignal.timeout(130000)})},data);
  state.viewCleanup=()=>view.destroy();
 }
-const titles={library:['课程教学包','从备课到订正，沿同一条学习路径。'],home:['教师工作台','备课、批阅与学情，在同一处完成。'],classes:['班级与学生','同一份名单，连接每一步学习。'],student:['学生学习档案','教材、游戏与作业，分别查看，完整保留。'],books:['教材与题库','核对内容，追踪当前版本的审核状态。'],question:['题目详情','原始模型、图表、答案与解释。'],work:['作业与批阅','发布题纸、确认答案，回应每一份思考。'],games:['游戏与补练','从课堂尝试出发，安排下一步练习。'],feedback:['反馈中心','把学生遇到的问题，变成可跟进的改进。'],analytics:['成绩与学情','成绩总览、题目诊断与学情报告。'],settings:['批改设置','批改方式与教学操作记录。']};
+const titles={library:['课程教学包','从备课到订正，沿同一条学习路径。'],home:['教师工作台','备课、批阅与学情，在同一处完成。'],classes:['班级与学生','同一份名单，连接每一步学习。'],student:['完整学生档案','作业与考试表现优先，拓展学习记录单独查看。'],books:['教材与题库','核对内容，追踪当前版本的审核状态。'],question:['题目详情','原始模型、图表、答案与解释。'],work:['作业与批阅','发布题纸、确认答案，回应每一份思考。'],bank:['题库','全部单元自由组合，教学包只是题库的预设。'],games:['游戏与补练','从课堂尝试出发，安排下一步练习。'],feedback:['反馈中心','把学生遇到的问题，变成可跟进的改进。'],analytics:['成绩与学情','成绩总览、题目诊断与学情报告。'],settings:['批改设置','批改方式与教学操作记录。']};
 function errorText(e) {
   if (e?.name === 'TimeoutError') return '连接超时，请重试。已保存的教学记录不会丢失。';
   const message = String(e?.message || '');
@@ -190,8 +338,8 @@ function errorText(e) {
 }
 async function render(){
  dirtyForms.clear();state.restoreView=null;state.controller?.abort();state.viewCleanup?.();state.viewCleanup=null;state.controller=new AbortController();const version=++state.version;state.homework?.unmountTeacherHomework();surface.hidden=true;status.textContent='';main.setAttribute('aria-busy','true');main.innerHTML='<p class="tw-loading">正在读取教学记录…</p>';
- const [section='library',part='',third='']=location.hash.slice(1).split('/').map(x=>{try{return decodeURIComponent(x);}catch{return x;}}),key=titles[section]?section:'library';main.classList.toggle('tw-host-toolbar',['work','library'].includes(key)||key==='settings'&&part!=='audit');document.body.dataset.section=key;document.body.dataset.library=String(key==='library'||key==='work'&&part==='library');document.body.dataset.workTask=(key==='work'&&['new','edit','answer','review','mcq-import','mcq'].includes(part))?'true':'false';const [title,description]=titles[document.body.dataset.library==='true'?'library':key];$('.tw-page-heading').hidden=key==='settings'&&part!=='audit';$('#page-title').textContent=title;$('#page-description').textContent=description;$('#publish-shortcut').hidden=true;document.title=title+' · Mike 的经济一页通';navigation(document.body.dataset.library==='true'?'library':key==='student'?'classes':key==='question'?'books':key);controls(key);
- try{if(key==='library')await work(location.hash.slice(1)||'library');else if(key==='classes')await classes();else if(key==='student')await student(part);else if(key==='books')await books();else if(key==='question')await question(part);else if(key==='feedback')await feedback();else if(key==='analytics')await analytics();else if(key==='games')await games(part,third);else if(key==='settings')await settings(part);else if(key==='work')await work(location.hash.slice(6)||'assignments');else await home();}
+ const [section='library',part='',third='']=location.hash.slice(1).split('/').map(x=>{try{return decodeURIComponent(x);}catch{return x;}}),key=titles[section]?section:'library';main.classList.toggle('tw-host-toolbar',['work','library'].includes(key)||key==='settings'&&part!=='audit');document.body.dataset.section=key;document.body.dataset.library=String(key==='library'||key==='work'&&part==='library');document.body.dataset.workTask=(key==='work'&&['new','edit','answer','review','mcq-import','mcq'].includes(part))?'true':'false';const [title,description]=titles[document.body.dataset.library==='true'?'library':key];$('.tw-page-heading').hidden=key==='settings'&&part!=='audit'||key==='bank'&&part==='crop';$('#page-title').textContent=title;$('#page-description').textContent=description;$('#publish-shortcut').hidden=true;document.title=title+' · Mike 的经济一页通';navigation(document.body.dataset.library==='true'?'library':key==='student'?'classes':key==='question'?'books':key);controls(key);
+ try{if(key==='library')await work(location.hash.slice(1)||'library');else if(key==='bank'){if(part==='crop')await bankCrop(third);else await bank();}else if(key==='classes')await classes();else if(key==='student')await student(part,third);else if(key==='books')await books();else if(key==='question')await question(part);else if(key==='feedback')await feedback();else if(key==='analytics')await analytics();else if(key==='games')await games(part,third);else if(key==='settings')await settings(part);else if(key==='work')await work(location.hash.slice(6)||'assignments');else await home();}
  catch(e){if(version!==state.version||e.name==='AbortError')return;surface.hidden=true;main.innerHTML=empty('暂时无法打开',h(errorText(e)),'<button class="tw-button tw-primary" id="retry-page">重新连接</button>');$('#retry-page').onclick=()=>void render();}
  finally{if(version===state.version){main.setAttribute('aria-busy','false');state.lastHash=location.hash;state.dirty=false;if(document.activeElement===document.body||document.activeElement===main||document.activeElement?.id==='teacher-content')(surface.hidden?main:$('#homework-main')).focus({preventScroll:true});state.restoreView?.();}}
 }

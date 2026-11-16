@@ -1501,3 +1501,20 @@ body[data-section="analytics"] #workspace {
   .lo-hist-actions { grid-column: 1 / -1; }
   .lo-hist-actions .lo-btn { flex: 1 1 0; min-height: 44px; }
 }
+
+.lo-cell[data-offline="true"]{cursor:default}
+.lo-cell[data-offline="true"]:hover{outline:1px dashed #9c8b6b;outline-offset:1px}
+.lo-offline-dialog{width:min(430px,calc(100vw - 28px));border:1px solid #d9e1da;border-radius:12px;padding:0;background:#fbfcf9;color:#26392f;box-shadow:0 20px 60px #1b2f2340}
+.lo-offline-dialog::backdrop{background:#12201a55}
+.lo-offline-dialog form{padding:20px}
+.lo-offline-dialog h2{margin:0 0 4px;font-size:18px;line-height:1.35}
+.lo-offline-meta{margin:0 0 16px;color:#718176;font-size:12px}
+.lo-offline-field{display:flex;align-items:center;gap:8px;font-size:12px;color:#4b5f52;margin:0 0 10px}
+.lo-offline-field span{width:42px;flex:none}
+.lo-offline-field input{width:120px;height:42px;border:1px solid #cfdad2;border-radius:7px;padding:0 10px;font:inherit;font-size:18px;font-weight:700;background:#fff}
+.lo-offline-field input:disabled{background:#eef1ec;color:#8b978f}
+.lo-offline-field em{font-style:normal;color:#718176}
+.lo-offline-check{display:flex;align-items:center;gap:8px;font-size:12px;color:#4b5f52;margin:0 0 12px}
+.lo-offline-error{min-height:18px;margin:0 0 6px;color:#a53429;font-size:12px}
+.lo-offline-actions{display:flex;justify-content:flex-end;gap:8px}
+.lo-offline-note{margin:12px 0 0;color:#8a978e;font-size:11px;line-height:1.5}

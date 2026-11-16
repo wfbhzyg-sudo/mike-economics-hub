@@ -341,8 +341,9 @@ export function mountLearningOverview(ctx, initialData) {
     const label = cell.rate === null ? short[cell.status] || cell.label : formatPercent(cell.rate);
     const isSelected = Boolean(selected && selected.studentId === cell.student.id && selected.assignmentId === cell.assignment.id);
     const detail = cell.rate === null ? cell.label : `${formatPercent(cell.rate)}${cell.pendingUpdate ? '，新版本待更新' : ''}`;
-    const aria = `${cell.student.name}，${cell.assignment.title || assignmentLabel(cell.assignment)}，${detail}`;
-    return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" title="${h(aria)}" tabindex="-1">${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
+    const offline = Boolean(cell.record?.grade?.scoreOnly && cell.record?.latest?.id);
+    const aria = `${cell.student.name}，${cell.assignment.title || assignmentLabel(cell.assignment)}，${detail}${offline ? '，线下成绩，双击可修改' : ''}`;
+    return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${offline ? 'data-offline="true"' : ''} ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" title="${h(aria)}" tabindex="-1">${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
   }
 
   function averageMarkup(row) {
@@ -1032,6 +1033,41 @@ function renderDetail() {
     filter.query = event.target.value;
     clearTimeout(filter.timer);
     filter.timer = setTimeout(draw, 120);
+  });
+
+  function offlineEditor(cell) {
+    const grade = cell.record?.grade, submission = cell.record?.latest;
+    if (!grade || !submission?.id) return;
+    const max = Number(grade.maxPoints || cell.assignment.maxPoints || 0);
+    const dialog = document.createElement('dialog');
+    dialog.className = 'lo-offline-dialog';
+    dialog.innerHTML = `<form method="dialog"><h2>${h(cell.student.name)} · ${h(cell.assignment.title)}</h2><p class="lo-offline-meta">线下成绩 · 满分 ${max} · ${h(cell.assignment.dueAt ? '截止 ' + longDate(cell.assignment.dueAt) : '未设截止')}</p><label class="lo-offline-field"><span>分数</span><input name="score" type="number" min="0" max="${max}" step="0.5" value="${grade.absent ? '' : grade.total}" ${grade.absent ? 'disabled' : ''} required><em>/ ${max}</em></label><label class="lo-offline-check"><input type="checkbox" name="absent" ${grade.absent ? 'checked' : ''}><span>缺考（不计入均分）</span></label><p class="lo-offline-error" role="alert"></p><div class="lo-offline-actions"><button type="button" class="lo-btn" data-offline-cancel>取消</button><button type="button" class="lo-btn lo-primary" data-offline-save>保存并更新均分</button></div><p class="lo-offline-note">保存后学生成绩页立即显示，不产生提交或错题。线上作业请仍去批阅页改分。</p></form>`;
+    document.body.append(dialog);
+    const form = dialog.querySelector('form'), input = form.elements.score, absent = form.elements.absent, error = form.querySelector('.lo-offline-error');
+    absent.onchange = () => { input.disabled = absent.checked; if (!absent.checked) input.focus(); };
+    dialog.querySelector('[data-offline-cancel]').onclick = () => dialog.close();
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.querySelector('[data-offline-save]').onclick = async () => {
+      error.textContent = '';
+      if (!absent.checked && (input.value === '' || !Number.isFinite(Number(input.value)))) { error.textContent = '请输入分数'; input.focus(); return; }
+      const button = dialog.querySelector('[data-offline-save]'); button.disabled = true;
+      try {
+        const response = await fetch('/api/homework/submissions/' + encodeURIComponent(submission.id) + '/offline-score', {method: 'PATCH', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf}, body: JSON.stringify({score: absent.checked ? null : Number(input.value), absent: absent.checked, revision: grade.revision || 1})});
+        const value = await response.json();
+        if (!response.ok) throw Error(value.error || '保存失败，请重试');
+        dialog.close(); await refresh(); toast(absent.checked ? '已标记缺考' : '成绩已更新，班级均分已重算');
+      } catch (e) { error.textContent = e.message; button.disabled = false; }
+    };
+    dialog.showModal(); input.focus(); input.select();
+  }
+  root.addEventListener('dblclick', event => {
+    const button = event.target.closest('[data-cell]');
+    if (!button) return;
+    const cell = context.rows.flatMap(row => row.cells.map(item => ({row, cell: item}))).find(item => item.cell.student.id === button.dataset.s && item.cell.assignment.id === button.dataset.a)?.cell;
+    if (!cell) return;
+    event.preventDefault();
+    if (!(cell.record?.grade?.scoreOnly || cell.assignment.offline || cell.assignment.format === 'score')) { toast('线上作业请在批阅页修改题目分数'); return; }
+    offlineEditor(cell);
   });
 
   root.addEventListener('click', event => {
