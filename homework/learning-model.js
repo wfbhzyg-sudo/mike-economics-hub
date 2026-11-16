@@ -34,12 +34,14 @@ export function questionTotals(grade, questions=[]) {
   return totals;
 }
 export function assignmentState(a, submissions, time=Date.now()) {
+  const offline=Boolean(a.offline||a.format==='score');
   const attempts=submissions.filter(s=>s.assignmentId===a.id);
   const latest=assignmentRecords(attempts,[a])[0]?.latest;
   const draft=attempts.filter(s=>s.status==='draft'&&(!latest||Date.parse(s.updatedAt||s.createdAt)>Date.parse(latest.submittedAt||latest.createdAt))).sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];
   const closed=Boolean(a.dueAt&&Date.parse(a.dueAt)<time&&!a.allowLate&&latest?.status!=='returned');
   const canSubmit=!closed&&(!latest||latest.status==='returned'||a.allowResubmit!==false);
   const base={latest,draft,canSubmit};
+  if(offline)return {...base,key:latest?.status==='published'?'done':'offline',label:latest?.status==='published'?'已录分':'待老师录分'};
   if(latest?.status==='returned')return {...base,key:'todo',label:submissionLabel('returned')};
   if(draft&&canSubmit)return {...base,key:'todo',label:'草稿待提交'};
   if(latest?.status==='published')return {...base,key:'done',label:'已出分'};

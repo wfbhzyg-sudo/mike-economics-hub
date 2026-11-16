@@ -806,7 +806,13 @@ async function render(scroll = true) {
     else if (route === "edit" && id) await workspace.edit(id);
     else if (route === "trash") await workspace.trash();
     else if (route === "answer" && id) await answerPage(id);
-    else if (route === "submit" && id) await submitPage(id);
+    else if (route === "submit" && id) {
+      const offlineAssignment=state.assignments.find(x=>x.id===id);
+      if(offlineAssignment&&(offlineAssignment.offline||offlineAssignment.format==='score')){
+        const sub=state.submissions.find(x=>x.assignmentId===id),g=sub?.publishedGrade;
+        main.innerHTML=`<section class="paper"><p class="eyebrow">线下成绩</p><h1>${h(offlineAssignment.title)}</h1><p class="muted">这份作业的成绩由老师线下录入，不需要在线作答。</p>${g?`<p class="score-line"><strong>${Number(g.total??0)}</strong> / ${Number(g.maxPoints??0)}</p>`:'<p class="muted">老师尚未录入本次成绩。</p>'}<div class="form-actions">${link('assignments','返回作业列表')}${link('grades','查看我的成绩')}</div></section>`;
+      }else await submitPage(id);
+    }
     else if(route==="paper"&&id)await originalPaperPage(id,questionId);
     else if (route === "reviews") {state.reviewReturn=null;state.gradeReturn=null;reviews(id);}
     else if (["grades","history","gradebook"].includes(route)){state.reviewReturn=null;await learning.gradebook(id);}
