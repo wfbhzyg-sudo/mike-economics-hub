@@ -4,7 +4,7 @@ import {studentAssignmentAction} from './assignment-navigation.js';
 import {libraryLocation,packReference,packQuestions} from './library-navigation.js';
 import {highlightText} from './search-text.js';
 import {lessonFocus} from './lesson-focus.js';
-import {buildPacks,canonicalQuestions} from './library-packs.js';
+import {buildPacks,canonicalQuestions,questionHasTopic} from './library-packs.js';
 import {mountLibraryReader} from './library-reader.js';
 import {mountPDFReader} from './pdf-reader.js';
 const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -43,7 +43,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  main.addEventListener('keydown',e=>{if(e.key==='Escape'){$('.library-work').classList.remove('directory-open');$('[data-directory]').setAttribute('aria-expanded','false');}if(e.target.matches('[data-view]')&&['ArrowLeft','ArrowRight'].includes(e.key)){const buttons=[...main.querySelectorAll('[data-view]')],i=buttons.indexOf(e.target),n=(i+(e.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;e.preventDefault();state.libraryTabFocus={unit:unitId,mode:buttons[n].dataset.view};buttons[n].click();}},{signal:events.signal});
  $('[data-release]')?.addEventListener('click',()=>release());
  const error=e=>{if(!disposed)$('.lib-error').textContent=e.message;};
- async function getQuestions(){if(!questions){questions=canonicalQuestions((await api('library/questions?unit='+unitId)).questions);}return questions;}
+ async function getQuestions(){if(!questions){questions=(await api('library/questions?unit='+unitId)).questions;}return questions;}
  async function getSources(){if(!sources)sources=(await api('library/sources?unit='+unitId)).sources;return sources;}
  function overview(){
   const f=lessonFocus[group+':'+topic.id],termMarkup=f?.terms.map(([term,zh])=>`<div class="lib-term"><strong><u>${h(term)}</u></strong><span>${h(zh)}</span></div>`).join('')||'';
@@ -180,7 +180,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   openSheet('核对原卷',`<div class="lib-source-meta"><strong>${h(source.title)}</strong><span>${h(source.reviewNote||'待核对')}</span></div><div class="lib-source-reader homework-surface"></div><div class="lib-source-links">${source.originalFileId?`<a href="/api/homework/files/${encodeURIComponent(source.originalFileId)}?download=1">下载原始 DOCX</a>`:''}${source.answerFileId?`<a target="_blank" rel="noopener" href="/api/homework/files/${encodeURIComponent(source.answerFileId)}">查看答案原件</a>`:''}</div>`,d=>{d.classList.add('lib-source-dialog');const mounted=mountPDFReader(d.querySelector('.lib-source-reader'),{fileId:source.fileId,title:source.title});sourceReader=mounted;d.addEventListener('close',()=>mounted.destroy(),{once:true});});
  }
  async function bank(initial={}){
-  const qs=await getQuestions();if(disposed)return;
+  const raw=await getQuestions(),qs=initial.ids?raw:canonicalQuestions(raw);if(disposed)return;
   const storageKey=`lib-selection:${state.user.id}:${unitId}:${initial.context||'custom'}`;
   const selected=new Set(recall(storageKey,initial.ids||[]).filter(id=>qs.some(q=>q.id===id&&q.questionImages?.length)&&(!initial.ids||initial.ids.includes(id))).slice(0,40));
   let preview=null,filterTopic=initial.topic??(unitScope?'':topic.id),type=initial.type??'choice',search='',statusFilter='',skill='',collection='',onlySelected=false;
@@ -192,7 +192,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   closeBankMenus?.();closeBankMenus=bindDisclosureMenus(content,'.lib-filters,.lib-selection-more');
   $('[data-back-packs]')?.addEventListener('click',()=>go(route(initial.collection==='topic'?topic.id:'all',initial.collection==='topic'?'packs':initial.collection==='exam'?'exams':'progress')));
   const eligible=()=>packQuestions(qs,initial.ids);
-  const visible=()=>eligible().filter(q=>onlySelected?selected.has(q.id):(!type||q.type===type)&&(!filterTopic||type==='short'||q.topic===filterTopic)&&(!skill||String(q.skill||'').startsWith(skill))&&(!collection||q.collection===collection)&&(!statusFilter||(statusFilter==='ready'?q.status==='ready':q.status!=='ready'))&&(!search||(`${q.number} ${q.searchText||''} ${q.source}`).toLowerCase().includes(search.toLowerCase())));
+  const visible=()=>eligible().filter(q=>onlySelected?selected.has(q.id):(!type||q.type===type)&&(!filterTopic||type==='short'||questionHasTopic(q,filterTopic))&&(!skill||String(q.skill||'').startsWith(skill))&&(!collection||q.collection===collection)&&(!statusFilter||(statusFilter==='ready'?q.status==='ready':q.status!=='ready'))&&(!search||(`${q.number} ${q.searchText||''} ${q.source}`).toLowerCase().includes(search.toLowerCase())));
   function update(){
    remember(storageKey,[...selected]);const button=$('[data-selected-view]');button.textContent=`已选 ${selected.size} / 40`;button.setAttribute('aria-pressed',String(onlySelected));$('[data-publish]').disabled=!selected.size;
    const rows=visible(),hidden=[...selected].filter(id=>!rows.some(q=>q.id===id)).length;

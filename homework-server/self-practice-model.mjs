@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {questionHasTopic} from '../homework/library-packs.js';
 
 export const PRACTICE_COUNTS = [10, 20, 30];
 export const TIMER_MODES = ['countup', 'countdown'];
@@ -50,7 +51,7 @@ export const optionLabels = q => (Array.isArray(q?.options) && q.options.length 
 export function questionEligible(question, {unit, imageExists} = {}) {
   if (!question || question.status !== 'ready') return false;
   if (question.type !== 'choice') return false;
-  if (question.duplicateOf) return false;
+  if (question.duplicateOf || question.canonicalQuestionId) return false;
   if (Array.isArray(question.reviewFlags) && question.reviewFlags.length) return false;
   if (question.collection === 'exam') return false;
   if (!unit || question.unitId !== unit.id) return false;
@@ -85,10 +86,10 @@ export function buildCatalog({units, questionsByUnit, course}) {
   for (const unit of units) {
     if (wanted && courseOf(unit) !== wanted) continue;
     const topics = (unit.topics || []).map((topic) => {
-      const count = (questionsByUnit[unit.id] || []).filter((q) => q.topic === topic.id && q.status === 'ready' && q.type === 'choice' && !q.duplicateOf && q.collection !== 'exam').length;
+      const count = (questionsByUnit[unit.id] || []).filter((q) => questionHasTopic(q,topic.id) && q.status === 'ready' && q.type === 'choice' && !q.duplicateOf && !q.canonicalQuestionId && q.collection !== 'exam').length;
       return {id: topic.id, name: topic.name || topic.id, title: topic.title || '', count, bookself: topic.bookself || ''};
     });
-    const total = topics.reduce((sum, topic) => sum + topic.count, 0);
+    const total = new Set((questionsByUnit[unit.id] || []).filter(q=>q.status==='ready'&&q.type==='choice'&&!q.duplicateOf&&!q.canonicalQuestionId&&q.collection!=='exam'&&topics.some(t=>questionHasTopic(q,t.id))).map(q=>q.id)).size;
     if (!total) continue;
     result.push({unitId: unit.id, title: unit.title || unit.id, course: courseOf(unit), topics, questionCount: total});
   }
@@ -118,13 +119,13 @@ export function validateCreate(body, {allowedTopics} = {}) {
 }
 
 export function drawPaper({questions, topicIds, count, random = Math.random}) {
-  const wanted = [...new Set(topicIds)].filter((id) => questions.some((q) => q.topic === id));
+  const wanted = [...new Set(topicIds)].filter((id) => questions.some((q) => questionHasTopic(q,id)));
   if (!wanted.length) throw new PracticeError(400, '这些章节暂时没有可练习题');
   const seen = new Set();
   const pools = new Map(wanted.map((topic) => [
     topic,
     shuffle(questions.filter((q) => {
-      if (q.topic !== topic) return false;
+      if (!questionHasTopic(q,topic)) return false;
       const key = fingerprint(q);
       if (seen.has(key)) return false;
       seen.add(key);

@@ -1,4 +1,5 @@
 import {gradingFields,readGradingPoints} from '../homework/library-grading.js';
+import {canonicalQuestions} from '../homework/library-packs.js';
 import {mountCropEditor} from './crop-editor.js';
 import {loadTeacherStartup} from './startup.js';
 import {submissionLabel} from '../homework/ui-labels.js';
@@ -189,6 +190,7 @@ function openBankPublish(){
 }
 async function bank(){
  const [catalog,data]=await Promise.all([hw('library/catalog'),hw('library/questions?unit=all')]);
+ data.questions=canonicalQuestions(data.questions||[]);
  bankState.catalog=catalog;bankState.questions=data.questions||[];
  const units=catalog.units.filter(u=>!u.archived);
  if(!bankState.initialized){bankState.initialized=true;bankState.units=new Set(units.map(u=>u.id));}
