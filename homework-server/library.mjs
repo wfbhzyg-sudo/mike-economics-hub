@@ -1,3 +1,4 @@
+import {resolveQuestionSource,replaceQuestionSlice} from './library-slices.mjs';
 import {drawTypedAnnotations} from './typed-annotations.mjs';
 import {readFile} from 'node:fs/promises';
 import fontkit from '@pdf-lib/fontkit';
@@ -61,19 +62,8 @@ export function createLibrary({db,files,requireAssignment,decrypt}){
      unit.resources.some(resource => (resource.fileId === file.id || resource.sourceFileId === file.id) &&
        (user.role === 'teacher' || resource.audience !== 'teacher')));
  }
- async function questionSourceFile(user, question) {
-  const sources = await db.list('library-source');
-  const ownerKey = value => String(value || '').replace(/^bookself:/, '');
-  const candidates = sources.filter(s => ownerKey(s.owner) === ownerKey(user.id) && s.title === question.source &&
-    (s.unitId === question.unitId || (s.collection === 'exam' && s.course === question.unitId.split('-')[0])));
-  for (const candidate of candidates) {
-    const file = await db.get(candidate.fileId);
-    if (file && Number(file.pages || 0) >= Math.max(...(question.sourcePages || [1]))) return { source: candidate, file };
-  }
-  return null;
-}
 async function questionPDF(user, question) {
-  const found = await questionSourceFile(user, question);
+  const found = await resolveQuestionSource(db,user, question);
   assert(found, '未找到这道题的原卷文件', 404);
   const chunks = []; for await (const chunk of await files.read(found.file)) chunks.push(chunk);
   return { ...found, pdf: await openPDF(Buffer.concat(chunks)) };
@@ -239,8 +229,8 @@ async function handle({req,res,route,method,user,json,availableClasses,available
  if (route[1] === 'questions' && !route[2] && method === 'GET') {
    teacher();
    if (requestedUnit === 'all') {
-     const units = new Map((await db.list('library-unit')).map(unit => [unit.id, {title: unit.title, topics: unit.topics || [], course: unit.id.split('-')[0]}]));
-     const questions = (await db.list('library-question')).map(q => ({...q, unitTitle: units.get(q.unitId)?.title || q.unitId, course: units.get(q.unitId)?.course || 'micro', topicTitle: (units.get(q.unitId)?.topics || []).find(t => t.id === q.topic)?.title || ''}));
+     const units = new Map((await db.list('library-unit')).filter(unit=>unit.owner===user.id).map(unit => [unit.id, {title: unit.title, topics: unit.topics || [], course: unit.id.split('-')[0]}]));
+     const questions = (await db.list('library-question')).filter(q=>units.has(q.unitId)).map(q => ({...q, unitTitle: units.get(q.unitId)?.title || q.unitId, course: units.get(q.unitId)?.course || 'micro', topicTitle: (units.get(q.unitId)?.topics || []).find(t => t.id === q.topic)?.title || ''}));
      json(res, {questions});
      return true;
    }
@@ -257,9 +247,9 @@ async function handle({req,res,route,method,user,json,availableClasses,available
      teacher(); await unitFor(user, question.unitId);
      const page = Math.max(1, Number(query.get('page') || (question.sourcePages || [1])[0]) || 1);
      const { pdf } = await questionPDF(user, question);
-     assert(page <= pdf.numPages, '页码超出原卷范围', 400);
+     assert(Number.isInteger(page) && page <= pdf.numPages, '页码超出原卷范围', 400);
      const rendered = await renderPage(pdf, page);
-     json(res, { page, width: rendered.width, height: rendered.height, baseWidth: rendered.baseWidth, baseHeight: rendered.baseHeight,
+     json(res, { page, totalPages:pdf.numPages, width: rendered.width, height: rendered.height, baseWidth: rendered.baseWidth, baseHeight: rendered.baseHeight,
        image: 'data:image/png;base64,' + rendered.bytes.toString('base64'),
        bbox: (question.regions || [])[0]?.bbox || [0,0,600,800] });
      return true;
@@ -323,23 +313,39 @@ async function handle({req,res,route,method,user,json,availableClasses,available
    }
    if (method === 'POST' && route[3] === 'reslice') {
      teacher(); await unitFor(user, question.unitId); const b = await bdy();
-     const region = (question.regions || [])[0] || {page:(question.sourcePages || [1])[0], bbox:[0,0,600,800]};
-     const bbox = Array.isArray(b.bbox) && b.bbox.length === 4 ? b.bbox.map(Number) : region.bbox;
-     assert(bbox.every(Number.isFinite) && bbox[2] > bbox[0] && bbox[3] > bbox[1], '切片范围无效', 400);
-     const { pdf } = await questionPDF(user, question);
-     const page = Math.max(1, Number(b.page || region.page || (question.sourcePages || [1])[0]) || 1);
-     assert(page <= pdf.numPages, '页码超出原卷范围', 400);
-     const rendered = await renderPage(pdf, page);
-     const sx = rendered.width / rendered.baseWidth, sy = rendered.height / rendered.baseHeight;
-     const left = Math.max(0, Math.round(bbox[0] * sx) - 6), top = Math.max(0, Math.round(bbox[1] * sy) - 6);
-     const right = Math.min(rendered.width, Math.round(bbox[2] * sx) + 6), bottom = Math.min(rendered.height, Math.round(bbox[3] * sy) + 6);
-     assert(right - left > 20 && bottom - top > 20, '切片范围过小', 400);
-     const cropped = await sharp(rendered.bytes).extract({left, top, width:right-left, height:bottom-top}).png().toBuffer();
-     const file = await files.upload(cropped, {owner:user.id, purpose:'question', name:`Question ${question.number || ''} slice.png`});
-     const regions = [{...region, page, bbox:[bbox[0],bbox[1],bbox[2],bbox[3]]}];
-     const next = {...question, questionImages:[file.id], regions, version:Number(question.version || 1) + 1, updatedAt:now()};
-     await db.put('library-question', next);
-     await db.audit(user.id, 'library_question_reslice', question.id);
+     assert(b.revision!==undefined && Number(b.revision)===Number(question.version||1),'题目已被更新，请重新打开后再切片',409);
+     const slices=Array.isArray(b.slices)?b.slices:[b];
+     assert(slices.length>0&&slices.length<=20,'每次可保存 1–20 个切片',400);
+     const {pdf}=await questionPDF(user,question),specs=[],used=new Set();
+     for(const slice of slices){
+       const mode=slice.mode||'replace',index=slice.index===undefined?0:Number(slice.index),page=Number(slice.page);
+       assert(['append','replace'].includes(mode),'切片操作无效',400);
+       assert(mode==='append'||Number.isInteger(index)&&index>=0&&index<(question.questionImages||[]).length&&!used.has(index),'替换切片无效或重复',400);
+       if(mode==='replace')used.add(index);
+       const bbox=slice.bbox;
+       assert(Array.isArray(bbox)&&bbox.length===4&&bbox.every(Number.isFinite)&&bbox[0]>=0&&bbox[1]>=0&&bbox[2]-bbox[0]>=12&&bbox[3]-bbox[1]>=12,'框选范围无效或过小',400);
+       assert(Number.isInteger(page)&&page>=1&&page<=pdf.numPages,'页码超出原卷范围',400);
+       specs.push({mode,index,page,bbox});
+     }
+     const renderedPages=new Map(),prepared=[];
+     for(const slice of specs){
+       if(!renderedPages.has(slice.page))renderedPages.set(slice.page,await renderPage(pdf,slice.page));
+       const rendered=renderedPages.get(slice.page),bbox=slice.bbox;
+       assert(bbox[2]<=rendered.baseWidth+.01&&bbox[3]<=rendered.baseHeight+.01,'框选范围超出原页',400);
+       const sx=rendered.width/rendered.baseWidth,sy=rendered.height/rendered.baseHeight;
+       const left=Math.max(0,Math.floor(bbox[0]*sx)-6),top=Math.max(0,Math.floor(bbox[1]*sy)-6),right=Math.min(rendered.width,Math.ceil(bbox[2]*sx)+6),bottom=Math.min(rendered.height,Math.ceil(bbox[3]*sy)+6);
+       prepared.push({...slice,bytes:await sharp(rendered.bytes).extract({left,top,width:right-left,height:bottom-top}).png().toBuffer()});
+     }
+     const uploads=[];for(const slice of prepared){const file=await files.upload(slice.bytes,{owner:user.id,purpose:'question',name:`Question ${question.number||''} · p.${slice.page}.png`});uploads.push({...slice,fileId:file.id});}
+     const next=await db.tx(async c=>{
+       const current=await db.get(question.id,c);
+       assert(Number(current.version||1)===Number(b.revision),'题目已被更新，请重新打开后再切片',409);
+       let updated=current;for(const slice of uploads)updated=replaceQuestionSlice(updated,{...slice,at:now()});
+       updated.version=Number(current.version||1)+1;
+       await db.put('library-question-history',{id:current.id+':before-slice:'+id(),questionId:current.id,snapshot:current,at:now(),actor:user.id},c);
+       await db.put('library-question',updated,c);await db.audit(user.id,'library_question_reslice',question.id,c);
+       return updated;
+     });
      json(res, {question: next});
      return true;
    }

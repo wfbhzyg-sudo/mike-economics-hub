@@ -1,3 +1,4 @@
+import {mountCropEditor} from './crop-editor.js';
 import {loadTeacherStartup} from './startup.js';
 import {submissionLabel} from '../homework/ui-labels.js';
 import {scoreBadge,scoreLegend} from '../homework/score-bands.js';
@@ -210,81 +211,17 @@ async function bank(){
  $('[data-bank-audit]').onclick=()=>{location.hash='bank/crop';};
 }
 
-let cropState={queue:[],index:0,current:null,box:null,drag:null};
 const cropVisual=/(figure|graph|table|diagram|chart|shown|curve|axis|slope|shift)/i;
 function cropCandidate(q){
-  if(q.status!=='ready'||q.type!=='choice')return false;
-  const visual=cropVisual.test(String(q.prompt||q.searchText||''));
-  if(!(q.questionImages||[]).length)return visual;
-  if(!visual)return false;
-  const b=q.regions?.[0]?.bbox;
-  return Array.isArray(b)&&b.length===4&&(Number(b[3])-Number(b[1])>0)&&(Number(b[3])-Number(b[1])<130);
+ if(q.status!=='ready'||q.type!=='choice'||!cropVisual.test(String(q.prompt||q.searchText||'')))return false;
+ if(!(q.questionImages||[]).length)return true;
+ const b=q.regions?.[0]?.bbox;return Array.isArray(b)&&b.length===4&&b[3]-b[1]>0&&b[3]-b[1]<130;
 }
 async function bankCrop(focusId=''){
-  const data=await hw('library/questions?unit=all');
-  cropState.queue=data.questions.filter(cropCandidate);
-  if(focusId){const q=data.questions.find(x=>x.id===focusId);if(q){cropState.queue=cropState.queue.filter(x=>x.id!==focusId);cropState.queue.unshift(q);}}
-  cropState.index=0;cropState.current=null;cropState.box=null;
-  main.innerHTML=`<div class="crop-head"><div><h2>图表补切</h2><p class="tw-note">已复核、疑似缺少图表的选择题（无题图，或切片高度异常偏小）。打开原卷页，拖框选中图表后保存；保存后立即用于组卷。</p></div><div class="tw-actions"><button class="tw-button" data-crop-back>返回题库</button></div></div><div class="crop-layout"><aside class="crop-queue"><div class="crop-queue-head"><strong>待补图表</strong><span>${cropState.queue.length}</span></div><div id="crop-list">${cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===0?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||q.searchText||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">没有待补图表的题。</p>'}</div></aside><section class="crop-stage-wrap"><div class="crop-toolbar"><button type="button" class="tw-button tw-small" data-crop-prev>上一题</button><span id="crop-title" class="crop-title">—</span><button type="button" class="tw-button tw-small" data-crop-next>下一题</button><span class="crop-spacer"></span><button type="button" class="tw-button tw-small" data-crop-skip>跳过</button><button type="button" class="tw-button tw-primary" data-crop-save>保存切片</button></div><div class="crop-stage" id="crop-stage"><div class="crop-empty">正在载入原卷…</div></div><div class="crop-hint">在页面上拖动框选图表；拖动后可用右侧数字微调。Esc 取消当前框。</div></section><aside class="crop-side"><h3>原卷页码</h3><div id="crop-pages" class="crop-pages"></div><h3>切片范围</h3><div class="crop-bbox"><label>左<input type="number" data-bbox="0" step="1"></label><label>上<input type="number" data-bbox="1" step="1"></label><label>右<input type="number" data-bbox="2" step="1"></label><label>下<input type="number" data-bbox="3" step="1"></label></div><p class="tw-note">坐标按原页 PDF 点计算；保存时会自动加 6pt 内边距。</p><h3>操作</h3><p class="tw-note">拖框后保存；失败可重试。已保存的题目会离开队列。</p></aside></div>`;
-  $('[data-crop-back]').onclick=()=>location.hash='bank';
-  $('[data-crop-prev]').onclick=()=>moveCrop(-1);$('[data-crop-next]').onclick=()=>moveCrop(1);$('[data-crop-skip]').onclick=()=>moveCrop(1);
-  $('[data-crop-save]').onclick=saveCrop;
-  $('[data-crop-index]')?.addEventListener; // list uses delegation below
-  $('#crop-list').addEventListener('click',e=>{const b=e.target.closest('[data-crop-index]');if(!b)return;cropState.index=Number(b.dataset.cropIndex);loadCrop();});
-  document.addEventListener('keydown',cropKey,{once:false});
-  if(cropState.queue.length)await loadCrop();else $('#crop-stage').innerHTML='<div class="crop-empty">全部已补完。</div>';
-}
-function cropKey(e){if(e.key==='Escape'&&cropState.box){cropState.box=null;drawCropBox();}}
-function moveCrop(delta){if(!cropState.queue.length)return;cropState.index=(cropState.index+delta+cropState.queue.length)%cropState.queue.length;loadCrop();}
-async function loadCrop(){
-  const q=cropState.queue[cropState.index];if(!q)return;
-  $('#crop-title').textContent=`第 ${q.number||''} 题 · ${q.unitTitle||''}`;
-  [...document.querySelectorAll('.crop-item')].forEach((el,i)=>el.classList.toggle('active',i===cropState.index));
-  let page=Number(q.regions?.[0]?.page||q.sourcePages?.[0]||1);if(!Number.isFinite(page)||page<1)page=1;
-  $('#crop-stage').innerHTML='<div class="crop-empty">正在载入原卷…</div>';
-  try{
-    const data=await hw(`library/questions/${q.id}/source-page?page=${page}`);
-    cropState.current={q,data};cropState.box=q.regions?.[0]?.bbox||null;
-    const pages=Array.isArray(q.sourcePages)&&q.sourcePages.length?q.sourcePages:[page];
-    $('#crop-pages').innerHTML=pages.map(p=>`<button type="button" class="crop-page ${p===page?'active':''}" data-crop-page="${p}">p.${p}</button>`).join('');
-    $('#crop-pages').onclick=e=>{const b=e.target.closest('[data-crop-page]');if(!b)return;loadCropPage(q,Number(b.dataset.cropPage));};
-    $('#crop-stage').innerHTML=`<div class="crop-canvas" id="crop-canvas"><img id="crop-img" src="${data.image}" alt="原卷 p.${page}" draggable="false"><div class="crop-shade"></div><div class="crop-box" id="crop-box" hidden><span>图表区域</span><i class="crop-handle"></i></div></div>`;
-    const img=$('#crop-img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});
-    wireCropCanvas();drawCropBox();
-  }catch(e){$('#crop-stage').innerHTML=`<div class="crop-empty">${h(e.message)}</div>`;}
-}
-async function loadCropPage(q,page){
-  try{const data=await hw(`library/questions/${q.id}/source-page?page=${page}`);cropState.current.data=data;cropState.box=null;
-    $('#crop-pages').querySelectorAll('button').forEach(b=>b.classList.toggle('active',Number(b.dataset.cropPage)===page));
-    $('#crop-stage').innerHTML=`<div class="crop-canvas" id="crop-canvas"><img id="crop-img" src="${data.image}" alt="原卷 p.${page}" draggable="false"><div class="crop-shade"></div><div class="crop-box" id="crop-box" hidden><span>图表区域</span></div></div>`;
-    const img=$('#crop-img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});wireCropCanvas();drawCropBox();
-  }catch(e){$('#crop-stage').innerHTML=`<div class="crop-empty">${h(e.message)}</div>`;}
-}
-function wireCropCanvas(){
-  const canvas=$('#crop-canvas'),img=$('#crop-img');
-  const point=ev=>{const r=img.getBoundingClientRect();const d=cropState.current.data;return [Math.min(d.baseWidth,Math.max(0,(ev.clientX-r.left)/r.width*d.baseWidth)),Math.min(d.baseHeight,Math.max(0,(ev.clientY-r.top)/r.height*d.baseHeight))];};
-  canvas.onpointerdown=ev=>{if(ev.target.closest('.crop-box'))return;const [x,y]=point(ev);cropState.drag={x,y};cropState.box=[x,y,x,y];drawCropBox();canvas.setPointerCapture(ev.pointerId);};
-  canvas.onpointermove=ev=>{if(!cropState.drag)return;const [x,y]=point(ev);cropState.box=[Math.min(cropState.drag.x,x),Math.min(cropState.drag.y,y),Math.max(cropState.drag.x,x),Math.max(cropState.drag.y,y)];drawCropBox();};
-  canvas.onpointerup=ev=>{cropState.drag=null;if(cropState.box&&cropState.box[2]-cropState.box[0]<12)cropState.box=null;drawCropBox();};
-  document.querySelectorAll('[data-bbox]').forEach(input=>{input.onchange=()=>{if(!cropState.box)cropState.box=[0,0,0,0];cropState.box[Number(input.dataset.bbox)]=Number(input.value)||0;drawCropBox();};});
-}
-function drawCropBox(){
-  const box=cropState.box,el=$('#crop-box'),img=$('#crop-img');const d=cropState.current?.data;if(!d)return;
-  if(!box||!el){if(el)el.hidden=true;return;}
-  const r=img.getBoundingClientRect(),c=$('#crop-canvas').getBoundingClientRect();const sx=r.width/d.baseWidth,sy=r.height/d.baseHeight;
-  el.hidden=false;el.style.left=(r.left-c.left+box[0]*sx)+'px';el.style.top=(r.top-c.top+box[1]*sy)+'px';el.style.width=Math.max(4,(box[2]-box[0])*sx)+'px';el.style.height=Math.max(4,(box[3]-box[1])*sy)+'px';
-  document.querySelectorAll('[data-bbox]').forEach(input=>input.value=Math.round(box[Number(input.dataset.bbox)]));
-}
-async function saveCrop(){
-  const q=cropState.current?.q,data=cropState.current?.data,box=cropState.box;if(!q||!box)return toast('先在页面上框选图表区域');
-  if(box[2]-box[0]<20||box[3]-box[1]<20)return toast('框选区域太小');
-  try{
-    let page=Number(document.querySelector('.crop-page.active')?.dataset.cropPage||q.sourcePages?.[0]||1);if(!Number.isFinite(page)||page<1)page=1;
-    const r=await hw(`library/questions/${q.id}/reslice`,{method:'POST',body:{bbox:box.map(Math.round),page}});
-    toast('图表已保存，题目已离开待补队列');cropState.queue.splice(cropState.index,1);cropState.current=null;cropState.box=null;
-    $('#crop-list').innerHTML=cropState.queue.map((q,i)=>`<button type="button" class="crop-item ${i===cropState.index?'active':''}" data-crop-index="${i}"><span>${h(q.number||'')}. ${h(String(q.prompt||q.searchText||'').slice(0,64))}</span><small>${h(q.unitTitle||'')}</small></button>`).join('')||'<p class="tw-empty">全部已补完。</p>';
-    if(cropState.queue.length){cropState.index=Math.min(cropState.index,cropState.queue.length-1);await loadCrop();}else{$('#crop-title').textContent='—';$('#crop-stage').innerHTML='<div class="crop-empty">全部已补完。</div>';}
-  }catch(e){toast(e.message);}
+ const version=state.version,data=await hw('library/questions?unit=all');if(version!==state.version)return;
+ let queue=data.questions.filter(cropCandidate);
+ const focus=data.questions.find(q=>q.id===focusId);if(focus)queue=[focus,...queue.filter(q=>q.id!==focusId)];
+ const view=mountCropEditor({main,queue,hw,h,toast,dirty:value=>state.dirty=value});state.viewCleanup=()=>view.destroy();
 }
 
 const reviewLabels={pending:'待审核',needs_revision:'需修改',approved:'已通过'};
