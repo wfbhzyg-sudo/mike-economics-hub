@@ -195,3 +195,73 @@ test('dual-course enrollment scopes catalog and paper to requested course even w
  }
  const denied=await call(handler,students.a,'self-practice/catalog?course=macro');assert.equal(denied.value.units.length,0);
 });
+
+test('released U1/U2 imported crops and U3 recrops all appear and produce exact papers', async () => {
+  const {db, handler} = await fixture();
+  for (const course of ['micro', 'macro']) for (const n of [1, 2, 3]) {
+    const unitId = `${course}-unit-${n}`, fileId = `${unitId}-image`;
+    await db.put('library-unit', {id:unitId, type:'library-unit', owner:'bookself:teacher', topics:[{id:`${n}.1`, name:'Topic'}], resources:[]});
+    await db.put('library-release', {id:`release-${unitId}`, unitId, owner:'bookself:teacher', classIds:['class-1']});
+    await db.put('file', {id:fileId, mime:'image/png', purpose:n === 3 ? 'library' : 'question'});
+    for (let i=0;i<30;i++) await db.put('library-question', {id:`${unitId}-q${i}`, unitId, topic:`${n}.1`, type:'choice', status:'ready', options:['A','B','C','D','E'], answer:'A', questionImages:[fileId], source:unitId, number:i+1});
+  }
+  for (const course of ['micro', 'macro']) {
+    const catalog = await handler.catalog(students.a, course);
+    assert.deepEqual(catalog.units.map(u=>u.unitId), [1,2,3].map(n=>`${course}-unit-${n}`));
+    for (const n of [1,2,3]) for (const count of [10,20,30]) {
+      const {attempt} = await handler.create(students.a, createBody({clientId:`${course}-unit-${n}-count-${count}`,course,topicIds:[`${n}.1`],questionCount:count}));
+      assert.equal(attempt.questions.length,count);
+      assert.equal(new Set(attempt.questions.map(q=>q.id)).size,count);
+      assert((await db.get(attempt.id)).questions.every(q=>q.unitId===`${course}-unit-${n}`));
+    }
+  }
+  assert.equal((await handler.catalog({...students.a,classIds:['unreleased']},'micro')).units.length,0);
+});
+
+test('question images refresh after repair; answer/submission/board files and PDFs never qualify', async () => {
+  const {db,handler} = await fixture();
+  for (const purpose of ['answer','submission','board']) {
+    await db.put('file',{id:'img-a',mime:'image/png',purpose});
+    assert.equal((await handler.catalog(students.a,'micro')).questionCount,20);
+  }
+  await db.put('file',{id:'img-a',mime:'application/pdf',purpose:'question'});
+  assert.equal((await handler.catalog(students.a,'micro')).questionCount,20);
+  db.rows.delete('img-a');
+  assert.equal((await handler.catalog(students.a,'micro')).questionCount,20);
+  await db.put('file',{id:'img-a',mime:'image/png',purpose:'question'});
+  assert.equal((await handler.catalog(students.a,'micro')).questionCount,40);
+});
+
+test('related-topic catalog counts agree with creation and result topic attribution', async () => {
+  const {db,handler} = await fixture();
+  for (const q of await db.list('library-question')) {
+    if (!/^q-/.test(q.id)) continue;
+    await db.put('library-question',{...q,topic:null,relatedTopics:['2.2']});
+  }
+  assert.equal((await handler.catalog(students.a,'micro')).units[0].topics.find(t=>t.id==='2.2').count,40);
+  const {attempt}=await handler.create(students.a,createBody({topicIds:['2.2']}));
+  assert.equal(attempt.questions.length,20);
+  assert(attempt.questions.every(q=>q.topic==='2.2'));
+});
+
+test('only own practice snapshots grant image access, never private answers or unrelated crops', async () => {
+  const {db,handler} = await fixture();
+  for (const id of ['img-a','img-b']) await db.put('file',{id,purpose:'question',mime:'image/png'});
+  const image=await db.get('img-a');
+  assert.equal(await handler.canReadFile(image,students.a),false);
+  await handler.create(students.a,createBody());
+  assert.equal(await handler.canReadFile(image,students.a),true);
+  assert.equal(await handler.canReadFile(image,students.b),false);
+  assert.equal(await handler.canReadFile(image,students.teacher),false);
+  for (const purpose of ['answer','submission','board']) assert.equal(await handler.canReadFile({...image,purpose},students.a),false);
+  assert.equal(await handler.canReadFile({...image,mime:'application/pdf'},students.a),false);
+  assert.equal(await handler.canReadFile({...image,id:'unrelated'},students.a),false);
+});
+
+test('catalog batches crop metadata reads per unit instead of one query per image', async () => {
+  const {db,handler}=await fixture();let batches=0;const originalGet=db.get;
+  db.getMany=async ids=>{batches++;return Promise.all(ids.map(id=>originalGet(id)))};
+  db.get=async()=>{throw Error('Unexpected individual metadata read')};
+  assert.equal((await handler.catalog(students.a,'micro')).questionCount,40);
+  assert.equal(batches,1);
+});

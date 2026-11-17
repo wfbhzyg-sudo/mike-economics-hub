@@ -1,4 +1,5 @@
 import {optionLabels} from './self-practice-model.mjs';
+import {questionHasTopic} from '../homework/library-packs.js';
 import {now} from './store.mjs';
 import {assert, HttpError} from './validation.mjs';
 import {
@@ -20,6 +21,7 @@ import {
 } from './self-practice-model.mjs';
 
 const SWEEP_MS = 30_000;
+const isQuestionImage = (file) => Boolean(file?.mime?.startsWith('image/') && ['library', 'question'].includes(file.purpose));
 
 function practiceError(error) {
   if (error instanceof PracticeError) return new HttpError(error.status, error.message);
@@ -28,22 +30,20 @@ function practiceError(error) {
 
 export function createSelfPractice({db}) {
   const byId = new Map();
-  const fileCache = new Map();
-
-  async function fileExists(fileId) {
-    if (!fileCache.has(fileId)) {
-      const file = await db.get(fileId);
-      fileCache.set(fileId, Boolean(file?.mime && file.purpose === 'library'));
-    }
-    return fileCache.get(fileId);
-  }
 
   async function eligibleByUnit(units) {
+    // Importers store original question crops as `question`; recrops use `library`.
+    // Keep this cache request-local so a repaired file is visible without a restart.
+    const fileCache = new Map();
     const map = {};
     for (const unit of units) {
-      const questions = await db.list('library-question', undefined, unit.id);
+      const questions = (await db.list('library-question', undefined, unit.id))
+        .filter((question) => questionEligible(question, {unit}));
       const imageIds = [...new Set(questions.flatMap((question) => Array.isArray(question.questionImages) ? question.questionImages : []))];
-      await Promise.all(imageIds.map((fileId) => fileExists(fileId)));
+      const missingIds = imageIds.filter((fileId) => !fileCache.has(fileId));
+      const files = missingIds.length ? (db.getMany ? await db.getMany(missingIds) : await Promise.all(missingIds.map((fileId) => db.get(fileId)))) : [];
+      for (const fileId of missingIds) fileCache.set(fileId, false);
+      for (const file of files) if (file) fileCache.set(file.id, isQuestionImage(file));
       map[unit.id] = questions.filter((question) =>
         questionEligible(question, {unit, imageExists: (fileId) => fileCache.get(fileId) === true}));
     }
@@ -68,6 +68,13 @@ export function createSelfPractice({db}) {
       defaultMinutes: DEFAULT_MINUTES,
       counts: [10, 20, 30],
     };
+  }
+
+  async function canReadFile(file, user) {
+    if (user.role !== 'student' || !isQuestionImage(file)) return false;
+    const attempts = await db.find('self-practice-attempt', {studentId: user.id});
+    return attempts.some((attempt) => attempt.studentId === user.id &&
+      attempt.questions?.some((question) => question.questionImages?.includes(file.id)));
   }
 
   async function loadAttempt(user, id, client = db) {
@@ -186,7 +193,7 @@ export function createSelfPractice({db}) {
     const seen = new Set();
     for (const unit of scopedUnits) {
       for (const question of pools[unit.id] || []) {
-        if (!input.topicIds.includes(question.topic)) continue;
+        if (!input.topicIds.some((topic) => questionHasTopic(question, topic))) continue;
         const key = fingerprint(question);
         if (seen.has(key)) continue;
         seen.add(key);
@@ -207,7 +214,7 @@ export function createSelfPractice({db}) {
       questions: drawn.map((question) => ({
         id: question.id,
         number: question.number || '',
-        topic: question.topic || '',
+        topic: input.topicIds.includes(question.topic) ? question.topic : input.topicIds.find((topic) => questionHasTopic(question, topic)),
         prompt: question.prompt || '',
         options: optionLabels(question),
         answer: String(question.answer || '').toUpperCase(),
@@ -374,7 +381,7 @@ export function createSelfPractice({db}) {
     }
   }
 
-  return {handle, sweep, catalog, create, start, get, saveAnswers, submit, result, list, correct};
+  return {handle, sweep, catalog, create, start, get, saveAnswers, submit, result, list, correct, canReadFile};
 }
 
 export function startSelfPracticeSweeper(module) {

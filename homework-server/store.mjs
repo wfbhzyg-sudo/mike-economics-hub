@@ -55,6 +55,11 @@ export function createStore(connectionString, schema = "homework") {
         await client.query(`SELECT data FROM ${table} WHERE id=$1`, [key])
       ).rows[0]?.data;
     },
+    async getMany(keys, client = pool) {
+      if (!keys.length) return [];
+      return (await client.query(`SELECT data FROM ${table} WHERE id=ANY($1::text[])`, [[...new Set(keys)]]))
+        .rows.map((row) => row.data);
+    },
     async list(kind, client = pool, unitId) {
       return (
         await client.query(

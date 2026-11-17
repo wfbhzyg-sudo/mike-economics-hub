@@ -246,6 +246,7 @@ export async function createHomework({externalAuth} = {}) {
   const authorizeFile = async (file, user) => {
     if (file.owner === user.id) return true;
     if(await library.canReadFile(file,user))return true;
+    if(await selfPractice.canReadFile(file,user))return true;
     if(file.purpose==='board'&&await library.canReadBoardAttachment(file,user))return true;
     for (const a of await db.list("assignment"))
       if (

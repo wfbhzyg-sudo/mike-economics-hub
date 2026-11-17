@@ -55,7 +55,7 @@ export function questionEligible(question, {unit, imageExists} = {}) {
   if (Array.isArray(question.reviewFlags) && question.reviewFlags.length) return false;
   if (question.collection === 'exam') return false;
   if (!unit || question.unitId !== unit.id) return false;
-  if (!(unit.topics || []).some((topic) => topic.id === question.topic)) return false;
+  if (!(unit.topics || []).some((topic) => questionHasTopic(question, topic.id))) return false;
   const labels = optionLabels(question);
   if (!labels.length) return false;
   if (!labels.includes(String(question.answer || ''))) return false;
