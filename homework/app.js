@@ -208,11 +208,11 @@ function installNavigation() {
         { label: "学情", route: "gradebook" },
       ]
     : [
+        { label: "课程", route: "library", icon: "book" },
         { label: "作业", route: "assignments", icon: "work" },
-        { label: "模考", route: "self-practice", icon: "practice" },
         { label: "成绩", route: "grades", icon: "clock" },
         { label: "错题", route: "mistakes", icon: "check" },
-        { label: "课程", route: "library", icon: "book" },
+        { label: "模考", route: "self-practice", icon: "practice" },
       ];
   dock.hidden = false;
   dock.innerHTML = `<span class="work-nav-label">作业中心</span>`+items.map((item,i)=>`<a href="#${item.route}" class="work-nav-item" aria-current="${i===0?'page':'false'}"><span>${icon(item.icon)}</span>${item.label}</a>`).join('');
@@ -795,7 +795,7 @@ async function render(scroll = true) {
       go("assignments");
       return;
     }
-    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='library'?4:route==='mistakes'?3:route==='self-practice'?1:['grades','history','result'].includes(route)?2:0);
+    nav?.select(teacher?(['gradebook','device'].includes(route)?2:['reviews','review'].includes(route)?1:0):route==='library'?0:route==='mistakes'?3:route==='self-practice'?4:['grades','history','result'].includes(route)?2:1);
     const workspace=createWorkspaceUI({state,main,h,head,link,date,api,post,put,go,toast,field,area,formHandler,uploadWidget,metadata});
     const task=['submit','paper','review','answer','new','edit','mcq-import','mcq'].includes(route);
     if(!embedded){document.body.dataset.workTask=task?'true':'false';document.body.dataset.workRoute=route;}
