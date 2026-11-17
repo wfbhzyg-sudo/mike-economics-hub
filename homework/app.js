@@ -641,7 +641,7 @@ async function resultPage(id) {
  const a=state.assignments.find(x=>x.id===s.assignmentId)||s.assignment||{title:'作业提交'};
  await metadata(s.files);if(version!==state.routeVersion)return;
  const g=s.publishedGrade;
- if(g?.scoreOnly||a.offline||a.format==='score'){
+ if(a.offline||a.format==='score'){
   const total=g?.total??null,max=Number(g?.maxPoints??0),rate=total!==null&&max?Math.round(total/max*1000)/10:null;
   main.innerHTML=`<section class="paper result-paper">${head('', '本次成绩', a.title, link('grades','成绩档案'))}<div class="result-score"><strong>${total??'—'}<small>/${max}</small></strong>${rate!=null?`<span>${rate}%</span>`:''}</div><p class="hint">线下成绩，由老师录入。这份作业没有在线作答、附件或错题订正。</p><dl class="score-facts"><div><dt>成绩来源</dt><dd>教师线下录入</dd></div><div><dt>满分</dt><dd>${max}</dd></div><div><dt>公布时间</dt><dd>${g?.publishedAt?date(g.publishedAt):'—'}</dd></div></dl><div class="actions">${link('grades','返回我的成绩')}${link('assignments','返回作业列表','secondary')}</div></section>`;
   return;
