@@ -80,16 +80,35 @@ export function shuffle(items, random = Math.random) {
   return copy;
 }
 
+// Count a shared question once when several selected topics reference it.
+// Only anonymous topic-group counts leave the server, never keys or answers.
+export function buildAvailability({units, questionsByUnit}) {
+  const unique = new Map();
+  for (const unit of units) for (const question of questionsByUnit[unit.id] || []) {
+    if (!questionEligible(question, {unit})) continue;
+    const key = fingerprint(question), topics = unique.get(key) || new Set();
+    for (const topic of unit.topics || []) if (questionHasTopic(question, topic.id)) topics.add(topic.id);
+    unique.set(key, topics);
+  }
+  const groups = new Map();
+  for (const topics of unique.values()) {
+    const ids = [...topics].sort(), key = ids.join('|');
+    const group = groups.get(key) || {topics: ids, count: 0};
+    group.count++; groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 export function buildCatalog({units, questionsByUnit, course}) {
   const wanted = course || '';
   const result = [];
   for (const unit of units) {
     if (wanted && courseOf(unit) !== wanted) continue;
     const topics = (unit.topics || []).map((topic) => {
-      const count = (questionsByUnit[unit.id] || []).filter((q) => questionHasTopic(q,topic.id) && q.status === 'ready' && q.type === 'choice' && !q.duplicateOf && !q.canonicalQuestionId && q.collection !== 'exam').length;
+      const count = new Set((questionsByUnit[unit.id] || []).filter((q) => questionHasTopic(q,topic.id) && q.status === 'ready' && q.type === 'choice' && !q.duplicateOf && !q.canonicalQuestionId && q.collection !== 'exam').map(fingerprint)).size;
       return {id: topic.id, name: topic.name || topic.id, title: topic.title || '', count, bookself: topic.bookself || ''};
     });
-    const total = new Set((questionsByUnit[unit.id] || []).filter(q=>q.status==='ready'&&q.type==='choice'&&!q.duplicateOf&&!q.canonicalQuestionId&&q.collection!=='exam'&&topics.some(t=>questionHasTopic(q,t.id))).map(q=>q.id)).size;
+    const total = new Set((questionsByUnit[unit.id] || []).filter(q=>q.status==='ready'&&q.type==='choice'&&!q.duplicateOf&&!q.canonicalQuestionId&&q.collection!=='exam'&&topics.some(t=>questionHasTopic(q,t.id))).map(fingerprint)).size;
     if (!total) continue;
     result.push({unitId: unit.id, title: unit.title || unit.id, course: courseOf(unit), topics, questionCount: total});
   }
@@ -103,7 +122,7 @@ export function validateCreate(body, {allowedTopics} = {}) {
   if (!['micro', 'macro'].includes(course)) throw new PracticeError(400, '请选择 AP 微观或 AP 宏观');
   if (!Array.isArray(body?.topicIds) || !body.topicIds.length) throw new PracticeError(400, '请至少选择一个章节');
   const topicIds = [...new Set(body.topicIds.map((id) => String(id)))];
-  if (topicIds.length > 24) throw new PracticeError(400, '一次最多选择 24 个章节');
+  if (topicIds.length > 80) throw new PracticeError(400, '一次最多选择 80 个章节');
   if (allowedTopics) {
     const unknown = topicIds.filter((id) => !allowedTopics.has(`${course}:${id}`));
     if (unknown.length) throw new PracticeError(403, '所选章节不在可练习范围内');

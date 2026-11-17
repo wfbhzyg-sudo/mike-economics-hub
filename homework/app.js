@@ -803,7 +803,7 @@ async function render(scroll = true) {
     const learning=createLearningUI({state,main,api,post,put,h,head,link,badge,date,click,formHandler,area,field,bindPreviews,fileMarkup,metadata,uploadWidget,toast,go,paperSurface,bindPaperSurface});
     const mcqUI=createMCQUI({main,state,api,post,put,go,h,toast});
     const spUI=createSelfPracticeUI({main,state,api,post,put,go,h,toast});
-    if(route === 'self-practice')await spUI.render(id || 'create', questionId);
+    if(route === 'self-practice'){state.viewCleanup=()=>spUI.destroy();await spUI.render(id || 'create', questionId);}
     else if(route === 'library')await showLibrary({main,state,api,post,put,go,toast},id,questionId,libraryMode,libraryDetail);
     else if(route === "mcq-import")await mcqUI.imports(id);
     else if(route === "mcq")await mcqUI.attempt(id);

@@ -7,6 +7,7 @@ import {
   PracticeError,
   attemptIdFor,
   buildCatalog,
+  buildAvailability,
   courseOf,
   drawPaper,
   finalizeAttempt,
@@ -64,6 +65,7 @@ export function createSelfPractice({db}) {
     return {
       course,
       units: entries,
+      availability: buildAvailability({units, questionsByUnit: questions}),
       questionCount: total,
       defaultMinutes: DEFAULT_MINUTES,
       counts: [10, 20, 30],
