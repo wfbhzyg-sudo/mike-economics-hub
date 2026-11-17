@@ -1,4 +1,4 @@
-import {cropDrag} from './crop-geometry.js';
+import {cropDrag,regionBox} from './crop-geometry.js';
 
 // Drafts belong to the question, not the displayed PDF page.
 export function mountCropEditor({main,queue,hw,h,toast,dirty}){
@@ -57,7 +57,7 @@ export function mountCropEditor({main,queue,hw,h,toast,dirty}){
    $('[data-page-input]').value=page;$('.slice-stage').setAttribute('aria-busy','true');$('.slice-stage').innerHTML='<p class="tw-loading">正在载入原卷…</p>';
    try{
      const result=await hw(`library/questions/${encodeURIComponent(q.id)}/source-page?page=${page}`);
-     if(disposed||request!==seq)return;data=result;$('[data-total]').textContent=data.totalPages;$('[data-page-input]').max=data.totalPages;
+     if(disposed||request!==seq)return;data=result;if(target().mode==='replace'&&!target().bbox)target().bbox=regionBox(q.regions?.[target().index],data.baseWidth,data.baseHeight);$('[data-total]').textContent=data.totalPages;$('[data-page-input]').max=data.totalPages;
      $('.slice-stage').innerHTML=`<div class="slice-canvas ${$('[data-browse]').getAttribute('aria-pressed')==='true'?'is-browsing':''}"><img class="slice-original" src="${h(data.image)}" alt="原卷第 ${page} 页" draggable="false"><div class="slice-box" tabindex="0" role="group" aria-label="当前切片框，可拖动或用方向键移动" hidden><span class="slice-box-label">片段 ${active+1}</span>${['nw','n','ne','e','se','s','sw','w'].map(dir=>`<span class="slice-handle" data-handle="${dir}" aria-hidden="true"></span>`).join('')}</div></div>`;
      $('.slice-canvas').style.width=100*zoom+'%';$('.slice-canvas').style.maxWidth=860*zoom+'px';wire();draw();update();
    }catch(e){if(!disposed&&request===seq){$('.slice-stage').innerHTML=`<p class="tw-empty">${h(e.message)} <button class="tw-button" data-retry>重试此页</button></p>`;$('[data-retry]').onclick=()=>showPage(page);}}

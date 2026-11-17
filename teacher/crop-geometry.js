@@ -1,4 +1,9 @@
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+export function regionBox(region,width,height){
+ if(region?.bbox?.length===4&&region.bbox.every(Number.isFinite))return region.bbox.slice();
+ if(region&&['x','y','w','h'].every(k=>Number.isFinite(region[k])))return [region.x*width,region.y*height,(region.x+region.w)*width,(region.y+region.h)*height];
+ return null;
+}
 export function cropDrag({mode='draw',box,start,point,width,height,min=12}){
  const [x,y]=point.map((n,i)=>clamp(n,0,i?height:width));
  if(mode==='draw')return [Math.min(start[0],x),Math.min(start[1],y),Math.max(start[0],x),Math.max(start[1],y)];

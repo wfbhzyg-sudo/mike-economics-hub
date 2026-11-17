@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Readable} from 'node:stream';
 import {PDFDocument} from 'pdf-lib';
-import {cropDrag} from '../teacher/crop-geometry.js';
+import {cropDrag,regionBox} from '../teacher/crop-geometry.js';
 import {resolveQuestionSource,replaceQuestionSlice} from '../homework-server/library-slices.mjs';
 import {createLibrary} from '../homework-server/library.mjs';
 
@@ -62,3 +62,5 @@ test('Failed second upload or concurrent edit cannot partially replace the origi
  const f=await fixture();f.fail(2);await assert.rejects(f.call({revision:1,slices}));assert.deepEqual(f.records.get('q').questionImages,['original']);
  const c=await fixture();c.conflict();await assert.rejects(c.call({revision:1,slices}),e=>e.status===409);assert.deepEqual(c.records.get('q').questionImages,['original']);
 });
+
+test('Legacy normalized crop regions display in PDF coordinates without changing stored data',()=>{const r={x:.1,y:.2,w:.5,h:.3};assert.deepEqual(regionBox(r,600,800),[60,160,360,400]);assert.deepEqual(r,{x:.1,y:.2,w:.5,h:.3});assert.equal(regionBox(null,600,800),null);});
