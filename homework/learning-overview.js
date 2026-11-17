@@ -1,3 +1,4 @@
+import {scoreMaximum} from './score-entry.js';
 // Teacher-facing learning overview: class matrix, student profiles and
 // assignment-level detail. Data comes from the existing /learning payload so
 // this page can never invent a second source of truth for grades.
@@ -819,7 +820,7 @@ function renderDetail() {
     const own = grade?.questions || [];
     return `<div class="lo-detail-inner">
       <header class="lo-detail-head">
-        <div><h2>${h(row.student.name)}</h2><p>${h(assignmentLabel(assignment))} · ${h(assignment.title || '')}</p></div>
+        <div><h2>${h(row.student.name)}</h2><p>${h(assignment.title || assignmentLabel(assignment))}</p></div>
         <button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button>
       </header>
       <div class="lo-detail-score">
@@ -840,7 +841,7 @@ function renderDetail() {
         ${link(`work/overview/${assignment.id}`, '作业设置')}
       </div>
       <section class="lo-detail-section">
-        <div class="lo-section-head"><h3>题目与本班数据</h3><small>${summary.graded ? `${summary.graded} 份已发布` : '尚无已发布成绩'}</small></div>
+        <div class="lo-section-head"><h3>题目与本班数据</h3><small>${assignment.offline||assignment.format==='score'?'线下总分':summary.graded ? `${summary.graded} 份已发布` : grade?'已公布总分':'尚无已发布成绩'}</small></div>
         ${summary.questions.length ? `<ul class="lo-qlist">
           <li class="lo-qlist-head" aria-hidden="true"><span>题</span><span>题目</span><span>本人</span><span>正确率</span></li>
           ${summary.questions.map((question, index) => {
@@ -852,7 +853,7 @@ function renderDetail() {
               <span class="lo-q-rate" data-band="${scoreBand(question.rate)?.level || ''}">${formatPercent(question.rate)}</span>
             </button></li>`;
           }).join('')}
-        </ul>` : '<p class="lo-note">这份作业还没有题目级评分数据。附件与作答仍可在复核页查看。</p>'}
+        </ul>` : `<p class="lo-note">${assignment.offline||assignment.format==='score'?'这份线下作业仅记录总分，可直接修改分数和满分。':'这份作业还没有题目级评分数据；原作答保留，可继续复核。'}</p>`}
       </section>
     </div>`;
   }
@@ -1038,25 +1039,24 @@ function renderDetail() {
 
   function offlineEditor(cell) {
     const grade = cell.record?.grade, submission = cell.record?.effective || cell.record?.latest;
-    if (submission && !grade && !submission.manualScoreEntry) { toast('请先完成批阅并发布成绩'); return; }
-    const max = Number(grade?.maxPoints || cell.assignment.maxPoints || (cell.assignment.questions || []).reduce((n,q)=>n+Number(q.maxPoints||0),0));
-    if (!(max > 0)) { toast('这份作业没有有效满分，请先检查作业设置'); return; }
+    const max = scoreMaximum({...cell.assignment,maxPoints:grade?.maxPoints||cell.assignment.maxPoints},data.submissions.filter(s=>s.assignmentId===cell.assignment.id).map(s=>s.publishedGrade));
     const blank = grade?.total == null;
     const dialog = document.createElement('dialog');
     dialog.className = 'lo-offline-dialog';
     dialog.setAttribute('aria-label','修改成绩');
-    dialog.innerHTML = `<form method="dialog"><h2>${h(cell.student.name)} · ${h(cell.assignment.title)}</h2><p class="lo-offline-meta">满分 ${max} · 留空不计均分，0 分计入均分</p><label class="lo-offline-field"><span>分数</span><input name="score" type="number" min="0" max="${max}" step="0.1" value="${blank ? '' : grade.total}" inputmode="decimal"><em>/ ${max}</em></label><label class="lo-offline-check"><input type="checkbox" name="absent"><span>留空（请假等，不计入均分）</span></label><p class="lo-offline-error" role="alert"></p><div class="lo-offline-actions"><button type="button" class="lo-btn" data-offline-cancel>取消</button><button type="submit" class="lo-btn lo-primary" data-offline-save>保存并更新统计</button></div><p class="lo-offline-note">保留原作答、逐题评分与改分历史；这里修改总分。留空不会恢复旧分数。</p></form>`;
+    dialog.innerHTML = `<form method="dialog"><h2>${h(cell.student.name)} · ${h(cell.assignment.title)}</h2><p class="lo-offline-meta">留空不计均分，0 分计入均分</p><label class="lo-offline-field"><span>分数</span><input name="score" type="number" min="0" step="0.1" value="${blank ? '' : grade.total}" inputmode="decimal"></label><label class="lo-offline-field"><span>满分</span><input name="maxPoints" type="number" min="0.1" max="1000000" step="0.1" required value="${max??''}" inputmode="decimal" placeholder="请填写本次满分"></label><label class="lo-offline-check"><input type="checkbox" name="absent"><span>留空（请假等，不计入均分）</span></label><p class="lo-offline-error" role="alert"></p><div class="lo-offline-actions"><button type="button" class="lo-btn" data-offline-cancel>取消</button><button type="submit" class="lo-btn lo-primary" data-offline-save>保存并更新统计</button></div><p class="lo-offline-note">保留原作答、逐题评分与改分历史；这里修改该学生的总分和满分。保存即公布；留空不会恢复旧分数。</p></form>`;
     document.body.append(dialog);
-    const form = dialog.querySelector('form'), input = form.elements.score, absent = form.elements.absent, error = form.querySelector('.lo-offline-error');
+    const form = dialog.querySelector('form'), input = form.elements.score, maximum=form.elements.maxPoints, absent = form.elements.absent, error = form.querySelector('.lo-offline-error');
     absent.onchange = () => { input.disabled = absent.checked; if (!absent.checked) input.focus(); };
     dialog.querySelector('[data-offline-cancel]').onclick = () => dialog.close();
     dialog.addEventListener('close', () => dialog.remove());
     form.onsubmit = async event => {
       event.preventDefault(); error.textContent = '';
+      const max=Number(maximum.value);if(!Number.isFinite(max)||max<=0){error.textContent='请填写大于 0 的满分';maximum.focus();return;}
       if (!absent.checked && (input.value === '' || !Number.isFinite(Number(input.value)) || Number(input.value)<0 || Number(input.value)>max)) { error.textContent = '请输入 0–'+max+' 之间的分数，或勾选留空'; input.focus(); return; }
       const button = dialog.querySelector('[data-offline-save]'); button.disabled = true;
       try {
-        const response = await fetch('/api/homework/assignments/' + encodeURIComponent(cell.assignment.id) + '/students/' + encodeURIComponent(cell.student.id) + '/score', {method: 'PATCH', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf}, body: JSON.stringify({score: absent.checked ? null : Number(input.value), submissionId: submission?.id || null, revision: grade ? grade.revision || 1 : 0})});
+        const response = await fetch('/api/homework/assignments/' + encodeURIComponent(cell.assignment.id) + '/students/' + encodeURIComponent(cell.student.id) + '/score', {method: 'PATCH', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf}, body: JSON.stringify({score: absent.checked ? null : Number(input.value), maxPoints:max, submissionId: submission?.id || null, revision: grade ? grade.revision || 1 : 0})});
         const value = await response.json();
         if (!response.ok) throw Error(value.error || '保存失败，请重试');
         dialog.close(); await refresh(); toast(absent.checked ? '已留空，不计入统计' : '成绩已更新，统计已重算');

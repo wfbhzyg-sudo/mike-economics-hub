@@ -58,12 +58,8 @@ export function scopedStudents(data, {classId = '', assignments = []} = {}) {
 // Short, stable matrix column label. The full title always stays in the tooltip.
 export function assignmentLabel(assignment) {
   const title = String(assignment?.title || '').trim();
-  const type = TYPES[assignment?.format] || '';
-  const unit = String(assignment?.libraryUnit || '').trim();
-  if (unit && type) return `${unit} ${type}`;
-  if (unit) return unit;
-  const stripped = title.replace(/^Unit\s*[\d.]+\s*[-–—:·]?\s*/i, '').trim() || title || '作业';
-  return stripped.length > 12 ? `${stripped.slice(0, 11)}…` : stripped;
+  const label = title || String(assignment?.libraryUnit || '').trim() || '作业';
+  return label.length > 24 ? `${label.slice(0, 23)}…` : label;
 }
 
 export function buildRows(data, students, assignments) {

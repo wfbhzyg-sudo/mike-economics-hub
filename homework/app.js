@@ -256,7 +256,7 @@ function showLogin(register = false) {
 async function refresh(route = 'assignments', version = state.routeVersion) {
   const studentHome = state.user?.role !== 'teacher' && route === 'assignments';
   const [data, learning] = await Promise.all([
-    loadWorkspaceData(api, route, embedded ? embeddedContext.classId : ''),
+    loadWorkspaceData(api, route, embedded && route !== 'assignments' ? embeddedContext.classId : ''),
     studentHome ? api('learning').catch(() => null) : Promise.resolve(null),
   ]);
   if (version === state.routeVersion) {

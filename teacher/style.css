@@ -24,3 +24,5 @@
  .tw-action-table td:last-child{flex-basis:100%}.tw-action-table td:last-child .tw-button{width:100%}.tw-action-table td p{font-size:12px}.tw-action-table td:first-child strong{font-size:16px}
 }
 @media(max-width:760px){.tw-text,.tw-account summary,.tw-check{min-height:44px}}
+
+.tw-class-choices{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0}.tw-class-choices legend{font-weight:650;margin-bottom:8px}.tw-class-choices .tw-check{flex:1 1 160px;padding:10px;border:1px solid var(--border,#d5dfdf);border-radius:8px}.tw-class-choices .tw-check:has(:checked){background:#e8f1ec;border-color:#477a66}.tw-class-choices small{color:#617073}.tw-profile-scope{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}.tw-profile-scope select{min-height:40px;max-width:100%;padding:6px 12px}

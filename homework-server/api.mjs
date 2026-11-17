@@ -1,3 +1,4 @@
+import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
 import {assignmentRecords} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
@@ -42,7 +43,7 @@ const safeUser = (u) => ({
   canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
 export const publicAssignment = (a) => ({
-  offline: Boolean(a.offline), maxPoints: a.maxPoints ?? (a.rubric || []).reduce((n,q)=>n+Number(q.maxPoints||0),0),
+  offline: Boolean(a.offline), maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
@@ -942,6 +943,7 @@ export async function createHomework({externalAuth} = {}) {
               assert((b.submissionId||null)===(current?.id||null),'成绩版本已更新，请刷新后再修改',409);
               const entry=current || {id:'teacher-score:'+hash(a.id+':'+member.id),type:'submission',assignmentId:a.id,studentId:member.id,studentName:member.name,classIds:member.classIds,manualScoreEntry:true,status:'published',createdAt:now(),version:assignment.version,text:'',files:[],rubricSnapshot:[]};
               const next=editTeacherScore(entry,assignment,b,user.id,now());
+              await c.query(`UPDATE ${db.jobs} SET status='cancelled',finished=now(),lease=NULL WHERE target=$1 AND kind='grade' AND status IN ('queued','running')`,[entry.id]);
               await db.put('submission',next,c);
               await db.audit(user.id,'teacher_score',next.id,c);
               return next;

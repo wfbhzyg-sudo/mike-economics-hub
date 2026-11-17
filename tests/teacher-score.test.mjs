@@ -20,7 +20,7 @@ test('blank newer grade suppresses earlier score rather than falling back',()=>{
 test('invalid scores and stale edits fail without modifying input',()=>{
  for(const score of ['',false,'5',NaN,Infinity,-1,11])assert.throws(()=>editTeacherScore(submission,assignment,{score,revision:1},'t','now'));
  assert.throws(()=>editTeacherScore(submission,assignment,{score:5,revision:0},'t','now'),e=>e.status===409);
- assert.throws(()=>editTeacherScore({...submission,publishedGrade:null,status:'needs_review'},assignment,{score:5,revision:0},'t','now'),e=>e.status===409);
+ assert.equal(editTeacherScore({...submission,publishedGrade:null,status:'needs_review'},assignment,{score:5,revision:0},'t','now').publishedGrade.total,5);
 });
 test('blank cells can receive zero, teacher entry is not a student attempt',()=>{
  const entry=editTeacherScore({id:'entry',assignmentId:'a',studentId:'u',status:'published',manualScoreEntry:true},assignment,{score:0,revision:0},'t','now');
@@ -29,4 +29,19 @@ test('blank cells can receive zero, teacher entry is not a student attempt',()=>
 });
 test('five average color bands cover exact boundaries, zero and empty',()=>{
  assert.deepEqual([0,19.9,20,39.9,40,59.9,60,79.9,80,100].map(x=>scoreBand(x).level),[1,1,2,2,3,3,4,4,5,5]);assert.equal(scoreBand(null),null);
+});
+
+test('missing denominator can be entered explicitly; overrides preserve raw answers and publish',()=>{
+ const raw={id:'new',status:'queued',jobId:'job',text:'original',files:['photo'],choices:{1:'A'}};
+ const result=editTeacherScore(raw,{rubric:[]},{score:18,maxPoints:20,revision:0},'teacher','now');
+ assert.equal(result.publishedGrade.maxPoints,20);assert.equal(result.publishedGrade.total,18);assert.equal(result.status,'published');assert.equal(result.jobId,null);assert.deepEqual(result.choices,raw.choices);
+ assert.throws(()=>editTeacherScore(raw,{}, {score:18,maxPoints:0,revision:0},'t','now'));
+ assert.throws(()=>editTeacherScore(raw,{}, {score:18,maxPoints:10,revision:0},'t','now'));
+});
+test('legacy offline full marks: use explicit, then verified peer denominator; adjusted declared max is not silently guessed',async()=>{
+ const {scoreMaximum}=await import('../homework/score-entry.js');
+ assert.equal(scoreMaximum({declaredMax:10,maxAdjusted:false}),10);
+ assert.equal(scoreMaximum({declaredMax:10,maxAdjusted:true}),null);
+ assert.equal(scoreMaximum({declaredMax:10,maxAdjusted:true},[{maxPoints:15}]),15);
+ assert.equal(scoreMaximum({maxPoints:20},[{maxPoints:15}]),20);
 });

@@ -146,10 +146,10 @@ test('row status prioritises incomplete work, corrections, review and publicatio
 });
 
 test('labels are short and keep the unit and question type', () => {
-  assert.equal(assignmentLabel(assignment('a1')), '2.1 MCQ');
-  assert.equal(assignmentLabel(assignment('a2', {libraryUnit: '', format: 'frq', title: 'Unit 2.3 FRQ 练习'})), 'FRQ 练习');
+  assert.equal(assignmentLabel(assignment('a1')), assignment('a1').title);
+  assert.equal(assignmentLabel(assignment('a2', {libraryUnit: '', format: 'frq', title: 'Unit 2.3 FRQ 练习'})), 'Unit 2.3 FRQ 练习');
   assert.equal(assignmentLabel({title: 'Quiz 01', format: 'mcq'}), 'Quiz 01');
-  assert.equal(assignmentLabel({title: '一个非常非常长的作业标题名称'}), '一个非常非常长的作业标…');
+  assert.equal(assignmentLabel({title: '一个非常非常长的作业标题名称'}), '一个非常非常长的作业标题名称');
 });
 
 test('percent formatting rounds half up and never prints a fake zero', () => {
@@ -210,7 +210,7 @@ test('assignment history is newest first and keeps each cell status', () => {
 
 test('student observations name the facts behind each sentence', () => {
   const a1 = assignment('a1', {libraryUnit: '2.1'});
-  const a2 = assignment('a2', {libraryUnit: '2.3'});
+  const a2 = assignment('a2', {libraryUnit: '2.3', title:'Unit 2.3 MCQ 练习'});
   const fixture = data({assignments: [a1, a2], submissions: [
     {...graded('s1', 'x', 9, 10), assignmentId: 'a1'},
     {...graded('s1', 'y', 4, 10), assignmentId: 'a2'},
@@ -231,7 +231,7 @@ test('student observations name the facts behind each sentence', () => {
 
 test('class observations report the weakest assignment, corrections and missing work', () => {
   const a1 = assignment('a1', {libraryUnit: '2.1'});
-  const a2 = assignment('a2', {libraryUnit: '2.3'});
+  const a2 = assignment('a2', {libraryUnit: '2.3', title:'Unit 2.3 MCQ 练习'});
   const fixture = data({students: [student('s1'), student('s2')], assignments: [a1, a2], submissions: [
     {...graded('s1', 'x', 9, 10), assignmentId: 'a1'},
     {...graded('s2', 'y', 9, 10), assignmentId: 'a1'},
@@ -295,4 +295,8 @@ test('all-class denominator counts only issued work, zero included and blanks ex
  const fixture=data({students,assignments,submissions:[submission('s1','zero',{score:0})]});
  const rows=buildRows(fixture,students,assignments),stats=overviewStats(rows,assignments);
  assert.equal(stats.due,2);assert.equal(rows[0].total,1);assert.equal(rows[1].total,1);assert.equal(stats.average,0);assert.equal(rows[1].average,null);
+});
+
+test('chapter numbers and part labels survive matrix/profile title formatting',()=>{
+ for(const title of ['3.3 MCQ','Unit 3.3 MCQ','3.6 MCQ Part 2'])assert.equal(assignmentLabel({title,libraryUnit:'macro-unit-3',format:'mcq'}),title);
 });
