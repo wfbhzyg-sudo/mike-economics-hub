@@ -1,3 +1,5 @@
+import {editTeacherScore} from './teacher-score.mjs';
+import {assignmentRecords} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
 import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
@@ -40,6 +42,7 @@ const safeUser = (u) => ({
   canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
 export const publicAssignment = (a) => ({
+  offline: Boolean(a.offline), maxPoints: a.maxPoints ?? (a.rubric || []).reduce((n,q)=>n+Number(q.maxPoints||0),0),
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
@@ -62,7 +65,7 @@ export const publicAssignment = (a) => ({
   deletedAt: a.deletedAt || null,
 });
 const publicSubmission = (s) => ({
-  id: s.id,
+  id: s.id, createdAt: s.createdAt, manualScoreEntry: Boolean(s.manualScoreEntry),
   assignmentId: s.assignmentId,
   text: s.text,
   files: s.files,
@@ -922,16 +925,25 @@ export async function createHomework({externalAuth} = {}) {
             teacher();const students=await availableStudents(),submissions=await db.list('submission');
             return (json(res,assignmentRoster(a,students,submissions)),true);
           }
-          if(route[2]==='recipients'&&method==='POST'){
-            teacher();const b=await body(req);assert(b.confirmed===true,'请确认将当前班级学生计入本次应交名单');
-            const students=await availableStudents();
-            await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);assert(current.published&&!current.deletedAt,'请先发布作业',409);
-              const snapshot=captureRecipients(current.classIds,students);
-              const prior=(current.recipients?.students||[]).filter(u=>u.classIds.some(id=>current.classIds.includes(id)));
-              snapshot.students=[...new Map([...prior,...snapshot.students].map(u=>[u.id,u])).values()];
-              current.recipientHistory||=[];if(current.recipients)current.recipientHistory.push(current.recipients);
-              current.recipients=snapshot;await db.put('assignment',current,c);await db.audit(user.id,'confirm_recipients',a.id,c);
-            });return(json(res,{ok:true}),true);
+          if(route[2]==='students' && route[3] && route[4]==='score' && !route[5] && method==='PATCH'){
+            teacher();
+            const b=await body(req), students=await availableStudents();
+            const result=await db.tx(async c=>{
+              const assignment=await requireAssignment(a.id,user,c);
+              assert(assignment.published&&!assignment.deletedAt,'请先发布或恢复作业',409);
+              const member=students.find(u=>u.id===route[3]&&u.classIds?.some(id=>assignment.classIds.includes(id))) || assignment.recipients?.students?.find(u=>u.id===route[3]&&u.classIds?.some(id=>assignment.classIds.includes(id)));
+              assert(member,'学生不在这份作业的班级中',403);
+              const attempts=await db.find('submission',{assignmentId:a.id,studentId:member.id},c);
+              const record=assignmentRecords(attempts,[assignment])[0];
+              const current=record?.effective || record?.latest;
+              assert((b.submissionId||null)===(current?.id||null),'成绩版本已更新，请刷新后再修改',409);
+              const entry=current || {id:'teacher-score:'+hash(a.id+':'+member.id),type:'submission',assignmentId:a.id,studentId:member.id,studentName:member.name,classIds:member.classIds,manualScoreEntry:true,status:'published',createdAt:now(),version:assignment.version,text:'',files:[],rubricSnapshot:[]};
+              const next=editTeacherScore(entry,assignment,b,user.id,now());
+              await db.put('submission',next,c);
+              await db.audit(user.id,'teacher_score',next.id,c);
+              return next;
+            });
+            return(json(res,{submission:publicSubmission(result)}),true);
           }
           if(method==='GET'&&route[2]==='pdf'){
             rate(req,'pdf',40,user.id);

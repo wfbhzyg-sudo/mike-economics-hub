@@ -45,6 +45,8 @@ export function questionImageIds(question) {
   return Array.isArray(question?.questionImages) ? question.questionImages.filter(Boolean) : [];
 }
 
+export const optionLabels = q => (Array.isArray(q?.options) && q.options.length ? q.options : q?.optionLabels || []).map(v => typeof v === 'object' ? String(v.label || '') : String(v)).filter(v => /^[A-E]$/.test(v));
+
 export function questionEligible(question, {unit, imageExists} = {}) {
   if (!question || question.status !== 'ready') return false;
   if (question.type !== 'choice') return false;
@@ -53,7 +55,7 @@ export function questionEligible(question, {unit, imageExists} = {}) {
   if (question.collection === 'exam') return false;
   if (!unit || question.unitId !== unit.id) return false;
   if (!(unit.topics || []).some((topic) => topic.id === question.topic)) return false;
-  const labels = Array.isArray(question.options) ? question.options.map(String) : [];
+  const labels = optionLabels(question);
   if (!labels.length) return false;
   if (!labels.includes(String(question.answer || ''))) return false;
   const images = questionImageIds(question);
@@ -181,7 +183,7 @@ export function publicQuestion(question) {
     number: question.number || '',
     topic: question.topic || '',
     prompt: question.prompt || '',
-    optionLabels: (question.options || []).map(String),
+    optionLabels: optionLabels(question),
     questionImages: questionImageIds(question),
     sourcePages: question.sourcePages || '',
     knowledge: question.knowledge || '',
@@ -223,7 +225,7 @@ export function normalizeAnswers(attempt, answers) {
     const question = attempt.questions.find((q) => q.id === questionId);
     if (!question) continue;
     const label = String(choice || '').toUpperCase();
-    if ((question.options || []).map(String).includes(label)) result[questionId] = label;
+    if (optionLabels(question).includes(label)) result[questionId] = label;
   }
   return result;
 }
@@ -243,7 +245,7 @@ export function scoreAttempt(attempt, submittedAt = new Date()) {
       score: correct ? 1 : 0,
       maxPoints: 1,
       questionImages: questionImageIds(question),
-      optionLabels: (question.options || []).map(String),
+      optionLabels: optionLabels(question),
       prompt: question.prompt || '',
       sourcePages: question.sourcePages || '',
       knowledge: question.knowledge || '',

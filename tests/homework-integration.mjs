@@ -304,6 +304,28 @@ try {
   check("teacher-reviewed grade published", () =>
     assert.equal(after.publishedGrade.total, 2),
   );
+  const scorePath=`assignments/${a.id}/students/${after.studentId || (await student.request('me')).user.id}/score`;
+  const edited=(await teacher.request(scorePath,'PATCH',{score:0,submissionId:after.id,revision:after.publishedGrade.revision})).submission;
+  check('teacher can amend online total to zero without changing answers or item marks',()=>{
+    assert.equal(edited.publishedGrade.total,0); assert.deepEqual(edited.text,after.text);
+    assert.deepEqual(edited.publishedGrade.questions,after.publishedGrade.questions);
+    assert.equal(edited.gradeHistory.at(-1).total,2);
+  });
+  await teacher.request(scorePath,'PATCH',{score:3,submissionId:after.id,revision:after.publishedGrade.revision},409);
+  await student.request(scorePath,'PATCH',{score:3,submissionId:after.id,revision:edited.publishedGrade.revision},403);
+  const cleared=(await teacher.request(scorePath,'PATCH',{score:null,submissionId:after.id,revision:edited.publishedGrade.revision})).submission;
+  check('explicit blank stays null and student sees current revision',()=>assert.equal(cleared.publishedGrade.total,null));
+  await teacher.request(scorePath,'PATCH',{score:2,submissionId:after.id,revision:cleared.publishedGrade.revision});
+  const otherUser=(await outsider.request('me')).user;
+  await teacher.request(`assignments/${a.id}/students/${otherUser.id}/score`,'PATCH',{score:0,submissionId:null,revision:0},403);
+  const blankStudent=client(); await blankStudent.request('register','POST',{username:'blank_student',password:'test-password-2026',name:'Blank QA',invite:cls.invite},201);
+  const blankId=(await blankStudent.request('me')).user.id;
+  const blankPath=`assignments/${a.id}/students/${blankId}/score`;
+  const entered=(await teacher.request(blankPath,'PATCH',{score:0,submissionId:null,revision:0})).submission;
+  check('unsubmitted student gets a teacher score without fabricating an attempt',()=>{assert.equal(entered.manualScoreEntry,true);assert.equal(entered.submittedAt,undefined);assert.equal(entered.publishedGrade.total,0);});
+  await teacher.request(blankPath,'PATCH',{score:1,submissionId:null,revision:0},409);
+  const roster=await teacher.request(`assignments/${a.id}/roster`);
+  check('teacher entry does not claim a student submitted; no confirmation required',()=>{const row=roster.rows.find(x=>x.id===blankId);assert.equal(row.state,'missing');assert.equal(row.grade.total,0);assert.equal(roster.counts.unconfirmed,0);});
   for (const [name, file] of [
     ["image", img],
     ["pdf", pd],

@@ -1,3 +1,4 @@
+import {optionLabels} from './self-practice-model.mjs';
 import {now} from './store.mjs';
 import {assert, HttpError} from './validation.mjs';
 import {
@@ -208,7 +209,7 @@ export function createSelfPractice({db}) {
         number: question.number || '',
         topic: question.topic || '',
         prompt: question.prompt || '',
-        options: (question.options || []).map(String),
+        options: optionLabels(question),
         answer: String(question.answer || '').toUpperCase(),
         questionImages: question.questionImages || [],
         sourcePages: question.sourcePages || '',
@@ -297,7 +298,7 @@ export function createSelfPractice({db}) {
       assert(attempt.questions.some((question) => question.id === questionId), '题目不在这次练习中', 400);
       const choice = String(body?.choice || '').toUpperCase();
       const question = attempt.questions.find((item) => item.id === questionId);
-      assert((question.options || []).includes(choice), '请选择有效选项', 400);
+      assert(optionLabels(question).includes(choice), '请选择有效选项', 400);
       const note = String(body?.note || '').slice(0, 500);
       const corrections = {...(attempt.corrections || {}), [questionId]: {choice, note, updatedAt: now()}};
       const next = {...attempt, corrections, updatedAt: now()};

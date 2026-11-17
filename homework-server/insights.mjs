@@ -34,7 +34,7 @@ export function insightData({assignments, submissions, mistakes = [], students})
 
 // Rules version is part of the data version so a report generated under older
 // fact-building rules is treated as stale instead of silently re-used.
-const FACTS_RULES_VERSION = 2;
+const FACTS_RULES_VERSION = 3;
 const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
 
 export function insightVersion({scope, data}) {

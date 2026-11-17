@@ -71,7 +71,7 @@ export function buildRows(data, students, assignments) {
   return students.map(student => {
     const cells = cellsFor(data, student, assignments);
     const summary = cellSummary(cells);
-    const submitted = cells.filter(cell => cell.record).length;
+    const submitted = cells.filter(cell => cell.record && !cell.record.latest.manualScoreEntry).length;
     const published = cells.filter(cell => cell.rate !== null).length;
     const needsReview = cells.filter(cell => cell.record?.latest?.status === 'needs_review').length;
     const reviewing = cells.filter(cell => ['queued', 'grading'].includes(cell.record?.latest?.status)).length;
@@ -79,7 +79,7 @@ export function buildRows(data, students, assignments) {
     const attention = cells.filter(cell => cell.status === 'attention').length;
     const unconfirmed = cells.filter(cell => cell.status === 'unconfirmed').length;
     const openCorrections = (data.mistakes || []).filter(row => row.studentId === student.id && scope.has(row.assignmentId) && row.status === 'todo').length;
-    const total = cells.length;
+    const total = cells.filter(cell => cell.required || cell.record).length;
     const average = summary.average;
     return {
       student, cells, summary, average, total, submitted, published, needsReview, reviewing,
@@ -97,7 +97,7 @@ export function overviewStats(rows, assignments) {
   let submitted = 0, published = 0, needsReview = 0, reviewing = 0, missing = 0, attention = 0;
   for (const row of rows) {
     for (const cell of row.cells) {
-      if (cell.record) submitted += 1;
+      if (cell.record && !cell.record.latest.manualScoreEntry) submitted += 1;
       if (cell.rate !== null) { published += 1; rates.push(cell.rate); }
       if (cell.record?.latest?.status === 'needs_review') needsReview += 1;
       if (['queued', 'grading'].includes(cell.record?.latest?.status)) reviewing += 1;
@@ -107,7 +107,7 @@ export function overviewStats(rows, assignments) {
   }
   return {
     students: rows.length, assignments: assignments.length,
-    due: rows.length * assignments.length,
+    due: rows.reduce((sum,row)=>sum+row.total,0),
     submitted, published, needsReview, reviewing, missing, attention,
     average: rates.length ? round1(mean(rates)) : null,
     withWork: rows.filter(row => row.submitted > 0).length,

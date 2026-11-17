@@ -288,3 +288,11 @@ test('class scope accepts bookself-class prefixes on either side', () => {
   assert.equal(scopedStudents(data, { classId: 'c1', assignments: data.assignments }).length, 1);
   assert.deepEqual(scopedAssignments(data, { classId: 'bookself-class:c1' }).map(a => a.id), ['a1']);
 });
+
+test('all-class denominator counts only issued work, zero included and blanks excluded',()=>{
+ const students=[student('s1'),{...student('s2'),classIds:['class-2']}];
+ const assignments=[assignment('a1',{audience:null}),assignment('a2',{classIds:['class-2'],audience:null})];
+ const fixture=data({students,assignments,submissions:[submission('s1','zero',{score:0})]});
+ const rows=buildRows(fixture,students,assignments),stats=overviewStats(rows,assignments);
+ assert.equal(stats.due,2);assert.equal(rows[0].total,1);assert.equal(rows[1].total,1);assert.equal(stats.average,0);assert.equal(rows[1].average,null);
+});

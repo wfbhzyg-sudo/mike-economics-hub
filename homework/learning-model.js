@@ -12,7 +12,7 @@ export function assignmentRecords(submissions, assignments = []) {
   }
   return [...grouped.values()].map(attempts => {
     attempts.sort((a,b) => (b.submittedAt || b.createdAt || '').localeCompare(a.submittedAt || a.createdAt || '') || b.id.localeCompare(a.id));
-    const latest = attempts[0], effective = attempts.find(s => s.publishedGrade?.total != null);
+    const latest = attempts[0], effective = attempts.find(s => s.publishedGrade);
     return {assignmentId:latest.assignmentId, studentId:latest.studentId,
       assignment: assignments.find(a => a.id === latest.assignmentId) || latest.assignment || {},
       latest, effective, grade:normalizeGrade(effective?.publishedGrade) || null, attempts,
@@ -23,7 +23,7 @@ export function gradeSummary(records) {
   const graded=records.filter(r => r.grade?.maxPoints > 0 && Number.isFinite(r.grade.total));
   const rates=graded.map(r=>r.grade.total/r.grade.maxPoints*100);
   return {count:graded.length,average:rates.length?Math.round(rates.reduce((a,b)=>a+b,0)/rates.length*10)/10:null,
-    wrong:graded.reduce((sum,r)=>sum+r.grade.questions.filter(q=>q.score!=null&&q.score<q.maxPoints).length,0)};
+    wrong:graded.reduce((sum,r)=>sum+(r.grade.questions || []).filter(q=>q.score!=null&&q.score<q.maxPoints).length,0)};
 }
 export function questionTotals(grade, questions=[]) {
   const totals={choice:{score:0,max:0},short:{score:0,max:0}};
@@ -35,7 +35,7 @@ export function questionTotals(grade, questions=[]) {
 }
 export function assignmentState(a, submissions, time=Date.now()) {
   const offline=Boolean(a.offline||a.format==='score');
-  const attempts=submissions.filter(s=>s.assignmentId===a.id);
+  const attempts=submissions.filter(s=>s.assignmentId===a.id&&(offline||!s.manualScoreEntry));
   const latest=assignmentRecords(attempts,[a])[0]?.latest;
   const draft=attempts.filter(s=>s.status==='draft'&&(!latest||Date.parse(s.updatedAt||s.createdAt)>Date.parse(latest.submittedAt||latest.createdAt))).sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];
   const closed=Boolean(a.dueAt&&Date.parse(a.dueAt)<time&&!a.allowLate&&latest?.status!=='returned');

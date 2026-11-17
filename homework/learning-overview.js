@@ -299,7 +299,7 @@ export function mountLearningOverview(ctx, initialData) {
 
   // ---------- matrix ----------
   function renderMatrix(assignments, rows) {
-    const columns = assignments.slice(-24);
+    const columns = assignments.slice(-24).reverse();
     const truncated = assignments.length - columns.length;
     const sortState = key => filter.sort === key ? (filter.direction === 'asc' ? 'ascending' : 'descending') : 'none';
     const sortButton = (key, label) => {
@@ -337,19 +337,19 @@ export function mountLearningOverview(ctx, initialData) {
 
   function cellMarkup(cell) {
     const band = cell.status === 'graded' && cell.rate !== null ? scoreBand(cell.rate) : null;
-    const short = {pending: '待复核', attention: '待处理', todo: '进行中', missing: '未交', absent: '缺考', unconfirmed: '待确认', unassigned: '未分配'};
-    const label = cell.rate === null ? short[cell.status] || cell.label : formatPercent(cell.rate);
+    const short = {pending: '待复核', attention: '待处理', todo: '进行中', missing: '未交', absent: '留空', unassigned: '未分配'};
+    const label = cell.rate === null ? '—' : formatPercent(cell.rate);
     const isSelected = Boolean(selected && selected.studentId === cell.student.id && selected.assignmentId === cell.assignment.id);
     const detail = cell.rate === null ? cell.label : `${formatPercent(cell.rate)}${cell.pendingUpdate ? '，新版本待更新' : ''}`;
-    const offline = Boolean(cell.record?.grade?.scoreOnly && cell.record?.latest?.id);
-    const aria = `${cell.student.name}，${cell.assignment.title || assignmentLabel(cell.assignment)}，${detail}${offline ? '，线下成绩，双击可修改' : ''}`;
+    const offline = Boolean(cell.required || cell.record?.grade);
+    const aria = `${cell.student.name}，${cell.assignment.title || assignmentLabel(cell.assignment)}，${detail}${offline ? '，双击可修改成绩，留空不计均分' : ''}`;
     return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${offline ? 'data-offline="true"' : ''} ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" title="${h(aria)}" tabindex="-1">${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
   }
 
   function averageMarkup(row) {
     if (row.average === null) return '<span class="lo-avg-none">—</span>';
     const band = scoreBand(row.average);
-    return `<span class="lo-avg-value" data-band="${band ? band.level : ''}" title="平均 ${formatPercent(row.average)} · 已出分 ${row.published}/${row.total}">${formatPercent(row.average)}</span><small>${row.published}/${row.total}</small>`;
+    return `<span class="lo-avg-value lo-band-pill" data-band="${band ? band.level : ''}" title="平均 ${formatPercent(row.average)} · 已出分 ${row.published}/${row.total}">${formatPercent(row.average)}</span><small>${row.published}/${row.total}</small>`;
   }
 
   function trendMarkup(row) {
@@ -388,7 +388,7 @@ export function mountLearningOverview(ctx, initialData) {
       return `<details class="lo-student-card" data-card="${h(row.student.id)}">
         <summary>
           <span class="lo-avatar" aria-hidden="true">${h(initial(row.student.name))}</span>
-          <span class="lo-card-main"><strong>${highlightText(row.student.name, filter.query)}</strong><small>完成 ${row.submitted}/${row.total} · 已出分 ${row.published}${row.openCorrections ? ` · 待订正 ${row.openCorrections}` : ''}</small></span>
+          <span class="lo-card-main"><strong>${highlightText(row.student.name, filter.query)} <span class="lo-band-pill" data-band="${row.band?.level || ''}">${formatPercent(row.average)}</span></strong><small>完成 ${row.submitted}/${row.total} · 已出分 ${row.published}${row.openCorrections ? ` · 待订正 ${row.openCorrections}` : ''}</small></span>
           <span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>
           <span class="lo-chevron" aria-hidden="true">›</span>
         </summary>
@@ -407,7 +407,7 @@ export function mountLearningOverview(ctx, initialData) {
       const chip = rowStatus(row);
       const on = row.student.id === profileId;
       return `<button type="button" class="lo-profile-row${on ? ' active' : ''}" data-profile="${h(row.student.id)}" aria-pressed="${on}">
-        <span class="lo-profile-row-main"><strong>${highlightText(row.student.name, filter.query)}</strong><small>${formatPercent(row.average)} 平均 · 已出分 ${row.published}/${row.total}</small></span>
+        <span class="lo-profile-row-main"><strong>${highlightText(row.student.name, filter.query)}</strong><small><span class="lo-band-pill" data-band="${row.band?.level || ''}">${formatPercent(row.average)}</span> 平均 · 已出分 ${row.published}/${row.total}</small></span>
         <span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>
       </button>`;
     }).join('') || '<p class="lo-list-empty">没有匹配的学生。</p>';
@@ -440,7 +440,7 @@ export function mountLearningOverview(ctx, initialData) {
       <button type="button" class="lo-back lo-mobile-only" data-profile-back>← 返回学生列表</button>
       <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><div class="lo-profile-head-actions">${ai ? `<button type="button" class="lo-btn lo-primary" data-ai-profile="${h(row.student.id)}">生成学习建议</button>` : ''}<a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div></div>
       <div class="lo-profile-metrics">
-        <div><span>平均</span><strong>${formatPercent(profile.row.average)}</strong></div>
+        <div><span>平均</span><strong class="lo-band-pill" data-band="${profile.row.band?.level || ''}">${formatPercent(profile.row.average)}</strong></div>
         <div><span>已出分</span><strong>${profile.row.published}<small>/${profile.row.total}</small></strong></div>
         <div><span>完成率</span><strong>${formatPercent(profile.row.completion)}</strong></div>
         <div><span>近期变化</span><strong>${profile.row.trend === null ? '—' : `${trendLabel(profile.row.trend)}${trendLabel(profile.row.trend) === '持平' ? '' : ' 分'}`}</strong></div>
@@ -799,10 +799,10 @@ function renderDetail() {
     const attention = [...context.visible].sort((a, b) => (b.missing + b.needsReview + b.openCorrections) - (a.missing + a.needsReview + a.openCorrections)).slice(0, 4);
     return `<div class="lo-detail-empty">
       <h2>从矩阵选择一名学生</h2>
-      <p>点击任一成绩可查看原题、本人作答与班级数据。矩阵内可用方向键移动，Enter 打开。</p>
+      <p>点击任一成绩可查看原题、本人作答与班级数据。双击可改分，手机点开详情后选择「修改成绩」。矩阵内可用方向键移动，Enter 打开。</p>
       ${attention.length ? `<h3>优先关注</h3><ul class="lo-attention-list">${attention.map(row => `<li><button type="button" class="lo-attention" data-profile="${h(row.student.id)}"><span>${h(row.student.name)}</span><small>${row.missing ? `待交 ${row.missing}` : ''}${row.missing && row.needsReview ? ' · ' : ''}${row.needsReview ? `待复核 ${row.needsReview}` : ''}${row.openCorrections ? `${row.missing || row.needsReview ? ' · ' : ''}待订正 ${row.openCorrections}` : ''}</small></button></li>`).join('')}</ul>` : ''}
       ${classObservationsMarkup()}
-      <p class="lo-note">五色为课堂得分率参考分档（见「更多 → 图例」），非 AP 官方换算；待复核与未交都不计 0 分。</p>
+      <p class="lo-note">五色为课堂得分率参考分档（见「更多 → 图例」），非 AP 官方换算；留空不计均分，明确录入的 0 分计入均分。</p>
     </div>`;
   }
 
@@ -823,11 +823,11 @@ function renderDetail() {
         <button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button>
       </header>
       <div class="lo-detail-score">
-        <strong>${grade ? `${grade.total}<small>/${grade.maxPoints}</small>` : h(cell.label)}</strong>
+        <strong>${grade?.total != null ? `${grade.total}<small>/${grade.maxPoints}</small>` : '—'}</strong>
         <span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>
         ${cell.pendingUpdate ? '<span class="lo-chip" data-tone="warn">新版本待更新</span>' : ''}
         ${cell.late ? '<span class="lo-chip">迟交</span>' : ''}
-        ${cell.unconfirmed ? '<span class="lo-chip" data-tone="muted">名单待确认</span>' : ''}
+        ${grade?.manualTotal ? '<span class="lo-chip">教师已改分</span>' : ''}
       </div>
       <dl class="lo-detail-meta">
         <div><dt>截止</dt><dd>${h(assignment.dueAt ? longDate(assignment.dueAt) : '不限')}</dd></div>
@@ -835,7 +835,8 @@ function renderDetail() {
         <div><dt>班级平均</dt><dd>${formatPercent(cellAverage(assignment.id))}</dd></div>
       </dl>
       <div class="lo-detail-links">
-        ${record?.latest?.id ? link(`work/review/${record.latest.id}`, '查看作答与复核') : ''}
+        ${cell.required || grade ? '<button type="button" class="lo-btn" data-edit-score>修改成绩</button>' : ''}
+        ${record?.latest?.id && !record.latest.manualScoreEntry ? link(`work/review/${record.latest.id}`, '查看作答与复核') : ''}
         ${link(`work/overview/${assignment.id}`, '作业设置')}
       </div>
       <section class="lo-detail-section">
@@ -1036,26 +1037,29 @@ function renderDetail() {
   });
 
   function offlineEditor(cell) {
-    const grade = cell.record?.grade, submission = cell.record?.latest;
-    if (!grade || !submission?.id) return;
-    const max = Number(grade.maxPoints || cell.assignment.maxPoints || 0);
+    const grade = cell.record?.grade, submission = cell.record?.effective || cell.record?.latest;
+    if (submission && !grade && !submission.manualScoreEntry) { toast('请先完成批阅并发布成绩'); return; }
+    const max = Number(grade?.maxPoints || cell.assignment.maxPoints || (cell.assignment.questions || []).reduce((n,q)=>n+Number(q.maxPoints||0),0));
+    if (!(max > 0)) { toast('这份作业没有有效满分，请先检查作业设置'); return; }
+    const blank = grade?.total == null;
     const dialog = document.createElement('dialog');
     dialog.className = 'lo-offline-dialog';
-    dialog.innerHTML = `<form method="dialog"><h2>${h(cell.student.name)} · ${h(cell.assignment.title)}</h2><p class="lo-offline-meta">线下成绩 · 满分 ${max} · ${h(cell.assignment.dueAt ? '截止 ' + longDate(cell.assignment.dueAt) : '未设截止')}</p><label class="lo-offline-field"><span>分数</span><input name="score" type="number" min="0" max="${max}" step="0.5" value="${grade.absent ? '' : grade.total}" ${grade.absent ? 'disabled' : ''} required><em>/ ${max}</em></label><label class="lo-offline-check"><input type="checkbox" name="absent" ${grade.absent ? 'checked' : ''}><span>缺考（不计入均分）</span></label><p class="lo-offline-error" role="alert"></p><div class="lo-offline-actions"><button type="button" class="lo-btn" data-offline-cancel>取消</button><button type="button" class="lo-btn lo-primary" data-offline-save>保存并更新均分</button></div><p class="lo-offline-note">保存后学生成绩页立即显示，不产生提交或错题。线上作业请仍去批阅页改分。</p></form>`;
+    dialog.setAttribute('aria-label','修改成绩');
+    dialog.innerHTML = `<form method="dialog"><h2>${h(cell.student.name)} · ${h(cell.assignment.title)}</h2><p class="lo-offline-meta">满分 ${max} · 留空不计均分，0 分计入均分</p><label class="lo-offline-field"><span>分数</span><input name="score" type="number" min="0" max="${max}" step="0.1" value="${blank ? '' : grade.total}" inputmode="decimal"><em>/ ${max}</em></label><label class="lo-offline-check"><input type="checkbox" name="absent"><span>留空（请假等，不计入均分）</span></label><p class="lo-offline-error" role="alert"></p><div class="lo-offline-actions"><button type="button" class="lo-btn" data-offline-cancel>取消</button><button type="submit" class="lo-btn lo-primary" data-offline-save>保存并更新统计</button></div><p class="lo-offline-note">保留原作答、逐题评分与改分历史；这里修改总分。留空不会恢复旧分数。</p></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector('form'), input = form.elements.score, absent = form.elements.absent, error = form.querySelector('.lo-offline-error');
     absent.onchange = () => { input.disabled = absent.checked; if (!absent.checked) input.focus(); };
     dialog.querySelector('[data-offline-cancel]').onclick = () => dialog.close();
     dialog.addEventListener('close', () => dialog.remove());
-    dialog.querySelector('[data-offline-save]').onclick = async () => {
-      error.textContent = '';
-      if (!absent.checked && (input.value === '' || !Number.isFinite(Number(input.value)))) { error.textContent = '请输入分数'; input.focus(); return; }
+    form.onsubmit = async event => {
+      event.preventDefault(); error.textContent = '';
+      if (!absent.checked && (input.value === '' || !Number.isFinite(Number(input.value)) || Number(input.value)<0 || Number(input.value)>max)) { error.textContent = '请输入 0–'+max+' 之间的分数，或勾选留空'; input.focus(); return; }
       const button = dialog.querySelector('[data-offline-save]'); button.disabled = true;
       try {
-        const response = await fetch('/api/homework/submissions/' + encodeURIComponent(submission.id) + '/offline-score', {method: 'PATCH', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf}, body: JSON.stringify({score: absent.checked ? null : Number(input.value), absent: absent.checked, revision: grade.revision || 1})});
+        const response = await fetch('/api/homework/assignments/' + encodeURIComponent(cell.assignment.id) + '/students/' + encodeURIComponent(cell.student.id) + '/score', {method: 'PATCH', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf}, body: JSON.stringify({score: absent.checked ? null : Number(input.value), submissionId: submission?.id || null, revision: grade ? grade.revision || 1 : 0})});
         const value = await response.json();
         if (!response.ok) throw Error(value.error || '保存失败，请重试');
-        dialog.close(); await refresh(); toast(absent.checked ? '已标记缺考' : '成绩已更新，班级均分已重算');
+        dialog.close(); await refresh(); toast(absent.checked ? '已留空，不计入统计' : '成绩已更新，统计已重算');
       } catch (e) { error.textContent = e.message; button.disabled = false; }
     };
     dialog.showModal(); input.focus(); input.select();
@@ -1066,12 +1070,13 @@ function renderDetail() {
     const cell = context.rows.flatMap(row => row.cells.map(item => ({row, cell: item}))).find(item => item.cell.student.id === button.dataset.s && item.cell.assignment.id === button.dataset.a)?.cell;
     if (!cell) return;
     event.preventDefault();
-    if (!(cell.record?.grade?.scoreOnly || cell.assignment.offline || cell.assignment.format === 'score')) { toast('线上作业请在批阅页修改题目分数'); return; }
+    if (!cell.required && !cell.record?.grade) return;
     offlineEditor(cell);
   });
 
   root.addEventListener('click', event => {
     const target = event.target;
+    if (target.closest('[data-edit-score]')) { const found=findSelection(); if(found) offlineEditor(found.cell); return; }
     const cell = target.closest('[data-cell]');
     if (cell) { selectCell(cell.dataset.s, cell.dataset.a); return; }
     const sort = target.closest('[data-sort]');

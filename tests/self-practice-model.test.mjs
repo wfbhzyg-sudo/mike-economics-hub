@@ -159,3 +159,10 @@ test('deadline finalization uses saved answers and marks auto-submit', () => {
   assert.equal(finalized.result.total, 1);
   assert.equal(finalized.result.maxPoints, 2);
 });
+
+test('imported optionLabels and object options remain eligible and preserve labels in public attempts',()=>{
+ const imported=question(1,{options:undefined,optionLabels:['A','B','C','D']});
+ assert.equal(questionEligible(imported,{unit}),true);
+ assert.equal(questionEligible(question(1,{options:[{label:'A'},{label:'B'}]}),{unit}),true);
+ assert.equal(questionEligible({...imported,answer:'E'},{unit}),false);
+});
