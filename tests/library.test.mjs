@@ -14,11 +14,11 @@ test('Student unit payload excludes teacher answers and teaching notes',()=>{
  const safe=publicUnit({id:UNIT,topics:[{id:'2.1',teacherNotes:'secret',title:'Demand'}],resources:[{fileId:'s',audience:'student'},{fileId:'a',audience:'teacher'}]});
  assert.equal(safe.resources.length,1);assert(!JSON.stringify(safe).includes('secret'));
 });
-test('Publish rejects unknown, duplicate or unverified questions, while FRQ needs no MCQ taxonomy',()=>{
+test('Selection rejects unknown/duplicate questions; optional strict review checks keys and FRQ scoring',()=>{
  const choice={id:'q',type:'choice',status:'ready',answer:'A',questionImages:['f']};
  assert.throws(()=>validateSelection(['q','q'],[choice]));assert.throws(()=>validateSelection(['missing'],[choice]));
- assert.throws(()=>validateSelection(['q'],[{...choice,answer:''}]));assert.throws(()=>validateSelection(['q'],[{...choice,status:'review'}]));
- assert.throws(()=>validateSelection(['f'],[{id:'f',type:'short',status:'ready',questionImages:['img'],criteria:'Key',maxPoints:1,scoringPoints:[]}]));
+ assert.throws(()=>validateSelection(['q'],[{...choice,answer:''}],{requireReady:true}));assert.throws(()=>validateSelection(['q'],[{...choice,status:'review'}],{requireReady:true}));
+ assert.throws(()=>validateSelection(['f'],[{id:'f',type:'short',status:'ready',questionImages:['img'],criteria:'Key',maxPoints:1,scoringPoints:[]}],{requireReady:true}));
  assert.equal(validateSelection(['f'],[{id:'f',type:'short',status:'ready',questionImages:['img'],criteria:'Key',maxPoints:1,scoringPoints:[{id:'1',criterion:'Shift demand right',maxPoints:1}]}])[0].id,'f');
 });
 function fixture(){const records=new Map([[UNIT,{kind:'library-unit',id:UNIT,type:'library-unit',owner:'t',topics:[{id:'2.1',teacherNotes:'private'}],resources:[{fileId:'public',audience:'student',pages:10},{fileId:'key',audience:'teacher',pages:2}]}],['macro-unit-4',{id:'macro-unit-4',kind:'library-unit',type:'library-unit',owner:'t',topics:[],resources:[{fileId:'locked',audience:'class',pages:2}]}],['release',{id:'release',unitId:UNIT,classIds:['c']}]]);

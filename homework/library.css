@@ -238,3 +238,7 @@ dialog.lib-board-detail:not([open]),dialog.lib-board-dialog:not([open]){display:
 .lib-release-button[data-open="true"]{background:#e7f0ed;border-color:#b9d3c9;color:#245c52}
 .lib-release-button:hover{background:#f2f6f3}
 @media(max-width:760px){.lib-teacher-actions{gap:6px}.lib-release-button{min-height:40px;font-size:12px;padding:0 10px}}
+
+.library-manual-points{border:1px solid #d4c5a7!important;border-radius:8px;padding:10px!important;background:#f5f0e4;min-width:0}.library-manual-points legend{font-size:13px;font-weight:600}.library-manual-points p{font-size:12px;line-height:1.5;margin:4px 0 8px}.library-manual-points label{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}.library-manual-points label>span{flex:1;min-width:0;overflow-wrap:anywhere}.library-manual-points input{width:88px;min-width:0;min-height:36px;font-size:16px;padding:5px}
+
+.bank-publish-dialog .library-manual-points label,.lib-dialog .library-manual-points label{display:grid;grid-template-columns:minmax(0,1fr) 88px;align-items:center}.bank-publish-dialog .library-manual-points input,.lib-dialog .library-manual-points input{width:88px!important;max-width:88px!important;min-width:0!important}

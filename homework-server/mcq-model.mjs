@@ -13,7 +13,11 @@ export function validateItems(items,pages){
  const answer=text(q.answer,1).toUpperCase();assert(options.some(o=>o.label===answer),'请确认每题正确答案');assert(text(q.sourcePages,200),'请填写答案出处');
  return {id,type:'choice',sliceOnly,prompt,options,regions,answer,sourcePages:text(q.sourcePages,200),checked:true,maxPoints:1};});
 }
-export function choiceScore(questions,answers){const rows=questions.filter(q=>q.type==='choice').map(q=>{const picked=answers?.[q.id]||'';assert(!picked||q.options?.some(o=>o.label===picked),'选项无效');return {id:q.id,score:picked===q.correctOptions?.[0]?q.maxPoints:0,maxPoints:q.maxPoints,selectedOptions:picked?[picked]:[],needsReview:false,evidence:'',feedback:''};});return {scoreOnly:true,questions:rows,total:rows.reduce((n,q)=>n+q.score,0),maxPoints:rows.reduce((n,q)=>n+q.maxPoints,0),needsReview:false};}
+export function choiceScore(questions,answers){
+ const rows=questions.filter(q=>q.type==='choice').map(q=>{const picked=answers?.[q.id]||'';assert(!picked||q.options?.some(o=>o.label===picked),'选项无效');const manual=q.manualGradingRequired===true||!q.options?.some(o=>o.label===q.correctOptions?.[0]);return {id:q.id,score:manual?null:picked===q.correctOptions[0]?q.maxPoints:0,maxPoints:q.maxPoints,selectedOptions:picked?[picked]:[],needsReview:manual,evidence:'',feedback:''};});
+ return {scoreOnly:true,questions:rows,total:rows.some(q=>q.score===null)?null:rows.reduce((n,q)=>n+q.score,0),maxPoints:rows.reduce((n,q)=>n+q.maxPoints,0),needsReview:rows.some(q=>q.needsReview)};
+}
+export function manualAssignmentScore(questions,answers={}){return combineScores(choiceScore(questions,answers),{questions:questions.filter(q=>q.type!=='choice').map(q=>({id:q.id,score:null,maxPoints:q.maxPoints,needsReview:true,evidence:'',feedback:''}))});}
 export function combineScores(a,b){const questions=[...a.questions,...b.questions];return {scoreOnly:true,questions,total:questions.some(q=>q.score===null)?null:questions.reduce((n,q)=>n+q.score,0),maxPoints:questions.reduce((n,q)=>n+q.maxPoints,0),needsReview:questions.some(q=>q.needsReview)};}
 export function studentItems(a){return (a.rubric||[]).map(q=>({id:q.id,prompt:q.prompt,type:q.type,maxPoints:q.maxPoints,options:q.options||[],questionImages:q.questionImages||[]}));}
 export function attemptRules(a,studentId){return {...a,...(a.accommodations?.find(r=>r.studentId===studentId)||{})};}

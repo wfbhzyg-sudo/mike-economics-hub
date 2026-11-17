@@ -5,7 +5,7 @@ import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
 import {courseFileETag,matchesETag} from './file-cache.mjs';
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
-import {choiceScore,combineScores} from './mcq-model.mjs';
+import {choiceScore,combineScores,manualAssignmentScore} from './mcq-model.mjs';
 import {createLibrary} from './library.mjs';
 import {createMCQ} from './mcq.mjs';
 import {createCompanion} from './companion.mjs';
@@ -211,6 +211,9 @@ export async function createHomework({externalAuth} = {}) {
     s.version = a.version;
     s.gradingMode = a.gradingMode || "manual";
     s.rubricSnapshot = structuredClone(a.rubric);
+    if(a.rubric.some(q=>q.manualGradingRequired)){
+      s.status='needs_review';s.suggestedGrade=manualAssignmentScore(a.rubric,s.choices);s.teacherReviewDraft=null;s.error=null;s.jobId=null;s.updatedAt=now();await db.put('submission',s,c);return;
+    }
     if(s.choices){
       s.choiceGrade=choiceScore(a.rubric,s.choices);
       if(a.rubric.every(q=>q.type==='choice')){s.status='needs_review';s.suggestedGrade=s.choiceGrade;s.teacherReviewDraft=null;s.error=null;s.jobId=null;s.updatedAt=now();await db.put('submission',s,c);return;}
