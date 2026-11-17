@@ -1,7 +1,7 @@
+import {selectedCourse,rememberCourse} from './course-scope.js';
 const DAY = 86_400_000;
 const CREATE_KEY = 'sp:create';
 const LOCAL_KEY = 'sp:attempt:';
-const LAST_KEY = 'sp:last';
 const courseName = (course) => (course === 'macro' ? 'AP 宏观' : 'AP 微观');
 
 function formatClock(seconds) {
@@ -29,17 +29,23 @@ function readJSON(key, fallback) {
 export function createSelfPracticeUI(ctx) {
   const {main, state, api, post, put, go, h, toast} = ctx;
   let destroy = null;
+  let creationVersion=0;
 
-  function readCreate() {
-    return readJSON(CREATE_KEY + ':' + state.user.id, {course: 'micro', topics: [], count: 10, timer: 'countup', minutes: 25});
+  function readCreate(course) {
+    const legacy=readJSON(CREATE_KEY+':'+state.user.id,{});
+    course=course||selectedCourse(state.user.id,['micro','macro'],legacy.course==='macro'?'macro':'micro');
+    return {...{course,topics:[],count:10,timer:'countup',minutes:25},...(legacy.course===course?legacy:{}),...readJSON(CREATE_KEY+':'+state.user.id+':'+course,{}),course};
   }
   function saveCreate(value) {
-    localStorage.setItem(CREATE_KEY + ':' + state.user.id, JSON.stringify(value));
+    try{localStorage.setItem(CREATE_KEY+':'+state.user.id+':'+value.course,JSON.stringify(value));}catch{}
+    rememberCourse(state.user.id,value.course);
   }
 
-  async function creation() {
+  async function creation(course) {
+    const version=++creationVersion;
+    destroy=()=>{++creationVersion;};
     main.innerHTML = '<section class="paper sp-loading"><p>正在读取可练习章节…</p></section>';
-    let settings = readCreate();
+    let settings = readCreate(course);
     let catalog;
     let attempts = [];
     try {
@@ -48,12 +54,13 @@ export function createSelfPracticeUI(ctx) {
         api('self-practice/attempts').then((value) => value.attempts || []).catch(() => []),
       ]);
     } catch (error) {
+      if(version!==creationVersion)return;
       main.innerHTML = `<section class="paper sp-error"><h1>暂时无法读取练习</h1><p>${h(error.message)}</p><button class="primary" data-sp-retry>重试</button></section>`;
       main.querySelector('[data-sp-retry]').onclick = () => creation();
       return;
     }
-    const token = {};
-    destroy = () => { destroy = null; };
+    if(version!==creationVersion)return;
+    attempts=attempts.filter(a=>a.course===settings.course);
 
     const units = catalog.units || [];
     const availableByTopic = new Map();
@@ -85,7 +92,7 @@ export function createSelfPracticeUI(ctx) {
     </section>
   </div>
   <section class="sp-recent" aria-labelledby="sp-recent-title">
-    <div class="sp-card-head"><h2 id="sp-recent-title">最近模考</h2><button type="button" class="link" data-history>全部记录</button></div>
+    <div class="sp-card-head"><h2 id="sp-recent-title">${courseName(settings.course)} · 最近模考</h2><button type="button" class="link" data-history>本学科记录</button></div>
     <div data-recent>${recentMarkup(attempts.slice(0, 3), h)}</div>
   </section>
 </section>`;
@@ -121,8 +128,8 @@ export function createSelfPracticeUI(ctx) {
 
     const toggleCourse = async (course) => {
       if (course === settings.course) return;
-      settings = {...settings, course, topics: []};
-      await creation();
+      saveCreate(settings);
+      await creation(course);
     };
     page.querySelectorAll('[data-course]').forEach((button) => {
       button.onclick = () => toggleCourse(button.dataset.course);
@@ -171,6 +178,7 @@ export function createSelfPracticeUI(ctx) {
     page.querySelectorAll('[data-continue]').forEach((link) => {
       link.onclick = (event) => { event.preventDefault(); go(link.getAttribute('data-continue')); };
     });
+    summary.onclick=e=>{const b=e.target.closest('[data-remove]');if(!b)return;settings.topics=settings.topics.filter(id=>id!==b.dataset.remove);unitsHost.querySelectorAll('[data-topic]').forEach(input=>input.checked=settings.topics.includes(input.dataset.topic));updateUnitCheckboxes();paint();};
     start.onclick = async () => {
       if (start.disabled) return;
       if (settings.timer === 'countdown' && !(settings.minutes >= 1 && settings.minutes <= 240)) {
@@ -190,7 +198,7 @@ export function createSelfPracticeUI(ctx) {
           timerMode: settings.timer,
           timeLimitMinutes: settings.timer === 'countdown' ? settings.minutes : 0,
         });
-        localStorage.setItem(LAST_KEY, JSON.stringify(settings));
+
         go('self-practice/attempt/' + encodeURIComponent(attempt.id));
       } catch (error) {
         start.disabled = false;
@@ -301,7 +309,7 @@ export function createSelfPracticeUI(ctx) {
     main.innerHTML = `<section class="sp-run" data-page="run">
   <header class="sp-run-head">
     <button type="button" class="sp-back" data-exit aria-label="退出本次练习">←</button>
-    <div class="sp-run-title"><strong>自主模考</strong><span data-progress>${index + 1} / ${attempt.questions.length}</span></div>
+    <div class="sp-run-title"><strong>${courseName(attempt.course)} · 模考</strong><span data-progress>${index + 1} / ${attempt.questions.length}</span></div>
     <div class="sp-timer" data-timer role="timer" aria-live="off">${attempt.timerMode === 'countdown' ? formatClock((Date.parse(attempt.deadlineAt) - Date.now()) / 1000) : '00:00'}</div>
     <button type="button" class="sp-flag" data-flag aria-pressed="${flags.has(attempt.questions[index].id)}">${flags.has(attempt.questions[index].id) ? '已标记' : '标记'}</button>
     <button type="button" class="sp-palette-button" data-palette>答题卡</button>
@@ -593,8 +601,7 @@ export function createSelfPracticeUI(ctx) {
 
     main.querySelectorAll('[data-again]').forEach((button) => {
       button.onclick = async () => {
-        const last = readJSON(LAST_KEY, null);
-        if (!last) { go('self-practice'); return; }
+
         const clientId = crypto.randomUUID();
         try {
           const {attempt: next} = await post('self-practice/attempts', {
@@ -641,7 +648,7 @@ export function createSelfPracticeUI(ctx) {
     });
     const last = {course: attempt.course, topics: attempt.topicIds, count: attempt.questions.length, timer: attempt.timerMode, minutes: attempt.timeLimitMinutes || 25};
     saveCreate(last);
-    localStorage.setItem(LAST_KEY, JSON.stringify(last));
+
   }
 
   function wrongMarkup(attempt, question, corrections) {

@@ -1,3 +1,4 @@
+import {classKey,namedCourse} from '../homework/course-scope.js';
 import {automaticGradeReady,libraryOptions} from '../homework/library-grading.js';
 import {answerSuggestionInput,withAnswerSuggestion} from './library-answer-review.mjs';
 import {resolveQuestionSource,replaceQuestionSlice} from './library-slices.mjs';
@@ -33,7 +34,7 @@ export function createLibrary({db,files,requireAssignment,decrypt}){
      : releases.some(release =>
          release.unitId === unit.id &&
          (!release.owner || release.owner === unit.owner) &&
-         release.classIds.some(classId => user.classIds?.includes(classId)));
+         release.classIds.some(classId => user.classIds?.some(id=>classKey(id)===classKey(classId))));
 
  async function unitFor(user, unitId = UNIT) {
    assert(/^(micro|macro)-unit-[1-6]$/.test(unitId), '教学包编号无效', 400);
@@ -167,7 +168,9 @@ async function handle({req,res,route,method,user,json,availableClasses,available
        a.name = file.name || a.name; a.mime = file.mime || a.mime; a.size = file.size || a.size;
      }
      const classes = user.role === 'student' ? await availableClasses() : [];
-     const classId = (user.classIds || [])[0] || '';
+     const releasedIds=(await db.list('library-release')).filter(r=>r.unitId===unitId&&(!r.owner||r.owner===unit.owner)).flatMap(r=>r.classIds||[]).map(plainClass);
+     const relevant=classes.filter(c=>releasedIds.includes(plainClass(c.id))&&(user.classIds||[]).some(id=>plainClass(id)===plainClass(c.id)));
+     const classId = (relevant.find(c=>namedCourse(c.name)===unitId.split('-')[0])||relevant[0])?.id||'';
      const className = classes.find(c => plainClass(c.id) === plainClass(classId))?.name || '';
      const note = {
        id: 'board-'+hash(user.id+wallKey+Date.now()+Math.random()), type:'library-board-note', wallKey, unitId, topicId,

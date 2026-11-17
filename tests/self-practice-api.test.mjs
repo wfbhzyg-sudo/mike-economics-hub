@@ -179,3 +179,19 @@ test('correcting a submitted answer stores the new choice and never touches the 
   assert.equal(stored.result.total, 0);
   assert.equal(stored.corrections[questions[0].id].note, '重新计算');
 });
+
+test('dual-course enrollment scopes catalog and paper to requested course even with identical topic ids',async()=>{
+ const {db,handler}=await fixture();
+ const original=await db.get('micro-unit-2');await db.put('library-unit',{...original,id:'macro-unit-2',title:'AP Macro Unit 2'});
+ await db.put('library-release',{id:'macro-release',unitId:'macro-unit-2',classIds:['macro-class'],owner:original.owner});
+ for(const q of await db.list('library-question'))if(q.id.startsWith('q-'))await db.put('library-question',{...q,id:'macro-'+q.id,unitId:'macro-unit-2'});
+ const student={...students.a,classIds:[...students.a.classIds,'bookself-class:macro-class']};
+ for(const course of ['macro','micro']){
+  const {value}=await call(handler,student,'self-practice/catalog?course='+course);
+  assert(value.units.length);assert(value.units.every(u=>u.unitId.startsWith(course)));
+  const created=await call(handler,student,'self-practice/attempts','POST',createBody({course,clientId:'dual-'+course+'-abcdefgh'}));
+  assert.equal(created.value.attempt.course,course);
+  assert(created.value.attempt.questions.every(q=>course==='macro'?q.id.startsWith('macro-'):!q.id.startsWith('macro-')));
+ }
+ const denied=await call(handler,students.a,'self-practice/catalog?course=macro');assert.equal(denied.value.units.length,0);
+});

@@ -1,3 +1,4 @@
+import {selectedCourse,rememberCourse} from './course-scope.js';
 import {gradingFields,readGradingPoints} from './library-grading.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {studentAssignmentAction} from './assignment-navigation.js';
@@ -18,13 +19,15 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  let boardCleanup=null;
  const {units}=await api('library/catalog');if(disposed)return;
  if(!units.length){main.innerHTML='<section class="library-work"><h1>课程教学包</h1><p>老师开放课程后，课件与教材会显示在这里。</p></section>';return;}
- const last=recall('lib-last:'+state.user.id,{}),resolved=libraryLocation(units,last,unitOrTopic,topicOrMode,readerMode);
+ const last=recall('lib-last:'+state.user.id,{});if(!teacher&&!unitOrTopic){const preferred=selectedCourse(state.user.id,['micro','macro'],'');if(preferred&&!last.unit?.startsWith(preferred)){const target=units.find(u=>u.id.startsWith(preferred));if(target){last.unit=target.id;last.topic='';last.detail='';}}}
+ const resolved=libraryLocation(units,last,unitOrTopic,topicOrMode,readerMode);
  const {unitId,topicId,mode}=resolved;viewDetail=viewDetail||(!unitOrTopic?last.detail||'':'');
  const {unit,releases:initialReleases}=await api('library/unit?unit='+unitId);if(disposed)return;let releases=initialReleases;
  const releaseCount=()=>new Set(releases.flatMap(r=>r.classIds)).size;
  const releaseText=()=>releaseCount()?'资料开放 · '+releaseCount()+' 班':'资料未开放';
  const previewRef=mode==='preview'?packReference(viewDetail):null;
  const topic=unit.topics.find(t=>t.id===topicId)||unit.topics[0],group=unitId.split('-')[0],unitLabel='Unit '+unitId.at(-1),unitScope=topicId==='all';
+ if(!teacher)rememberCourse(state.user.id,group);
  remember('lib-last:'+state.user.id,{unit:unitId,topic:topicId==='all'?'all':topic.id,mode,detail:viewDetail});
  const route=(t,m='')=>['library',unitId,t,m].filter(Boolean).join('/');
  const href=r=>'#'+(location.pathname.startsWith('/teacher')?'work/':'')+r;
