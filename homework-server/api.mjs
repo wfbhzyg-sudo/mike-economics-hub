@@ -1335,7 +1335,7 @@ export async function createHomework({externalAuth} = {}) {
           if (method === "GET")
             return (
               json(res, {
-                submission: {...(user.role === "teacher" ? s : publicSubmission(s)),assignment:publicAssignment(await db.get(s.assignmentId))},
+                submission: {...(user.role === "teacher" ? s : publicSubmission(s)),responses:s.responses||{},assignment:publicAssignment(await db.get(s.assignmentId))},
               }),
               true
             );

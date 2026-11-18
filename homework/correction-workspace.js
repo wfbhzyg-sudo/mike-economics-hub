@@ -1,3 +1,4 @@
+import {questionMarker} from './question-marker.js';
 import {correctionAnswerEvidence} from './choice-correction.js';
 import {mountPDFReader} from './pdf-reader.js';
 import {mountReviewGallery} from './review-gallery.js';
@@ -13,9 +14,16 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
   const files=ids.map(id=>state.files.get(id)).filter(Boolean),location=m.paperLocation||paper?.locations?.find(q=>q.id===m.questionId),first=files.find(f=>f.id===location?.fileId)||files.find(f=>f.id===paper?.mainQuestionFile)||files[0];
   const imageParts=Boolean(m.questionImages?.length)&&files.every(f=>f.mime.startsWith('image/'));
   panel.innerHTML=`${m.prompt?((compact||imageParts)&&first?`<details class="correction-question-text"><summary>题干文字</summary><p class="correction-prompt">${h(m.prompt)}</p></details>`:`<p class="correction-prompt">${h(m.prompt)}</p>`):''}${first?`<p class="correction-location">本次提交的原题${paper?.version?' · v'+paper.version:''}${imageParts?' · '+files.length+' 个原题片段':location?.page?' · 第 '+location.page+' 页':' · 未标注题页，可用搜索或页码定位'}</p>${files.length>1&&!imageParts?`<label class="field"><span>题纸文件</span><select data-correction-file aria-label="选择原题文件">${files.map(f=>`<option value="${h(f.id)}" ${f===first?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>`:''}<div data-correction-document></div>`:!m.prompt?'<p class="correction-prompt">这次作业没有可显示的题纸或文字题干。你仍可查看自己的原作答，继续订正。</p>':''}`;
+  const prompt=panel.querySelector('.correction-prompt');
+  let marker;
+  if(m.prompt || files.some(f=>f.mime.startsWith('image/'))){
+    const tools=document.createElement('div');tools.className='question-tools';panel.prepend(tools);
+    marker=questionMarker(tools,JSON.stringify(['correction',state.user.id,m.submissionId||m.assignmentId,m.questionId]));
+    if(prompt && m.prompt)marker.attachText(prompt,'prompt');
+  }
   function show(file){reader?.destroy();reader=null;questionGallery?.destroy();questionGallery=null;const host=panel.querySelector('[data-correction-document]');host.replaceChildren();host.className='';if(file.mime==='application/pdf'){
     host.className='pdf-preview';reader=mountPDFReader(host,{fileId:file.id,title:'第 '+m.questionId+' 题原件',storageKey:`hw-correction-paper:${state.user.id}:${m.submissionId}:${m.questionId}:${file.id}`,initialPage:file.id===location?.fileId?Number(location.page):null});
-   }else{host.className='review-studio correction-gallery'+(imageParts?' question-fit-gallery':'');host.innerHTML='<div class="rv-gallery"></div>';questionGallery=mountReviewGallery(host.firstElementChild,{files:imageParts?files:[file],label:'题目原件',fullscreen:false,fitContent:imageParts,storageKey:'correction-question:'+state.user.id+':'+file.id});}}
+   }else{host.className='review-studio correction-gallery'+(imageParts?' question-fit-gallery':'');host.innerHTML='<div class="rv-gallery"></div>';questionGallery=mountReviewGallery(host.firstElementChild,{files:imageParts?files:[file],label:'题目原件',fullscreen:false,marker,fitContent:imageParts,storageKey:'correction-question:'+state.user.id+':'+file.id});}}
   if(first)show(first);const select=panel.querySelector('[data-correction-file]');if(select)select.onchange=()=>show(files.find(f=>f.id===select.value));
  }
  async function answer(panel){
@@ -39,6 +47,12 @@ export async function mountAssignmentPaper(root,{assignmentId,submissionId,state
  const submission=payload.submission,assignment=submission?.assignment||payload.assignment;
  const paper=submission?.paper||assignment?.paper||assignment||{};
  const ids=paper.questionFiles||[],questions=submission?.questions||assignment?.questions||[];
+ // A sliced paper already has a reliable question-to-image mapping.
+ if(questions.length && questions.every(q=>q.questionImages?.length || q.prompt) && questions.some(q=>q.questionImages?.length) && ids.every(id=>questions.some(q=>q.questionImages?.includes(id)))){
+   root.innerHTML=`<section class="gj-original-paper result-original"><header><h2>作业原题</h2><button type="button" class="secondary" data-close-paper>收起原题</button></header>${questions.map((q,i)=>`<article><h3>第 ${i+1} 题</h3>${q.prompt?`<p>${h(q.prompt)}</p>`:''}${(q.questionImages||[]).map((id,j)=>`<img src="/api/homework/files/${encodeURIComponent(id)}" loading="lazy" decoding="async" alt="第 ${i+1} 题片段 ${j+1}">`).join('')}${!q.questionImages?.length?(q.options||[]).filter(o=>o.text).map(o=>`<p>${h(o.label)}. ${h(o.text)}</p>`).join(''):''}</article>`).join('')}</section>`;
+   root.querySelector('[data-close-paper]').onclick=onClose;
+   return {flush:async()=>{},destroy(){}};
+ }
  await metadata(ids);
  const files=ids.map(id=>state.files.get(id)).filter(Boolean),first=files.find(f=>f.id===paper.mainQuestionFile)||files.find(f=>f.mime==='application/pdf')||files[0];
  let reader=null,gallery=null;

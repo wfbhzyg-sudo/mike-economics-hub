@@ -1,3 +1,4 @@
+import {questionMarker} from './question-marker.js';
 import {studyControls} from './study-workflow.js';
 import {accuracyBadge} from './score-bands.js';
 import {selectedCourse,rememberCourse} from './course-scope.js';
@@ -297,7 +298,7 @@ export function createSelfPracticeUI(ctx) {
     const version=++creationVersion;
     let disposed=false, timer=null, saveTimer=null;
     const current=()=>!disposed&&version===creationVersion;
-    destroy=()=>{study.destroy();disposed=true;++creationVersion;};
+    destroy=()=>{disposed=true;++creationVersion;};
     const reload=()=>{destroy?.();closeDialogs();return runAttempt(id);};
     main.innerHTML='<section class="paper sp-loading"><p>正在载入本次练习…</p></section>';
     let paper;
@@ -396,8 +397,12 @@ export function createSelfPracticeUI(ctx) {
     };
     const paintQuestion=()=>{
       const q=questions[index];page.querySelector('[data-progress]').textContent=`${index+1} / ${questions.length}`;
-      questionHost.innerHTML=`<article class="sp-card sp-question-card"><div class="sp-question-meta"><span>第 ${index+1} 题</span><span>${h(q.topic)}</span>${q.sourcePages?`<span>${h(q.sourcePages)}</span>`:''}<button type="button" class="sp-zoom" data-zoom-toggle aria-pressed="false">放大</button></div><div class="sp-stimulus"><div class="sp-question-images">${q.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题" decoding="async">`).join('')}</div>${q.prompt?`<p class="sp-prompt">${h(q.prompt)}</p>`:''}</div><div class="sp-options" data-label-only="${!q.optionLabels.some(label=>optionText(q,label))}" role="radiogroup" aria-label="第 ${index+1} 题，选择答案">${q.optionLabels.map(label=>`<div class="answer-pair"><button type="button" class="sp-option" role="radio" aria-checked="false" data-choice="${h(label)}"><span>${h(label)}</span>${optionText(q,label)?`<small>${h(optionText(q,label))}</small>`:''}</button><button class="strike-dot" type="button" data-strike="${h(label)}" aria-label="排除选项 ${h(label)}" title="排除或恢复 ${h(label)}">⊖</button></div>`).join('')}</div></article>`;
-      study.mount(questionHost.querySelector('.sp-question-meta'),q,false);
+      questionHost.innerHTML=`<article class="sp-card sp-question-card"><div class="sp-question-meta"><span>第 ${index+1} 题</span><span>${h(q.topic)}</span>${q.sourcePages?`<span>${h(q.sourcePages)}</span>`:''}<div class="question-tools" role="group" aria-label="题面工具"><button type="button" class="sp-zoom" data-zoom-toggle aria-pressed="false">放大</button></div></div><div class="sp-stimulus"><div class="sp-question-images">${q.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题" decoding="async">`).join('')}</div>${q.prompt?`<p class="sp-prompt">${h(q.prompt)}</p>`:''}</div><div class="sp-options" data-label-only="${!q.optionLabels.some(label=>optionText(q,label))}" role="radiogroup" aria-label="第 ${index+1} 题，选择答案">${q.optionLabels.map(label=>`<div class="answer-pair"><button type="button" class="sp-option" role="radio" aria-checked="false" data-choice="${h(label)}"><span>${h(label)}</span>${optionText(q,label)?`<small>${h(optionText(q,label))}</small>`:''}</button><button class="strike-dot" type="button" data-strike="${h(label)}" aria-label="排除选项 ${h(label)}" title="排除或恢复 ${h(label)}">⊖</button></div>`).join('')}</div></article>`;
+      const tools=questionHost.querySelector('.question-tools'),marker=questionMarker(tools,JSON.stringify(['mock',state.user.id,id,q.id]),toast);
+      marker.attachImages(questionHost.querySelector('.sp-question-images'));
+      const prompt=questionHost.querySelector('.sp-prompt');
+      if(prompt)marker.attachText(prompt,'prompt');
+      study.mount(tools,q,false);
       questionHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
       for(const dot of questionHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
         if(frozen||!current())return;if(expired()){submitPaper(true);return;}
@@ -513,6 +518,13 @@ export function createSelfPracticeUI(ctx) {
       <footer class="sp-result-foot"><button type="button" class="secondary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">返回自主模考</a></footer>
     </section>`;
 
+    for(const item of main.querySelectorAll('[data-wrong]')){
+      const tools=document.createElement('div');tools.className='question-tools';
+      item.querySelector('.sp-wrong-body').before(tools);
+      const marker=questionMarker(tools,JSON.stringify(['mock',state.user.id,attempt.id,item.dataset.wrong]),toast);
+      const stimulus=item.querySelector('.sp-wrong-images');marker.attachImages(stimulus);
+      const prompt=stimulus.querySelector('p');if(prompt)marker.attachText(prompt,'prompt');
+    }
     let generating=false,retryClientId=null;
     main.querySelectorAll('[data-again]').forEach((button) => {
       button.onclick = async () => {

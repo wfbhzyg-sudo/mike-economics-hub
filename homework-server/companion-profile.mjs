@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-paper-tools',date:'2026-11-18',title:'整份作业连续回看',
+  items:[
+    {audience:'all',art:'book',title:'原题和成绩排在一起',text:'在学生成绩里打开「作业回顾」，可以从第一题连续看到最后一题，也可以只看失分题。'},
+    {audience:'student',art:'news',title:'在题面上做记号',text:'点「高亮」后拖过文字或题图，点「撤销」可移除最近一笔。标注保存在当前设备。同伴思路从右侧打开。'}
+  ]
+},{
   id:'2026-11-18-live-wardrobe',date:'2026-11-18',title:'伙伴手册与保存的穿搭',
   items:[
     {audience:'all',art:'book',title:'在原有菜单中返回一页通',text:'在 Bookself 的账号或阅读目录、EconQuest 的账号或闯关暂停菜单里，选择「返回经济一页通」。'},

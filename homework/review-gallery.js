@@ -1,7 +1,7 @@
 import {pdfLibrary,openPDF} from './pdf-reader.js';
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export function mountReviewGallery(root,{files=[],text='',storageKey='',initialFileId='',label='学生作答',fullscreen=true,fitContent=false}={}) {
+export function mountReviewGallery(root,{files=[],text='',storageKey='',initialFileId='',label='学生作答',fullscreen=true,fitContent=false,marker=null}={}) {
   root.setAttribute('aria-label',label);
   const pages=files.flatMap(f=>Array.from({length:f.mime==='application/pdf'?Math.max(1,f.pages||1):1},(_,i)=>({file:f,page:i+1,key:f.id+':'+(i+1)})));
   if(text.trim())pages.push({text,key:'text'});
@@ -52,7 +52,7 @@ export function mountReviewGallery(root,{files=[],text='',storageKey='',initialF
       if(p.text){const article=document.createElement('article');article.textContent=p.text;stage.append(article);asset={text:true};status.textContent='';}
       else if(p.file.mime==='application/pdf'){const doc=await pdfFor(p),pdf=await doc.getPage(p.page);if(destroyed||token!==stamp)return;const size=pdf.getViewport({scale:1}),el=document.createElement('canvas');el.className='rv-sheet';stage.append(el);asset={w:size.width,h:size.height,el,pdf};layout();await renderPDF();}
       else{const img=await imageFor(p);if(destroyed||token!==stamp)return;img.className='rv-sheet';stage.append(img);asset={w:img.naturalWidth,h:img.naturalHeight,el:img};layout();status.textContent='';}
-      if(destroyed||token!==stamp)return;viewport.scrollLeft=position?.left||0;viewport.scrollTop=position?.top||0;controls();remember();
+      if(destroyed||token!==stamp)return;if(marker&&p.file)marker.attachPage(stage,p.key,()=>rotation);viewport.scrollLeft=position?.left||0;viewport.scrollTop=position?.top||0;controls();remember();
       // Decode adjacent photos only, and keep a bounded cache for large uploads.
       for(const neighbor of [pages[current+1],pages[current-1]])if(neighbor?.file?.mime.startsWith('image/'))void imageFor(neighbor).catch(()=>{});
       for(const id of [...images.keys()])if(!pages.slice(Math.max(0,current-1),current+2).some(p=>p.file?.id===id))images.delete(id);
@@ -81,11 +81,11 @@ export function mountReviewGallery(root,{files=[],text='',storageKey='',initialF
     if(action==='prev')void show(current-1);if(action==='next')void show(current+1);
     if(action==='plus')setZoom(zoom*1.25);if(action==='minus')setZoom(zoom/1.25);
     if(action==='fit'||action==='width'||action==='page'){changeView(()=>{mode=action==='page'?'page':action==='width'||mode==='page'?'width':'page';zoom=1;});viewport.scrollLeft=0;viewport.scrollTop=0;remember();}
-    if(action==='rotate')changeView(()=>{rotation=(rotation+90)%360;});
+    if(action==='rotate')changeView(()=>{rotation=(rotation+90)%360;marker?.repaint();});
     if(action==='album')album($('.rv-album').hidden);if(action==='album-close')album(false);if(action==='fullscreen')full();
     if(action&&action!=='album')$('.rv-gallery-more').open=false;
   });
-  viewport.addEventListener('dblclick',e=>{if(e.pointerType==='touch')return;setZoom(zoom>1?1:2,{x:e.clientX,y:e.clientY});});
+  viewport.addEventListener('dblclick',e=>{if(e.pointerType==='touch'||e.target.closest('.mark-layer.active'))return;setZoom(zoom>1?1:2,{x:e.clientX,y:e.clientY});});
   viewport.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.008),{x:e.clientX,y:e.clientY});}},{passive:false});
   viewport.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0||!asset||asset.text)return;drag={x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.setPointerCapture(e.pointerId);viewport.classList.add('is-dragging');e.preventDefault();});
   viewport.addEventListener('pointermove',e=>{if(drag){viewport.scrollLeft=drag.left-e.clientX+drag.x;viewport.scrollTop=drag.top-e.clientY+drag.y;}});

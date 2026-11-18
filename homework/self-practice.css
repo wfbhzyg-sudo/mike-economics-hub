@@ -627,3 +627,12 @@ body.sp-immersive main { height: 100dvh; overflow: auto; border-radius: 0; }
  .sp-question-card .sp-question-meta {grid-column:1/-1}
  .sp-run .sp-options,.sp-run .sp-options[data-label-only=true] {display:grid;grid-template-columns:1fr;margin:0;gap:7px;position:sticky;top:12px}
 }
+
+body.sp-immersive #main {
+  position:fixed;inset:0;width:100%;height:100dvh;max-width:none;box-sizing:border-box;
+  margin:0;padding:0;overflow:auto;
+}
+.sp-run .sp-run-body{box-sizing:border-box}
+.sp-run .sp-question-images .mark-image{width:100%}
+.sp-run .sp-question-images .mark-image img{width:100%;height:auto;max-height:none}
+.sp-run .sp-question-images[data-zoom=true] .mark-image{width:180%}

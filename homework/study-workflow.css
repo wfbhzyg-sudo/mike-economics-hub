@@ -69,12 +69,15 @@
 }
 .study-sheet #mike-companion{visibility:hidden}
 .study-sheet :where(button,summary,select,textarea):focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
-@media(min-width:1180px){
-  body[data-mcq-active=true]:has(.study-sheet[data-student-discussion][open]) .mcq-work {
-    width:calc(100% - 365px);margin-left:0;margin-right:auto
-  }
-  body[data-mcq-active=true] .study-sheet[data-student-discussion] {width:340px;margin:auto 12px auto auto}
-  body[data-mcq-active=true] .study-sheet[data-student-discussion]::backdrop {background:transparent}
+/* Student discussion lives in the browser top layer, outside the paper layout. */
+body dialog.study-sheet[data-student-discussion] {
+  position:fixed;inset:0 0 0 auto;margin:0;width:min(420px,calc(100% - 16px));
+  height:100dvh;max-height:100dvh;max-width:100%;box-sizing:border-box;
+  border-width:0 0 0 1px;border-radius:14px 0 0 14px;
+}
+@media(prefers-reduced-motion:no-preference){
+  .study-sheet[data-student-discussion][open]{animation:discussion-enter .2s cubic-bezier(.2,.75,.25,1)}
+  @keyframes discussion-enter{from{transform:translateX(100%)}to{transform:translateX(0)}}
 }
 .study-stat-filter{display:grid;gap:6px}
 .study-scope-row{gap:8px 16px}
@@ -132,3 +135,67 @@ body .work-tools-menu a:hover{background:#edf3f7}
 .study-compose-foot button{flex:none}.study-sheet .study-inline{margin-top:10px;border:1px solid #cdd8e2;border-radius:9px;background:#f7f9fb;padding:12px}
 .study-sheet .study-inline [role=status]:empty{display:none}
 @media(pointer:coarse){body .work-tools summary,body .tw-class-more>summary,.study-sheet .study-actions>button,body .assignment-management-row .row-more{min-width:44px;min-height:44px}}
+
+/* A single tool strip stays separate from answer selection and paging. */
+body .question-tools,body[data-mcq-active=true] .mcq-question .question-tools {
+  display:flex;align-items:center;flex-wrap:nowrap;gap:1px;min-width:0;max-width:100%;
+  padding:2px;background:#edf2f6;border:1px solid #cbd7df;border-radius:9px;
+  overflow-x:auto;scrollbar-width:thin;box-sizing:border-box;
+}
+.question-tools .study-controls{display:contents}
+body .question-tools button,body[data-mcq-active=true] .mcq-question .question-tools button {
+  flex:0 0 auto;min-height:40px;margin:0;padding:5px 9px;border:0;border-radius:6px;
+  color:#27425c;background:transparent;white-space:nowrap;font:600 13px/1.2 system-ui;
+}
+body .question-tools button[aria-pressed=true],body[data-mcq-active=true] .mcq-question .question-tools button[aria-pressed=true]{background:#203e59;color:white}
+body .question-tools button:focus-visible{outline-offset:-3px}
+body .question-tools button[hidden]{display:none}
+.question-pen::before{content:"";display:inline-block;width:12px;height:5px;margin-right:4px;border-radius:1px;background:#f2cd55;transform:rotate(-38deg);border-left:3px solid #324860}
+.mark-image{position:relative;max-width:100%;margin-inline:auto}
+.mcq-paper.zoom .mark-image,.sp-question-images[data-zoom=true] .mark-image{width:180%;max-width:none}
+.mcq-paper.zoom .mark-image img,.sp-question-images[data-zoom=true] .mark-image img{width:100%;height:auto;max-height:none}
+.sp-question-images .mark-image{width:fit-content}
+.sp-question-images .mark-image img{display:block}
+.mark-layer{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+.mark-layer.active{pointer-events:auto;cursor:crosshair;touch-action:none;user-select:none}
+.mark-layer i{position:absolute;background:rgb(255 211 44 / .46);mix-blend-mode:multiply;pointer-events:none;border-radius:2px}
+.mark-text-active{touch-action:none;cursor:crosshair}
+:is(.mcq-paper,#mcq-accessible,.sp-stimulus,.assignment-brief) mark{color:inherit;background:#ffe78a}
+body .reader-tool-group .question-pen,body .reader-tool-group .question-pen+button{min-width:40px;min-height:36px;border:0;background:transparent;color:#284158;padding:4px}
+body .reader-tool-group .question-pen[aria-pressed=true]{background:#fff0aa;color:#302708}
+.result-original img{display:block;width:auto;max-width:100%;height:auto;margin:6px 0}
+.result-original p{white-space:pre-wrap;overflow-wrap:anywhere}
+.result-original .review-choice{color:#304d63;border-left:3px solid #afc2cd;padding:4px 10px;background:#f1f5f8}
+.result-paper [data-review-toggle]{margin-left:auto}
+@media(max-width:760px){
+ body[data-mcq-active=true] .mcq-question>.mcq-toolbar{display:grid;grid-template-columns:minmax(0,1fr);justify-items:start}
+ body .question-tools button,body[data-mcq-active=true] .mcq-question .question-tools button{min-height:44px;padding:4px 7px}
+ .sp-question-meta .question-tools{margin-left:auto}
+ .workspace-home .sh-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:12px 4px}
+ .workspace-home .sh-summary>div{min-width:0;padding-inline:5px;border-left:1px solid #dee5ec}
+ .workspace-home .sh-summary>div:first-child{border-left:0}
+ .workspace-home .sh-summary span{font-size:12px}
+}
+body[data-mcq-active=true] .mcq-work .mcq-answerbar .answer-navigation {
+  display:flex;flex-wrap:nowrap;gap:1px;padding:3px;margin-top:8px;align-items:stretch;
+  background:#edf2f6;border:1px solid #cbd7df;border-radius:10px;min-width:0;
+}
+.mcq-work .answer-navigation button {
+  flex:1 1 auto;min-width:0;min-height:44px;padding:4px;border:0;border-radius:7px;
+  background:transparent;color:#233e57;white-space:nowrap;font-size:12px;
+}
+.mcq-work .answer-navigation button:disabled{cursor:default}
+.mcq-work .answer-navigation button.primary{background:#173550;color:white}
+.mcq-work .answer-navigation #mcq-palette{font-variant-numeric:tabular-nums}
+body[data-work-route=assignments] .assignment-toolbar .filter-tabs:has(.task-more-filters) {
+  display:flex;flex-wrap:nowrap;align-items:center;gap:2px;width:fit-content;max-width:100%;
+  padding:2px;border:1px solid #cad7e0;border-radius:9px;background:#edf2f6;
+}
+body[data-work-route=assignments] .assignment-toolbar .filter-tabs:has(.task-more-filters)>button,
+body[data-work-route=assignments] .task-more-filters>summary{white-space:nowrap;border:0;padding:5px 7px;font-size:12px}
+body[data-work-route=assignments] .assignment-toolbar .filter-tabs>button[aria-pressed=true]{background:#203e59;color:white;border-radius:7px}
+.sp-wrong-images[data-zoom=true] .mark-image{width:180%;max-width:none}
+.sp-wrong-images[data-zoom=true] .mark-image img{width:100%}
+.result-original .mark-image{width:fit-content}
+.result-original .mark-image img{margin:0}
+.result-original .mark-image+.mark-image{margin-top:6px}
