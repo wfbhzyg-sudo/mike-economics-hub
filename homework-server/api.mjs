@@ -33,7 +33,7 @@ import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } f
 import {visibleQuestions, publishedResult, mistakeRows, reviewDraft} from './learning.mjs';
 import {buildInsightFacts, canViewReport, draftInsight, insightData, insightScope, insightVersion, publishTarget} from './insights.mjs';
 import {exportWork} from './export.mjs';
-import {captureRecipients,assignmentRoster} from './roster.mjs';
+import {captureRecipients,assignmentRoster,rosterCounts} from './roster.mjs';
 import {capturePaper,paperOf,questionLocation} from './paper.mjs';
 const safeUser = (u) => ({
   id: u.id,
@@ -927,7 +927,17 @@ export async function createHomework({externalAuth} = {}) {
           const [students,submissions]=await Promise.all([
             availableStudents(),db.find('submission',{assignmentId:assignments.map(a=>a.id)})]);
 
-          return (json(res,{summaries:Object.fromEntries(assignments.map(a=>[a.id,assignmentRoster(a,students,submissions).counts]))}),true);
+          const submissionsByWork=Map.groupBy(submissions,s=>s.assignmentId);
+          const summaries={}, byClass={};
+          for(const a of assignments){
+            const {rows,counts}=assignmentRoster(a,students,submissionsByWork.get(a.id)||[]);
+            summaries[a.id]=counts;
+            for(const id of a.classIds){
+              byClass[id]??={};
+              byClass[id][a.id]=rosterCounts(rows.filter(r=>r.classIds.includes(id)),a.offline||a.format==='score');
+            }
+          }
+          return (json(res,{summaries,byClass}),true);
         }
         if (method === "GET" && !route[1]) {
           const all = (await db.list("assignment")).filter((a) =>

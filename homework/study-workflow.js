@@ -1,4 +1,4 @@
-import {courseLabel} from './course-scope.js';
+import {courseLabel,singleClassCourse} from './course-scope.js';
 
 const nl = value => value ? String(value).slice(0,10) : '';
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -230,20 +230,20 @@ export async function renderMockStatistics({main,api,state,toast}){
   const initial=await api('mock-stats');
   if(version!==state.version)return;
   const today=nl(new Date().toISOString()),from=nl(new Date(Date.now()-30*86400000).toISOString());
-  main.innerHTML=`<div class="study-stats"><details class="study-filter-panel" ${matchMedia('(min-width:768px)').matches?'open':''}><summary>筛选模考记录</summary><form class="study-filters">
+  main.innerHTML=`<div class="study-stats"><form class="study-stat-filter"><div class="study-filters study-scope-row">
     <label>班级 <select name="classId"><option value="">全部任教班级</option>${initial.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
-    <label>学科 <select name="course"><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
+    <label data-course-field>学科 <select name="course"><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
     <label>学生 <select name="studentId"><option value="">全部学生</option></select></label>
-    <label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
+    </div><details class="study-filter-panel"><summary>更多筛选</summary><div class="study-filters study-extra-filters"><label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
     <label>章节 <input name="topic" type="search" placeholder="例如 2.3"></label>
     <label>计时 <select name="timer"><option value="">全部</option><option value="countdown">倒计时</option><option value="countup">正计时</option></select></label>
-    <button type="submit" class="tw-button tw-primary">应用筛选</button></form></details>
+    </div></details></form>
     <p role="status"></p><div data-overview></div><div class="study-stat-grid"><section class="study-panel" data-attempts></section><aside class="study-panel" data-topics></aside></div></div>`;
   const root=main.querySelector('.study-stats'), form=root.querySelector('form'),status=root.querySelector('[role=status]');
   let offset=0,serial=0;
   function paint(data){
     const {stats:s,attempts}=data, selection=form.elements.studentId.value;
-    root.querySelector('.study-filter-panel summary').textContent=form.elements.classId.selectedOptions[0].text+' · '+form.elements.course.selectedOptions[0].text+' · 筛选';
+
     form.elements.studentId.innerHTML='<option value="">全部学生</option>'+data.students.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
     form.elements.studentId.value=data.students.some(x=>x.id===selection)?selection:'';
     const percent=(a,b)=>b?Math.round(a/b*1000)/10+'%':'—', duration = n=>n===null||n===undefined?'—':Math.floor(n/60)+' 分 '+Math.round(n%60)+' 秒';
@@ -259,11 +259,22 @@ export async function renderMockStatistics({main,api,state,toast}){
   }
   async function load(){
     const n=++serial;status.textContent='正在读取记录…';
+    const panels=[root.querySelector('[data-overview]'),root.querySelector('.study-stat-grid')];
+    panels.forEach(el=>{el.inert=true;el.setAttribute('aria-busy','true');});
     try{
       const params=new URLSearchParams(new FormData(form));params.set('offset',offset);
       const data=await api('mock-stats?'+params);
-      if(root.isConnected&&n===serial){paint(data);status.textContent='';}
-    }catch(e){if(root.isConnected&&n===serial)status.textContent=e.message;}
+      if(root.isConnected&&n===serial){paint(data);status.textContent='';panels.forEach(el=>{el.hidden=false;});}
+    }catch(e){
+      if(root.isConnected&&n===serial){
+        panels.forEach(el=>{el.hidden=true;});
+        status.textContent=e.message+' ';
+        const retry=document.createElement('button');
+        retry.type='button';retry.className='tw-button';retry.textContent='重试';retry.onclick=load;status.append(retry);
+      }
+    }finally{
+      if(n===serial)panels.forEach(el=>{el.inert=false;el.removeAttribute('aria-busy');});
+    }
   }
   async function openAttempt(button){
     button.disabled=true;
@@ -276,8 +287,25 @@ export async function renderMockStatistics({main,api,state,toast}){
       document.body.append(d);d.showModal();d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>{d.remove();button.focus({preventScroll:true});};
     }catch(e){toast(e.message);}finally{button.disabled=false;}
   }
-  form.onsubmit=e=>{e.preventDefault();offset=0;if(matchMedia('(max-width:767px)').matches)form.closest('details').open=false;void load();};
-  for(const name of ['classId','course'])form.elements[name].onchange=()=>{form.elements.studentId.value='';offset=0;void load();};
+  let previousTopic=form.elements.topic.value;
+  function apply(){
+    offset=0;
+    const count=['topic','timer'].filter(k=>form.elements[k].value).length+
+      Number(form.elements.from.value!==from)+Number(form.elements.to.value!==today);
+    form.querySelector('summary').textContent=count?'更多筛选 · '+count:'更多筛选';
+    previousTopic=form.elements.topic.value;
+    void load();
+  }
+  form.onchange=e=>{
+    if(e.target.name==='classId'){
+      const fixed=singleClassCourse(initial.classes.find(c=>c.id===e.target.value));
+      form.elements.course.disabled=Boolean(fixed);
+      form.querySelector('[data-course-field]').hidden=Boolean(fixed);
+    }
+    if(['classId','course'].includes(e.target.name))form.elements.studentId.value='';
+    apply();
+  };
+  form.onsubmit=e=>{e.preventDefault();if(form.elements.topic.value!==previousTopic)apply();};
   paint(initial);
 }
 

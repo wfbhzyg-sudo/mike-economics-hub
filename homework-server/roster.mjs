@@ -31,5 +31,9 @@ export function assignmentRoster(assignment, students, submissions) {
       needsReview:Boolean(submission&&submission.status!=='returned'&&(submission.status==='needs_review'||submission.reviewRequests?.some(r=>r.status==='open'))),
       pendingUpdate:Boolean(effective&&effective.id!==submission?.id),grade:hasGrade?{total:effective.publishedGrade.total,maxPoints:effective.publishedGrade.maxPoints}:null};
   }).sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')||a.id.localeCompare(b.id));
-  return {rows,confirmedAt:assignment.recipients?.at||null,counts:{...(offline?{recorded:rows.filter(r=>r.state==='recorded').length,unrecorded:rows.filter(r=>r.state==='unrecorded').length}:{}),submitted:rows.filter(r=>r.state==='submitted').length,missing:rows.filter(r=>r.state==='missing').length,review:rows.filter(r=>r.needsReview).length,published:rows.filter(r=>r.grade).length,unconfirmed:0,expected:expected.size}};
+  return {rows,confirmedAt:assignment.recipients?.at||null,counts:rosterCounts(rows,offline,expected.size)};
+}
+
+export function rosterCounts(rows,offline,expected=rows.filter(r=>r.required).length) {
+  return {...(offline?{recorded:rows.filter(r=>r.state==='recorded').length,unrecorded:rows.filter(r=>r.state==='unrecorded').length}:{}),submitted:rows.filter(r=>r.state==='submitted').length,missing:rows.filter(r=>r.state==='missing').length,review:rows.filter(r=>r.needsReview).length,published:rows.filter(r=>r.grade).length,unconfirmed:0,expected};
 }

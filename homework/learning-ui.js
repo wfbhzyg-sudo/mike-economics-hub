@@ -29,7 +29,7 @@ export function createLearningUI(ctx){
    try{await open('mistakes/'+encodeURIComponent(assignmentId)+'/'+encodeURIComponent(questionId));}catch(error){closed=true;local.routeVersion++;local.viewCleanup?.();throw error;}return {flush:()=>local.correctionNavigation?.(),destroy(){closed=true;local.routeVersion++;local.viewCleanup?.();local.viewCleanup=null;}};
   }});state.viewCleanup=()=>view.destroy();
  }
- async function overview(id,filter){return showAssignmentRoster(ctx,id,filter);}
+ async function overview(id,filter,classId){return showAssignmentRoster(ctx,id,filter,classId);}
  function correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute){
   const status=$('#correction-draft-status'),conflictBox=$('#correction-conflict');
   const key=`hw-correction:${state.user.id}:${m.assignmentId}:${m.questionId}`;

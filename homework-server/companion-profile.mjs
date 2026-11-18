@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-class-scope',date:'2026-11-18',title:'按班查看教学数据',
+  items:[
+    {audience:'teacher',art:'subjects',title:'选班即可查看',text:'选择宏观班或微观班后，作业列表、模考统计与拓展学习记录自动使用该班范围。'},
+    {audience:'teacher',art:'roster',title:'提交人数对应班级名单',text:'点多班作业的提交或录分人数，直接打开这个班的名单。班级报告和历史记录集中在「学情报告」。'}
+  ]
+},{
   id:'2026-11-18-shared-teaching',date:'2026-11-18',title:'教师共用教学资源',
   items:[
     {audience:'teacher',art:'book',title:'教学包与题库对教师开放',text:'所有教师可查看共用教学资料、选题组卷，以及向自己的班级开放资料。'},

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {assignmentCourse,coursesFor} from '../homework/course-scope.js';
+import {assignmentCourse,coursesFor,singleClassCourse} from '../homework/course-scope.js';
 import {cellsFor,cellSummary} from '../homework/grade-journey-model.js';
 const classes=[{id:'bookself-class:m',name:'微观 1'},{id:'M',name:'宏观 1'}];
 test('explicit subject wins over primary class; only unambiguous class labels infer missing subjects',()=>{
@@ -16,4 +16,11 @@ test('one multi-class student has independent subject averages with blank omitte
  const cells=cellsFor({assignments,submissions},{id:'s',classIds:['m','M']});
  assert.equal(cellSummary(cells.filter(c=>assignmentCourse(c.assignment)==='micro')).average,80);
  assert.equal(cellSummary(cells.filter(c=>assignmentCourse(c.assignment)==='macro')).average,10);
+});
+
+test('teacher scope follows a single-subject class and preserves a choice for mixed or unnamed groups',()=>{
+ assert.equal(singleClassCourse({name:'G9-AP-Micro-Economics-A1'}),'micro');
+ assert.equal(singleClassCourse({name:'宏观经济学 2 班'}),'macro');
+ assert.equal(singleClassCourse({course:'macro',name:'周五班'}),'macro');
+ for(const c of [null,{name:'联合练习'},{name:'AP Micro / Macro'}])assert.equal(singleClassCourse(c),'');
 });

@@ -4,15 +4,15 @@ import {assignmentOpensLater} from './assignment-navigation.js';
 import {viewMemory} from './view-memory.js';
 import {mountReviewLinkEditor} from './review-links.js';
 import {highlightText} from './search-text.js';
-export async function showAssignmentRoster(ctx,id,initialFilter=null){
+export async function showAssignmentRoster(ctx,id,initialFilter=null,initialClass){
  const {state,main,api,post,h,head,link,date,toast,metadata,paperSurface,bindPaperSurface,bindPreviews}=ctx;
  let a=state.assignments.find(a=>a.id===id);
  if(!a){try{a=(await api('assignments/'+encodeURIComponent(id))).assignment;}catch{}}
  if(!a)throw Error('这份作业不存在或无权查看');
  const version=state.routeVersion;let data;
- try{data=await api('assignments/'+encodeURIComponent(id)+'/roster');}catch(e){if(version!==state.routeVersion)return;main.innerHTML=`<section class="paper">${head('',a.title,'',link('assignments','返回作业'))}<p role="alert">班级名单暂未同步，不能确定未提交人数。</p><button class="secondary" id="roster-retry">重试</button></section>`;main.querySelector('#roster-retry').onclick=()=>showAssignmentRoster(ctx,id,initialFilter);return;}
+ try{data=await api('assignments/'+encodeURIComponent(id)+'/roster');}catch(e){if(version!==state.routeVersion)return;main.innerHTML=`<section class="paper">${head('',a.title,'',link('assignments','返回作业'))}<p role="alert">班级名单暂未同步，不能确定未提交人数。</p><button class="secondary" id="roster-retry">重试</button></section>`;main.querySelector('#roster-retry').onclick=()=>showAssignmentRoster(ctx,id,initialFilter,initialClass);return;}
  if(version!==state.routeVersion)return;
- const memory=viewMemory(state.user.id+':roster:'+id);let filter=initialFilter||memory.get('filter','all'),term=memory.get('term',''),classId=memory.get('classId',''),tab='submissions';
+ const memory=viewMemory(state.user.id+':roster:'+id);let filter=initialFilter||memory.get('filter','all'),term=memory.get('term',''),classId=initialClass??memory.get('classId',''),tab='submissions';
  const offline=Boolean(a.offline||a.format==='score');
  const opensLater=assignmentOpensLater(a),missingLabel=opensLater?'待开始':'未提交';
  const filters=offline?[['all','全部'],['recorded','已录分'],['unrecorded','待录分']]:[['all','全部'],['submitted','已提交'],['missing',missingLabel],['review','待处理'],['published','已出分']];

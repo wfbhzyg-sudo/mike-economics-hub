@@ -1524,7 +1524,10 @@ body[data-section="analytics"] #workspace {
 
 .lo-page {--lo-col-w:105px}
 .lo-matrix th.lo-col span {white-space:normal;overflow-wrap:anywhere;line-height:1.35;overflow:visible;text-overflow:clip}
-.lo-class-entry{margin:4px 0 8px}
+.lo-panel-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:7px 10px;border-bottom:1px solid var(--lo-line-soft);font-size:14px}
+.lo-panel-bar>div{display:flex;gap:6px;flex-wrap:wrap}
+.lo-more{margin-inline-start:auto}
+@media(max-width:767px){.lo-panel-bar button,.lo-menu button{min-height:44px}}
 .lo-class-entry-dialog{color:#233d48;background:#fafbf8;border:1px solid #bac9c4;border-radius:12px;padding:16px;width:min(535px,94vw);max-height:85dvh;box-sizing:border-box}
 .lo-class-entry-dialog::backdrop{background:#172b3a66}
 .lo-class-entry-dialog form{display:grid;gap:8px;max-height:calc(85dvh - 36px);grid-template-rows:auto auto auto minmax(0,1fr) auto}

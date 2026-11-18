@@ -43,9 +43,9 @@ export function mountLearningOverview(ctx, initialData) {
   const memory = viewMemory(`${state.user.id}:learning-overview:${state.classId || 'all'}`);
   const storedSelection = memory.get('selection', null);
   const storedFilter = memory.get('filter', {}) || {};
-  const rememberedClass = storedFilter.classId || state.classId || '';
+  const rememberedClass = storedFilter.classId ?? state.classId ?? '';
   const filter = {
-    classId: classes.some(item => item.id === rememberedClass) ? rememberedClass : (classes[0]?.id || ''),
+    classId: rememberedClass===''||classes.some(item => item.id === rememberedClass) ? rememberedClass : (classes[0]?.id || ''),
     unit: '', period: PERIODS.some(([id]) => id === storedFilter.period) ? storedFilter.period : '4w',
     assignmentId: '', query: '', status: 'all',
     sort: SORTS.some(([id]) => id === storedFilter.sort) ? storedFilter.sort : 'name',
@@ -83,18 +83,18 @@ export function mountLearningOverview(ctx, initialData) {
     <label class="lo-field" id="lo-assignment-field"><span>作业</span><select id="lo-assignment"></select></label>
     <label class="lo-search"><span class="lo-sr">查找学生</span><input id="lo-query" type="search" placeholder="查找学生姓名或账号" autocomplete="off" spellcheck="false"></label>
     <button type="button" class="lo-btn lo-filter" id="lo-filter" aria-haspopup="dialog" aria-expanded="false">筛选<i class="lo-filter-count" hidden></i></button>
-    <button type="button" class="lo-btn lo-icon" id="lo-refresh" title="刷新数据" aria-label="刷新数据"><span aria-hidden="true">↻</span></button>
+
     <details class="lo-more" id="lo-more">
       <summary class="lo-btn lo-icon" title="更多操作" aria-label="更多操作"><span aria-hidden="true">⋯</span></summary>
       <div class="lo-menu" role="menu">
+        <button type="button" role="menuitem" id="lo-refresh">刷新数据</button>
         <button type="button" role="menuitem" data-action="export">导出当前范围 CSV</button>
-        ${ai ? '<button type="button" role="menuitem" data-action="ai-report">生成学情分析</button><button type="button" role="menuitem" data-action="report-history">报告历史</button>' : ''}
         <button type="button" role="menuitem" data-action="class-report">班级学情摘要</button>
         <button type="button" role="menuitem" data-action="legend">五色分档说明</button>
         <button type="button" role="menuitem" data-action="clear">清除筛选与排序</button>
       </div>
     </details>
-    ${ai ? '<button type="button" class="lo-btn lo-primary lo-ai" id="lo-ai" data-action="ai-report" aria-label="生成学情分析"><span aria-hidden="true">✦</span><span class="lo-ai-label">生成学情分析</span></button>' : ''}
+
   </div>
   <div class="lo-stats" id="lo-stats" aria-live="polite"></div>
   <div class="lo-tabs" role="tablist" aria-label="学情视图">
@@ -105,7 +105,7 @@ export function mountLearningOverview(ctx, initialData) {
   </div>
   <div class="lo-body" id="lo-body">
     <div class="lo-panel" id="lo-panel-matrix" role="tabpanel" aria-labelledby="lo-tab-matrix" ${tab === 'matrix' ? '' : 'hidden'}>
-      <button type="button" class="lo-btn lo-class-entry" data-class-entry>按班录入线下成绩</button>
+      <header class="lo-panel-bar"><strong>班级成绩</strong><button type="button" class="lo-btn" data-class-entry>按班录入线下成绩</button></header>
       <div class="lo-switch" role="group" aria-label="手机查看方式">
         <button type="button" data-mview="list" aria-pressed="${mobileView === 'list'}">学生列表</button>
         <button type="button" data-mview="grid" aria-pressed="${mobileView === 'grid'}">成绩矩阵</button>
@@ -123,6 +123,7 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
     </div>
     <div class="lo-panel" id="lo-panel-students" role="tabpanel" aria-labelledby="lo-tab-students" ${tab === 'students' ? '' : 'hidden'}>
+      ${ai ? '<header class="lo-panel-bar"><strong>班级报告</strong><div><button type="button" class="lo-btn" data-action="report-history">报告历史</button><button type="button" class="lo-btn lo-primary" data-action="ai-report">生成学情分析</button></div></header>' : ''}
       <div class="lo-profile-layout" id="lo-profile-layout">
         <div class="lo-profile-list" id="lo-profile-list" aria-label="学生列表"></div>
         <div class="lo-profile" id="lo-profile"></div>

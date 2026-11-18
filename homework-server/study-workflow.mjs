@@ -2,7 +2,7 @@ import {hash, id, now} from './store.mjs';
 import {assert, boundedText} from './validation.mjs';
 import {paperOf,questionLocation} from './paper.mjs';
 import {publicAttempt, optionLabels} from './self-practice-model.mjs';
-import {classKey, namedCourse} from '../homework/course-scope.js';
+import {classKey, namedCourse, singleClassCourse} from '../homework/course-scope.js';
 
 const policies = ['attempt', 'open', 'review', 'closed'];
 const member = (ids, id) => (ids || []).some(c => classKey(c) === classKey(id));
@@ -70,14 +70,14 @@ export function createStudyWorkflow({db, requireAssignment}) {
   async function teacherMock(ctx, query) {
     const {user, route, availableClasses, availableStudents} = ctx;
     assert(user.role==='teacher','仅教师可以查看模考统计',403);
-    const classes=await availableClasses(), classId=query.get('classId')||'', course=query.get('course')||'';
+    const classes=await availableClasses(), classId=query.get('classId')||'', course=singleClassCourse(classes.find(c=>classKey(c.id)===classKey(classId)))||query.get('course')||'';
     assert(!classId||classes.some(c=>classKey(c.id)===classKey(classId)),'无权查看此班级',403);
-    const scopedClasses=classes.filter(c=>(!classId||classKey(c.id)===classKey(classId))&&(!course||!namedCourse(c.name)||course===namedCourse(c.name)));
+    const scopedClasses=classes.filter(c=>(!classId||classKey(c.id)===classKey(classId))&&(!course||!singleClassCourse(c)||course===singleClassCourse(c)));
     const students=(await availableStudents()).filter(s=>scopedClasses.some(c=>member(s.classIds,c.id)));
     const people=new Map(students.map(s=>[s.id,s]));
     const allows=a=>validResult(a)&&people.has(a.studentId)&&scopedClasses.some(c=>member(people.get(a.studentId).classIds,c.id)
-      && (!namedCourse(c.name)||namedCourse(c.name)===a.course)
-      && (a.classIds?.length?member(a.classIds,c.id):namedCourse(c.name)===a.course));
+      && (!singleClassCourse(c)||singleClassCourse(c)===a.course)
+      && (a.classIds?.length?member(a.classIds,c.id):singleClassCourse(c)===a.course));
     if(route[1]){
       const a=await db.get(route[1]);
       assert(a?.type==='self-practice-attempt'&&allows(a)&&(!course||a.course===course),'未找到有权查看的模考',404);
@@ -92,7 +92,7 @@ export function createStudyWorkflow({db, requireAssignment}) {
         &&Date.parse(a.submittedAt)>=after&&Date.parse(a.submittedAt)<before&&a.result.questions.some(matches))
       .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)||b.id.localeCompare(a.id)):[];
     const offset=Math.min(100000,Math.max(0,Math.trunc(Number(query.get('offset'))||0)));
-    return {classes:classes.map(c=>({id:c.id,name:c.name})),students:students.map(s=>({id:s.id,name:s.name})),
+    return {classes:classes.map(c=>({id:c.id,name:c.name,course:singleClassCourse(c)})),students:students.map(s=>({id:s.id,name:s.name})),
       stats:summarizeMock(attempts,studentId?(people.has(studentId)?1:0):students.length,matches),more:attempts.length>offset+25,
       attempts:attempts.slice(offset,offset+25).map(a=>({id:a.id,name:people.get(a.studentId).name,course:a.course,submittedAt:a.submittedAt,timerMode:a.timerMode,
         total:a.result.total,max:a.result.maxPoints,duration:a.result.durationSeconds,auto:a.result.autoSubmitted}))};

@@ -4,6 +4,10 @@ export function namedCourse(value) {
  const text=String(value||'').toLowerCase(),micro=/micro|微观/.test(text),macro=/macro|宏观/.test(text);
  return micro&&macro?'mixed':micro?'micro':macro?'macro':'';
 }
+export function singleClassCourse(classroom) {
+ const course=namedCourse(classroom?.course)||namedCourse(classroom?.name);
+ return ['micro','macro'].includes(course)?course:'';
+}
 export const courseLabel = course => ({micro:'AP 微观',macro:'AP 宏观',mixed:'跨学科',unknown:'未分类',all:'全部学科'})[course] || '未分类';
 export function assignmentCourse(a,classes=[]) {
  if(['micro','macro','mixed'].includes(a.libraryCourse))return a.libraryCourse;

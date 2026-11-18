@@ -858,7 +858,7 @@ async function render(scroll = true) {
     else if (route === "reviews") {state.reviewReturn=null;state.gradeReturn=null;reviews(id);}
     else if (["grades","history","gradebook"].includes(route)){state.reviewReturn=null;await learning.gradebook(id);}
     else if(route==="mistakes")await learning.mistakes(id,questionId);
-    else if(route==="overview"&&id)await learning.overview(id,(embedded?embeddedRoute:location.hash.slice(1)).split('/')[2]);
+    else if(route==="overview"&&id)await learning.overview(id,questionId,libraryMode);
     else if (route === "result" && id) await resultPage(id);
     else if (route === "review" && id) await reviewPage(id);
     else if (route === "device") await devicePage();

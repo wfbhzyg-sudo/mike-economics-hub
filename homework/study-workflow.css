@@ -76,7 +76,19 @@
   body[data-mcq-active=true] .study-sheet[data-student-discussion] {width:340px;margin:auto 12px auto auto}
   body[data-mcq-active=true] .study-sheet[data-student-discussion]::backdrop {background:transparent}
 }
-.study-filter-panel{border:1px solid var(--ui-line);border-radius:8px;background:#fff}
-.study-filter-panel > summary{cursor:pointer;padding:10px 12px;font-weight:650}
-.study-filter-panel > form{padding:0 12px 12px}
-.study-filter-panel ~ [role=status]:empty{display:none}
+.study-stat-filter{display:grid;gap:6px}
+.study-scope-row{gap:8px 16px}
+.study-scope-row label[hidden]{display:none}
+.study-extra-filters{padding:4px 0 10px;gap:8px 16px}
+.study-filter-panel{border-bottom:1px solid var(--ui-line)}
+.study-filter-panel>summary{width:fit-content;cursor:pointer;padding:10px 2px;color:var(--ui-primary);font-size:14px;font-weight:600}
+.study-stats>[role=status]:empty{display:none}
+@media(max-width:700px){
+ .study-stat-filter .study-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .study-stat-filter .study-filters label{display:grid;gap:2px}
+ .study-stat-filter .study-filters label[hidden]{display:none}
+ .study-scope-row:has([data-course-field]:not([hidden])) label:first-child{grid-column:1/-1}
+ .study-stat-filter :is(input,select){width:100%;box-sizing:border-box}
+}
+.study-stats [hidden]{display:none}
+.study-stats [aria-busy=true]{opacity:.55}
