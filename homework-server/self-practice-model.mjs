@@ -1,3 +1,4 @@
+import {releaseAppliesToUnit} from './library-model.mjs';
 import {createHash} from 'node:crypto';
 import {questionHasTopic} from '../homework/library-packs.js';
 
@@ -37,8 +38,7 @@ export function visibleUnitsForStudent(units, user, releases) {
   const ids = Array.isArray(user.classIds) ? user.classIds : [];
   return units.filter((unit) =>
     releases.some((release) =>
-      release.unitId === unit.id &&
-      (!release.owner || release.owner === unit.owner) &&
+      releaseAppliesToUnit(release, unit) &&
       (release.classIds || []).some((classId) => ids.some((own) => classKey(own) === classKey(classId)))));
 }
 

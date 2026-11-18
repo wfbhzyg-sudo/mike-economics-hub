@@ -52,7 +52,7 @@ export function createWorkspaceUI(ctx) {
       score = questions.reduce((n, q) => n + q.maxPoints, 0);
     const studentAction=studentAssignmentAction(a,state.submissions);
     const target=t?(a.published?'overview/':'edit/')+a.id:studentAction.target;
-    const action=t?(a.published?'查看提交':'继续草稿'):studentAction.action;
+    const action=t?(a.published?(a.offline||a.format==='score'?'查看成绩':'查看提交'):'继续草稿'):studentAction.action;
     const tone = t
       ? review.length
         ? "sand"
@@ -65,9 +65,10 @@ export function createWorkspaceUI(ctx) {
     if(t){
       const subject=assignmentCourse(a,state.classes);
       const opensLater=assignmentOpensLater(a);
+      const offline=a.offline||a.format==='score';
       const counts=state.rosterSummaries?.[a.id], summary=counts||{submitted:records.length,review:review.length,published:done.length};
       const stat=(filter,text,cls)=>link('overview/'+a.id+'/'+filter,text,'roster-count '+cls);
-      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title"><span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.opensAt&&Date.parse(a.opensAt)>Date.now()?'开放 '+date(a.opensAt)+(a.dueAt?' · 截止 '+date(a.dueAt):''):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'—':'同步名单…'):summary.missing+(opensLater?' 待开始':' 未提交'),!opensLater&&summary.missing>0?'is-missing':'is-neutral')}${stat('published',summary.published+' 已出分','is-neutral')}${summary.review?stat('review',summary.review+' 待处理','is-review'):''}`:'<span class="hint">发布后统计提交</span>'}</div><div class="actions task-actions">${link(target,opensLater?'查看安排':action,'primary')}${link('edit/'+a.id,'编辑')}${menu(a)}</div></article>`;
+      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title"><span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.opensAt&&Date.parse(a.opensAt)>Date.now()?'开放 '+date(a.opensAt)+(a.dueAt?' · 截止 '+date(a.dueAt):''):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?(offline?`${stat('recorded',(summary.recorded??done.filter(r=>r.grade?.total!=null).length)+' 已录分','is-submitted')}${stat('unrecorded',summary.unrecorded==null?(state.rosterError?'名单待重试':'同步名单…'):summary.unrecorded+' 待录分','is-neutral')}`:`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'—':'同步名单…'):summary.missing+(opensLater?' 待开始':' 未提交'),!opensLater&&summary.missing>0?'is-missing':'is-neutral')}${stat('published',summary.published+' 已出分','is-neutral')}${summary.review?stat('review',summary.review+' 待处理','is-review'):''}`):'<span class="hint">发布后查看名单</span>'}</div><div class="actions task-actions">${link(target,opensLater?'查看安排':action,'primary')}${link('edit/'+a.id,'编辑')}${menu(a)}</div></article>`;
     }
     return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${target?link(target, highlightText(a.title,state.assignmentSearch), "task-name"):`<strong class="task-name">${highlightText(a.title,state.assignmentSearch)}</strong>`}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(studentAction.label)}</span></div><div class="meta">${studentSubject(a)}${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${!t&&studentAction.opensLater?"开放 "+date(a.opensAt):a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待复核", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${target?link(target, action, "primary"):`<button class="secondary" disabled>${h(action)}</button>`}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
   }
@@ -184,7 +185,7 @@ export function createWorkspaceUI(ctx) {
     const due = action.opensLater ? `开放 ${date(a.opensAt)}` : a.dueAt ? `截止 ${date(a.dueAt)}` : "不限截止时间";
     let detail = "";
     if (offline) {
-      detail = `<p class="card-progress">${info.latest?.status==='published'?'成绩已由老师录入':'线下成绩，由老师录入'}</p>`;
+      detail = `<p class="card-progress">${info.key==='done'?'成绩已由老师录入':'线下成绩，由老师录入'}</p>`;
     } else if (info.key === "done" && grade) {
       const total = Number(grade.total ?? 0),
         wrong = (grade.questions || []).filter((q) => q.score != null && q.score < q.maxPoints).length,

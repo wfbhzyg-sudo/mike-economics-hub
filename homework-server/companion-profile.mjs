@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-shared-teaching',date:'2026-11-18',title:'教师共用教学资源',
+  items:[
+    {audience:'teacher',art:'book',title:'教学包与题库对教师开放',text:'所有教师可查看共用教学资料、选题组卷，以及向自己的班级开放资料。'},
+    {audience:'teacher',art:'roster',title:'线下作业显示录分状态',text:'作业管理和成绩名单按已录分与待录分显示，0 分计为已录分。'}
+  ]
+},{
   id:'2026-11-18-study-workflow', date:'2026-11-18', title:'逐题收藏、交流与复习',
   items:[
     {audience:'student',art:'book',title:'书签与模考错题',text:'作答时可逐题收藏。从错题本回看书签和正式作业、模考的失分记录。同一道题合并为一张卡片。'},

@@ -248,11 +248,11 @@ export async function createHomework({externalAuth} = {}) {
     s.updatedAt = now();
     await db.put("submission", s, c);
   };
-  const authorizeFile = async (file, user) => {
+  const authorizeFile = async (file,user,availableClasses) => {
     if (file.owner === user.id) return true;
     if(await library.canReadFile(file,user))return true;
     if(await selfPractice.canReadFile(file,user))return true;
-    if(file.purpose==='board'&&await library.canReadBoardAttachment(file,user))return true;
+    if(file.purpose==='board'&&await library.canReadBoardAttachment(file,user,availableClasses))return true;
     for (const a of await db.list("assignment"))
       if (
         (paperOf(a).questionFiles || []).includes(file.id) &&
@@ -855,7 +855,7 @@ export async function createHomework({externalAuth} = {}) {
       }
       if (route[0] === "files") {
         if(route[1]&&route[2]==='reading'&&['GET','PUT'].includes(method)){
-          const f=await db.get(route[1]);assert(f?.mime==='application/pdf'&&await authorizeFile(f,user),'附件不存在或无权查看',404);
+          const f=await db.get(route[1]);assert(f?.mime==='application/pdf'&&await authorizeFile(f,user,availableClasses),'附件不存在或无权查看',404);
           const key='reading:'+hash(user.id+':'+f.id);
           if(method==='GET')return (json(res,{position:await db.get(key)||null}),true);
           const b=await body(req);assert(Number.isInteger(b.page)&&b.page>=1&&b.page<=f.pages,'页码超出题纸范围');
@@ -890,7 +890,7 @@ export async function createHomework({externalAuth} = {}) {
         if (["GET", "HEAD"].includes(method) && route[1]) {
           const f = await db.get(route[1]);
           assert(
-            f?.mime && (await authorizeFile(f, user) || (url.searchParams.has('mock') && await studyWorkflow.canReadMockImage(extensionContext,url.searchParams.get('mock'),f)) || (url.searchParams.has('bookmark') && await studyWorkflow.canReadBookmarkFile(extensionContext,url.searchParams.get('bookmark'),f))),
+            f?.mime && (await authorizeFile(f,user,availableClasses) || (url.searchParams.has('mock') && await studyWorkflow.canReadMockImage(extensionContext,url.searchParams.get('mock'),f)) || (url.searchParams.has('bookmark') && await studyWorkflow.canReadBookmarkFile(extensionContext,url.searchParams.get('bookmark'),f))),
             "附件不存在或无权查看",
             404,
           );
@@ -922,8 +922,11 @@ export async function createHomework({externalAuth} = {}) {
       }
       if (route[0] === "assignments") {
         if(method==='GET'&&route[1]==='roster-summary'){
-          teacher();const students=await availableStudents(),submissions=await db.list('submission');
-          const assignments=(await db.list('assignment')).filter(a=>a.teacherId===user.id&&!a.deletedAt);
+          teacher();
+          const assignments=(await db.find('assignment',{teacherId:user.id})).filter(a=>!a.deletedAt);
+          const [students,submissions]=await Promise.all([
+            availableStudents(),db.find('submission',{assignmentId:assignments.map(a=>a.id)})]);
+
           return (json(res,{summaries:Object.fromEntries(assignments.map(a=>[a.id,assignmentRoster(a,students,submissions).counts]))}),true);
         }
         if (method === "GET" && !route[1]) {

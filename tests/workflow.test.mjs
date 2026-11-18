@@ -16,3 +16,16 @@ test('three-class roster keeps assigned historical memberships and counts a shar
  assert.equal(result.rows.length,2);assert.deepEqual(result.rows[0].classIds,a.classIds.slice(0,2));
  assert.equal(result.counts.missing,1);assert.equal(result.counts.submitted,1);
 });
+
+test('Offline rosters count imported zero scores as recorded and ungraded rows as waiting',()=>{
+ const assignment={id:'offline',classIds:['c'],published:true,format:'score'};
+ const roster=assignmentRoster(assignment,students,[
+   {id:'zero',studentId:'a',assignmentId:'offline',status:'published',manualScoreEntry:true,publishedGrade:{total:0,maxPoints:20}},
+   {id:'blank',studentId:'b',assignmentId:'offline',status:'published',manualScoreEntry:true,publishedGrade:{total:null,maxPoints:20}}
+ ]);
+ assert.equal(roster.counts.recorded,1);
+ assert.equal(roster.counts.unrecorded,1);
+ assert.equal(roster.counts.missing,0);
+ assert.equal(roster.rows.find(row=>row.id==='a').grade.total,0);
+ assert.equal(roster.rows.find(row=>row.id==='b').state,'unrecorded');
+});

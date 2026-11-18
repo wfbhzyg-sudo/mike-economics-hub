@@ -41,7 +41,10 @@ export function assignmentState(a, submissions, time=Date.now()) {
   const closed=Boolean(a.dueAt&&Date.parse(a.dueAt)<time&&!a.allowLate&&latest?.status!=='returned');
   const canSubmit=!closed&&(!latest||latest.status==='returned'||a.allowResubmit!==false);
   const base={latest,draft,canSubmit};
-  if(offline)return {...base,key:latest?.status==='published'?'done':'offline',label:latest?.status==='published'?'已录分':'待老师录分'};
+  if(offline){
+    const recorded=latest?.status==='published'&&latest.publishedGrade?.total!=null;
+    return {...base,key:recorded?'done':'offline',label:recorded?'已录分':'待老师录分'};
+  }
   if(latest?.status==='returned')return {...base,key:'todo',label:submissionLabel('returned')};
   if(draft&&canSubmit)return {...base,key:'todo',label:'草稿待提交'};
   if(latest?.status==='published')return {...base,key:'done',label:'已出分'};

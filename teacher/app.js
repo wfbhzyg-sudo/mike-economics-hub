@@ -168,7 +168,7 @@ function bankUnitLabel(t){return String(t||'').match(/Unit\s*\d+/i)?.[0]||t||'';
 function bankQuestionRow(q){
  const selected=bankState.selected.has(q.id),img=q.questionImages?.[0];
  const stem=String(q.searchText||q.prompt||q.stem||q.title||'').replace(/\s+/g,' ').trim()||('题目 '+(q.number||''));
- return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><div class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'<span>无图</span>'}</div><div class="bank-copy"><h3>${h(q.number||'')}. ${h(stem.slice(0,150))}</h3><p>${h(bankUnitLabel(q.unitTitle||q.unitId))}${q.topicTitle?' · '+h(q.topicTitle):''} · ${bankTypeLabel[q.type]||h(q.type)}${q.status!=='ready'?' · '+badge('待核对','warn'):''}</p></div><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span><button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button></article>`;
+ return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><div class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'<span>无图</span>'}</div><div class="bank-copy"><h3>${h(q.number||'')}. ${h(stem.slice(0,150))}</h3><p>${h(bankUnitLabel(q.unitTitle||q.unitId))}${q.topicTitle?' · '+h(q.topicTitle):''} · ${bankTypeLabel[q.type]||h(q.type)}${q.status!=='ready'?' · '+badge('待核对','warn'):''}</p></div><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span>${q.canEdit!==false?`<button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button>`:''}</article>`;
 }
 function bankSelectedMarkup(){
  const items=[...bankState.selected.values()],unset=items.filter(q=>q.type==='short'&&!(q.maxPoints>0)).length,points=items.reduce((sum,q)=>sum+(Number(q.maxPoints)||(q.type==='choice'?1:0)),0);
@@ -226,7 +226,8 @@ async function bank(){
  $('#bank-cart').onclick=e=>{const rm=e.target.closest('[data-bank-remove]');if(rm){bankState.selected.delete(rm.dataset.bankRemove);drawBankList();drawBankCart();}if(e.target.closest('[data-bank-clear]')){bankState.selected.clear();drawBankList();drawBankCart();}};
  $('#bank-publish').onclick=openBankPublish;
  $('[data-bank-publish-quick]').onclick=openBankPublish;
- $('[data-bank-audit]').onclick=()=>{location.hash='bank/crop';};
+ const audit=$('[data-bank-audit]');
+ if(audit){audit.hidden=!data.questions.some(q=>q.canEdit!==false);audit.onclick=()=>{location.hash='bank/crop';};}
 }
 
 const cropVisual=/(figure|graph|table|diagram|chart|shown|curve|axis|slope|shift)/i;
@@ -237,8 +238,8 @@ function cropCandidate(q){
 }
 async function bankCrop(focusId=''){
  const version=state.version,data=await hw('library/questions?unit=all');if(version!==state.version)return;
- let queue=data.questions.filter(cropCandidate);
- const focus=data.questions.find(q=>q.id===focusId);if(focus)queue=[focus,...queue.filter(q=>q.id!==focusId)];
+ let queue=data.questions.filter(q=>q.canEdit!==false&&cropCandidate(q));
+ const focus=data.questions.find(q=>q.id===focusId&&q.canEdit!==false);if(focus)queue=[focus,...queue.filter(q=>q.id!==focusId)];
  const view=mountCropEditor({main,queue,hw,h,toast,dirty:value=>state.dirty=value});state.viewCleanup=()=>view.destroy();
 }
 

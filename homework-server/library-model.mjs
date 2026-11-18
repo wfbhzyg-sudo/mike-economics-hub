@@ -22,3 +22,7 @@ export function validateSelection(ids,questions,{requireReady=false}={}){
  const chosen=ids.map(id=>{const q=questions.find(q=>q.id===id);assert(q&&!q.deletedAt&&['choice','short'].includes(q.type)&&q.questionImages?.length,'题目原件缺失，请先补全切片');if(requireReady)assert(automaticGradeReady(q),'答案或评分点尚未核对完成');return q;});
  assert(new Set(chosen.map(q=>q.canonicalQuestionId||q.id)).size===chosen.length,'所选题目包含同一道题的不同来源，请保留一份');return chosen;
 }
+
+export function releaseAppliesToUnit(release, unit) {
+  return release.unitId === unit.id && (!release.owner || (release.libraryOwner || release.owner) === unit.owner);
+}

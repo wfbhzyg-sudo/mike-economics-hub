@@ -688,6 +688,21 @@ async function reviewPage(id) {
   s.rubricSnapshot ||= s.publishedGrade?.questionsSnapshot || [];
   const a = state.assignments.find((x) => x.id === s.assignmentId),
     name = state.submissions.find((x) => x.id === id)?.studentName || "学生";
+  if(a?.offline||a?.format==='score'||s.publishedGrade?.scoreOnly){
+    if(renderId!==state.routeVersion)return;
+    const g=s.publishedGrade||{}, max=Number(g.maxPoints||a?.maxPoints||0);
+    const back=state.reviewReturn?.route||'overview/'+s.assignmentId;
+    const valid=Number.isFinite(max)&&max>0;
+    main.innerHTML=`<section class="paper result-paper">${head('',a?.title||'线下成绩',name,link(back,'返回成绩名单'))}
+      <div class="result-score"><strong>${g.total??'—'}<small> / ${valid?max:'—'}</small></strong></div>
+      ${valid?`<form id="offline-grade-form" class="stack"><label class="field"><span>线下分数</span><input name="score" type="number" inputmode="decimal" min="0" max="${max}" step="0.1" value="${g.total??''}"></label><p class="hint">留空表示待录分，0 分作为有效成绩。</p><button type="submit" class="primary">保存成绩</button></form>`:'<p class="hint">请先为这份作业设置有效满分。</p>'}</section>`;
+    const form=$('#offline-grade-form');
+    if(form)formHandler(form,async ({score})=>{
+      await api('submissions/'+encodeURIComponent(s.id)+'/offline-score',{method:'PATCH',body:{score,absent:score==='',revision:g.revision||1}});
+      toast('成绩已保存');await render(false);
+    });
+    return;
+  }
   const reviewFiles=[...s.files,...(s.choices?s.rubricSnapshot.flatMap(q=>q.questionImages||[]):[])];
   await metadata(reviewFiles);
   const {mountReviewStudio}=await import("./review-studio.js");
