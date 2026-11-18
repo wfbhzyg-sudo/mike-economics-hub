@@ -1,5 +1,12 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-peer-review',date:'2026-11-18',title:'同伴思路与对话工具更新',
+  items:[
+    {audience:'student',art:'book',title:'同伴思路先审核再发表',text:'分享或修改的正文经 DeepSeek 审核通过后，同班同学才会看到。退回后可以继续修改。'},
+    {audience:'teacher',art:'roster',title:'题目诊断表更紧凑',text:'直接点题号查看原题，列表集中显示得分表现、样本与选项分布。'},
+    {audience:'all',art:'news',title:'对话工具收进菜单',text:'在 Mike 的输入框旁添加截图或页面引用，在右上角对话菜单中查看历史。'}
+  ]
+},{
   id:'2026-11-18-class-scope',date:'2026-11-18',title:'按班查看教学数据',
   items:[
     {audience:'teacher',art:'subjects',title:'选班即可查看',text:'选择宏观班或微观班后，作业列表、模考统计与拓展学习记录自动使用该班范围。'},

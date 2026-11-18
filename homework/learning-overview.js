@@ -570,7 +570,6 @@ export function mountLearningOverview(ctx, initialData) {
     const top = Math.max(1, ...question.distribution.map(item => item.count));
     return `<button type="button" class="lo-qrow" data-diag-question="${h(question.id)}" title="查看第 ${index + 1} 题原题与班级数据">
       <span class="lo-qrow-index">${index + 1}</span>
-      <span class="lo-qrow-prompt">${h(trim(question.prompt, 56))}</span>
       <span class="lo-qrow-type">${h(TYPES[question.type] || question.type || '题')}</span>
       <span class="lo-qrow-rate">${accuracyBadge(rate)}</span>
       <span class="lo-qrow-sample">${question.graded}</span>
@@ -583,7 +582,7 @@ export function mountLearningOverview(ctx, initialData) {
     const unit = assignment.libraryUnit ? `${assignment.libraryUnit} · ` : '';
     return `<div class="lo-diag-body">
       <button type="button" class="lo-back lo-mobile-only" data-diag-back>← 返回作业列表</button>
-      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div><div class="lo-diag-actions">${ai?`<button type="button" class="lo-btn lo-primary" data-ai-assignment="${h(assignment.id)}" ${diagnosis.published?'':'disabled title="已有成绩后可生成"'}>生成本次作业分析</button>`:''}${link(`work/overview/${assignment.id}`, '作业设置')}</div></header>
+      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div><div class="lo-diag-actions">${ai?`<button type="button" class="lo-btn lo-primary" data-ai-assignment="${h(assignment.id)}" ${diagnosis.published?'':'disabled title="已有成绩后可生成"'}>生成作业分析</button>`:''}${link(`work/overview/${assignment.id}`, '查看作业')}</div></header>
       <div class="lo-diag-metrics">
         <div><span>已发布</span><strong>${diagnosis.published}<small> 份</small></strong></div>
         <div><span>平均</span><strong>${accuracyBadge(diagnosis.average)}</strong></div>
@@ -592,7 +591,7 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
       <section class="lo-diag-section"><div class="lo-section-head"><h3>每题正确率与选项分布</h3><label>排序 <select id="lo-diag-order">${[['number','原题号'],['asc','正确率从低到高'],['desc','正确率从高到低']].map(([key,text])=>`<option value="${key}" ${key===diagOrder?'selected':''}>${text}</option>`).join('')}</select></label></div>
         ${diagnosis.questions.length ? `<div class="lo-qtable" role="table" aria-label="题目诊断">
-          <div class="lo-qtable-head" role="row"><span role="columnheader">题</span><span role="columnheader">题目</span><span role="columnheader">类型</span><span role="columnheader">${diagnosis.questions.every(question => question.type === 'choice') ? '正确率' : diagnosis.questions.every(question => question.type !== 'choice') ? '得分率' : '正确率/得分率'}</span><span role="columnheader">样本</span><span role="columnheader">选项分布</span></div>
+          <div class="lo-qtable-head" role="row"><span role="columnheader">题号</span><span role="columnheader">类型</span><span role="columnheader">${diagnosis.questions.every(question => question.type === 'choice') ? '正确率' : diagnosis.questions.every(question => question.type !== 'choice') ? '得分率' : '正确率/得分率'}</span><span role="columnheader">样本</span><span role="columnheader">选项分布</span></div>
           ${orderedDiagnosisQuestions(diagnosis.questions,diagOrder).map(({question,index})=>questionRowMarkup(diagnosis,question,index)).join('')}
         </div>` : '<p class="lo-note">这份作业没有题目级评分数据，附件与作答可在复核页查看。</p>'}
       </section>

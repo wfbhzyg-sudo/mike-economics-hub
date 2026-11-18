@@ -1,3 +1,4 @@
+import {bindDisclosureMenus} from './disclosure-menu.js';
 import {assignmentCourse,courseLabel,coursesFor,courseTabs,selectedCourse,rememberCourse,classKey,namedCourse,singleClassCourse} from './course-scope.js';
 import {studentAssignmentAction,assignmentOpensLater} from './assignment-navigation.js';
 import {insightsMarkup} from './student-home.js';
@@ -40,7 +41,7 @@ export function createWorkspaceUI(ctx) {
     return `<span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>`;
   }
   function menu(a) {
-    return `<button type="button" class="secondary row-more" data-more="${h(a.id)}" aria-label="更多操作：${h(a.title)}">更多</button>`;
+    return `<button type="button" class="secondary row-more" data-more="${h(a.id)}" aria-label="更多操作：${h(a.title)}" title="更多作业操作">⋯</button>`;
   }
   function row(a) {
     const t = teacher(),
@@ -239,12 +240,8 @@ export function createWorkspaceUI(ctx) {
     const courses=[...new Set(state.assignments.map(subjectOf))];
     if (!courses.includes(state.assignmentCourse)) state.assignmentCourse = "";
     if(!state.classes.some(c=>c.id===state.assignmentClass))state.assignmentClass='';
-    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<button class="secondary" type="button" data-work-tools>更多操作</button>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>` + `<div data-course-insights></div>`}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div><div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h(["macro","micro","mixed","unknown"].includes(c)?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
-    const tools=$('[data-work-tools]');
-    if(tools)tools.onclick=()=>dialog('作业管理',`<div class="dialog-options"><button type="button" class="secondary" data-bank-start>从题库出题</button>${link('trash','回收站')}</div>`, d=>{
-      d.querySelector('[data-bank-start]').onclick=()=>{d.close();location.href='/teacher/#bank';};
-      d.querySelector('a').onclick=()=>d.close();
-    });
+    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>` + `<div data-course-insights></div>`}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div><div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h(["macro","micro","mixed","unknown"].includes(c)?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
+    const releaseTools=t?bindDisclosureMenus(main,'.work-tools'):null;
     function draw() {
       const fixed=singleClassCourse(state.classes.find(c=>c.id===state.assignmentClass));
       const picker=$("#assignment-course");
@@ -411,7 +408,7 @@ export function createWorkspaceUI(ctx) {
     if(t)void loadSummary();
     const saved=state.assignmentListPosition;
     if(saved){requestAnimationFrame(()=>{(main.id==='homework-main'?document.scrollingElement:main).scrollTop=saved.top;const target=main.querySelector('[href="'+CSS.escape(saved.href||'')+'"]');target?.focus({preventScroll:true});});}
-    state.viewCleanup=()=>{state.assignmentListPosition={top:(main.id==='homework-main'?document.scrollingElement:main).scrollTop,href:document.activeElement?.getAttribute('href')};};
+    state.viewCleanup=()=>{releaseTools?.();state.assignmentListPosition={top:(main.id==='homework-main'?document.scrollingElement:main).scrollTop,href:document.activeElement?.getAttribute('href')};};
   }
   async function trash() {
     const { assignments } = await api("assignments?trash=1");

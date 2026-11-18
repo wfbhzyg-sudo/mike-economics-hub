@@ -88,12 +88,12 @@ export function openDiscussion({api,user,assignmentId,item='',version,classes,tr
   d.className='study-sheet';
   if(!teacher)d.dataset.studentDiscussion='';
   d.setAttribute('aria-label',teacher?'同伴思路记录':'同伴思路');
-  d.innerHTML=`<header><div><strong>${teacher?'同伴思路记录':'同伴思路'}</strong>${item?`<small>第 ${esc(item)} 题</small>`:''}</div><button type="button" data-close>关闭</button></header>
+  d.innerHTML=`<header><div><strong>${teacher?'同伴思路记录':'同伴思路'}</strong>${item?`<small>第 ${esc(item)} 题</small>`:''}</div><button type="button" class="study-close" data-close aria-label="关闭同伴思路">×</button></header>
     <div class="study-filters"><label>讨论班级 <select>${classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
     ${teacher?`<label>开放方式 <select data-policy><option value="attempt">保存首次作答后</option><option value="open">作业开放后</option><option value="review">成绩公布后复盘</option><option value="closed">关闭</option></select></label>
     <label>记录 <select data-status-filter><option value="all">全部帖子</option><option value="reported">举报待处理</option><option value="handled">已处理</option></select></label>`:''}</div>
     <button type="button" data-new hidden>讨论有更新，查看最新记录</button><p role="status"></p><div class="study-feed" aria-label="思路列表"></div>
-    ${teacher?'':`<form><label>分享判断依据或第一步<textarea maxlength="400" rows="2" required placeholder="只对所选班级可见"></textarea></label><button class="primary" type="submit">发布</button></form>`}`;
+    ${teacher?'':`<form><label>分享判断依据或第一步<textarea maxlength="400" rows="2" required placeholder="只对所选班级可见"></textarea></label><div class="study-compose-foot"><small role="status" data-review-note>正文经 DeepSeek 审核后对本班可见</small><button class="primary" type="submit">提交审核</button></div></form>`}`;
   document.body.append(d);d.showModal();
   const select=d.querySelector('select'), list=d.querySelector('.study-feed'), status=d.querySelector('[role=status]'), form=d.querySelector('form'), news=d.querySelector('[data-new]');
   const drafts=new Map(), startClass=classes[0]?.id;
@@ -135,11 +135,12 @@ export function openDiscussion({api,user,assignmentId,item='',version,classes,tr
   function postMarkup(p){
     return `<article data-post="${esc(p.id)}"><div class="study-post-meta"><strong>${esc(p.mine?'我':p.alias)}</strong><small>${teacher?`第 ${esc(p.item)} 题 · 版本 ${esc(p.version)} · `:''}${esc(nl(p.createdAt))}${p.editedAt?' · 已编辑':''}${p.state==='hidden'?' · 已隐藏':''}</small></div><p>${esc(p.body)}</p>
       <div class="study-actions">
-        <button type="button" data-vote="1" ${p.mine||teacher?'disabled':''} aria-pressed="${p.myVote===1}">有用 ${p.up}</button><button type="button" data-vote="-1" ${p.mine||teacher?'disabled':''} aria-pressed="${p.myVote===-1}">没用 ${p.down}</button>
+        ${p.mine||teacher?`<small>有用 ${p.up}　没用 ${p.down}</small>`:`<button type="button" data-vote="1" aria-pressed="${p.myVote===1}">有用 ${p.up}</button><button type="button" data-vote="-1" aria-pressed="${p.myVote===-1}">没用 ${p.down}</button>`}
         ${teacher?`<button type="button" data-moderate>${p.state==='hidden'?'恢复':'隐藏'}</button>${p.reports?.length?`<button type="button" data-keep>保留帖子</button>`:''}`:
         `<details><summary>更多</summary><div>${p.mine?'<button type="button" data-edit>编辑</button><button type="button" data-withdraw>撤回</button>':'<button type="button" data-report>举报</button><button type="button" data-block>屏蔽此人</button>'}</div></details>`}
       </div>${p.reports?.length?`<small>举报理由：${esc(p.reports.join('、'))}</small>`:''}${p.moderation?`<small>处理于 ${esc(nl(p.moderation.at))} · ${esc(p.moderation.reason)}</small>`:''}</article>`;
   }
+  const actionRequest=payload=>action(api,base+'?'+query(),payload);
   async function write(payload,control){
     if(control)control.disabled=true;
     try{await action(api,base+'?'+query(),payload);return true;}
@@ -148,13 +149,34 @@ export function openDiscussion({api,user,assignmentId,item='',version,classes,tr
   }
   function bindRow(p){
     const row=list.querySelector('[data-post="'+CSS.escape(p.id)+'"]');
-    const edit=(selector,b) => {const el=row.querySelector(selector);if(el)el.onclick=async()=>{const payload=b();if(payload&&await write({postId:p.id,revision:p.revision,...payload},el))await refresh();};};
+    function rowAction(selector,action,title,field,value='',extra={}){
+      const trigger=row.querySelector(selector);
+      if(!trigger)return;
+      trigger.onclick=()=>{
+        const prior=row.querySelector('.study-inline');prior?.remove();
+        const editor=document.createElement('form');editor.className='study-inline';
+        editor.innerHTML=`<strong>${esc(title)}</strong>${field?`<textarea required maxlength="${action==='edit'?400:160}" aria-label="${esc(title)}"></textarea>`:''}<p role="status"></p><footer><button type="button" data-cancel>取消</button><button type="submit" class="primary">${action==='edit'?'提交审核':'确认'}</button></footer>`;
+        row.append(editor);
+        const text=editor.querySelector('textarea'),msg=editor.querySelector('p'),send=editor.querySelector('[type=submit]');
+        if(text){text.value=value;text.focus();}else editor.querySelector('[data-cancel]').focus();
+        editor.querySelector('[data-cancel]').onclick=()=>{editor.remove();trigger.focus();};
+        editor.onsubmit=async e=>{
+          e.preventDefault();if(send.disabled)return;
+          send.disabled=true;if(text)text.readOnly=true;
+          msg.textContent=action==='edit'?'正在审核，原帖仍按原样显示…':'正在保存…';
+          try{await actionRequest({action,postId:p.id,revision:p.revision,...extra,...(field?{[field]:text.value}:{})});await refresh();}
+          catch(err){msg.textContent=err.message;}
+          finally{send.disabled=false;if(text)text.readOnly=false;}
+        };
+      };
+    }
     for(const vote of row.querySelectorAll('[data-vote]'))vote.onclick=async()=>{const value=Number(vote.dataset.vote);if(await write({action:'vote',postId:p.id,value:value===p.myVote?0:value},vote))await refresh();};
-    edit('[data-edit]',()=>{const body=prompt('修改你的思路',p.body);return body!==null?{action:'edit',body}:null;});
-    edit('[data-withdraw]',()=>confirm('撤回这条思路？')?{action:'withdraw'}:null);
-    edit('[data-block]',()=>confirm('隐藏这位同学的所有思路？')?{action:'block'}:null);
-    edit('[data-report]',()=>{const reason=prompt('告诉老师需要检查什么','疑似直接提供答案');return reason?.trim()?{action:'report',reason}:null;});
-    for(const selector of ['[data-moderate]','[data-keep]'])edit(selector,()=>{const reason=prompt('记录处理原因');return reason?.trim()?{action:'moderate',state:selector==='[data-keep]'||p.state==='hidden'?'visible':'hidden',reason}:null;});
+    rowAction('[data-edit]','edit','修改思路','body',p.body);
+    rowAction('[data-withdraw]','withdraw','撤回这条思路？');
+    rowAction('[data-block]','block','屏蔽这位同学的所有思路？');
+    rowAction('[data-report]','report','举报原因','reason');
+    for(const selector of ['[data-moderate]','[data-keep]'])
+      rowAction(selector,'moderate','处理原因','reason','',{state:selector==='[data-keep]'||p.state==='hidden'?'visible':'hidden'});
   }
   d.querySelector('[data-close]').onclick=()=>d.close();
   select.onchange=()=>{remember(classId);classId=select.value;restore(classId);offset=0;loaded=false;clientId=crypto.randomUUID();stream?.close();list.replaceChildren();void refresh(true);};
@@ -166,8 +188,33 @@ export function openDiscussion({api,user,assignmentId,item='',version,classes,tr
   }
   if(form){
     restore(classId);form.hidden=true;
-    form.elements[0].addEventListener('input',()=>remember(classId));
-    form.onsubmit=async e=>{e.preventDefault();const from=classId;if(await write({action:'create',body:form.elements[0].value,clientId},form.querySelector('[type=submit]'))&&from===classId&&d.open){form.reset();remember(classId);clientId=crypto.randomUUID();offset=0;list.scrollTop=0;void refresh();}};
+    form.elements[0].addEventListener('input',()=>{
+      remember(classId);form.querySelector('[data-review-note]').textContent='正文经 DeepSeek 审核后对本班可见';
+    });
+    form.onsubmit=async e=>{
+      e.preventDefault();
+      const text=form.querySelector('textarea'),send=form.querySelector('[type=submit]'),note=form.querySelector('[data-review-note]');
+      if(send.disabled)return;
+      const from=classId,body=text.value,key=draftKey(from),receiptKey=key+':request';
+      try{
+        const previous=JSON.parse(sessionStorage.getItem(receiptKey)||'null');
+        clientId=previous?.body===body?previous.clientId:crypto.randomUUID();
+        sessionStorage.setItem(receiptKey,JSON.stringify({body,clientId}));
+      }catch{}
+      send.disabled=true;select.disabled=true;text.readOnly=true;
+      note.textContent='DeepSeek 正在审核…';
+      try{
+        await actionRequest({action:'create',body,clientId});
+        try{
+          const pending=JSON.parse(sessionStorage.getItem(receiptKey)||'null');
+          if(pending?.clientId===clientId&&sessionStorage.getItem(key)===body){
+            sessionStorage.removeItem(key);sessionStorage.removeItem(receiptKey);
+          }
+        }catch{}
+        if(from===classId&&d.open){form.reset();remember(classId);clientId=crypto.randomUUID();offset=0;list.scrollTop=0;note.textContent='审核通过，已发布到本班。';void refresh();}
+      }catch(err){note.textContent=err.message;}
+      finally{send.disabled=false;select.disabled=false;text.readOnly=false;}
+    };
   }
   d.addEventListener('close',()=>{epoch++;remember(classId);stream?.close();d.remove();trigger?.focus({preventScroll:true});},{once:true});
   void refresh(true);

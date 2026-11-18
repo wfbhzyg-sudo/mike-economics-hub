@@ -92,3 +92,43 @@
 }
 .study-stats [hidden]{display:none}
 .study-stats [aria-busy=true]{opacity:.55}
+
+/* Common surfaces leave the positioning and scrolling to each kind of dialog. */
+body dialog{border-color:#becbd7;box-shadow:0 20px 68px #10263e38,0 2px 10px #10263e12;color:#182f46}
+body dialog::backdrop{background:rgb(15 32 51 / .38)}
+body dialog :is(button,a,summary,input,textarea,select):focus-visible,.work-tools summary:focus-visible{outline:2px solid #42789d;outline-offset:2px}
+body dialog :is(.lo-sheet-bar,.gj-sheet-bar,.work-dialog-head,.tw-dialog-head,.study-sheet-head){border-bottom:1px solid #d8e1ea;background:#f4f7fa;color:#18314b;padding:12px 16px}
+body dialog :is(.dialog-options,.tw-dialog-actions,.lo-sheet-actions,.form-actions){gap:8px}
+body dialog .dialog-options{display:flex;flex-direction:column;gap:0;border:1px solid #d6dfe7;border-radius:10px;overflow:hidden}
+body dialog .dialog-options>:is(button,a){justify-content:flex-start;text-align:start;box-shadow:none;border:0;border-radius:0;border-bottom:1px solid #dce4eb;background:white;color:#193852;padding:10px 14px;min-height:44px}
+body dialog .dialog-options>:last-child{border-bottom:0}
+body dialog .dialog-options>.danger{color:#953b37}
+body .work-tools summary,body .tw-class-more>summary,body .assignment-management-row .row-more{display:grid;place-items:center;list-style:none;font:bold 20px/1 system-ui;cursor:pointer;border:1px solid #cdd8e3;background:#fff;color:#334f68;border-radius:8px;min-width:40px;min-height:40px;padding:0}
+.work-tools summary::-webkit-details-marker{display:none}
+.work-tools-menu{padding:5px;border:1px solid #c2cfdb;border-radius:10px;background:white;box-shadow:0 10px 32px #112c4530}
+body .work-tools-menu a{display:flex;align-items:center;justify-content:flex-start;padding:7px 12px;min-height:42px;border:0;border-radius:6px;background:#fff;font:500 14px/1.45 system-ui;text-decoration:none;color:#19364e}
+body .work-tools-menu a:hover{background:#edf3f7}
+.tw-class-row .class-name-link{background:transparent;border:0;text-align:left;padding:3px 0;min-height:40px;color:#163754;font:inherit;cursor:pointer}
+.class-name-link span{font-size:14px;color:#637c90}
+.tw-class-row[data-current=true]{box-shadow:inset 3px 0 #264b6a;padding-inline:10px;background:#f3f6f9}
+.lo-panel-bar{background:#f5f8fa;padding:8px 12px}
+.lo-panel-bar>strong{font-weight:650}
+.lo-panel-bar [data-action=report-history],.lo-diag-actions a{border-color:transparent;background:transparent;color:#3c5871;text-decoration:underline;text-underline-offset:3px}
+.study-sheet>header{padding:14px 18px;background:#152f48}
+.study-sheet>header strong{font-size:17px;letter-spacing:.02em}
+.study-sheet button.study-close{width:44px;height:44px;padding:0;border:0;background:transparent;color:#fff;font:24px/1 system-ui}
+.study-sheet>.study-filters{border-bottom:1px solid #d9e2eb;padding:9px 14px;margin:0;background:#f6f8fb}
+.study-sheet .study-feed{padding-inline:16px}
+.study-sheet .study-feed article>p{font-size:15px;line-height:1.65;white-space:pre-wrap}
+.study-sheet .study-actions{gap:4px}
+.study-sheet .study-actions>button{padding:4px 8px;font-size:13px;border-color:transparent;background:#eff3f7;border-radius:6px;min-height:36px}
+.study-sheet .study-actions>button[aria-pressed=true]{background:#183751;color:white}
+.study-actions>details{margin-left:auto}
+.study-sheet .study-actions small{color:#526b80}
+.study-sheet>form{background:#f5f8fa;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.study-sheet textarea{border:1px solid #9cb0c1;padding:10px;color:#142f48;border-radius:8px;resize:vertical}
+.study-compose-foot,.study-inline footer{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:7px}
+.study-compose-foot small{margin-right:auto;font-size:12px;color:#405a70}
+.study-compose-foot button{flex:none}.study-sheet .study-inline{margin-top:10px;border:1px solid #cdd8e2;border-radius:9px;background:#f7f9fb;padding:12px}
+.study-sheet .study-inline [role=status]:empty{display:none}
+@media(pointer:coarse){body .work-tools summary,body .tw-class-more>summary,.study-sheet .study-actions>button,body .assignment-management-row .row-more{min-width:44px;min-height:44px}}

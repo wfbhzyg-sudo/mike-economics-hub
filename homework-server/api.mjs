@@ -276,7 +276,7 @@ export async function createHomework({externalAuth} = {}) {
   const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
   const companion=createCompanion({db,decrypt});
   const selfPractice=createSelfPractice({db});
-  const studyWorkflow=createStudyWorkflow({db,requireAssignment});
+  const studyWorkflow=createStudyWorkflow({db,requireAssignment,decrypt});
   startSelfPracticeSweeper(selfPractice);
   return async (req, res) => {
     const url = new URL(req.url, "http://localhost");
