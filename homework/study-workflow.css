@@ -10,7 +10,7 @@
 .study-paper-refs{padding:10px 12px;margin-bottom:12px;border:1px solid var(--ui-line);border-radius:8px}
 .study-paper-refs>div{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ui-line)}
 .study-sheet{padding:0;margin:auto 0 auto auto;width:min(440px,100vw - 24px);height:min(770px,100dvh - 28px);
-  max-height:calc(100dvh - 24px);border:1px solid var(--ui-line);border-radius:12px;background:white;color:var(--ui-ink);
+  max-width:calc(100% - 24px);max-height:calc(100dvh - 24px);border:1px solid var(--ui-line);border-radius:12px;background:white;color:var(--ui-ink);
   box-shadow:0 18px 60px #11283f38;overflow:hidden
 }
 .study-sheet[open]{display:flex;flex-direction:column}
@@ -55,7 +55,7 @@
 .study-report-editor label{display:block;margin:8px 0}
 .study-report-editor textarea{display:block;width:100%;min-height:64px;padding:8px;font:inherit}
 @media(max-width:700px){
- .study-sheet{width:100%;height:min(78dvh,740px);max-height:94dvh;margin:auto 0 0;border-radius:14px 14px 0 0}
+ .study-sheet{width:100%;max-width:100%;height:min(78dvh,740px);max-height:94dvh;margin:auto 0 0;border-radius:14px 14px 0 0}
  .study-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
  .study-stat-grid,.study-report-detail{grid-template-columns:1fr}
  .study-filters label{flex-wrap:wrap}
