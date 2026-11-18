@@ -152,3 +152,6 @@ body :is(.gj-view-switch,.rv-source-switch,.correction-editor .mcq-letters) butt
   background:var(--ui-primary);color:white;border-color:var(--ui-primary);
 }
 .review-studio .rv-thumbnails [aria-current=page] {border-color:var(--ui-primary);background:var(--ui-selected)}
+/* A native details toggle precedes popover placement by a frame. Keep the
+   unpositioned panel hidden until it enters the browser's top layer. */
+.review-studio :is(.rv-title,.rv-work-menu) > [popover]:not(:popover-open) {display:none}
