@@ -1,6 +1,7 @@
 import {deepseek} from './ai.mjs';
 import {hash, id, now} from './store.mjs';
 import {assert, boundedText} from './validation.mjs';
+import {chapterLink} from './review-links.mjs';
 import {paperOf,questionLocation} from './paper.mjs';
 import {publicAttempt, optionLabels} from './self-practice-model.mjs';
 import {classKey, namedCourse, singleClassCourse} from '../homework/course-scope.js';
@@ -74,6 +75,91 @@ export function summarizeMock(attempts, roster, matchesQuestion = () => true) {
     topics:[...topics.values()].map(({people,...topic})=>({...topic,participants:people.size})).sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))};
 }
 
+const mockTopicKey = (course, topic) => course + ':' + (topic || '未分章节');
+const validOption = value => /^[A-E]$/.test(String(value || ''));
+function savedMockQuestions(attempt) {
+  const snapshot = new Map((attempt.questions || []).map(q => [q.id, q]));
+  return attempt.result.questions.map((q, index) => {
+    const original = snapshot.get(q.id) || {};
+    const correctOption = [q.correctOption, original.answer].map(value=>String(value||'').toUpperCase()).find(validOption) || '';
+    const chosen = q.chosen ?? attempt.answers?.[q.id] ?? '';
+    const foundScore=Boolean(correctOption&&finiteScore(q)&&q.score>=0&&q.score<=q.maxPoints);
+    const loss=foundScore&&q.score<q.maxPoints;
+    return {...q, index: index + 1, topic: q.topic || original.topic || '', chosen,
+      correctOption, foundScore, loss};
+  });
+}
+
+function topicBookself(topic) {
+  if (!String(topic.bookself || '').startsWith('/enter/bookself?')) return null;
+  const params = new URLSearchParams(topic.bookself.slice('/enter/bookself?'.length));
+  return chapterLink(params.get('book') + ':' + params.get('chapter'));
+}
+
+function countMockCorrections(attempt, questions, notes) {
+  const corrected = q => Boolean(attempt.corrections?.[q.id] || notes.get(attempt.id)?.get(q.id)?.corrections?.length);
+  return questions.filter(q => q.loss && corrected(q)).length;
+}
+
+function mockOrder(a, b) {
+  return String(b.submittedAt||'').localeCompare(String(a.submittedAt||'')) || b.id.localeCompare(a.id);
+}
+
+function studentMockHistory({attempts, currentCount, authorizedCount, catalog, notes, topic, focusTopic, focusQuestion, historyFilter, cursor}) {
+  const chapters = new Map(catalog.map(t => [mockTopicKey(t.course,t.label), {...t, correct:0,total:0,answered:0,seen:0,samples:0,losses:0,last:null}]));
+  const occurrences = new Map(), comparisons = new Map();
+  const records = attempts.map(attempt => ({
+    attempt, questions:savedMockQuestions(attempt), percent:mockScorePercent(attempt.result),
+  }));
+  for (const record of [...records].reverse()) {
+    const {attempt,questions,percent}=record;
+    const prior = comparisons.get(attempt.course);
+    if (percent != null && prior?.percent != null) {
+      record.comparison = {change:Math.round((percent-prior.percent)*10)/10, previousCount:prior.count};
+    }
+    if (percent != null) comparisons.set(attempt.course,{percent,count:questions.length});
+    for (const q of questions) {
+      if (topic && q.topic !== topic) continue;
+      const key = mockTopicKey(attempt.course,q.topic);
+      const entry = chapters.get(key) || {course:attempt.course,label:q.topic||'未分章节',correct:0,total:0,answered:0,seen:0,samples:0,losses:0,last:null};
+      entry.seen++;
+      entry.last = attempt.submittedAt;
+      if (q.foundScore) {
+        entry.samples++;
+        entry.total += q.maxPoints;
+        entry.correct += q.score;
+        if (q.chosen) entry.answered++;
+        if (q.loss) entry.losses++;
+      }
+      chapters.set(key,entry);
+      if (q.loss && q.id) {
+        const repeatKey = JSON.stringify([key,q.id]);
+        const item = occurrences.get(repeatKey) || {questionId:q.id,topicKey:key,label:q.topic||'未分章节',course:attempt.course,attempts:new Set()};
+        item.attempts.add(attempt.id);
+        occurrences.set(repeatKey,item);
+      }
+    }
+  }
+  const repeated = [...occurrences.values()].filter(r=>r.attempts.size>1).sort((a,b)=>b.attempts.size-a.attempts.size)
+    .slice(0,3).map(({attempts,...r})=>({...r,count:attempts.size}));
+  const matched = records.flatMap(({attempt, questions, percent, comparison})=>{
+    const hits = questions.filter(q=>(!focusTopic||mockTopicKey(attempt.course,q.topic)===focusTopic)&&(!focusQuestion||q.id===focusQuestion));
+    if((focusTopic||focusQuestion)&&!hits.length)return [];
+    const lost=questions.filter(q=>q.loss), corrected=countMockCorrections(attempt,questions,notes);
+    if(historyFilter==='loss'&&!lost.length||historyFilter==='uncorrected'&&lost.length===corrected)return [];
+    return [{id:attempt.id,course:attempt.course,submittedAt:attempt.submittedAt,timerMode:attempt.timerMode,
+      auto:attempt.result.autoSubmitted,questionCount:questions.length,
+      percent,total:attempt.result.total,max:attempt.result.maxPoints,duration:Number.isFinite(attempt.result.durationSeconds)&&attempt.result.durationSeconds>=0?attempt.result.durationSeconds:null,
+      losses:lost.length,unanswered:questions.filter(q=>!q.chosen).length,pending:questions.filter(q=>!q.foundScore).length,
+      corrected,comparison,matched:focusTopic||focusQuestion?hits.length:null}];
+  });
+  const index=cursor?matched.findIndex(a=>a.id===cursor):-1;
+  assert(!cursor||index>=0,'历史记录范围已变化，请清除筛选后重试');
+  const page=matched.slice(index+1,index+26);
+  return {chapters:[...chapters.values()],repeated,authorizedCount,currentCount,matchedCount:matched.length,
+    attempts:page,next:matched.length>index+26?page.at(-1).id:''};
+}
+
 const reviewReasons=new Map([
   ['answer','请保留判断依据，去掉最终答案或选项。'],
   ['respect','请用尊重同学的方式重新表达。'],
@@ -120,6 +206,8 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
   }
   async function teacherMock(ctx, query) {
     const {user, route, availableClasses, availableStudents} = ctx;
+    const studentDetail=route[1]==='students';
+    const allHistory=studentDetail&&query.get('history')==='all';
     assert(user.role==='teacher','仅教师可以查看模考统计',403);
     const classes=await availableClasses(), classId=query.get('classId')||'', course=singleClassCourse(classes.find(c=>classKey(c.id)===classKey(classId)))||query.get('course')||'';
     assert(!classId||classes.some(c=>classKey(c.id)===classKey(classId)),'无权查看此班级',403);
@@ -132,22 +220,58 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const reportDate=value=>Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(value)?value+'T00:00:00+08:00':value);
     const after=reportDate(query.get('from')||new Date(Date.now()-30*86400000).toISOString()),to=query.get('to');
     const before=to?reportDate(to)+86400000:Date.now()+1000;
-    assert(Number.isFinite(after)&&Number.isFinite(before)&&before>after,'请选择有效的统计日期范围');
+    assert(allHistory||Number.isFinite(after)&&Number.isFinite(before)&&before>after,'请选择有效的统计日期范围');
     const topic=(query.get('topic')||'').trim(), studentId=query.get('studentId')||'', timer=query.get('timer')||'';
     const matches=q=>!topic||String(q.topic).toLowerCase()===topic.toLowerCase();
     const inFilters=(a,date)=>inScope(a)&&(!course||a.course===course)&&(!studentId||a.studentId===studentId)&&(!timer||a.timerMode===timer)
       &&Date.parse(date)>=after&&Date.parse(date)<before;
-    if(route[1]){
+    if(route[1]&&!studentDetail){
       const a=await db.get(route[1]);
-      assert(a?.type==='self-practice-attempt'&&validResult(a)&&inScope(a)&&(!course||a.course===course),'未找到有权查看的模考',404);
-      return {attempt:publicAttempt(a,{includeResult:true}),name:people.get(a.studentId).name};
+      assert(a?.type==='self-practice-attempt'&&validResult(a)&&inScope(a)&&(!course||a.course===course)&&(!studentId||studentId===a.studentId),'未找到有权查看的模考',404);
+      const result={attempt:publicAttempt(a,{includeResult:true}),name:people.get(a.studentId).name};
+      if(query.get('review')==='1'){
+        const notes=await db.find('mistake-note',{studentId:a.studentId,assignmentId:a.id});
+        const byQuestion=new Map(notes.map(note=>[note.questionId,note.corrections||[]]));
+        result.review=savedMockQuestions(a).map(q=>({...q,corrections:[
+          ...(a.corrections?.[q.id]?[{text:[a.corrections[q.id].choice,a.corrections[q.id].note].filter(Boolean).join(' · '),createdAt:a.corrections[q.id].updatedAt}]:[]),
+          ...(byQuestion.get(q.id)||[]).map(c=>({text:c.text||'',createdAt:c.createdAt})),
+        ].sort((left,right)=>String(right.createdAt||'').localeCompare(String(left.createdAt||'')))}));
+      }
+      return result;
+    }
+    if(studentDetail){
+      const id=route[2];
+      assert(id&&people.has(id)&&(!studentId||studentId===id),'无权查看此学生',403);
+      const classCourses=new Set(scopedClasses.filter(c=>member(people.get(id).classIds,c.id)).map(singleClassCourse));
+      const [stored,units,mistakes]=await Promise.all([
+        db.find('self-practice-attempt',{studentId:id,status:'submitted'}),
+        db.list('library-unit'),db.find('mistake-note',{studentId:id})
+      ]);
+      const authorized=stored.filter(a=>validResult(a)&&inScope(a)&&(!course||a.course===course)).sort(mockOrder);
+      const current=authorized.filter(a=>inFilters(a,a.submittedAt)&&a.result.questions.some(matches));
+      const attempts=allHistory?authorized:current;
+      const withinTopic=allHistory?'':topic;
+      const catalog=units.filter(unit=>{
+        const c=unit.id.split('-')[0];
+        return course?course===c:classCourses.has('')||classCourses.has(c);
+      }).flatMap(unit=>(unit.topics||[]).filter(t=>!withinTopic||t.id===withinTopic).map(t=>({
+        course:unit.id.split('-')[0],label:t.id,title:t.title||t.name||t.id,bookself:topicBookself(t)?.href||'',
+      })));
+      const notes=new Map();
+      for(const note of mistakes){
+        const group=notes.get(note.assignmentId)||new Map();
+        group.set(note.questionId,note);notes.set(note.assignmentId,group);
+      }
+      const history=studentMockHistory({attempts,currentCount:current.length,authorizedCount:authorized.length,catalog,notes,topic:withinTopic,
+        focusTopic:query.get('focusTopic')||'',focusQuestion:query.get('focusQuestion')||'',historyFilter:query.get('historyFilter')||'',cursor:query.get('cursor')||''});
+      return history;
     }
     const selected=studentId?students.filter(s=>s.id===studentId):students;
     const detailStudent=query.get('detailStudent')||'';
     assert(!detailStudent||selected.some(s=>s.id===detailStudent),'无权查看此学生',403);
     const stored=selected.length?await db.find('self-practice-attempt',{studentId:selected.map(s=>s.id),status:['submitted','active']}):[];
     const attempts=[...new Map(stored.filter(a=>validResult(a)&&inFilters(a,a.submittedAt)&&a.result.questions.some(matches)).map(a=>[a.id,a])).values()]
-      .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)||b.id.localeCompare(a.id));
+      .sort(mockOrder);
     const stats=summarizeMock(attempts,selected.length,matches);
     const rows=new Map(selected.map(s=>[s.id,{id:s.id,name:s.name,count:0,active:0,last:null,score:0,max:0,weeks:{},trends:new Map()}]));
     const weeks=new Set();

@@ -247,7 +247,6 @@ body[data-mcq-active=true] .mcq-work .answer-navigation button[id=mcq-clear]:dis
 .mock-roster th:first-child{position:sticky;left:0;z-index:1;background:#f2f6f9;max-width:128px;white-space:normal;overflow-wrap:anywhere}
 .mock-roster small{display:block;color:#516575;font-size:11px}
 .mock-roster button:not(.study-attempt){min-height:36px;padding:4px 6px;background:transparent;color:#214e73;border:0;font:inherit;font-weight:650;cursor:pointer}
-.mock-records{white-space:normal;position:sticky;left:0;width:min(100%,400px)}
 .study-stat-grid{grid-template-columns:minmax(0,1.6fr) minmax(285px,1fr)}
 @media(max-width:900px){.study-stat-grid{grid-template-columns:minmax(0,1fr)}.study-stat-grid [data-topics]{order:-1}}
 body[data-mcq-active=true] .mcq-work .mcq-top{padding-inline-end:60px}
@@ -307,4 +306,110 @@ body[data-mcq-active=true] .mcq-work .mcq-top{padding-inline-end:60px}
 @media(max-width:700px){
  .mock-roster tr[data-roster-student]{padding-inline-end:54px}
  .mock-roster tr[data-roster-student]>:nth-child(5){justify-self:end}
+}
+
+/* Student disclosure stays inside the roster; paper details use an overlay. */
+.mock-table-scroll{overflow-anchor:none}
+.mock-roster tr[data-roster-student]{cursor:pointer}
+.mock-roster tr[data-roster-student][data-expanded]>*{background:#edf5fb}
+.mock-roster tr[data-roster-student]:hover>*{background:#f1f6fb}
+.mock-roster .mock-student-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:start}
+.mock-row-chevron{width:7px;height:7px;flex:none;transform:rotate(45deg);border:solid #275678;border-width:0 2px 2px 0;margin-inline:1px 3px}
+.mock-student-toggle[aria-expanded=true] .mock-row-chevron{transform:rotate(225deg)}
+.mock-roster tr.mock-record-row>td{padding:0;background:#eef4f9;white-space:normal}
+.mock-personal{position:sticky;left:0;width:var(--mock-drawer-width,100%);max-width:100%;padding:10px 12px 12px;background:#eef4f9;border-bottom:1px solid #ccdae8;min-width:0}
+.mock-personal :is([hidden]){display:none}
+.mock-personal-top{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;margin-bottom:9px}
+.mock-personal-top>strong{color:#17364f;font-size:13px}
+.mock-personal-top>small{color:#466176;margin-inline-start:auto}
+.mock-scope-actions,.mock-history-controls,.mock-review-filters,.mock-detail-views{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.mock-personal .mock-scope-actions button,.mock-personal .mock-detail-views button,.mock-attempt-popover .mock-review-filters button{
+  padding:4px 8px;border:1px solid #c9d9e7;border-radius:6px;background:#fff;color:#1e516f;min-height:34px;font:inherit;cursor:pointer
+}
+.mock-personal :is(.mock-scope-actions,.mock-detail-views) button[aria-pressed=true],.mock-attempt-popover .mock-review-filters button[aria-pressed=true]{
+  background:#143750;border-color:#143750;color:#fff
+}
+.mock-personal-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.mock-personal-grid>section{min-width:0;background:#fff;border:1px solid #d7e2ec;border-radius:8px;padding:8px 10px}
+.mock-personal h3{font-size:14px;color:#18384f;margin:0 0 3px}
+.mock-personal .topic-map{padding:3px 0}
+.mock-personal .topic-legend{font-size:11px;color:#47647c;margin:5px 0}
+.mock-personal .topic-subject{margin-block:5px}
+.mock-personal .topic-unit{display:block;margin-block:5px}
+.mock-personal .topic-unit>strong{font-size:11px;margin-block:2px}
+.mock-personal .topic-tiles{gap:4px}
+.mock-personal .topic-cell summary{width:34px;height:34px}
+.mock-personal .topic-facts{width:min(100%,220px)}
+.mock-topic-actions{display:flex;gap:4px 8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.mock-topic-actions a{color:#205578}
+.mock-weak{margin:3px 0 6px;padding:6px 8px;border-radius:7px;background:#fff3e6}
+.mock-weak>span{font-size:11px;font-weight:650;color:#6c4527}
+.mock-weak>div{display:flex;gap:4px;flex-wrap:wrap}
+.mock-weak button small{display:inline;color:#6c4527;margin-inline-start:4px}
+.mock-repeat{margin-top:6px;font-size:12px}
+.mock-repeat summary{cursor:pointer;color:#245878}
+.mock-repeat>button{display:block}
+.mock-history-head,.mock-history-filters{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap}
+.mock-history-filters select{font:inherit;max-width:100%;min-height:36px;border:1px solid #cddbe7;border-radius:6px;background:#fff;padding:4px 6px;color:#23465f}
+.mock-history-controls button:disabled{opacity:.45}
+.mock-personal [data-history-status]{margin:4px 0;color:#45617a;font-size:11px}
+.mock-history-track{display:flex;gap:7px;padding:3px 2px 8px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;min-width:0}
+.mock-roster button.mock-history-card{flex:0 0 min(100%,178px);width:auto;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:4px;padding:8px 9px;min-height:145px;border:1px solid #cdddea;border-radius:8px;background:#f8fbfe;white-space:normal;text-align:start;color:#244c6a;font-size:11px;font-weight:500;overflow-wrap:anywhere;scroll-snap-align:start}
+.mock-roster button.mock-history-card:hover,.mock-roster button.mock-history-card[aria-expanded=true]{border-color:#517e9f;background:#eef6fb}
+.mock-history-card:focus-visible{outline-offset:-2px}
+.mock-card-head{display:flex;justify-content:space-between;width:100%;gap:4px;font-weight:750}
+.mock-card-score{display:flex;align-items:center;gap:6px;font-size:13px}
+.mock-detail-views{display:none}
+.mock-attempt-popover{position:fixed;inset:auto;margin:0;z-index:102;display:flex;flex-direction:column;width:min(500px,calc(100% - 20px));max-width:none;max-height:70dvh;padding:0;border:1px solid #a4bdd0;border-radius:12px;background:#fff;color:#15364e;box-shadow:0 10px 36px #0c274639;overflow:hidden}
+.mock-attempt-popover:not(:popover-open)[popover],.mock-attempt-popover:not([open]):is(dialog){display:none}
+dialog.mock-attempt-popover::backdrop{background:#0e2b4660}
+body:has(.mock-attempt-popover) #mike-companion{visibility:hidden}
+.mock-attempt-popover header{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border-bottom:1px solid #dce6ee;background:#f1f7fc;flex:none}
+.mock-attempt-popover button{font:inherit;color:#1b5478;background:white;border:1px solid #c9d9e7;border-radius:6px;padding:5px 8px;min-height:34px;cursor:pointer}
+.mock-bubble-body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px 11px;font-size:13px}
+.mock-bubble-body .mock-attempt-summary{font-size:12px;margin-bottom:6px}
+.mock-review-filters{margin:0 0 6px}
+.mock-paper-question{border:1px solid #d7e4ed;border-radius:7px;margin:4px 0}
+.mock-paper-question>summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;cursor:pointer;padding:7px 9px}
+.mock-paper-question[open]>summary{background:#edf5fa}
+.mock-paper-question>summary strong{color:#1a3d58}
+.mock-question-body{padding:8px}
+.mock-question-body p{margin:3px 0 7px;overflow-wrap:anywhere}
+.mock-question-images{max-width:100%;overflow:auto;overscroll-behavior-inline:contain}
+.mock-question-images figure{margin:3px 0}
+.mock-question-images img{display:block;width:100%;height:auto;border-radius:4px}
+.mock-question-images.zoomed figure{width:155%}
+.mock-attempt-popover [hidden]{display:none}
+.mock-question-tools{text-align:end}
+.mock-option-text{padding-left:20px;overflow-wrap:anywhere}
+.mock-review-answers{display:grid;gap:5px;grid-template-columns:repeat(2,minmax(0,1fr));margin-block:6px}
+.mock-review-answers>div{display:grid;gap:3px;padding:6px 7px;background:#edf4fa;border-radius:5px;overflow-wrap:anywhere}
+.mock-review-answers>div+div{background:#e5f1e8}
+.mock-review-answers small,.mock-saved-corrections small{color:#486578}
+.mock-saved-corrections{margin-top:6px}
+.mock-saved-corrections summary{cursor:pointer}
+@media(prefers-reduced-motion:no-preference){
+ .mock-personal{animation:mock-drawer-enter .18s ease-out}
+ @keyframes mock-drawer-enter{from{opacity:.55;transform:translateY(-4px)}to{opacity:1;transform:none}}
+}
+@media(max-width:900px){
+ .mock-personal{position:static;width:100%;padding:8px}
+ .mock-roster .mock-student-toggle{justify-content:flex-start}
+}
+@media(max-width:700px){
+ .mock-detail-views{display:flex;margin:5px 0}
+ .mock-personal-grid{display:block}
+ .mock-personal[data-view=chapters] .mock-personal-history,.mock-personal[data-view=history] .mock-personal-chapters{display:none}
+ .mock-personal .topic-cell summary{width:44px;height:44px}
+ .mock-personal :is(.mock-detail-views,.mock-scope-actions,.mock-history-controls) button,.mock-attempt-popover button,.mock-history-filters select{min-height:44px}
+ .mock-personal-top>small{flex-basis:100%;margin:0}
+ .mock-roster button.mock-history-card{flex-basis:min(78%,200px)}
+ .mock-attempt-popover:is(dialog){inset:auto 0 0;width:100%;border-radius:14px 14px 0 0;max-height:84dvh;padding-bottom:env(safe-area-inset-bottom)}
+ .mock-paper-question>summary{min-height:44px}
+}
+
+@media(min-width:901px){
+ .mock-roster :is(th,td):first-child:not([colspan]){min-width:116px}
+ .mock-personal [data-personal-chapters]{max-height:300px;overflow-y:auto;overscroll-behavior-y:contain;padding-bottom:65px}
+ .mock-personal [data-personal-chapters]:not(:has(.topic-cell[open])){padding-bottom:4px}
 }
