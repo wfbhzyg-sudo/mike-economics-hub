@@ -8,7 +8,7 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
  const $=s=>root.querySelector(s);let submission;
  const getSubmission=()=>submission||(submission=api('submissions/'+m.submissionId).then(v=>v.submission).catch(e=>{submission=null;throw e;}));
  async function question(panel){
-  const paper=m.paper||(await getSubmission()).paper,ids=m.questionImages?.length?m.questionImages:paper?.questionFiles||[];
+  const paper=m.paper||(m.source==='mock'?null:(await getSubmission()).paper),ids=m.questionImages?.length?m.questionImages:paper?.questionFiles||[];
   await metadata(ids);if(destroyed)return;
   const files=ids.map(id=>state.files.get(id)).filter(Boolean),location=m.paperLocation||paper?.locations?.find(q=>q.id===m.questionId),first=files.find(f=>f.id===location?.fileId)||files.find(f=>f.id===paper?.mainQuestionFile)||files[0];
   const imageParts=Boolean(m.questionImages?.length)&&files.every(f=>f.mime.startsWith('image/'));
@@ -19,6 +19,8 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
   if(first)show(first);const select=panel.querySelector('[data-correction-file]');if(select)select.onchange=()=>show(files.find(f=>f.id===select.value));
  }
  async function answer(panel){
+  if(m.source==='mock'){panel.innerHTML='<p>'+h(m.originalChoice?'原选项 '+m.originalChoice:'未作答')+'</p>';return;}
+
   const s=await getSubmission(),evidence=correctionAnswerEvidence(s,m);await metadata(evidence.files);if(destroyed)return;
   if(!evidence.files.length){panel.innerHTML=`<p class="correction-prompt correction-answer-text">${h(evidence.text||'本题没有保存的文字或附件。')}</p>`;return;}
   panel.innerHTML='<div class="review-studio correction-gallery"><div class="rv-gallery"></div></div>';gallery=mountReviewGallery(panel.querySelector('.rv-gallery'),{files:evidence.files.map(id=>state.files.get(id)).filter(Boolean),text:evidence.text,label:'我的原作答',fullscreen:false,storageKey:'correction-answer:'+state.user.id+':'+m.submissionId+':'+m.questionId});

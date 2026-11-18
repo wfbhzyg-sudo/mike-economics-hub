@@ -1,5 +1,12 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-study-workflow', date:'2026-11-18', title:'逐题收藏、交流与复习',
+  items:[
+    {audience:'student',art:'book',title:'书签与模考错题',text:'作答时可逐题收藏。从错题本回看书签和正式作业、模考的失分记录。同一道题合并为一张卡片。'},
+    {audience:'student',art:'news',title:'同伴思路',text:'在允许交流的作业里保存自己的尝试，再打开「同伴思路」，查看本班的解题方法。'},
+    {audience:'teacher',art:'roster',title:'自主模考统计与学情报告',text:'查看独立的模考统计。在新版学情报告里核对依据、编辑文案并发布。'}
+  ]
+},{
   id:'2026-11-18-workspace-colors', date:'2026-11-18', title:'工作台换上了新的阅读配色',
   items:[
     {audience:'teacher',art:'roster',title:'导航与教学内容分区',text:'深蓝色区域用于导航，当前入口反白。作业、名单和报告使用白底，成绩分档与交未交仍沿用原来的颜色。'},

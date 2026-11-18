@@ -1,3 +1,4 @@
+import {studyReportMarkup} from './study-workflow.js';
 import {scoreMaximum} from './score-entry.js';
 // Teacher-facing learning overview: class matrix, student profiles and
 // assignment-level detail. Data comes from the existing /learning payload so
@@ -717,21 +718,29 @@ export function mountLearningOverview(ctx, initialData) {
     }
   }
 
-  function aiStepsMarkup(items) {
-    return `<ol class="lo-ai-steps">${items.map(item => `<li><p>${h(item.text)}</p>${(item.evidence || []).length ? `<span class="lo-obs-evidence">${item.evidence.map(text => `<span class="lo-evidence">${h(text)}</span>`).join('')}</span>` : ''}</li>`).join('')}</ol>`;
+  function renderAiDraft(report) {
+    aiBody.innerHTML = `<div class="lo-ai-report">${studyReportMarkup(report,{teacher:true})}
+      <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重新生成</button><button type="button" class="lo-btn" data-ai-edit>编辑草稿</button><button type="button" class="lo-btn lo-primary" data-ai-publish>确认发布</button></div>
+    </div>`;
+    aiBody.querySelector('[data-ai-edit]').onclick=()=>editAiDraft(report);
   }
 
-  function renderAiDraft(report) {
-    const stats = report.stats || {};
-    const scopeText = report.scope.assignmentId ? '本次作业 · '+report.assignmentTitle : report.scope.studentId ? '个人建议（仅该学生可见，需确认发布）' : '班级汇总（只作为教师存档）';
-    aiBody.innerHTML = `<div class="lo-ai-report">
-      <p class="lo-ai-meta"><span class="lo-chip" data-tone="${report.source === 'ai' ? 'ok' : 'neutral'}">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${h(scopeText)}</span><span>${stats.students ?? 0} 名学生 · ${stats.assignments ?? 0} 次作业${stats.average === null || stats.average === undefined ? '' : ` · 平均 ${formatPercent(stats.average)}`}</span></p>
-      ${report.aiError ? `<p class="lo-note">${h(report.aiError)}</p>` : ''}
-      <h3>学习观察</h3>${observationsMarkup(report.observations)}
-      <h3>下一步建议</h3>${aiStepsMarkup(report.nextSteps)}
-      <p class="lo-note">${h(report.limitations)} · 数据版本 ${h(report.dataVersion)}</p>
-      <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重新生成</button><button type="button" class="lo-btn lo-primary" data-ai-publish>确认发布</button></div>
-    </div>`;
+  function editAiDraft(report){
+    aiBody.innerHTML=`<form class="study-report-editor">
+      <label>本次判断<textarea name="headline" maxlength="180" required>${h(report.headline||report.observations?.[0]?.text||'')}</textarea></label>
+      ${(report.observations||[]).map((item,i)=>`<label>观察 ${i+1}<textarea name="observations" maxlength="180" required>${h(item.text)}</textarea></label>`).join('')}
+      ${(report.nextSteps||[]).map((item,i)=>`<label>行动 ${i+1}<textarea name="nextSteps" maxlength="180" required>${h(item.text)}</textarea></label>`).join('')}
+      <p role="status"></p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-back>返回预览</button><button class="lo-btn lo-primary" type="submit">保存草稿</button></div></form>`;
+    const form=aiBody.querySelector('form');
+    form.onsubmit=async event=>{
+      event.preventDefault();const button=form.querySelector('[type=submit]');button.disabled=true;
+      try{
+        const values=new FormData(form);
+        const result=await ai('analytics/reports/'+encodeURIComponent(report.id)+'/draft',{method:'PUT',body:{revision:report.revision||1,
+          headline:values.get('headline'),observations:values.getAll('observations'),nextSteps:values.getAll('nextSteps')}});
+        aiReport=result.report;renderAiDraft(aiReport);
+      }catch(e){form.querySelector('[role=status]').textContent=e.message;button.disabled=false;}
+    };
   }
 
   function renderAiConfirm() {
@@ -750,7 +759,7 @@ export function mountLearningOverview(ctx, initialData) {
     const personal = Boolean(aiReport.scope.studentId);
     aiBody.innerHTML = '<div class="lo-ai-loading" role="status"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在发布…</p></div>';
     try {
-      const {report} = await ai(`analytics/reports/${encodeURIComponent(aiReport.id)}/publish`, {method: 'POST', body: {confirm: true, ...(personal ? {audience: 'student'} : {audience: 'class'})}});
+      const {report} = await ai(`analytics/reports/${encodeURIComponent(aiReport.id)}/publish`, {method: 'POST', body: {confirm: true, revision:aiReport.revision||1, ...(personal ? {audience: 'student'} : {audience: 'class'})}});
       aiReport = report;
       aiBody.innerHTML = `<div class="lo-ai-done" role="status"><h3>已发布</h3><p>${personal ? '学生现在可以在「我的学习」看到这份建议。' : report.scope?.assignmentId ? '本次作业的学情分析已存档。' : '班级汇总已存档。'}</p></div>`;
       const title = $('#lo-ai-title');
@@ -798,8 +807,12 @@ async function openHistoryReport(reportId) {
   histBody.innerHTML = '<div class="lo-ai-loading"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在读取报告…</p></div>';
   try {
     const {report} = await ai('analytics/reports/' + encodeURIComponent(reportId));
-    const published = report.publishedAt ? new Date(report.publishedAt).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
-    histBody.innerHTML = `<div class="lo-ai-report"><p class="lo-ai-meta"><span class="lo-chip">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${report.scope?.assignmentId ? '本次作业 · '+h(report.assignmentTitle) : report.scope?.studentId ? '个人学习建议' : '班级学情分析'}</span>${published ? `<span>${h(published)} 发布</span>` : ''}</p><h3>学习观察</h3>${observationsMarkup(report.observations || [])}${(report.nextSteps || []).length ? `<h3>下一步</h3><ol class="lo-ai-steps">${report.nextSteps.map(item => `<li>${h(item.text)}</li>`).join('')}</ol>` : ''}<p class="lo-note">${h(report.limitations || '')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
+    histBody.innerHTML = `<div class="lo-ai-report">${studyReportMarkup(report,{teacher:true})}<div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
+    if(report.status==='draft'){
+      const edit=document.createElement('button');edit.type='button';edit.className='lo-btn';edit.textContent='继续编辑';
+      histBody.querySelector('.lo-sheet-actions').prepend(edit);
+      edit.onclick=()=>{histSheet.close();aiReport=report;renderAiDraft(report);aiSheet.showModal();};
+    }
   } catch (error) {
     histBody.innerHTML = `<div class="lo-ai-error"><h3>读取失败</h3><p>${h(error.message || '请稍后重试。')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
   }

@@ -200,6 +200,7 @@ export function receiptIdFor(attemptId) {
 export function publicQuestion(question) {
   return {
     id: question.id,
+    version: question.version || 1,
     number: question.number || '',
     topic: question.topic || '',
     prompt: question.prompt || '',

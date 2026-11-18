@@ -11,6 +11,7 @@ import {choiceScore,combineScores,manualAssignmentScore} from './mcq-model.mjs';
 import {createLibrary} from './library.mjs';
 import {createMCQ} from './mcq.mjs';
 import {createCompanion} from './companion.mjs';
+import {createStudyWorkflow,groupMistakes,mockMistakes} from './study-workflow.mjs';
 import {createSelfPractice,startSelfPracticeSweeper} from './self-practice.mjs';
 import {
   createCipheriv,
@@ -275,6 +276,7 @@ export async function createHomework({externalAuth} = {}) {
   const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
   const companion=createCompanion({db,decrypt});
   const selfPractice=createSelfPractice({db});
+  const studyWorkflow=createStudyWorkflow({db,requireAssignment});
   startSelfPracticeSweeper(selfPractice);
   return async (req, res) => {
     const url = new URL(req.url, "http://localhost");
@@ -579,7 +581,7 @@ export async function createHomework({externalAuth} = {}) {
       const teacher = () =>
         assert(user.role === "teacher", "此操作仅对教师开放", 403);
       const extensionContext={req,res,route,method,user,body,json,availableClasses,availableStudents};
-      if(await library.handle(extensionContext)||await mcq(extensionContext)||await selfPractice.handle(extensionContext)||await companion({...extensionContext,csrf:auth.session.csrf}))return true;
+      if(await studyWorkflow.handle({...extensionContext,sessionActive:async()=>{const latest=await sessionFor(req);return latest?.user.id===user.id&&(user.classIds||[]).every(id=>latest.user.classIds?.includes(id));}})||await library.handle(extensionContext)||await mcq(extensionContext)||await selfPractice.handle(extensionContext)||await companion({...extensionContext,csrf:auth.session.csrf}))return true;
       if (route[0] === "me" && method === "GET")
         return (
           json(res, { user: safeUser(user), csrf: auth.session.csrf, teacherWorkspace:process.env.TEACHER_WORKSPACE_ENABLED==='1' }),
@@ -699,13 +701,16 @@ export async function createHomework({externalAuth} = {}) {
           const dataVersion = insightVersion({scope, data});
           const reports = await db.find('insight-report', {teacherId: user.id});
           const same = report => (report.scope?.assignmentId || '') === assignmentId && report.scope?.classId === scope.classId && report.scope?.unit === scope.unit && report.scope?.period === scope.period && report.scope?.studentId === (scope.studentId || null);
-          const reused = reports.find(report => report.status === 'draft' && !(assignmentId && report.aiError) && report.dataVersion === dataVersion && same(report));
+          const reused = reports.find(report => report.status === 'draft' && report.templateVersion===2 && !(assignmentId && report.aiError) && report.dataVersion === dataVersion && same(report));
           if (reused) return (json(res, {report: reused, reused: true}), true);
           const draft = await draftInsight({db, decrypt, scope, built});
           const report = {
             id: id(), kind: 'insight-report', teacherId: user.id, studentId: scope.studentId || null, classId: scope.classId,
             ...(assignmentId?{assignmentTitle:assignment.title}:{}),scope, dataVersion, source: draft.source, aiError: draft.aiError || '',
-            observations: draft.observations, nextSteps: draft.nextSteps, limitations: draft.limitations,
+            templateVersion:2, revision:1, headline:draft.headline,
+            evidence:built.facts, observations:draft.observations, nextSteps:draft.nextSteps, limitations:draft.limitations,
+            metrics:scope.studentId?{due:built.profile.row.total,published:built.profile.row.cells.filter(cell=>cell.rate!==null).length,corrections:built.profile.openCorrections,submitted:built.profile.row.submitted}:
+              {due:built.stats.due,published:built.stats.published,submitted:built.stats.submitted,missing:built.stats.missing},
             stats: {students: built.rows.length, assignments: built.assignments.length, average: scope.studentId ? built.profile.row.average : built.stats.average},
             status: 'draft', audience: null, createdAt: now(), publishedAt: null,
           };
@@ -735,6 +740,20 @@ export async function createHomework({externalAuth} = {}) {
           assert(report.teacherId === user.id || canViewReport(report, user), '无权查看这份报告', 403);
           return (json(res, {report}), true);
         }
+        if(route[2]&&route[3]==='draft'&&method==='PUT'){
+          const entry=await body(req);
+          const saved=await db.tx(async c=>{
+            const report=await db.get(route[2],c);
+            assert(report?.kind==='insight-report'&&report.teacherId===user.id,'无权编辑这份报告',403);
+            assert(report.status==='draft'&&Number(entry.revision)===(report.revision||1),'草稿已变化，请刷新再编辑',409);
+            const rewrite=(items,inputs)=>(items||[]).map((item,i)=>({...item,text:boundedText(inputs?.[i]??item.text,180,'报告正文')}));
+            const next={...report,headline:boundedText(entry.headline,180,'本次判断'),observations:rewrite(report.observations,entry.observations),
+              nextSteps:rewrite(report.nextSteps,entry.nextSteps),revision:(report.revision||1)+1,editedAt:now()};
+            await db.put('insight-report',next,c);
+            return next;
+          });
+          return (json(res,{report:saved}),true);
+        }
         if (route[2] && route[3] === 'revoke' && method === 'POST') {
           const report = await db.get(route[2]);
           assert(report?.kind === 'insight-report', '报告不存在', 404);
@@ -758,8 +777,12 @@ export async function createHomework({externalAuth} = {}) {
           const data = insightData({assignments: work.assignments, submissions: work.submissions, mistakes, students});
           const current = insightVersion({scope: report.scope, data});
           assert(current === report.dataVersion, '数据已变化，请重新生成报告再发布', 409);
-          const published = {...report, status: 'published', audience: target, publishedAt: now()};
-          await db.put('insight-report', published);
+          const published = await db.tx(async c=>{
+            const latest=await db.get(report.id,c);
+            assert(latest.status==='draft'&&(latest.revision||1)===Number(b.revision||report.revision||1),'报告已变化，请重新打开草稿',409);
+            const next={...latest,status:'published',audience:target,publishedAt:now()};
+            await db.put('insight-report',next,c);return next;
+          });
           await db.audit(user.id, 'insight_report_published', published.id);
           return (json(res, {report: published}), true);
         }
@@ -774,18 +797,34 @@ export async function createHomework({externalAuth} = {}) {
         if(user.role==='teacher')for(const a of assignments)for(const u of a.recipients?.students||[])if(!students.some(s=>s.id===u.id))students.push({...u,historical:true});
         for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
         const privateDrafts=user.role==='student'?await db.find('mistake-draft',{studentId:user.id}):[];
-        const insights=user.role==='student'?(await db.find('insight-report',{studentId:user.id})).filter(r=>r.status==='published'&&r.audience?.kind==='student').map(r=>({id:r.id,scope:r.scope,dataVersion:r.dataVersion,source:r.source,observations:r.observations,nextSteps:r.nextSteps,limitations:r.limitations,publishedAt:r.publishedAt})).slice(0,3):[];
+        const notes=await db.find('mistake-note',user.role==='student'?{studentId:user.id}:{assignmentId:assignments.map(a=>a.id)});
+        let mistakes=mistakeRows(submissions,assignments,notes,await db.find('review-links',{assignmentId:assignments.map(a=>a.id)}))
+          .map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}));
+        if(user.role==='student'&&url.searchParams.get('mistakeBook')==='1'){
+          const attempts=await db.find('self-practice-attempt',{studentId:user.id,status:'submitted'});
+          mistakes=groupMistakes([...mistakes,...mockMistakes(attempts,notes,privateDrafts)]);
+        }
+        const insights=user.role==='student'?(await db.find('insight-report',{studentId:user.id})).filter(r=>r.status==='published'&&r.audience?.kind==='student').map(r=>({id:r.id,scope:r.scope,dataVersion:r.dataVersion,templateVersion:r.templateVersion,headline:r.headline,stats:r.stats,metrics:r.metrics,evidence:r.evidence,status:r.status,source:r.source,observations:r.observations,nextSteps:r.nextSteps,limitations:r.limitations,publishedAt:r.publishedAt})).slice(0,3):[];
         return (json(res,{classes,insights,students,assignments:assignments.map(a=>{const publicData=publicAssignment(a);
           if(user.role==='teacher')publicData.questions?.forEach((q,i)=>{const ref=a.rubric[i];q.sourcePages=ref.sourcePages||'';q.correctOptions=ref.manualGradingRequired?[]:ref.correctOptions||[];});
-          return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.find('mistake-note',user.role==='student'?{studentId:user.id}:{assignmentId:assignments.map(a=>a.id)}),await db.find('review-links',{assignmentId:assignments.map(a=>a.id)})).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
+          return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes}),true);
+      }
+      async function correctionRows(user,assignmentId,c){
+        const attempt=await db.get(assignmentId,c);
+        if(attempt?.type==='self-practice-attempt'){
+          assert(attempt.studentId===user.id,'找不到错题',404);
+          return mockMistakes([attempt],[],[]);
+        }
+        const work=await accessibleWork(c);
+        return mistakeRows(work.submissions,work.assignments);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);
         const key='mistake-draft:'+hash(user.id+':'+route[1]+':'+route[2]);
         const b=method==='PUT'?await body(req):null;
         const draft=await db.tx(async c=>{
-          const work=await accessibleWork(c);
-          assert(mistakeRows(work.submissions,work.assignments).some(r=>r.assignmentId===route[1]&&r.questionId===route[2]),'该题不在你的当前错题集中',404);
+          const rows=await correctionRows(user,route[1],c);
+          assert(rows.some(r=>r.assignmentId===route[1]&&r.questionId===route[2]),'该题不在你的当前错题集中',404);
           const old=await db.get(key,c);
           if(method==='GET')return old||null;
           const mutationId=boundedText(b.mutationId,120,'草稿标识');assert(mutationId,'缺少草稿标识');
@@ -800,7 +839,7 @@ export async function createHomework({externalAuth} = {}) {
         assert(user.role==='student','请使用学生账号');const b=await body(req);
         const key='mistake:'+hash(user.id+':'+route[1]+':'+route[2]);
         const saved=await db.tx(async c=>{
-          const work=await accessibleWork(c), rows=mistakeRows(work.submissions,work.assignments);
+          const rows=await correctionRows(user,route[1],c);
           assert(rows.some(r=>r.assignmentId===route[1]&&r.questionId===route[2]),'该题不在你的当前错题集中',404);
           const old=await db.get(key,c);
           const mutationId=boundedText(b.mutationId,120,'订正标识');
@@ -851,7 +890,7 @@ export async function createHomework({externalAuth} = {}) {
         if (["GET", "HEAD"].includes(method) && route[1]) {
           const f = await db.get(route[1]);
           assert(
-            f?.mime && (await authorizeFile(f, user)),
+            f?.mime && (await authorizeFile(f, user) || (url.searchParams.has('mock') && await studyWorkflow.canReadMockImage(extensionContext,url.searchParams.get('mock'),f)) || (url.searchParams.has('bookmark') && await studyWorkflow.canReadBookmarkFile(extensionContext,url.searchParams.get('bookmark'),f))),
             "附件不存在或无权查看",
             404,
           );

@@ -24,8 +24,11 @@ export function mistakeRows(submissions, assignments, notes=[], bindings=[]) {
     for(const [index,q] of record.grade.questions.entries()){
       if(q.score==null||q.score>=q.maxPoints)continue;
       const ref=visibleQuestions(record.effective).find(r=>r.id===q.id)||{};
+      const raw=record.effective.rubricSnapshot?.find(r=>r.id===q.id);
+      const fallback=record.effective.version===record.assignment.version?record.assignment.rubric?.find(r=>r.id===q.id):null;
       const meta=notes.find(n=>n.studentId===record.studentId&&n.assignmentId===record.assignmentId&&n.questionId===q.id);
       rows.push({assignmentId:record.assignmentId,assignmentTitle:record.assignment.title||'作业',course:record.assignment.course||'',studentId:record.studentId,
+        libraryQuestionId:raw?.libraryQuestionId||fallback?.libraryQuestionId||null,source:'assignment',
         libraryUnit:record.assignment.libraryUnit||null,submissionId:record.effective.id,questionId:q.id,questionNumber:index+1,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',
         review:reviewLinksFor({...ref,id:q.id},record.assignment,bindings.find(b=>b.assignmentId===record.assignmentId)),options:ref.options||[],questionImages:ref.questionImages||[],score:q.score,maxPoints:q.maxPoints,evidence:q.evidence,feedback:q.feedback,publishedAt:record.grade.publishedAt,
         paper:record.effective.paperSnapshot||null,paperLocation:questionLocation(record.effective.paperSnapshot,q.id),

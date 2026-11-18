@@ -208,6 +208,7 @@ export function createSelfPractice({db}) {
       id: attemptId,
       type: 'self-practice-attempt',
       studentId: user.id,
+      classIds: [...(user.classIds || [])],
       clientId: input.clientId,
       course: input.course,
       topicIds: input.topicIds,

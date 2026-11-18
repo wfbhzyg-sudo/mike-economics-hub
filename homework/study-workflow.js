@@ -1,0 +1,307 @@
+import {courseLabel} from './course-scope.js';
+
+const nl = value => value ? String(value).slice(0,10) : '';
+const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const part = encodeURIComponent;
+const action = (api,url,body,method='POST') => api(url,{method,body});
+
+export function studyControls({api,toast,user,source='assignment',assignmentId,version=1,classes=[]}) {
+  let started=false, dialog;
+  const buttons=new Map();
+  const keys=new Set(), modified=new Set(), sending=new Set();
+  const queueKey='question-bookmark-pending:'+user.id;
+  function loadQueue(){try{return JSON.parse(localStorage.getItem(queueKey)||'{}')||{};}catch{return {};}}
+  function storePending(ref,next){
+    try{const queue=loadQueue();if(next)queue[ref]=next;else delete queue[ref];localStorage.setItem(queueKey,JSON.stringify(queue));return true;}catch{return false;}
+  }
+  let pendingRead;
+  async function flush(){
+    for(const [ref,intent] of Object.entries(loadQueue())){
+      if(intent.source!==source||intent.assignmentId!==assignmentId||sending.has(ref))continue;
+      sending.add(ref);
+      try{await action(api,'question-bookmarks',intent,intent.saved?'PUT':'DELETE');
+        if(loadQueue()[ref]?.token===intent.token)storePending(ref,null);
+        const k=intent.questionId+':'+String(intent.version);
+        modified.add(k);if(intent.saved)keys.add(k);else keys.delete(k);
+      }catch(e){
+        if(!e.retryable&&e.status!==401){if(loadQueue()[ref]?.token===intent.token)storePending(ref,null);toast(e.message);}
+      }finally{sending.delete(ref);sync();}
+    }
+  }
+  const refFor=key=>JSON.stringify([source,assignmentId,key]);
+  window.addEventListener('online',flush);
+
+  function sync(){
+    for(const [button,key] of buttons){
+      if(!button.isConnected){buttons.delete(button);continue;}
+      const queued=loadQueue()[refFor(key)],saved=queued?.saved??keys.has(key);
+      button.textContent=queued?(saved?'已收藏 · 待同步':'已移除 · 待同步'):(saved?'✓ 已收藏':'☆ 收藏');
+      button.setAttribute('aria-pressed',String(saved));
+    }
+  }
+  function mount(host,q,discussion){
+    if(!host)return;
+    const key=String(q.id)+':'+String(q.version||version);
+    if(!started){
+      started=true;
+      pendingRead=api('question-bookmarks?'+new URLSearchParams({source,assignmentId})).then(({items})=>{
+        for(const item of items){
+          const k=item.questionId+':'+item.version;
+          if(!modified.has(k))keys.add(k);
+        }
+        sync();
+      }).catch(()=>{started=false;});
+      void flush();
+    }
+    const strip=document.createElement('span');
+    strip.className='study-controls';
+    strip.innerHTML='<button type="button" aria-pressed="false">☆ 收藏</button>';
+    const button=strip.firstElementChild;host.append(strip);buttons.set(button,key);sync();
+    const trigger=button;
+    trigger.onclick=async()=>{
+      trigger.disabled=true;
+      await pendingRead;
+      const ref=refFor(key),saved=!(loadQueue()[ref]?.saved??keys.has(key));
+      const intent={source,assignmentId,questionId:q.id,version:q.version||version,saved,token:crypto.randomUUID()};
+      if(!sending.has(ref))sending.add(ref);else{trigger.disabled=false;return;}
+      try{
+        await action(api,'question-bookmarks',intent,saved?'PUT':'DELETE');
+        storePending(ref,null);modified.add(key);if(saved)keys.add(key);else keys.delete(key);
+        toast(saved?'已加入错题本 · 我的书签':'已移除收藏');
+      }catch(e){
+        if(e.retryable&&storePending(ref,intent))toast('已暂存，联网后同步');
+        else toast(e.message);
+      }finally{sending.delete(ref);sync();trigger.disabled=false;}
+    };
+    if(discussion&&classes.length){
+      const open=document.createElement('button');
+      open.type='button';open.textContent='同伴思路';open.setAttribute('aria-haspopup','dialog');
+      strip.append(open);
+      open.onclick=()=>{dialog?.close();dialog=openDiscussion({api,user,assignmentId,version,item:q.id,classes,trigger:open});};
+    }
+  }
+  return {mount,destroy:()=>{window.removeEventListener('online',flush);dialog?.close();}};
+}
+
+export function openDiscussion({api,user,assignmentId,item='',version,classes,trigger,teacher=false}) {
+  const d=document.createElement('dialog');
+  d.className='study-sheet';
+  if(!teacher)d.dataset.studentDiscussion='';
+  d.setAttribute('aria-label',teacher?'同伴思路记录':'同伴思路');
+  d.innerHTML=`<header><div><strong>${teacher?'同伴思路记录':'同伴思路'}</strong>${item?`<small>第 ${esc(item)} 题</small>`:''}</div><button type="button" data-close>关闭</button></header>
+    <div class="study-filters"><label>讨论班级 <select>${classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
+    ${teacher?`<label>开放方式 <select data-policy><option value="attempt">保存首次作答后</option><option value="open">作业开放后</option><option value="review">成绩公布后复盘</option><option value="closed">关闭</option></select></label>
+    <label>记录 <select data-status-filter><option value="all">全部帖子</option><option value="reported">举报待处理</option><option value="handled">已处理</option></select></label>`:''}</div>
+    <button type="button" data-new hidden>讨论有更新，查看最新记录</button><p role="status"></p><div class="study-feed" aria-label="思路列表"></div>
+    ${teacher?'':`<form><label>分享判断依据或第一步<textarea maxlength="400" rows="2" required placeholder="只对所选班级可见"></textarea></label><button class="primary" type="submit">发布</button></form>`}`;
+  document.body.append(d);d.showModal();
+  const select=d.querySelector('select'), list=d.querySelector('.study-feed'), status=d.querySelector('[role=status]'), form=d.querySelector('form'), news=d.querySelector('[data-new]');
+  const drafts=new Map(), startClass=classes[0]?.id;
+  let classId=startClass, clientId=crypto.randomUUID(), stream=null, loaded=false, epoch=0, offset=0;
+  const draftKey = cls => 'thought-draft:'+JSON.stringify([user.id,assignmentId,version,item,cls]);
+  const remember=cls=>{if(!form)return;drafts.set(cls,form.elements[0].value);try{sessionStorage.setItem(draftKey(cls),form.elements[0].value);}catch{}};
+  const restore=cls=>{if(!form)return;try{form.elements[0].value=drafts.get(cls)||sessionStorage.getItem(draftKey(cls))||'';}catch{}};
+  const query=()=>new URLSearchParams({classId,version:version||'',offset,filter:d.querySelector('[data-status-filter]')?.value||'all'});
+  const base='question-discussion/'+part(assignmentId)+(item?'/'+part(item):'');
+  async function refresh(subscribe=false) {
+    const rev=++epoch, url=base+'?'+query();
+    if(form)form.hidden=!loaded;
+    status.textContent='正在载入…';
+    try{
+      const data=await api(url);
+      if(!d.open||rev!==epoch)return;
+      loaded=true;status.textContent='';news.hidden=true;d.dataset.revision=data.revision||'start';
+      if(form)form.hidden=false;
+      if(teacher){
+        const policy=d.querySelector('[data-policy]');policy.value=data.policy;
+        for(const option of policy.options)option.disabled=!data.allowedPolicies.includes(option.value);
+      }
+      const filter=d.querySelector('[data-status-filter]')?.value||'all';
+      const rows=data.items.filter(p=>filter==='all'||(filter==='reported'?p.reports?.length:p.moderation));
+      const scroll=list.scrollTop;
+      list.innerHTML=rows.map(postMarkup).join('')||'<p class="hint">这里暂时没有符合条件的思路。</p>';
+      list.insertAdjacentHTML('beforeend',`<div class="study-pager">${offset?`<button type="button" data-page="-1">上一页</button>`:''}${data.more?`<button type="button" data-page="1">下一页</button>`:''}</div>`);
+      list.scrollTop=scroll;
+      for(const p of rows)bindRow(p);
+      for(const page of list.querySelectorAll('[data-page]'))page.onclick=()=>{offset+=Number(page.dataset.page)*20;void refresh();};
+      if(subscribe&&!teacher){
+        stream?.close();
+        stream=new EventSource('/api/homework/'+base+'/events?'+query());
+        stream.addEventListener('update',event=>{if(JSON.parse(event.data).revision!==d.dataset.revision)news.hidden=false;});
+        stream.addEventListener('unavailable',()=>{stream.close();list.replaceChildren();if(form)form.hidden=true;status.textContent='讨论暂不可用，请关闭后重试。';});
+      }
+    }catch(e){if(d.open&&rev===epoch){loaded=false;status.textContent=e.message;list.replaceChildren();if(form)form.hidden=true;}}
+  }
+  function postMarkup(p){
+    return `<article data-post="${esc(p.id)}"><div class="study-post-meta"><strong>${esc(p.mine?'我':p.alias)}</strong><small>${teacher?`第 ${esc(p.item)} 题 · 版本 ${esc(p.version)} · `:''}${esc(nl(p.createdAt))}${p.editedAt?' · 已编辑':''}${p.state==='hidden'?' · 已隐藏':''}</small></div><p>${esc(p.body)}</p>
+      <div class="study-actions">
+        <button type="button" data-vote="1" ${p.mine||teacher?'disabled':''} aria-pressed="${p.myVote===1}">有用 ${p.up}</button><button type="button" data-vote="-1" ${p.mine||teacher?'disabled':''} aria-pressed="${p.myVote===-1}">没用 ${p.down}</button>
+        ${teacher?`<button type="button" data-moderate>${p.state==='hidden'?'恢复':'隐藏'}</button>${p.reports?.length?`<button type="button" data-keep>保留帖子</button>`:''}`:
+        `<details><summary>更多</summary><div>${p.mine?'<button type="button" data-edit>编辑</button><button type="button" data-withdraw>撤回</button>':'<button type="button" data-report>举报</button><button type="button" data-block>屏蔽此人</button>'}</div></details>`}
+      </div>${p.reports?.length?`<small>举报理由：${esc(p.reports.join('、'))}</small>`:''}${p.moderation?`<small>处理于 ${esc(nl(p.moderation.at))} · ${esc(p.moderation.reason)}</small>`:''}</article>`;
+  }
+  async function write(payload,control){
+    if(control)control.disabled=true;
+    try{await action(api,base+'?'+query(),payload);return true;}
+    catch(e){status.textContent=e.message;return false;}
+    finally{if(control)control.disabled=false;}
+  }
+  function bindRow(p){
+    const row=list.querySelector('[data-post="'+CSS.escape(p.id)+'"]');
+    const edit=(selector,b) => {const el=row.querySelector(selector);if(el)el.onclick=async()=>{const payload=b();if(payload&&await write({postId:p.id,revision:p.revision,...payload},el))await refresh();};};
+    for(const vote of row.querySelectorAll('[data-vote]'))vote.onclick=async()=>{const value=Number(vote.dataset.vote);if(await write({action:'vote',postId:p.id,value:value===p.myVote?0:value},vote))await refresh();};
+    edit('[data-edit]',()=>{const body=prompt('修改你的思路',p.body);return body!==null?{action:'edit',body}:null;});
+    edit('[data-withdraw]',()=>confirm('撤回这条思路？')?{action:'withdraw'}:null);
+    edit('[data-block]',()=>confirm('隐藏这位同学的所有思路？')?{action:'block'}:null);
+    edit('[data-report]',()=>{const reason=prompt('告诉老师需要检查什么','疑似直接提供答案');return reason?.trim()?{action:'report',reason}:null;});
+    for(const selector of ['[data-moderate]','[data-keep]'])edit(selector,()=>{const reason=prompt('记录处理原因');return reason?.trim()?{action:'moderate',state:selector==='[data-keep]'||p.state==='hidden'?'visible':'hidden',reason}:null;});
+  }
+  d.querySelector('[data-close]').onclick=()=>d.close();
+  select.onchange=()=>{remember(classId);classId=select.value;restore(classId);offset=0;loaded=false;clientId=crypto.randomUUID();stream?.close();list.replaceChildren();void refresh(true);};
+  news.onclick=()=>{offset=0;list.scrollTop=0;void refresh();};
+  if(teacher){
+    const policy=d.querySelector('[data-policy]');
+    policy.onchange=async()=>{if(await write({action:'policy',policy:policy.value},policy))await refresh();};
+    d.querySelector('[data-status-filter]').onchange=()=>{offset=0;void refresh();};
+  }
+  if(form){
+    restore(classId);form.hidden=true;
+    form.elements[0].addEventListener('input',()=>remember(classId));
+    form.onsubmit=async e=>{e.preventDefault();const from=classId;if(await write({action:'create',body:form.elements[0].value,clientId},form.querySelector('[type=submit]'))&&from===classId&&d.open){form.reset();remember(classId);clientId=crypto.randomUUID();offset=0;list.scrollTop=0;void refresh();}};
+  }
+  d.addEventListener('close',()=>{epoch++;remember(classId);stream?.close();d.remove();trigger?.focus({preventScroll:true});},{once:true});
+  void refresh(true);
+  return d;
+}
+
+export async function renderBookmarks({main,api,state,link,head,toast}) {
+  const version=state.routeVersion, {items}=await api('question-bookmarks');
+  if(version!==state.routeVersion)return;
+  main.innerHTML=`<section class="paper study-bookmarks">${head('','我的错题集','',link('grades','成绩档案'))}
+    <nav class="study-tabs" aria-label="复习入口">${link('mistakes','错题')}${link('mistakes/bookmarks','我的书签','primary')}</nav>
+    <div class="study-filters"><label>搜索 <input type="search" placeholder="作业或知识点"></label>
+    <label>学科 <select><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
+    <button type="button" data-blocked>屏蔽管理</button></div><div data-book-list></div></section>`;
+  const filter=main.querySelector('input'), subject=main.querySelector('select'), list=main.querySelector('[data-book-list]');
+  function draw(){
+    const term=filter.value.trim().toLowerCase();
+    const rows=items.filter(x=>(!subject.value||x.course===subject.value)&&(!term||`${x.title} ${x.label} ${x.questionId}`.toLowerCase().includes(term)));
+    list.innerHTML=rows.map(r=>`<article class="study-book-row"><details><summary><strong>${esc(r.title)} · ${r.source==='mock'?'题目':'第 '+esc(r.questionId)+' 题'}</strong><small>${esc(courseLabel(r.course))} · ${esc(r.label||'原题')} · ${nl(r.at)}</small></summary><div data-book-preview></div></details><button type="button" data-remove aria-label="移除此书签">移除</button></article>`).join('')||'<p>暂无符合条件的书签。</p>';
+    [...list.children].filter(e=>e.matches('article')).forEach((row,i)=>{
+      const r=rows[i], details=row.querySelector('details'), preview=row.querySelector('[data-book-preview]');
+      details.ontoggle=async()=>{
+        if(!details.open)return;
+        preview.textContent='正在打开原题…';
+        try{
+          const {readable,item}=await api('question-bookmarks/'+part(r.id));
+          if(!details.open||!row.isConnected)return;
+          if(!readable){preview.innerHTML='<p>交卷或成绩公布后可在这里回看原题。</p>';return;}
+          const imageMarkup=item.images.map(id=>`<a href="/api/homework/files/${part(id)}?bookmark=${part(r.id)}" target="_blank" rel="noopener"><img loading="lazy" alt="原题片段" src="/api/homework/files/${part(id)}?bookmark=${part(r.id)}"></a>`).join('');
+          const resume=r.source==='mock'?'self-practice/result/'+part(r.assignmentId):`${item.format==='upload'?'submit':'mcq'}/${part(r.assignmentId)}?question=${part(r.questionId)}`;
+          preview.innerHTML=`<p class="study-prompt">${esc(item.prompt)}</p>${imageMarkup}<ul>${item.options.filter(o=>o.text).map(o=>`<li>${esc(o.label)}　${esc(o.text)}</li>`).join('')}</ul>
+            ${item.paperLocation?.fileId?`<a target="_blank" rel="noopener" href="/api/homework/files/${part(item.paperLocation.fileId)}?bookmark=${part(r.id)}#page=${Number(item.paperLocation.page)||1}">打开题纸第 ${Number(item.paperLocation.page)||1} 页</a>`:''}
+            ${link(resume,'回到原作业或模考','secondary')}`;
+        }catch{if(row.isConnected)preview.textContent='原题暂不可查看。可以保留或移除书签。';}
+      };
+      const remove=row.querySelector('[data-remove]');
+      remove.onclick=async()=>{remove.disabled=true;try{await action(api,'question-bookmarks/'+part(r.id),{},'DELETE');items.splice(items.indexOf(r),1);draw();filter.focus();}catch(e){toast(e.message);remove.disabled=false;}};
+    });
+  }
+  main.querySelector('[data-blocked]').onclick=async e=>{
+    const trigger=e.currentTarget;
+    const d=document.createElement('dialog');d.className='study-sheet';
+    d.innerHTML='<header><strong>屏蔽管理</strong><button type="button" data-close>关闭</button></header><div class="study-feed"></div>';
+    document.body.append(d);d.showModal();d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>{d.remove();trigger.focus();};
+    const feed=d.querySelector('.study-feed');
+    try{
+      const {items}=await api('question-blocks');
+      if(!items.length)feed.textContent='当前没有屏蔽的同学。';
+      for(const row of items){
+        const div=document.createElement('p');div.innerHTML=esc(row.alias)+'　<button type="button">解除屏蔽</button>';feed.append(div);
+        div.querySelector('button').onclick=async()=>{try{await action(api,'question-blocks/'+part(row.id),{},'DELETE');div.remove();if(!feed.childElementCount)feed.textContent='当前没有屏蔽的同学。';}catch(e){toast(e.message);}};
+      }
+    }catch(e){feed.textContent=e.message;}
+  };
+  filter.oninput=draw;subject.onchange=draw;draw();
+}
+
+export async function renderMockStatistics({main,api,state,toast}){
+  const version=state.version;
+  const initial=await api('mock-stats');
+  if(version!==state.version)return;
+  const today=nl(new Date().toISOString()),from=nl(new Date(Date.now()-30*86400000).toISOString());
+  main.innerHTML=`<div class="study-stats"><details class="study-filter-panel" ${matchMedia('(min-width:768px)').matches?'open':''}><summary>筛选模考记录</summary><form class="study-filters">
+    <label>班级 <select name="classId"><option value="">全部任教班级</option>${initial.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
+    <label>学科 <select name="course"><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
+    <label>学生 <select name="studentId"><option value="">全部学生</option></select></label>
+    <label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
+    <label>章节 <input name="topic" type="search" placeholder="例如 2.3"></label>
+    <label>计时 <select name="timer"><option value="">全部</option><option value="countdown">倒计时</option><option value="countup">正计时</option></select></label>
+    <button type="submit" class="tw-button tw-primary">应用筛选</button></form></details>
+    <p role="status"></p><div data-overview></div><div class="study-stat-grid"><section class="study-panel" data-attempts></section><aside class="study-panel" data-topics></aside></div></div>`;
+  const root=main.querySelector('.study-stats'), form=root.querySelector('form'),status=root.querySelector('[role=status]');
+  let offset=0,serial=0;
+  function paint(data){
+    const {stats:s,attempts}=data, selection=form.elements.studentId.value;
+    root.querySelector('.study-filter-panel summary').textContent=form.elements.classId.selectedOptions[0].text+' · '+form.elements.course.selectedOptions[0].text+' · 筛选';
+    form.elements.studentId.innerHTML='<option value="">全部学生</option>'+data.students.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    form.elements.studentId.value=data.students.some(x=>x.id===selection)?selection:'';
+    const percent=(a,b)=>b?Math.round(a/b*1000)/10+'%':'—', duration = n=>n===null||n===undefined?'—':Math.floor(n/60)+' 分 '+Math.round(n%60)+' 秒';
+    const kpis=[['参与学生',s.participants+' / '+s.roster],['已交卷',s.attempts+' 次'],['题次正确率',percent(s.correct,s.points)],['整卷用时中位数',duration(s.median)]];
+    root.querySelector('[data-overview]').innerHTML=`<div class="study-metrics">${kpis.map(([label,value])=>`<div><span>${label}</span><strong>${value}</strong></div>`).join('')}</div><p class="hint">已交卷 · ${s.correct} / ${s.points} 正确题次 · ${s.durationSamples} 份有效用时${s.excluded?' · '+s.excluded+' 题次缺少有效计分':''}</p>`;
+    const list=root.querySelector('[data-attempts]');
+    list.innerHTML='<h2>交卷记录</h2>'+(attempts.map(a=>`<button type="button" class="study-attempt" data-attempt="${esc(a.id)}"><span><strong>${esc(a.name)}</strong><small>${esc(courseLabel(a.course))} · ${nl(a.submittedAt)} · ${a.auto?'到时交卷':a.timerMode==='countdown'?'倒计时':'正计时'}</small></span><span><strong>${a.total} / ${a.max}</strong><small>${duration(a.duration)}</small></span><span aria-hidden="true">›</span></button>`).join('')||'<p class="hint">该筛选范围暂无已交卷记录。</p>')+
+      `<div class="study-pager">${offset?'<button type="button" data-prev>上一页</button>':''}${data.more?'<button type="button" data-next>下一页</button>':''}</div>`;
+    root.querySelector('[data-topics]').innerHTML='<h2>章节表现</h2>'+(s.participants&&s.participants<5?'<p class="hint">样本较少，请结合实际作答判断。</p>':'')+(s.topics.map(t=>`<div class="study-topic"><span>${esc(t.label)}</span><strong>${t.correct} / ${t.total}</strong><meter value="${t.correct}" min="0" max="${t.total}" aria-label="正确题次"></meter></div>`).join('')||'<p class="hint">暂无章节题次。</p>');
+    list.querySelector('[data-next]')?.addEventListener('click',()=>{offset+=25;void load();});
+    list.querySelector('[data-prev]')?.addEventListener('click',()=>{offset=Math.max(0,offset-25);void load();});
+    for(const button of list.querySelectorAll('[data-attempt]'))button.onclick=()=>openAttempt(button);
+  }
+  async function load(){
+    const n=++serial;status.textContent='正在读取记录…';
+    try{
+      const params=new URLSearchParams(new FormData(form));params.set('offset',offset);
+      const data=await api('mock-stats?'+params);
+      if(root.isConnected&&n===serial){paint(data);status.textContent='';}
+    }catch(e){if(root.isConnected&&n===serial)status.textContent=e.message;}
+  }
+  async function openAttempt(button){
+    button.disabled=true;
+    try{
+      const params=new URLSearchParams(new FormData(form));
+      const {attempt:a,name}=await api('mock-stats/'+part(button.dataset.attempt)+'?'+params);
+      if(!root.isConnected)return;
+      const d=document.createElement('dialog');d.className='study-sheet';d.setAttribute('aria-label','模考详情');
+      d.innerHTML=`<header><strong>${esc(name)} · ${courseLabel(a.course)} · ${a.result.total}/${a.result.maxPoints}</strong><button type="button" data-close>关闭</button></header><div class="study-feed">${a.result.questions.map((q,i)=>`<details class="study-book-row"><summary>第 ${i+1} 题 · ${esc(q.topic)} · ${q.correct?'正确':'失分'}</summary><p>${esc(q.prompt)}</p><p>学生作答 ${esc(q.chosen||'未作答')}　正确选项 ${esc(q.correctOption)}</p>${q.questionImages.map(id=>`<img loading="lazy" alt="原题片段" src="/api/homework/files/${part(id)}?mock=${part(a.id)}">`).join('')}${a.corrections[q.id]?`<p>订正 ${esc(a.corrections[q.id].note||a.corrections[q.id].choice)}</p>`:''}</details>`).join('')}</div>`;
+      document.body.append(d);d.showModal();d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>{d.remove();button.focus({preventScroll:true});};
+    }catch(e){toast(e.message);}finally{button.disabled=false;}
+  }
+  form.onsubmit=e=>{e.preventDefault();offset=0;if(matchMedia('(max-width:767px)').matches)form.closest('details').open=false;void load();};
+  for(const name of ['classId','course'])form.elements[name].onchange=()=>{form.elements.studentId.value='';offset=0;void load();};
+  paint(initial);
+}
+
+export function studyReportMarkup(report, {teacher=false}={}) {
+  const {scope={},stats={},metrics={}}=report;
+  const kind=scope.studentId?'学生报告':scope.assignmentId?'作业报告':'班级报告';
+  const rows=scope.studentId
+    ? [['已评分',metrics.published],['个人均值',stats.average==null?'—':stats.average+'%'],['待订正',metrics.corrections],['已提交',metrics.submitted]]
+    : [['已评分人次',metrics.published],['已评分均值',stats.average==null?'—':stats.average+'%'],['已交 / 应交',metrics.due===undefined?'—':metrics.submitted+' / '+metrics.due],['覆盖作业',stats.assignments]];
+  const facts=new Map((report.evidence||[]).map(f=>[f.id,f]));
+  const observations=(report.observations||[]).map(o=>`<article><p>${esc(o.text)}</p>
+    ${o.evidenceIds?.length?`<details><summary>查看依据</summary><ul>${o.evidenceIds.filter(id=>facts.has(id)).map(id=>`<li>${esc(facts.get(id).text)}</li>`).join('')}</ul></details>`:
+    o.evidence?.length?`<small>${esc(o.evidence.join(' · '))}</small>`:''}</article>`).join('');
+  const actions=(report.nextSteps||[]).map(a=>`<article><small>${esc(a.owner||(scope.studentId?'学生':'教师'))}${a.when?' · '+esc(a.when):''}</small><p>${esc(a.text)}</p></article>`).join('');
+  const headline=report.headline||report.observations?.[0]?.text||'当前记录不足。';
+  return `<p class="lo-ai-meta"><strong>${kind}</strong>${report.assignmentTitle?`<span>${esc(report.assignmentTitle)}</span>`:''}
+    <span>${report.status==='draft'?(report.source==='ai'?'AI 草稿':'规则草稿'):report.status==='revoked'?'已撤回':'已发布'}</span>
+    ${!report.templateVersion?'<span>历史报告</span>':''}<span>${esc(nl(report.publishedAt||report.createdAt))}</span></p>
+    <section class="study-report-lead"><small>本次判断</small><h3>${esc(headline)}</h3></section>
+    <div class="study-metrics">${rows.map(([label,value])=>`<div><span>${label}</span><strong>${esc(value ?? '—')}</strong></div>`).join('')}</div>
+    <div class="study-report-detail"><section><h3>依据</h3>${observations||'<p>当前范围暂无可引用的观察。</p>'}
+      ${teacher&&scope.assignmentId?`<a class="text-button" href="#work/mcq-analysis/${part(scope.assignmentId)}">打开作业诊断</a>`:''}</section>
+      <section><h3>下一步</h3>${actions||'<p>先收集更多有效记录，再安排下一步。</p>'}
+      ${!teacher&&scope.studentId?`<a class="text-button" href="#mistakes">打开错题本</a>`:''}</section></div>
+    <p class="lo-note">${esc(report.limitations||'依据已发布的正式作业成绩。')}</p>
+    ${teacher&&report.aiError?`<p class="lo-note">${esc(report.aiError)}</p>`:''}`;
+}

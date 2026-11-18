@@ -1,0 +1,82 @@
+.study-tabs,.study-controls,.study-actions,.study-filters,.study-pager{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.study-tabs{margin:12px 0}
+.study-controls button,.study-sheet button,.study-bookmarks button,.study-pager button{
+  min-height:44px;padding:6px 12px;border:1px solid var(--ui-line);border-radius:var(--ui-control-radius);
+  background:#fff;color:var(--ui-ink);font:inherit;cursor:pointer
+}
+.study-controls button[aria-pressed=true],.study-sheet button[aria-pressed=true],.study-sheet button.primary{
+  background:var(--ui-primary);border-color:var(--ui-primary);color:white
+}
+.study-paper-refs{padding:10px 12px;margin-bottom:12px;border:1px solid var(--ui-line);border-radius:8px}
+.study-paper-refs>div{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ui-line)}
+.study-sheet{padding:0;margin:auto 0 auto auto;width:min(440px,100vw - 24px);height:min(770px,100dvh - 28px);
+  max-height:calc(100dvh - 24px);border:1px solid var(--ui-line);border-radius:12px;background:white;color:var(--ui-ink);
+  box-shadow:0 18px 60px #11283f38;overflow:hidden
+}
+.study-sheet[open]{display:flex;flex-direction:column}
+.study-sheet::backdrop{background:#0b1f3a43}
+.study-sheet>header{background:var(--ui-primary);color:white;padding:10px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.study-sheet header small{display:block;color:#d2dfeb}
+.study-sheet>.study-filters,.study-sheet>[role=status],.study-sheet>[data-new]{margin:6px 14px}
+.study-sheet>[role=status]:empty{display:none}
+.study-feed{overflow:auto;overscroll-behavior:contain;padding:0 14px;flex:1;min-height:0}
+.study-feed article,.study-book-row{border-bottom:1px solid var(--ui-line);padding:12px 0;min-width:0;overflow-wrap:anywhere}
+.study-post-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.study-post-meta small,.study-book-row small,.study-attempt small{color:var(--ui-muted)}
+.study-actions details>div{display:flex;flex-wrap:wrap;gap:5px}
+.study-actions summary{padding:8px;cursor:pointer}
+.study-sheet form{padding:8px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--ui-line)}
+.study-sheet form label{display:block;font-size:13px}
+.study-sheet textarea{display:block;width:100%;min-height:64px;margin:4px 0;padding:8px;font:inherit;font-size:16px;border:1px solid var(--ui-line);border-radius:6px}
+.study-filters label{display:flex;align-items:center;gap:5px;font-size:14px;min-width:0}
+.study-filters :is(select,input){min-height:44px;max-width:100%;min-width:0;padding:6px 8px;border:1px solid var(--ui-line);border-radius:6px;background:white;color:var(--ui-ink);font:inherit}
+.study-book-row{display:flex;align-items:flex-start;gap:12px}
+.study-book-row details{flex:1;min-width:0}
+.study-book-row summary{cursor:pointer;padding:6px 0}
+.study-book-row summary small{display:block}
+.study-book-row img,.study-sheet img{display:block;max-width:100%;height:auto;margin:8px 0}
+.study-sheet .study-book-row{display:block}
+.study-prompt{white-space:pre-wrap;overflow-wrap:anywhere}
+.mistake-occurrences a{display:block}
+.study-stat-grid,.study-report-detail{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px}
+.study-panel,.study-report-detail>section{padding:14px;border:1px solid var(--ui-line);border-radius:8px;background:white;min-width:0}
+.study-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0}
+.study-metrics>div{background:#f1f4f7;border:1px solid var(--ui-line);border-radius:7px;padding:8px 10px}
+.study-metrics span,.study-attempt small{font-size:13px;display:block}
+.study-metrics strong{display:block;font-size:18px;color:var(--ui-primary);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.study-attempt{display:grid;grid-template-columns:minmax(0,1fr) auto 14px;gap:10px;text-align:left;align-items:center;width:100%;min-height:58px;
+  background:white;color:var(--ui-ink);border:0;border-bottom:1px solid var(--ui-line);font:inherit;padding:8px}
+.study-attempt:hover{background:var(--ui-selected)}
+.study-topic{display:grid;grid-template-columns:1fr auto;gap:4px 8px;padding:6px 0}
+.study-topic meter{grid-column:1/-1;width:100%;accent-color:var(--ui-primary)}
+.study-report-lead{padding:12px 14px;border-radius:8px;background:var(--ui-selected);border-left:4px solid var(--ui-primary)}
+.study-report-lead h3{margin:4px 0}
+.study-report-detail h3{margin:0 0 6px}
+.study-report-editor label{display:block;margin:8px 0}
+.study-report-editor textarea{display:block;width:100%;min-height:64px;padding:8px;font:inherit}
+@media(max-width:700px){
+ .study-sheet{width:100%;height:min(78dvh,740px);max-height:94dvh;margin:auto 0 0;border-radius:14px 14px 0 0}
+ .study-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .study-stat-grid,.study-report-detail{grid-template-columns:1fr}
+ .study-filters label{flex-wrap:wrap}
+ body[data-mcq-active=true] .mcq-question>.mcq-toolbar{flex-wrap:wrap;gap:4px}
+ body[data-mcq-active=true] .mcq-question>.mcq-toolbar .study-controls{gap:4px}
+ .sp-question-meta{flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:no-preference){
+ .study-sheet[open]{animation:study-open .18s ease-out}
+ @keyframes study-open{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+.study-sheet #mike-companion{visibility:hidden}
+.study-sheet :where(button,summary,select,textarea):focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
+@media(min-width:1180px){
+  body[data-mcq-active=true]:has(.study-sheet[data-student-discussion][open]) .mcq-work {
+    width:calc(100% - 365px);margin-left:0;margin-right:auto
+  }
+  body[data-mcq-active=true] .study-sheet[data-student-discussion] {width:340px;margin:auto 12px auto auto}
+  body[data-mcq-active=true] .study-sheet[data-student-discussion]::backdrop {background:transparent}
+}
+.study-filter-panel{border:1px solid var(--ui-line);border-radius:8px;background:#fff}
+.study-filter-panel > summary{cursor:pointer;padding:10px 12px;font-weight:650}
+.study-filter-panel > form{padding:0 12px 12px}
+.study-filter-panel ~ [role=status]:empty{display:none}

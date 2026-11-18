@@ -70,7 +70,7 @@ export function createStore(connectionString, schema = "homework") {
     },
     // Filter before transferring JSON (rubrics and paper snapshots can be large).
     async find(kind, filters, client = pool) {
-      const allowed = new Set(['studentId','assignmentId','owner','teacherId','unitId','version','status']);
+      const allowed = new Set(['studentId','assignmentId','owner','teacherId','unitId','version','status','threadKey','postId','classId']);
       const values = [kind], clauses = ['kind=$1'];
       for (const [field, value] of Object.entries(filters)) {
         if (!allowed.has(field)) throw new Error('Invalid record filter');
@@ -111,7 +111,7 @@ export function createStore(connectionString, schema = "homework") {
       await query(
         `CREATE SCHEMA IF NOT EXISTS ${schema}; CREATE TABLE IF NOT EXISTS ${table}(id text PRIMARY KEY,kind text NOT NULL,data jsonb NOT NULL,created timestamptz NOT NULL DEFAULT now()); CREATE INDEX IF NOT EXISTS records_kind ON ${table}(kind); CREATE TABLE IF NOT EXISTS ${jobs}(id text PRIMARY KEY,kind text NOT NULL,target text NOT NULL,payload jsonb NOT NULL,status text NOT NULL DEFAULT 'queued',lease text,lease_until timestamptz,attempts integer NOT NULL DEFAULT 0,created timestamptz NOT NULL DEFAULT now(),finished timestamptz,result jsonb,error text); CREATE INDEX IF NOT EXISTS jobs_queue ON ${jobs}(status,created);`,
       );
-      for (const field of ['studentId','assignmentId','owner','teacherId','unitId']) {
+      for (const field of ['studentId','assignmentId','owner','teacherId','unitId','threadKey','postId','classId']) {
         // CONCURRENTLY avoids blocking class saves during a rolling release.
         await query(`CREATE INDEX CONCURRENTLY IF NOT EXISTS records_scope_${field.toLowerCase()} ON ${table}(kind,(data->>'${field}'))`);
       }

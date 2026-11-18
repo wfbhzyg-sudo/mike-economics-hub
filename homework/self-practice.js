@@ -1,3 +1,4 @@
+import {studyControls} from './study-workflow.js';
 import {accuracyBadge} from './score-bands.js';
 import {selectedCourse,rememberCourse} from './course-scope.js';
 const DAY = 86_400_000;
@@ -296,7 +297,7 @@ export function createSelfPracticeUI(ctx) {
     const version=++creationVersion;
     let disposed=false, timer=null, saveTimer=null;
     const current=()=>!disposed&&version===creationVersion;
-    destroy=()=>{disposed=true;++creationVersion;};
+    destroy=()=>{study.destroy();disposed=true;++creationVersion;};
     const reload=()=>{destroy?.();closeDialogs();return runAttempt(id);};
     main.innerHTML='<section class="paper sp-loading"><p>正在载入本次练习…</p></section>';
     let paper;
@@ -335,6 +336,7 @@ export function createSelfPracticeUI(ctx) {
       <footer class="sp-run-foot"><button type="button" class="secondary" data-prev>上一题</button><button type="button" class="secondary" data-palette>答题卡</button><button type="button" class="primary" data-next>下一题</button></footer>
       <div class="sp-save-state" role="status"><span data-save></span><button type="button" data-retry-save hidden>重试保存</button><button type="button" data-retry-submit hidden>重试交卷</button></div>
     </section>`;
+    const study=studyControls({api,toast,user:state.user,source:'mock',assignmentId:id});
     const page=main.firstElementChild,questionHost=page.querySelector('[data-question]'),railHost=page.querySelector('[data-rail]'),saveState=page.querySelector('[data-save]'),timerHost=page.querySelector('[data-timer]'),nextButton=page.querySelector('[data-next]'),flagButton=page.querySelector('[data-flag]'),retrySave=page.querySelector('[data-retry-save]'),retrySubmit=page.querySelector('[data-retry-submit]');
     const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,excluded,flags:[...flags],index,revision,dirty,savedAt:Date.now()});
     const setSave=text=>{if(current())saveState.textContent=text;};
@@ -395,6 +397,7 @@ export function createSelfPracticeUI(ctx) {
     const paintQuestion=()=>{
       const q=questions[index];page.querySelector('[data-progress]').textContent=`${index+1} / ${questions.length}`;
       questionHost.innerHTML=`<article class="sp-card sp-question-card"><div class="sp-question-meta"><span>第 ${index+1} 题</span><span>${h(q.topic)}</span>${q.sourcePages?`<span>${h(q.sourcePages)}</span>`:''}<button type="button" class="sp-zoom" data-zoom-toggle aria-pressed="false">放大</button></div><div class="sp-stimulus"><div class="sp-question-images">${q.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题" decoding="async">`).join('')}</div>${q.prompt?`<p class="sp-prompt">${h(q.prompt)}</p>`:''}</div><div class="sp-options" data-label-only="${!q.optionLabels.some(label=>optionText(q,label))}" role="radiogroup" aria-label="第 ${index+1} 题，选择答案">${q.optionLabels.map(label=>`<div class="answer-pair"><button type="button" class="sp-option" role="radio" aria-checked="false" data-choice="${h(label)}"><span>${h(label)}</span>${optionText(q,label)?`<small>${h(optionText(q,label))}</small>`:''}</button><button class="strike-dot" type="button" data-strike="${h(label)}" aria-label="排除选项 ${h(label)}" title="排除或恢复 ${h(label)}">⊖</button></div>`).join('')}</div></article>`;
+      study.mount(questionHost.querySelector('.sp-question-meta'),q,false);
       questionHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
       for(const dot of questionHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
         if(frozen||!current())return;if(expired()){submitPaper(true);return;}
@@ -455,7 +458,7 @@ export function createSelfPracticeUI(ctx) {
     const online=()=>{if(expired())submitPaper(true);else if(dirty)sync();};
     const unload=event=>{if(dirty){event.preventDefault();event.returnValue='';}};
     document.addEventListener('keydown',keyHandler);window.addEventListener('online',online);window.addEventListener('beforeunload',unload);
-    destroy=()=>{disposed=true;++creationVersion;document.removeEventListener('keydown',keyHandler);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);document.body.classList.remove('sp-immersive');clearInterval(timer);clearTimeout(saveTimer);closeDialogs();};
+    destroy=()=>{study.destroy();disposed=true;++creationVersion;document.removeEventListener('keydown',keyHandler);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);document.body.classList.remove('sp-immersive');clearInterval(timer);clearTimeout(saveTimer);closeDialogs();};
     paintQuestion();setSave(dirty?'有未同步答案':'已保存到账号');if(savedRevConflict)showConflict();else if(dirty)sync();timer=setInterval(tick,1000);tick();
   }
 
@@ -504,7 +507,7 @@ export function createSelfPracticeUI(ctx) {
         <section class="sp-card sp-topic-card"><h2>章节表现</h2>${result.topics.map((topic) => `<div class="sp-topic-row"><span>${h(topic.topic)}</span><div class="sp-topic-bar"><i style="width:${Math.round((topic.correct / topic.count) * 100)}%"></i></div><b>${accuracyBadge(topic.count?topic.correct/topic.count*100:null)} · ${topic.correct}/${topic.count}</b></div>`).join('')}</section>
       </div>
       <section class="sp-card sp-wrong" aria-labelledby="sp-wrong-title">
-        <div class="sp-card-head"><h2 id="sp-wrong-title">错题与订正</h2><span class="sp-muted">${wrong.length} 道失分题${result.autoSubmitted ? ' · 到时未答按 0 分' : ''}</span></div>
+        <div class="sp-card-head"><h2 id="sp-wrong-title">错题与订正</h2><a class="secondary" href="#mistakes">错题本</a><span class="sp-muted">${wrong.length} 道失分题${result.autoSubmitted ? ' · 到时未答按 0 分' : ''}</span></div>
         ${wrong.length ? wrong.map((question) => wrongMarkup(attempt, question, corrections)).join('') : '<p class="sp-empty">全部答对，没有需要订正的题。</p>'}
       </section>
       <footer class="sp-result-foot"><button type="button" class="secondary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">返回自主模考</a></footer>
@@ -574,11 +577,11 @@ export function createSelfPracticeUI(ctx) {
     return `<article class="sp-wrong-item" data-wrong="${h(question.id)}">
       <header><strong>第 ${h(question.number || question.id)} 题</strong><span>${h(question.topic)}</span><span class="sp-wrong-mark">${question.chosen ? '我的答案 ' + h(question.chosen) : '未作答'}</span></header>
       <div class="sp-wrong-body">
-        <div class="sp-wrong-images">${question.questionImages.map((fileId) => `<img src="/api/homework/files/${encodeURIComponent(fileId)}" alt="第 ${h(question.number || question.id)} 题原题" loading="lazy">`).join('')}</div>
+        <div class="sp-wrong-images">${question.prompt?`<p>${h(question.prompt)}</p>`:""}${question.questionImages.map((fileId) => `<img src="/api/homework/files/${encodeURIComponent(fileId)}" alt="第 ${h(question.number || question.id)} 题原题" loading="lazy">`).join('')}</div>
         <div class="sp-wrong-options">${question.optionLabels.map((label) => `<div class="sp-wrong-option" data-state="${label === question.correctOption ? 'correct' : label === question.chosen ? 'chosen' : ''}"><span>${h(label)}</span>${label === question.correctOption ? '<small>正确</small>' : label === question.chosen ? '<small>我的选择</small>' : ''}</div>`).join('')}</div>
       </div>
       <p class="sp-correction-note" data-correction-note ${correction ? '' : 'hidden'}>${correction ? `已订正为 ${h(correction.choice)}（记录订正，不改分）` : ''}</p>
-      <div class="sp-wrong-actions"><button type="button" class="secondary" data-wrong-zoom aria-pressed="false">放大原题</button><button type="button" class="secondary" data-correct>重新选择并订正</button>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div>
+      <div class="sp-wrong-actions"><button type="button" class="secondary" data-wrong-zoom aria-pressed="false">放大原题</button><button type="button" class="secondary" data-correct>重新选择并订正</button><a class="secondary" href="#mistakes/${encodeURIComponent(attempt.id)}/${encodeURIComponent(question.id)}">在错题本订正</a>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div>
     </article>`;
   }
 
