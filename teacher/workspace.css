@@ -957,3 +957,12 @@ body[data-section="bank"] #mobile-navigation{padding-right:8px}
 .tw-class-menu{background:white;color:#182d40;border:1px solid #c4d0db;border-radius:8px;padding:4px;box-shadow:0 8px 22px #10284026}
 .tw-class-menu button{display:block;width:100%;min-height:44px;border:0;border-radius:4px;background:white;color:inherit;text-align:left;padding:6px 12px;font:inherit;cursor:pointer}
 .tw-class-menu button:is(:hover,:focus-visible){background:#edf2f6}
+.bank-head{align-items:center;gap:8px 14px}
+.bank-head-actions{display:flex;align-items:center;gap:6px;flex:none;white-space:nowrap}
+.bank-head-actions .bank-more{position:relative}
+.bank-head-actions .work-tools-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:5;min-width:136px}
+@media(max-width:900px){.bank-head{flex-direction:row;align-items:start;justify-content:space-between}}
+.bank-head-actions > :is(button,.bank-more),.bank-head-actions .bank-more > summary {min-height:44px}
+.bank-head-actions #bank-publish{display:inline-flex;align-items:center;justify-content:center;width:auto;margin:0}
+.bank-head-actions .tw-button{padding-inline:10px}
+@media(max-width:420px){.bank-head .tw-note{font-size:12px}.bank-head-actions{gap:4px}}
