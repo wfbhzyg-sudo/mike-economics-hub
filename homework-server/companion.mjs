@@ -42,10 +42,13 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
      if(update.action==='read'){
        assert(Array.isArray(update.ids)&&update.ids.every(id=>releases.some(r=>r.id===id)),'更新版本无效');
        p.read=[...new Set([...(p.read||[]),...update.ids])];
+     }else if(update.action==='use-quest'){
+       assert(user.role==='student','操作无效',403);
+       p.appearanceSource='quest';
      }else{
        assert(update.action==='equip'&&user.role==='student','操作无效',403);
        assert(Number.isInteger(update.index)&&stages[update.index]?.at<=(p.points||0),'尚未解锁这个头像',403);
-       p.equipped=update.index;
+       p.equipped=update.index;p.appearanceSource='partner';
      }
      await db.put('companion-profile',p,c);return profileView(p,user.role);
    },profileId);

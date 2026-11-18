@@ -29,6 +29,17 @@ const server=http.createServer(async(req,res)=>{
   if(path==='/health'){res.writeHead(200,{'Content-Type':'application/json'}).end('{"ok":true,"mode":"unified-portal"}');return;}
   // This header only selects the canonical URL; authentication never trusts it.
   if(process.env.NODE_ENV==='production'&&['/','/login.html','/homework','/homework/','/teacher','/teacher/'].includes(path)&&req.headers.host!==new URL(auth.portalOrigin).host&&req.headers['x-mike-original-host']!==new URL(auth.portalOrigin).host){auth.redirect(res,auth.portalOrigin+safePath(req.url));return;}
+  const outfitRequest=path==='/api/quest/companion-outfit';
+  const outfitArt=/^\/quest\/textures\/companion-(?:body-anatomy|teacher-(?:mike|sida|lee)|gear-(?:hats|faces|tops|hands|pants|shoes))\.webp$/.test(path);
+  if(req.method==='GET'&&(outfitRequest||outfitArt)){
+   if(outfitRequest&&!await auth.session(req)){res.writeHead(401).end();return;}
+   const upstream=await fetch(new URL(path,process.env.CORE_INTERNAL_ORIGIN||auth.coreOrigin),{
+    headers:outfitRequest?{Cookie:req.headers.cookie||''}:{},redirect:'manual',signal:AbortSignal.timeout(8000)
+   });
+   res.writeHead(upstream.status,{ 'Content-Type':outfitArt?'image/webp':'application/json',
+    'Cache-Control':outfitArt&&upstream.ok?'public, max-age=86400':'private, no-store'});
+   res.end(Buffer.from(await upstream.arrayBuffer()));return;
+  }
   if(await auth.handle(req,res))return;
   if(await teacherGateway(req,res))return;
   if(await homework(req,res))return;

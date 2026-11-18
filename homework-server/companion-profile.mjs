@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-live-wardrobe',date:'2026-11-18',title:'伙伴手册与保存的穿搭',
+  items:[
+    {audience:'all',art:'book',title:'在原有菜单中返回一页通',text:'在 Bookself 的账号或阅读目录、EconQuest 的账号或闯关暂停菜单里，选择「返回经济一页通」。'},
+    {audience:'student',art:'news',title:'同步你在 EconQuest 保存的穿搭',text:'打开 Mike 后，点聊天标题下的「伙伴手册」即可查看当前来源、好感度和其他装扮。'}
+  ]
+},{
   id:'2026-11-18-reader-quest',date:'2026-11-18',title:'书架、闯关与伙伴装扮',
   items:[
     {audience:'all',art:'book',title:'从书架和探险返回一页通',text:'在书架或探险首页点「← 一页通」。闯关中也可以暂停后返回。'},
@@ -54,7 +60,7 @@ export const stages=[
 export function profileView(profile={},role){
   const points=profile.points||0, level=stages.filter(s=>points>=s.at).length-1;
   const editions=releases.map(r=>({...r,items:r.items.filter(i=>i.audience==='all'||i.audience===role)})).filter(r=>r.items.length);
-  return {student:role==='student',points,level,equipped:profile.equipped||0,stages,editions,unread:editions.some(r=>!(profile.read||[]).includes(r.id))};
+  return {student:role==='student',points,level,equipped:profile.equipped||0,appearanceSource:profile.appearanceSource==='partner'?'partner':'quest',stages,editions,unread:editions.some(r=>!(profile.read||[]).includes(r.id))};
 }
 export function awardPoint(profile,at=new Date()){
   const day=new Date(at.getTime()+8*3600000).toISOString().slice(0,10);

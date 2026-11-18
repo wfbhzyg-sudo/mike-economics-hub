@@ -5,8 +5,8 @@ host.setAttribute('popover','manual');
 host.setAttribute('data-html2canvas-ignore','');
 const ui=host.attachShadow({mode:'open'});
 const style=document.createElement('link');
-style.rel='stylesheet';style.href='/companion.css?v=quest-outfits';
-ui.innerHTML=`<button class="mike-launcher" aria-label="打开 Mike 经济学伙伴" aria-expanded="false"><img src="/assets/mike-pixel.png" alt="" width="56" height="56"><span>问问 Mike</span></button><section class="mike-chat" role="dialog" aria-label="Mike 经济学伙伴" hidden><div class="mike-sheet-handle" aria-hidden="true"><span></span></div><header><img src="/assets/mike-pixel.png" alt="" width="40" height="40"><div><strong>Mike 经济学伙伴</strong><small>经济学与平台使用</small></div><details class="mike-menu"><summary aria-label="对话菜单" title="对话菜单">•••</summary><div class="mike-menu-list"><button data-action="history" title="查看历史对话">历史</button><button data-action="new">新对话</button><footer class="mike-chat-options"><button data-action="hide">本页隐藏伙伴</button><label><input type="checkbox" id="mike-motion">减少动效</label></footer></div></details><button data-action="close" aria-label="关闭对话">×</button></header><div class="mike-mode" hidden></div><div class="mike-chat-messages" role="log" aria-live="polite"></div><form class="mike-composer"><label for="mike-message">向 Mike 提问</label><textarea id="mike-message" rows="2" maxlength="3000" placeholder="输入经济学或平台使用问题…"></textarea><figure class="mike-preview" hidden><button type="button" data-action="zoom-shot" aria-label="放大或缩小截图" aria-expanded="false"><img alt="待发送的截图"></button><figcaption>随本次提问发送给 DeepSeek</figcaption><button type="button" data-action="remove-shot">移除</button></figure><details id="mike-context-preview" hidden><summary>将发送的引用内容</summary><pre></pre></details><p class="mike-chat-status" role="status"></p><div class="mike-send-row"><details class="mike-clip"><summary>＋ 附件与引用</summary><div><label class="mike-context"><input type="checkbox" id="mike-context">引用当前页面文字（发送前可检查）</label><div class="mike-attachments"><button type="button" data-action="capture">截取当前屏幕</button><button type="button" data-action="upload-shot">选择截图</button><button type="button" data-action="browser-shot" hidden>用浏览器截取标签页</button><input id="mike-shot-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></div></details><button type="button" data-action="stop" hidden>停止</button><button type="submit">发送 ↑</button></div></form></section>`;ui.prepend(style);
+style.rel='stylesheet';style.href='/companion.css?v=live-outfit';
+ui.innerHTML=`<button class="mike-launcher" aria-label="打开 Mike 经济学伙伴" aria-expanded="false"><img src="/assets/mike-pixel.png" alt="" width="56" height="56"><span class="mike-launcher-label">问问 Mike</span></button><section class="mike-chat" role="dialog" aria-label="Mike 经济学伙伴" hidden><div class="mike-sheet-handle" aria-hidden="true"><span></span></div><header><img src="/assets/mike-pixel.png" alt="" width="40" height="40"><div><strong>Mike 经济学伙伴</strong><small>经济学与平台使用</small></div><details class="mike-menu"><summary aria-label="对话菜单" title="对话菜单">•••</summary><div class="mike-menu-list"><button data-action="history" title="查看历史对话">历史</button><button data-action="new">新对话</button><footer class="mike-chat-options"><button data-action="hide">本页隐藏伙伴</button><label><input type="checkbox" id="mike-motion">减少动效</label></footer></div></details><button data-action="close" aria-label="关闭对话">×</button></header><div class="mike-mode" hidden></div><div class="mike-chat-messages" role="log" aria-live="polite"></div><form class="mike-composer"><label for="mike-message">向 Mike 提问</label><textarea id="mike-message" rows="2" maxlength="3000" placeholder="输入经济学或平台使用问题…"></textarea><figure class="mike-preview" hidden><button type="button" data-action="zoom-shot" aria-label="放大或缩小截图" aria-expanded="false"><img alt="待发送的截图"></button><figcaption>随本次提问发送给 DeepSeek</figcaption><button type="button" data-action="remove-shot">移除</button></figure><details id="mike-context-preview" hidden><summary>将发送的引用内容</summary><pre></pre></details><p class="mike-chat-status" role="status"></p><div class="mike-send-row"><details class="mike-clip"><summary>＋ 附件与引用</summary><div><label class="mike-context"><input type="checkbox" id="mike-context">引用当前页面文字（发送前可检查）</label><div class="mike-attachments"><button type="button" data-action="capture">截取当前屏幕</button><button type="button" data-action="upload-shot">选择截图</button><button type="button" data-action="browser-shot" hidden>用浏览器截取标签页</button><input id="mike-shot-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></div></details><button type="button" data-action="stop" hidden>停止</button><button type="submit">发送 ↑</button></div></form></section>`;ui.prepend(style);
 host.style.cssText='position:fixed!important;inset:0!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;overflow:visible!important;pointer-events:none!important;z-index:2147483647!important;color-scheme:light';
 function syncLayer(){
   if(host.hidden)return;
@@ -24,7 +24,8 @@ let profile=null,section='',returnFocus=null;
 const drawer=document.createElement('section');
 drawer.className='mike-drawer';drawer.hidden=true;drawer.setAttribute('aria-label','伙伴面板');
 panel.append(drawer);
-const tier=document.createElement('button');tier.className='mike-tier';tier.hidden=true;
+const tier=document.createElement('button');
+tier.className='mike-tier';tier.type='button';tier.textContent='伙伴手册';tier.hidden=true;
 panel.querySelector('header small').after(tier);
 const updates=document.createElement('button');updates.textContent='更新';updates.hidden=true;
 $('.mike-chat-options').prepend(updates);
@@ -34,7 +35,7 @@ ui.addEventListener('click',e=>{
  }
 });
 
-const launcherText=launcher.querySelector('span');
+const launcherText=launcher.querySelector('.mike-launcher-label');
 const props=[
  '<path fill="#e8bd79" d="M2 5h8v1h3V5h8v14h-8v1h-3v-1H2z"/><path d="M11 6v12"/>',
  '<rect x="5" y="2" width="14" height="19" fill="#e8aa89"/><path d="M9 2v19m3-13h4m-4 4h4"/>',
@@ -47,11 +48,47 @@ function symbol(index){
 }
 function outfit(index){return '/assets/companion/quest-mike-'+index+'.webp';}
 function avatar(index){return '<span class="mike-avatar"><img src="'+outfit(index)+'" alt="">'+symbol(index)+'</span>';}
+let savedOutfit, outfitRequest=0;
+const rigStyle=document.createElement('style');
+ui.append(rigStyle);
+function wearingQuest(){return profile?.appearanceSource==='partner'?null:savedOutfit;}
+function paintOutfit(target,identity){
+ if(!target)return;
+ const wear=wearingQuest(), current=target.querySelector(':scope > .mike-wear');
+ if(!wear){current?.remove();return;}
+ if(current?.dataset.revision===wear.revision)return;
+ const view=document.createElement('span');
+ view.className='mike-wear';view.dataset.revision=wear.revision;view.setAttribute('aria-hidden','true');
+ view.innerHTML=wear.html.replace(/(\sid="|url\(#)([a-z0-9-]+)/gi,'$1'+identity+'-$2');
+ if(current)current.replaceWith(view);else target.prepend(view);
+}
+function renderOutfit(){
+ paintOutfit(launcher,'launcher');
+ paintOutfit(panel.querySelector('header'),'header');
+ paintOutfit(drawer.querySelector('.mike-current-look'),'handbook');
+}
+async function refreshOutfit(){
+ const epoch=++outfitRequest;
+ try{
+  const r=await fetch('/api/quest/companion-outfit',{cache:'no-store',signal:AbortSignal.timeout(8000)});
+  const next=r.ok?(await r.json()).outfit:null;
+  if(epoch!==outfitRequest)return;
+  const changed=savedOutfit?.revision!==next?.revision||savedOutfit===undefined;
+  savedOutfit=next;
+  if(next&&rigStyle.textContent!==next.css)rigStyle.textContent=next.css;
+  renderOutfit();
+  if(changed&&section==='handbook'){
+   const active=ui.activeElement;
+   paintDrawer();
+   if(active&&!active.isConnected)drawer.querySelector('[data-back]').focus();
+  }
+ }catch{}
+}
 function applyProfile(next,announce=false){
  if(!next)return;
  const unlocked=announce&&profile&&next.level>profile.level;
- profile=next;tier.hidden=!next.student;updates.hidden=false;tier.textContent=next.stages[next.level].name+' ›';
- panel.querySelector('header small').hidden=next.student;
+ profile=next;tier.hidden=false;updates.hidden=false;
+ panel.querySelector('header small').hidden=true;
  let emblem=panel.querySelector('header .mike-avatar');
  if(next.student){if(!emblem){panel.querySelector('header>img').insertAdjacentHTML('beforebegin',avatar(next.equipped));emblem=panel.querySelector('header .mike-avatar');}else {emblem.querySelector('img').src=outfit(next.equipped);emblem.querySelector('svg').outerHTML=symbol(next.equipped);}}
  else emblem?.remove();
@@ -61,6 +98,7 @@ function applyProfile(next,announce=false){
  if(next.student){const prop=document.createElement('i');prop.className='mike-equipped';prop.innerHTML=symbol(next.equipped);launcher.append(prop);}
  launcherText.textContent=next.unread?'功能更新':'问问 Mike';launcher.setAttribute('aria-label',next.unread?'打开 Mike 经济学伙伴，有新的功能更新':'打开 Mike 经济学伙伴');
  launcher.classList.toggle('has-news',next.unread);updates.textContent=next.unread?'更新 ●':'更新';
+ renderOutfit();
  if(section&&!drawer.contains(ui.activeElement))paintDrawer();
  if(unlocked)status.textContent=next.stages[next.level].name+'已解锁，可在伙伴手册中换装。';
 }
@@ -73,13 +111,33 @@ function paintDrawer(){
    content=p.editions.map(v=>'<article><small>'+v.date+'</small><h3>'+v.title+'</h3>'+v.items.map(i=>'<div class="mike-feature"><div class="mike-art" aria-hidden="true">'+art[i.art]+'</div><div><strong>'+i.title+'</strong><p>'+i.text+'</p></div></div>').join('')+'</article>').join('');
  }else{
    const next=p.stages[p.level+1];
-   content='<h3>'+p.stages[p.level].name+' · '+p.points+' / 100</h3><progress aria-label="好感度" max="100" value="'+p.points+'"></progress><p>'+(next?'距「'+next.name+'」还差 '+(next.at-p.points)+' 点':'伙伴手册已集齐')+'</p><p>每次有效经济学提问或追问加 1，每天最多 5 点。</p>'+p.stages.map((s,i)=>'<button type="button" class="mike-skin" data-skin="'+i+'" '+(i>p.level||i===p.equipped?'disabled':'')+'>'+avatar(i)+'<span><strong>'+s.name+'</strong><small>'+s.prop+'</small></span><em>'+(i===p.equipped?'使用中':i>p.level?s.at+' 点解锁':'装备')+'</em></button>').join('');
+   const useQuest=p.appearanceSource!=='partner';
+   const current=savedOutfit? (useQuest?'EconQuest 穿搭 · 使用中':'伙伴装扮 · 使用中'):(savedOutfit===undefined?'正在同步 EconQuest 穿搭':'在 EconQuest 保存穿搭后会显示在这里');
+   const outfitControl=p.student&&savedOutfit&&!useQuest?'<button type="button" data-use-quest>使用已保存的穿搭</button>':'';
+   content='<section class="mike-look"><div class="mike-current-look">'+avatar(p.equipped)+'</div><div><strong>当前外观</strong><small data-outfit-status>'+current+'</small>'+outfitControl+'</div></section>';
+   if(p.student)content+='<h3>'+p.stages[p.level].name+' · '+p.points+' / 100</h3><progress aria-label="好感度" max="100" value="'+p.points+'"></progress><p>'+(next?'距「'+next.name+'」还差 '+(next.at-p.points)+' 点':'伙伴手册已集齐')+'</p><p>每次有效经济学提问或追问加 1，每天最多 5 点。</p>'+p.stages.map((s,i)=>'<button type="button" class="mike-skin" data-skin="'+i+'" '+(i>p.level||i===p.equipped&&!wearingQuest()?'disabled':'')+'>'+avatar(i)+'<span><strong>'+s.name+'</strong><small>'+s.prop+'</small></span><em>'+(i===p.equipped&&!wearingQuest()?'使用中':i>p.level?s.at+' 点解锁':'装备')+'</em></button>').join('');
  }
  drawer.innerHTML='<div class="mike-drawer-head"><h2>'+heading+'</h2><button data-back>返回对话</button></div>'+content;
+ renderOutfit();
  drawer.querySelector('[data-back]').onclick=leaveDrawer;
+ const quest=drawer.querySelector('[data-use-quest]');
+ if(quest)quest.onclick=()=>updateLook(quest,{action:'use-quest'});
  drawer.querySelectorAll('[data-skin]').forEach(button=>button.onclick=async()=>{
-   button.disabled=true;try{const d=await api('companion/profile',{method:'POST',body:JSON.stringify({action:'equip',index:Number(button.dataset.skin)})});applyProfile(d.profile);paintDrawer();drawer.querySelector('[data-back]').focus();}catch{button.disabled=false;button.textContent='装备失败，点此重试';}
+   await updateLook(button,{action:'equip',index:Number(button.dataset.skin)});
  });
+}
+async function updateLook(button,action){
+ button.disabled=true;
+ try{
+  const d=await api('companion/profile',{method:'POST',body:JSON.stringify(action)});
+  applyProfile(d.profile);
+  if(section==='handbook'){paintDrawer();drawer.querySelector('[data-back]').focus();}
+ }catch{
+  if(!button.isConnected)return;
+  button.disabled=false;
+  button.setAttribute('aria-label','外观更新失败，点此重试');
+  drawer.querySelector('[data-outfit-status]').textContent='外观更新失败，请重试。';
+ }
 }
 function leaveDrawer(){
  if(!section)return;section='';drawer.hidden=true;
@@ -187,7 +245,7 @@ async function api(path,options={}){const r=await fetch(API+path,{...options,hea
 function setMode(value){mode=value;host.dataset.mode=value;$('.mike-mode').hidden=value!=='exam';$('.mike-mode').textContent='测验中 · 只提供操作帮助';$('#mike-context').disabled=value==='exam';$('.mike-attachments').hidden=value==='exam';$('.mike-clip').hidden=value==='exam';if(value==='exam'){captureVersion++;if(!controller)$('[type=submit]').disabled=false;setScreenshot('');captured='';$('#mike-context').checked=false;$('#mike-context-preview').hidden=true;}}
 function animate(open){motion?.cancel();if(matchMedia('(prefers-reduced-motion:reduce)').matches||$('#mike-motion').checked)return Promise.resolve();motion=panel.animate(open?[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}]:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(5px)'}],{duration:open?180:130,easing:'cubic-bezier(.2,.8,.2,1)'});return motion.finished.catch(()=>{})}
 function restoreBackground(){for(const [node,was]of inertNodes)node.inert=was;inertNodes=[];}
-async function open(showNews=false){const attachButtons=$('.mike-attachments').querySelectorAll('button');for(const b of attachButtons)b.disabled=true;status.textContent='正在连接伙伴…';lastFocus=ui.activeElement||document.activeElement;host.dataset.chatOpen="";panel.hidden=false;launcher.setAttribute('aria-expanded','true');launcher.hidden=true;const mobile=matchMedia('(max-width:600px)').matches;if(mobile){panel.setAttribute('aria-modal','true');inertNodes=[...host.parentElement.children].filter(n=>n!==host&&n.tagName!=='SCRIPT').map(n=>[n,n.inert]);for(const[n]of inertNodes)n.inert=true;}else panel.removeAttribute('aria-modal');animate(true);input.focus();try{const me=await api('me');if(user&&user.id!==me.user.id){sentPictures.clear();setScreenshot('');log.replaceChildren();input.value='';captured='';}csrf=me.csrf;user=me.user;const d=await api(modePath());applyProfile(d.profile);setMode(d.mode);for(const b of attachButtons)b.disabled=false;if(!controller){log.replaceChildren();for(const m of d.messages)showPastMessage(m);if(!d.messages.length)message('assistant',d.mode==='exam'?'测验中，我可以帮你找到题号、缩放和提交入口。':'你好，我是 Mike 的 AI 伙伴。可以问我经济学概念，或平台怎么使用。');}status.textContent='';if(showNews&&profile)await showDrawer('news',updates);}catch{user=null;setScreenshot('');log.replaceChildren();message('assistant','请先使用 Bookself 账号登录，再开始对话。');status.textContent='登录后可开始对话';}}
+async function open(showNews=false){const attachButtons=$('.mike-attachments').querySelectorAll('button');for(const b of attachButtons)b.disabled=true;status.textContent='正在连接伙伴…';lastFocus=ui.activeElement||document.activeElement;host.dataset.chatOpen="";panel.hidden=false;launcher.setAttribute('aria-expanded','true');launcher.hidden=true;const mobile=matchMedia('(max-width:600px)').matches;if(mobile){panel.setAttribute('aria-modal','true');inertNodes=[...host.parentElement.children].filter(n=>n!==host&&n.tagName!=='SCRIPT').map(n=>[n,n.inert]);for(const[n]of inertNodes)n.inert=true;}else panel.removeAttribute('aria-modal');animate(true);input.focus();try{const me=await api('me');if(user&&user.id!==me.user.id){savedOutfit=undefined;renderOutfit();sentPictures.clear();setScreenshot('');log.replaceChildren();input.value='';captured='';}csrf=me.csrf;user=me.user;void refreshOutfit();const d=await api(modePath());applyProfile(d.profile);setMode(d.mode);for(const b of attachButtons)b.disabled=false;if(!controller){log.replaceChildren();for(const m of d.messages)showPastMessage(m);if(!d.messages.length)message('assistant',d.mode==='exam'?'测验中，我可以帮你找到题号、缩放和提交入口。':'你好，我是 Mike 的 AI 伙伴。可以问我经济学概念，或平台怎么使用。');}status.textContent='';if(showNews&&profile)await showDrawer('news',updates);}catch{user=null;setScreenshot('');log.replaceChildren();message('assistant','请先使用 Bookself 账号登录，再开始对话。');status.textContent='登录后可开始对话';}}
 async function close(){for(const d of panel.querySelectorAll('details[open]'))d.open=false;leaveDrawer();captureVersion++;if(!controller)$('[type=submit]').disabled=false;await animate(false);panel.hidden=true;delete host.dataset.chatOpen;restoreBackground();launcher.hidden=false;resize();launcher.setAttribute('aria-expanded','false');(lastFocus?.isConnected?lastFocus:launcher).focus();}
 let drag=null,moved=false,newsPress=false;
 launcher.title='点击提问 · 拖动可调整位置';
@@ -233,7 +291,7 @@ function resize(){
 function syncPreferences(){
  if(document.querySelector('#login-form'))return;
  return api('companion/position').then(saved=>{
-  csrf=saved.csrf;applyProfile(saved.profile);
+  csrf=saved.csrf;applyProfile(saved.profile);void refreshOutfit();
   if(positionEdited||drag)return;
   position=saved.position;
   if(!position){for(const edge of ['left','right','top','bottom'])launcher.style.removeProperty(edge);}
@@ -241,6 +299,8 @@ function syncPreferences(){
 }).catch(()=>{});
 }
 syncPreferences();
+window.addEventListener('focus',()=>{if(profile)void refreshOutfit();});
+window.addEventListener('econquest:outfit-saved',()=>void refreshOutfit());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncPreferences();});
 setInterval(()=>{if(!document.hidden)syncPreferences();},300000);
 style.addEventListener('load',resize);window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
