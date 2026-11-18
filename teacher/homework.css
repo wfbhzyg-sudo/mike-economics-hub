@@ -3769,6 +3769,7 @@
 .homework-surface .search-hit{background:#f8e7a7;color:inherit;border-radius:2px;padding:0 1px}
 .homework-surface .assignment-management-row{display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:20px;padding:18px 20px;align-items:center}
 .homework-surface .assignment-management-row .task-copy{min-width:0}
+.homework-surface .assignment-management-row .task-title{justify-content:flex-start}
 .homework-surface .assignment-management-row .task-name{font-size:16px;line-height:1.5;font-weight:600;overflow-wrap:anywhere}
 .homework-surface .assignment-management-row .task-stats{display:flex;flex-wrap:wrap;gap:8px;margin:0;align-items:center}
 .homework-surface .roster-count{border-radius:6px;padding:6px 9px;font-size:13px;white-space:nowrap;text-decoration:none;min-height:36px;display:inline-flex;align-items:center}
