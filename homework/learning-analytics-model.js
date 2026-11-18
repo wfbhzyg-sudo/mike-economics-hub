@@ -148,11 +148,32 @@ export function questionStats(data, assignmentId) {
       average: gradedCount ? round1(scoreSum / gradedCount) : null,
       scoreRate: gradedCount && question.maxPoints ? round1(scoreSum / (gradedCount * question.maxPoints) * 100) : null,
       options: question.options || [], answered,
+      questionImages: question.questionImages || [], paperLocation: question.paperLocation || null,
+      correctOptions: question.correctOptions || [], sourcePages: question.sourcePages || '',
       distribution: order.map(label => ({label, count: counts.get(label) || 0})),
       unanswered: Math.max(0, gradedCount - answered),
     };
   });
   return {assignment, graded: graded.length, totalStudents: latest.size, questions};
+}
+
+function dateStamp(date) {
+  const stamp = Date.parse(date);
+  return Number.isFinite(stamp) ? stamp : -Infinity;
+}
+
+export function newestAssignmentFirst(a, b) {
+  return dateStamp(workDate(b)) - dateStamp(workDate(a))
+    || dateStamp(b.createdAt) - dateStamp(a.createdAt)
+    || String(a.id).localeCompare(String(b.id));
+}
+
+export function orderedDiagnosisQuestions(questions, order) {
+  const entries = questions.map((question, index) => ({question, index, rate: question.type === 'choice' ? question.rate : question.scoreRate}));
+  if (order === 'asc' || order === 'desc') entries.sort((a,b) =>
+    Number(a.rate == null) - Number(b.rate == null) ||
+    (order === 'asc' ? a.rate - b.rate : b.rate - a.rate) || a.index - b.index);
+  return entries;
 }
 
 export function questionById(stats, questionId) {
@@ -340,7 +361,7 @@ export function reportText(title, items, caption) {
  * the weakest written-response questions and the weakest knowledge tags.
  */
 export function assignmentDiagnostics(data, assignments) {
-  return assignments.map(assignment => {
+  return assignments.slice().sort(newestAssignmentFirst).map(assignment => {
     const stats = questionStats(data, assignment.id) || {graded: 0, questions: []};
     const questions = stats.questions.slice();
     const latest = new Map();

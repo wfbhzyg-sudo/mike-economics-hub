@@ -2,7 +2,7 @@
 // The teacher always reviews a draft; nothing reaches a student before publish.
 import {createHash} from 'node:crypto';
 import {deepseek} from './ai.mjs';
-import {assignmentLabel, buildRows, classObservations, formatPercent, overviewStats, scopedAssignments, scopedStudents, studentObservations, studentProfile, typeBreakdown} from '../homework/learning-analytics-model.js';
+import {assignmentLabel, questionStats, buildRows, classObservations, formatPercent, overviewStats, scopedAssignments, scopedStudents, studentObservations, studentProfile, typeBreakdown} from '../homework/learning-analytics-model.js';
 
 const OBS_MAX = 3;
 const STEP_MAX = 3;
@@ -19,7 +19,8 @@ const clean = (value, max = TEXT_MAX) => {
 
 const pct = value => value === null || value === undefined ? '暂无' : formatPercent(value);
 
-export function insightScope({classId, unit = '', period = '4w', studentId = null}) {
+export function insightScope({classId, unit = '', period = '4w', studentId = null, assignmentId = ''}) {
+  if (assignmentId) return {classId: String(classId || ''), assignmentId, unit:'', period:'all', studentId:null};
   return {classId: String(classId || ''), unit: String(unit || ''), period: ['4w', 'term', 'all'].includes(period) ? period : '4w', studentId: studentId || null};
 }
 
@@ -37,8 +38,37 @@ export function insightData({assignments, submissions, mistakes = [], students})
 const FACTS_RULES_VERSION = 3;
 const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
 
+function reportData(scope, data) {
+  if (!scope.assignmentId) return data;
+  const assignments = data.assignments.filter(a => a.id === scope.assignmentId);
+  const assignment = assignments[0];
+  if (!assignment) throw Object.assign(Error('作业不在此报告范围内'), {status:404});
+  const roster = new Map(data.students.map(student => [student.id, student]));
+  for (const student of assignment.audience?.students || []) {
+    if (!roster.has(student.id)) roster.set(student.id, student);
+  }
+  for (const submission of data.submissions) {
+    if (submission.assignmentId === assignment.id && !roster.has(submission.studentId)) {
+      roster.set(submission.studentId, {id:submission.studentId, classIds:submission.classIds || []});
+    }
+  }
+  const students = [...roster.values()];
+  const ids = new Set((scope.classId ? [scope.classId] : assignment.classIds).flatMap(classId =>
+    scopedStudents({students}, {classId, assignments}).map(student => student.id)));
+  if (!scope.classId) {
+    for (const submission of data.submissions) {
+      if (submission.assignmentId === assignment.id) ids.add(submission.studentId);
+    }
+  }
+  const belongs = item => item.assignmentId === assignment.id && ids.has(item.studentId);
+  return {...data, assignments, students:students.filter(student => ids.has(student.id)),
+    submissions:data.submissions.filter(belongs), mistakes:(data.mistakes || []).filter(belongs)};
+}
+
 export function insightVersion({scope, data}) {
+  data = reportData(scope,data);
   const scopeKey = {
+    ...(scope.assignmentId ? {assignmentId:scope.assignmentId} : {}),
     classId: scope.classId || '',
     unit: scope.unit || '',
     period: scope.period || '4w',
@@ -98,6 +128,7 @@ export function insightVersion({scope, data}) {
     })), m => `${m.assignmentId}:${m.studentId}:${m.questionId}`);
   return createHash('sha256').update(JSON.stringify({
     rulesVersion: FACTS_RULES_VERSION,
+    ...(scope.assignmentId ? {metrics:buildInsightFacts({scope,data}).facts} : {}),
     scope: scopeKey,
     assignments: rows,
     submissions,
@@ -130,6 +161,7 @@ function knowledgeFacts(data, assignments, studentIds) {
 }
 
 export function buildInsightFacts({scope, data}) {
+  data=reportData(scope,data);
   const assignments = scopedAssignments(data, scope);
   const roster = scopedStudents(data, {classId: scope.classId, assignments});
   const rows = scope.studentId
@@ -173,6 +205,19 @@ export function buildInsightFacts({scope, data}) {
   per.sort((a, b) => a.average - b.average);
   if (per[0] && stats.average !== null && stats.average - per[0].average >= 8) add('c.lowest', `最低 ${assignmentLabel(per[0].assignment)}`, `最低一次是「${assignmentLabel(per[0].assignment)}」，平均 ${pct(per[0].average)}。`);
   for (const [index, item] of knowledgeFacts(data, assignments, studentIds).entries()) add(`k.${index}`, `${item.tag} ${pct(item.rate)}`, `知识标签「${item.tag}」班级得分率 ${pct(item.rate)}（${item.graded} 题次）。`);
+  if (scope.assignmentId) {
+    const assignment=assignments[0];
+    const paper={...assignment,questions:assignment.rubric || assignment.questions || []};
+    const questions=questionStats({...data,assignments:[paper]},paper.id).questions;
+    const sampled=questions.map((q,i)=>({q,i,rate:q.type==='choice'?q.rate:q.scoreRate})).filter(item=>item.rate!==null);
+    sampled.sort((a,b)=>a.rate-b.rate||a.i-b.i);
+    for(const {q,i,rate} of sampled.slice(0,5)){
+      const distribution=q.type==='choice' ? q.distribution.filter(x=>x.count).map(x=>x.label+' '+x.count+' 人').join('、') : '';
+      add('w.'+i,'第 '+(i+1)+' 题 · '+pct(rate),'第 '+(i+1)+' 题'+(q.knowledge?'（'+clean(q.knowledge,45)+'）':'')+
+        (q.type==='choice'?'正确率':'得分率')+' '+pct(rate)+'，有效评分 '+q.graded+' 份。'+(distribution?'选项分布：'+distribution+'。':''));
+    }
+    if(!sampled.length)add('a.noitems','暂无逐题数据','本作业没有可分析的逐题成绩，只能描述提交及总成绩。');
+  }
   return {facts, data, assignments, rows, stats};
 }
 
@@ -220,7 +265,7 @@ function promptFor(scope, built) {
   const lines = built.facts.map(fact => `- ${fact.id}: ${fact.text}`).join('\n');
   return [
     {role: 'system', content: `你是经济学课程的教学助理。只可使用下面列出的事实写作，不得补充事实、不得点名或推断学生能力。用中文输出 JSON：{"observations":[{"text":"观察，最多80字","evidence":["事实ID"]}],"nextSteps":[{"text":"下一步建议，最多80字","evidence":["事实ID"]}],"limitations":"一句话说明数据边界"}。观察 2–3 条，下一步 1–2 条，每条至少引用一个事实ID，只可引用列出的 ID。`},
-    {role: 'user', content: `范围：${scope.studentId ? '单个学生' : '班级'}；单元：${scope.unit || '全部'}；时间：${scope.period}。\n事实：\n${lines}`},
+    {role: 'user', content: `范围：${scope.assignmentId ? '单份作业，只分析本次表现及下一课的讲评重点' : scope.studentId ? '单个学生' : '班级'}；单元：${scope.unit || '全部'}；时间：${scope.period}。\n事实：\n${lines}`},
   ];
 }
 

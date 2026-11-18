@@ -1,3 +1,4 @@
+import {accuracyBadge} from './score-bands.js';
 import {selectedCourse,rememberCourse} from './course-scope.js';
 const DAY = 86_400_000;
 const CREATE_KEY = 'sp:create';
@@ -259,7 +260,7 @@ export function createSelfPracticeUI(ctx) {
     if (!attempts.length) return '<p class="sp-empty">还没有模考记录。选好章节，从第一套开始。</p>';
     return `<div class="sp-recent-list">${attempts.map((attempt) => `<button type="button" class="sp-recent-row" data-open-attempt="${h(attempt.id)}" data-status="${h(attempt.status)}">
       <span class="sp-recent-main"><strong>${h(courseName(attempt.course))} · ${attempt.topicIds.length} 章 · ${attempt.questionCount} 题</strong><small>${new Date(attempt.createdAt).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small></span>
-      <span class="sp-recent-side">${attempt.result ? `<b>${attempt.result.total}/${attempt.result.maxPoints}</b><small>${attempt.result.percent}%</small>` : attempt.status === 'active' ? '<b>继续</b>' : attempt.status === 'created' ? '<b>未开始</b>' : '<b>已交卷</b>'}</span>
+      <span class="sp-recent-side">${attempt.result ? `<b>${attempt.result.total}/${attempt.result.maxPoints}</b><small>${accuracyBadge(attempt.result.percent)}</small>` : attempt.status === 'active' ? '<b>继续</b>' : attempt.status === 'created' ? '<b>未开始</b>' : '<b>已交卷</b>'}</span>
     </button>`).join('')}</div>`;
   }
 
@@ -495,12 +496,12 @@ export function createSelfPracticeUI(ctx) {
       </header>
       <div class="sp-result-grid">
         <section class="sp-card sp-score-card">
-          <div class="sp-score"><strong>${result.percent}%</strong><span>${result.total} / ${result.maxPoints}</span></div>
+          <div class="sp-score"><strong>${accuracyBadge(result.percent)}</strong><span>${result.total} / ${result.maxPoints}</span></div>
           <div class="sp-score-meta"><span>用时 ${duration(result.durationSeconds)}</span><span>共 ${result.questions.length} 题</span></div>
           <p class="sp-band" data-band="${result.percent < 20 ? 1 : result.percent < 40 ? 2 : result.percent < 60 ? 3 : result.percent < 80 ? 4 : 5}">练习分档，非官方 AP 预测分</p>
           <div class="sp-actions"><button type="button" class="primary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">调整范围</a></div>
         </section>
-        <section class="sp-card sp-topic-card"><h2>章节表现</h2>${result.topics.map((topic) => `<div class="sp-topic-row"><span>${h(topic.topic)}</span><div class="sp-topic-bar"><i style="width:${Math.round((topic.correct / topic.count) * 100)}%"></i></div><b>${topic.correct}/${topic.count}</b></div>`).join('')}</section>
+        <section class="sp-card sp-topic-card"><h2>章节表现</h2>${result.topics.map((topic) => `<div class="sp-topic-row"><span>${h(topic.topic)}</span><div class="sp-topic-bar"><i style="width:${Math.round((topic.correct / topic.count) * 100)}%"></i></div><b>${accuracyBadge(topic.count?topic.correct/topic.count*100:null)} · ${topic.correct}/${topic.count}</b></div>`).join('')}</section>
       </div>
       <section class="sp-card sp-wrong" aria-labelledby="sp-wrong-title">
         <div class="sp-card-head"><h2 id="sp-wrong-title">错题与订正</h2><span class="sp-muted">${wrong.length} 道失分题${result.autoSubmitted ? ' · 到时未答按 0 分' : ''}</span></div>

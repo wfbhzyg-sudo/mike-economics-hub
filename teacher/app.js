@@ -1,3 +1,4 @@
+import {accuracyBadge} from '../homework/score-bands.js';
 import {gradingFields,readGradingPoints} from '../homework/library-grading.js';
 import {canonicalQuestions} from '../homework/library-packs.js';
 import {mountCropEditor} from './crop-editor.js';
@@ -19,7 +20,7 @@ const courses=[['micro','AP 微观'],['macro','AP 宏观'],['as','AS 经济学']
 const state={user:null,csrf:'',meta:null,classId:'',book:'ap-microeconomics',course:'micro',controller:null,version:0,homework:null,lastHash:'',dirty:false};
 const qs=o=>new URLSearchParams(Object.entries(o).filter(([,v])=>v!==undefined&&v!==null&&v!=='')).toString();
 const when=v=>v?new Date(v).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'不限时间';
-const percent=n=>n==null?'尚无记录':Math.round(n*10)/10+'%';
+const percent=accuracyBadge;
 const locale=v=>typeof v==='object'?(v?.zh||v?.en||''):v||'';
 const dateInput=n=>new Date(n-new Date(n).getTimezoneOffset()*60000).toISOString().slice(0,16);
 const badge=(s,tone='')=>`<span class="tw-badge" data-tone="${tone}">${h(s)}</span>`;

@@ -2,7 +2,7 @@ import {scoreMaximum} from './score-entry.js';
 // Teacher-facing learning overview: class matrix, student profiles and
 // assignment-level detail. Data comes from the existing /learning payload so
 // this page can never invent a second source of truth for grades.
-import {scoreBand} from './score-bands.js';
+import {scoreBand,accuracyBadge} from './score-bands.js';
 import {viewMemory} from './view-memory.js';
 import {highlightText} from './search-text.js';
 import {gradeCSV} from './grade-journey-model.js';
@@ -11,7 +11,7 @@ import {
   buildRows, overviewStats, questionStats, studentProfile, rowStatus,
   formatPercent, trendLabel, unitsOf, scopeCaption, workDate,
   typeBreakdown, correctionSummary, assignmentHistory, studentObservations,
-  classObservations, reportText, assignmentDiagnostics,
+  classObservations, reportText, assignmentDiagnostics, orderedDiagnosisQuestions, newestAssignmentFirst,
 } from './learning-analytics-model.js';
 
 const SORTS = [['name', '学生姓名'], ['average', '平均分'], ['attention', '待处理'], ['trend', '近期变化']];
@@ -55,6 +55,9 @@ export function mountLearningOverview(ctx, initialData) {
   let tab = ['matrix', 'students', 'diagnosis'].includes(storedTab) ? storedTab : 'matrix';
   let diagId = typeof memory.get('diagId', '') === 'string' ? memory.get('diagId', '') : '';
   let diagQuestion = typeof memory.get('diagQuestion', '') === 'string' ? memory.get('diagQuestion', '') : '';
+  let diagOrder=memory.get('diagOrder','number');
+  const originalReaders=new Map();
+  let lastAiScope=null,aiGeneration=0;
   let diagOpen = memory.get('diagOpen', false) === true;
   let mobileView = memory.get('mobileView', 'list') === 'grid' ? 'grid' : 'list';
   let selected = storedSelection && typeof storedSelection === 'object' ? storedSelection : null;
@@ -189,7 +192,7 @@ export function mountLearningOverview(ctx, initialData) {
   }
 
   function assignmentOptions(scope) {
-    return [['', '全部作业'], ...scope.map(assignment => [assignment.id, `${assignmentLabel(assignment)} · ${monthDay(workDate(assignment))}`])];
+    return [['', '全部作业'], ...scope.slice().sort(newestAssignmentFirst).map(assignment => [assignment.id, `${assignmentLabel(assignment)} · ${monthDay(workDate(assignment))}`])];
   }
 
   function draw() {
@@ -211,7 +214,9 @@ export function mountLearningOverview(ctx, initialData) {
     const students = scopedStudents(data, {classId: filter.classId, assignments});
     const rows = buildRows(data, students, assignments);
     const stats = overviewStats(rows, assignments);
-    const diagnoses = assignmentDiagnostics(data, assignments);
+    const studentIds=new Set(students.map(student=>student.id));
+    const diagnosticData={...data,submissions:data.submissions.filter(s=>studentIds.has(s.studentId))};
+    const diagnoses = assignmentDiagnostics(diagnosticData, assignments);
     questionCache = new Map();
 
     const needle = filter.query.trim().toLowerCase();
@@ -222,7 +227,7 @@ export function mountLearningOverview(ctx, initialData) {
     visible = sortRows(visible);
     if (profileId && !visible.some(row => row.student.id === profileId)) profileId = '';
 
-    context = {assignments, rows, visible, stats, diagnoses};
+    context = {assignments, rows, visible, stats, diagnoses, diagnosticData};
     if (selected && !findSelection()) selected = null;
     const {timer, ...savedFilter} = filter;
     memory.set({filter: savedFilter, tab, mobileView, profileId, selection: selected, diagId, diagQuestion, diagOpen});
@@ -564,7 +569,7 @@ export function mountLearningOverview(ctx, initialData) {
       <span class="lo-qrow-index">${index + 1}</span>
       <span class="lo-qrow-prompt">${h(trim(question.prompt, 56))}</span>
       <span class="lo-qrow-type">${h(TYPES[question.type] || question.type || '题')}</span>
-      <span class="lo-qrow-rate" data-band="${rate === null ? '' : (scoreBand(rate)?.level || '')}">${formatPercent(rate)}</span>
+      <span class="lo-qrow-rate">${accuracyBadge(rate)}</span>
       <span class="lo-qrow-sample">${question.graded}</span>
       <span class="lo-mini-dist" aria-hidden="true">${choice ? question.distribution.map(item => `<i style="height:${Math.max(6, Math.round(item.count / top * 100))}%"></i>`).join('') : '—'}</span>
     </button>`;
@@ -575,53 +580,87 @@ export function mountLearningOverview(ctx, initialData) {
     const unit = assignment.libraryUnit ? `${assignment.libraryUnit} · ` : '';
     return `<div class="lo-diag-body">
       <button type="button" class="lo-back lo-mobile-only" data-diag-back>← 返回作业列表</button>
-      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div>${link(`work/overview/${assignment.id}`, '作业设置')}</header>
+      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div><div class="lo-diag-actions">${ai?`<button type="button" class="lo-btn lo-primary" data-ai-assignment="${h(assignment.id)}" ${diagnosis.published?'':'disabled title="已有成绩后可生成"'}>生成本次作业分析</button>`:''}${link(`work/overview/${assignment.id}`, '作业设置')}</div></header>
       <div class="lo-diag-metrics">
         <div><span>已发布</span><strong>${diagnosis.published}<small> 份</small></strong></div>
-        <div><span>平均</span><strong>${formatPercent(diagnosis.average)}</strong></div>
+        <div><span>平均</span><strong>${accuracyBadge(diagnosis.average)}</strong></div>
         <div><span>题目</span><strong>${diagnosis.questions.length}<small> 题</small></strong></div>
         <div><span>书面薄弱</span><strong>${diagnosis.weakWritten.length || '—'}</strong></div>
       </div>
-      <section class="lo-diag-section"><div class="lo-section-head"><h3>每题正确率与选项分布</h3><small>选择题看正确率，书面题看得分率</small></div>
+      <section class="lo-diag-section"><div class="lo-section-head"><h3>每题正确率与选项分布</h3><label>排序 <select id="lo-diag-order">${[['number','原题号'],['asc','正确率从低到高'],['desc','正确率从高到低']].map(([key,text])=>`<option value="${key}" ${key===diagOrder?'selected':''}>${text}</option>`).join('')}</select></label></div>
         ${diagnosis.questions.length ? `<div class="lo-qtable" role="table" aria-label="题目诊断">
           <div class="lo-qtable-head" role="row"><span role="columnheader">题</span><span role="columnheader">题目</span><span role="columnheader">类型</span><span role="columnheader">${diagnosis.questions.every(question => question.type === 'choice') ? '正确率' : diagnosis.questions.every(question => question.type !== 'choice') ? '得分率' : '正确率/得分率'}</span><span role="columnheader">样本</span><span role="columnheader">选项分布</span></div>
-          ${diagnosis.questions.map((question, index) => questionRowMarkup(diagnosis, question, index)).join('')}
+          ${orderedDiagnosisQuestions(diagnosis.questions,diagOrder).map(({question,index})=>questionRowMarkup(diagnosis,question,index)).join('')}
         </div>` : '<p class="lo-note">这份作业没有题目级评分数据，附件与作答可在复核页查看。</p>'}
       </section>
       <section class="lo-diag-section"><div class="lo-section-head"><h3>FRQ 薄弱点</h3><small>得分率最低的书面题</small></div>
-        ${diagnosis.weakWritten.length ? `<ul class="lo-weak">${diagnosis.weakWritten.map(question => `<li><button type="button" data-diag-question="${h(question.id)}"><span class="lo-weak-prompt">${h(trim(question.prompt, 64))}</span><span class="lo-weak-meta">${h(TYPES[question.type] || '简答')} · 平均 ${question.average}/${question.maxPoints} · 得分率 ${formatPercent(question.scoreRate)}</span></button></li>`).join('')}</ul>` : `<p class="lo-note">${diagnosis.questions.some(question => question.type !== 'choice') ? '书面题样本不足，暂不排序。' : '这份作业没有书面题；选择题的薄弱项见上方正确率。'}</p>`}
+        ${diagnosis.weakWritten.length ? `<ul class="lo-weak">${diagnosis.weakWritten.map(question => `<li><button type="button" data-diag-question="${h(question.id)}"><span class="lo-weak-prompt">${h(trim(question.prompt, 64))}</span><span class="lo-weak-meta">${h(TYPES[question.type] || '简答')} · 平均 ${question.average}/${question.maxPoints} · 得分率 ${accuracyBadge(question.scoreRate)}</span></button></li>`).join('')}</ul>` : `<p class="lo-note">${diagnosis.questions.some(question => question.type !== 'choice') ? '书面题样本不足，暂不排序。' : '这份作业没有书面题；选择题的薄弱项见上方正确率。'}</p>`}
       </section>
       <section class="lo-diag-section"><div class="lo-section-head"><h3>知识标签薄弱项</h3><small>按题目标签聚合得分率</small></div>
-        ${diagnosis.knowledge.length ? `<ul class="lo-tags">${diagnosis.knowledge.map(item => `<li><span class="lo-chip">${h(item.knowledge)}</span><strong>${formatPercent(item.rate)}</strong><small>${item.graded} 题次</small></li>`).join('')}</ul>` : '<p class="lo-note">题目标签不足，暂不能聚合。</p>'}
+        ${diagnosis.knowledge.length ? `<ul class="lo-tags">${diagnosis.knowledge.map(item => `<li><span class="lo-chip">${h(item.knowledge)}</span><strong>${accuracyBadge(item.rate)}</strong><small>${item.graded} 题次</small></li>`).join('')}</ul>` : '<p class="lo-note">题目标签不足，暂不能聚合。</p>'}
       </section>
     </div>`;
   }
 
-  function diagDetailMarkup() {
-    const found = diagQuestion ? (context.diagnoses || []).map(item => ({diagnosis: item, question: item.questions.find(question => question.id === diagQuestion)})).find(item => item.question) : null;
-    if (!found) {
-      const current = (context.diagnoses || []).find(item => item.assignment.id === diagId);
-      const weak = current ? current.weakWritten.slice(0, 3) : (context.diagnoses || []).flatMap(item => item.weakWritten.slice(0, 1)).slice(0, 3);
-      return `<div class="lo-detail-empty"><h2>${current ? `作业诊断 · ${h(current.assignment.title || assignmentLabel(current.assignment))}` : '作业诊断'}</h2><p>点左侧任一题查看原题、选项分布与班级正确率。此视图不修改成绩，也不发布报告。</p>${current ? `<h3>本份作业</h3><p class="lo-note">已发布 ${current.published} 份 · 平均 ${formatPercent(current.average)} · ${current.questions.length} 题${current.knowledge.length ? ` · 最弱标签「${h(current.knowledge[0].knowledge)}」${formatPercent(current.knowledge[0].rate)}` : ''}</p>` : ''}${weak.length ? `<h3>最薄弱的书面题</h3><ul class="lo-weak">${weak.map(item => `<li><button type="button" data-diag-question="${h(item.id)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 48))}</span><span class="lo-weak-meta">${h(TYPES[item.type] || '简答')} · 得分率 ${formatPercent(item.scoreRate)}</span></button></li>`).join('')}</ul>` : ''}</div>`;
+  function originalQuestion(assignment,question) {
+    const url=id=>'/api/homework/files/'+encodeURIComponent(id);
+    const images=question.questionImages||[], loc=question.paperLocation;
+    const options=(question.options||[]).filter(o=>o.text?.trim());
+    const originals=loc?.fileId?[loc.fileId]:(assignment.questionFiles||[]);
+    const paper=images.length?images.map((id,i)=>`<a class="lo-original-image" href="${url(id)}" target="_blank" rel="noopener" title="打开原图"><img src="${url(id)}" loading="lazy" alt="第 ${h(question.id)} 题 · 原题切片 ${i+1} / ${images.length}"></a>`).join(''):
+      originals.map((id,i)=>{const src=url(id)+(loc?.page?'#page='+Number(loc.page):'');return `<details class="lo-source-file" ${loc||originals.length===1?'open':''}><summary>原题附件 ${i+1}${loc?.page?' · 第 '+Number(loc.page)+' 页':''}</summary><div class="homework-surface"><div data-original-file="${h(id)}" data-page="${Number(loc?.page)||1}"></div></div><a href="${src}" target="_blank" rel="noopener">打开完整原件</a></details>`}).join('');
+    return `<section class="lo-original" aria-label="完整原题">${question.prompt?`<p class="lo-prompt">${h(question.prompt)}</p>`:''}${paper}
+      ${options.length?`<ul class="lo-original-options">${options.map(o=>`<li><b>${h(o.label)}.</b> ${h(o.text)}</li>`).join('')}</ul>`:''}
+      ${!paper&&!question.prompt&&!options.length?'<p>这道题尚未关联原题。</p>':''}
+      <p class="lo-note">${h(question.maxPoints)} 分${question.correctOptions?.length?' · 参考答案 '+h(question.correctOptions.join('、')):''}${question.sourcePages?' · '+h(question.sourcePages):''}</p></section>`;
+  }
+
+  function mountOriginals(host) {
+    for(const details of host.querySelectorAll('.lo-source-file')){
+      const el=details.querySelector('[data-original-file]');
+      async function show(){
+        if(!details.open || !el.getClientRects().length || el.dataset.loading)return;
+        el.dataset.loading='true';
+        try{
+          const id=el.dataset.originalFile;
+          const {file}=await ai('files/'+encodeURIComponent(id)+'?meta=1');
+          if(!el.isConnected||destroyed)return;
+          if(file.mime==='application/pdf'){
+            const {mountPDFReader}=await import('./pdf-reader.js');
+            if(el.isConnected&&!destroyed)originalReaders.set(el,mountPDFReader(el,{fileId:id,title:'原题',initialPage:Number(el.dataset.page)}));
+          }else if(file.mime.startsWith('image/')){
+            el.innerHTML=`<img class="lo-original-photo" src="/api/homework/files/${encodeURIComponent(id)}" alt="原题附件">`;
+          }
+        }catch{el.textContent='暂时无法预览，可打开下方原件。';delete el.dataset.loading;}
+      }
+      details.ontoggle=show;void show();
     }
-    const {diagnosis, question} = found;
+  }
+  function disposeOriginals(){for(const reader of originalReaders.values())reader.destroy();originalReaders.clear();}
+
+  function diagDetailMarkup() {
+    const current = (context.diagnoses || []).find(item=>item.assignment.id===diagId);
+    const question = current?.questions.find(q=>q.id===diagQuestion);
+    if (!question) {
+      const weak = current ? current.weakWritten.slice(0, 3) : (context.diagnoses || []).flatMap(item => item.weakWritten.slice(0, 1)).slice(0, 3);
+      return `<div class="lo-detail-empty"><h2>${current ? `作业诊断 · ${h(current.assignment.title || assignmentLabel(current.assignment))}` : '作业诊断'}</h2><p>选择题号，查看完整原题和本班的作答情况。</p>${current ? `<h3>本份作业</h3><p class="lo-note">已发布 ${current.published} 份 · 平均 ${formatPercent(current.average)} · ${current.questions.length} 题${current.knowledge.length ? ` · 最弱标签「${h(current.knowledge[0].knowledge)}」${accuracyBadge(current.knowledge[0].rate)}` : ''}</p>` : ''}${weak.length ? `<h3>最薄弱的书面题</h3><ul class="lo-weak">${weak.map(item => `<li><button type="button" data-diag-question="${h(item.id)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 48))}</span><span class="lo-weak-meta">${h(TYPES[item.type] || '简答')} · 得分率 ${accuracyBadge(item.scoreRate)}</span></button></li>`).join('')}</ul>` : ''}</div>`;
+    }
+    const diagnosis = current;
     const choice = question.type === 'choice';
     const rate = choice ? question.rate : question.scoreRate;
     const total = question.distribution.reduce((sum, item) => sum + item.count, 0) || 1;
-    const options = question.options?.length ? question.options : question.distribution.filter(item => item.count).map(item => ({label: item.label, text: ''}));
     return `<div class="lo-detail-inner">
       <header class="lo-detail-head"><div><h2>第 ${diagnosis.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || '题目')}</h2><p>${h(assignmentLabel(diagnosis.assignment))}${question.knowledge ? ` · ${h(question.knowledge)}` : ''}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
-      <div class="lo-detail-score"><strong>${formatPercent(rate)}</strong><span class="lo-chip">${choice ? '班级正确率' : '班级得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
-      <p class="lo-prompt">${h(question.prompt || '未记录题干')}</p>
-      ${question.options?.length ? `<ol class="lo-options" aria-label="选项">${options.map(option => `<li><span class="lo-option-label">${h(option.label)}</span><span>${h(option.text || '')}</span></li>`).join('')}</ol>` : '<p class="lo-note">该题没有选项结构，可能为简答或材料题。</p>'}
+      <div class="lo-detail-score"><strong>${accuracyBadge(rate)}</strong><span class="lo-chip">${choice ? '班级正确率' : '班级得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
+      ${originalQuestion(diagnosis.assignment,question)}
       <div class="lo-qstats">
-        <div><span>${choice ? '班级正确率' : '平均得分'}</span><strong>${choice ? formatPercent(question.rate) : `${question.average}/${question.maxPoints}`}</strong><small>${question.correct}/${question.graded} 份${choice ? '完全正确' : '达到满分'}</small></div>
-        <div><span>有效样本</span><strong>${question.answered}</strong><small>${question.unanswered ? `${question.unanswered} 份未记录选项` : '全部已记录'}</small></div>
+        <div><span>${choice ? '班级正确率' : '平均得分'}</span><strong>${choice ? accuracyBadge(question.rate) : `${question.average}/${question.maxPoints}`}</strong><small>${question.correct}/${question.graded} 份${choice ? '完全正确' : '达到满分'}</small></div>
+        <div><span>${choice?'已记录选项':'有效样本'}</span><strong>${choice?question.answered:question.graded}</strong><small>${!choice?'份已评分':question.unanswered ? `${question.unanswered} 份未记录选项` : '全部已记录'}</small></div>
       </div>
       ${choice ? `<div class="lo-distribution" role="list" aria-label="选项分布">
         ${question.distribution.map(item => `<div class="lo-dist-row" role="listitem"><span class="lo-dist-label">${h(item.label)}</span><div class="lo-dist-track"><i style="width:${Math.round(item.count / total * 100)}%"></i></div><span class="lo-dist-count">${item.count}</span></div>`).join('')}
       </div>` : ''}
-      <p class="lo-note">选项分布只统计与当前发布版本一致的作答；未记录选项或版本不同的作答不计入。正确选项不在学情接口中暴露，需在复核页核对。</p>
+      <p class="lo-note">选项分布只统计与当前发布版本一致的作答；未记录选项或版本不同的作答不计入。</p>
     </div>`;
   }
 
@@ -660,18 +699,20 @@ export function mountLearningOverview(ctx, initialData) {
     return `<div class="lo-ai-error" role="alert"><p>${h(message)}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重试</button><button type="button" class="lo-btn" data-close-ai>关闭</button></div></div>`;
   }
 
-  async function openAiReport(studentId = null) {
+  async function openAiReport(studentId = null, assignmentId = null, retryScope=null) {
     if (!ai) return;
     if (!aiSheet.open) aiSheet.showModal();
-    const payload = {...aiScopePayload(), ...(studentId ? {studentId} : {})};
-    $('#lo-ai-title').textContent = payload.studentId ? '个人学习建议草稿' : '班级学情分析草稿';
+    const payload = retryScope || (assignmentId ? {classId:filter.classId,assignmentId} : {...aiScopePayload(), ...(studentId ? {studentId} : {})});
+    lastAiScope=payload;aiReport=null;const generation=++aiGeneration;
+    $('#lo-ai-title').textContent = payload.assignmentId ? '本次作业学情分析' : payload.studentId ? '个人学习建议草稿' : '班级学情分析草稿';
     aiBody.innerHTML = aiLoadingMarkup();
     try {
       const {report} = await ai('analytics/reports', {method: 'POST', body: payload});
+      if(destroyed||generation!==aiGeneration)return;
       aiReport = report;
       renderAiDraft(report);
     } catch (error) {
-      aiBody.innerHTML = aiErrorMarkup(error.message || '暂时无法生成分析');
+      if(!destroyed&&generation===aiGeneration)aiBody.innerHTML = aiErrorMarkup(error.message || '暂时无法生成分析');
     }
   }
 
@@ -681,7 +722,7 @@ export function mountLearningOverview(ctx, initialData) {
 
   function renderAiDraft(report) {
     const stats = report.stats || {};
-    const scopeText = report.scope.studentId ? '个人建议（仅该学生可见，需确认发布）' : '班级汇总（只作为教师存档）';
+    const scopeText = report.scope.assignmentId ? '本次作业 · '+report.assignmentTitle : report.scope.studentId ? '个人建议（仅该学生可见，需确认发布）' : '班级汇总（只作为教师存档）';
     aiBody.innerHTML = `<div class="lo-ai-report">
       <p class="lo-ai-meta"><span class="lo-chip" data-tone="${report.source === 'ai' ? 'ok' : 'neutral'}">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${h(scopeText)}</span><span>${stats.students ?? 0} 名学生 · ${stats.assignments ?? 0} 次作业${stats.average === null || stats.average === undefined ? '' : ` · 平均 ${formatPercent(stats.average)}`}</span></p>
       ${report.aiError ? `<p class="lo-note">${h(report.aiError)}</p>` : ''}
@@ -710,9 +751,9 @@ export function mountLearningOverview(ctx, initialData) {
     try {
       const {report} = await ai(`analytics/reports/${encodeURIComponent(aiReport.id)}/publish`, {method: 'POST', body: {confirm: true, ...(personal ? {audience: 'student'} : {audience: 'class'})}});
       aiReport = report;
-      aiBody.innerHTML = `<div class="lo-ai-done" role="status"><h3>已发布</h3><p>${personal ? '学生现在可以在「我的学习」看到这份建议。' : '班级汇总已存档。'}</p></div>`;
+      aiBody.innerHTML = `<div class="lo-ai-done" role="status"><h3>已发布</h3><p>${personal ? '学生现在可以在「我的学习」看到这份建议。' : report.scope?.assignmentId ? '本次作业的学情分析已存档。' : '班级汇总已存档。'}</p></div>`;
       const title = $('#lo-ai-title');
-      if (title) title.textContent = personal ? '个人学习建议 · 已发布' : '班级学情分析 · 已发布';
+      if (title) title.textContent = personal ? '个人学习建议 · 已发布' : report.scope?.assignmentId ? '作业学情分析 · 已发布' : '班级学情分析 · 已发布';
       toast('已发布');
     } catch (error) {
       aiBody.innerHTML = aiErrorMarkup(error.message || '发布失败');
@@ -721,9 +762,9 @@ export function mountLearningOverview(ctx, initialData) {
 
   function historyRowMarkup(report) {
   const status = report.status === 'published' ? '已发布' : report.status === 'revoked' ? '已撤回' : '草稿';
-  const kind = report.scope?.studentId ? '个人建议' : '班级分析';
+  const kind = report.scope?.assignmentId ? '作业分析 · '+h(report.assignmentTitle) : report.scope?.studentId ? '个人建议' : '班级分析';
   const localClass = (state.meta?.classes || []).find(item => item.id === report.scope?.classId);
-  const who = report.scope?.studentId ? (report.studentName || '学生') : (report.className || localClass?.name || report.scope?.classId || '班级');
+  const who = report.scope?.studentId ? (report.studentName || '学生') : (report.className || localClass?.name || report.scope?.classId || '全部布置班级');
   const when = report.publishedAt || report.revokedAt || report.createdAt || '';
   const dateText = when ? new Date(when).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
   const actions = report.status === 'published'
@@ -757,7 +798,7 @@ async function openHistoryReport(reportId) {
   try {
     const {report} = await ai('analytics/reports/' + encodeURIComponent(reportId));
     const published = report.publishedAt ? new Date(report.publishedAt).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
-    histBody.innerHTML = `<div class="lo-ai-report"><p class="lo-ai-meta"><span class="lo-chip">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${report.scope?.studentId ? '个人学习建议' : '班级学情分析'}</span>${published ? `<span>${h(published)} 发布</span>` : ''}</p><h3>学习观察</h3>${observationsMarkup(report.observations || [])}${(report.nextSteps || []).length ? `<h3>下一步</h3><ol class="lo-ai-steps">${report.nextSteps.map(item => `<li>${h(item.text)}</li>`).join('')}</ol>` : ''}<p class="lo-note">${h(report.limitations || '')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
+    histBody.innerHTML = `<div class="lo-ai-report"><p class="lo-ai-meta"><span class="lo-chip">${report.source === 'ai' ? 'AI 草稿' : '规则草稿'}</span><span>${report.scope?.assignmentId ? '本次作业 · '+h(report.assignmentTitle) : report.scope?.studentId ? '个人学习建议' : '班级学情分析'}</span>${published ? `<span>${h(published)} 发布</span>` : ''}</p><h3>学习观察</h3>${observationsMarkup(report.observations || [])}${(report.nextSteps || []).length ? `<h3>下一步</h3><ol class="lo-ai-steps">${report.nextSteps.map(item => `<li>${h(item.text)}</li>`).join('')}</ol>` : ''}<p class="lo-note">${h(report.limitations || '')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
   } catch (error) {
     histBody.innerHTML = `<div class="lo-ai-error"><h3>读取失败</h3><p>${h(error.message || '请稍后重试。')}</p><div class="lo-sheet-actions"><button type="button" class="lo-btn" data-hist-back>返回列表</button></div></div>`;
   }
@@ -778,13 +819,15 @@ async function revokeHistoryReport(reportId) {
 }
 
 function renderDetail() {
+    disposeOriginals();
     if (tab === 'diagnosis') {
       const markup = diagDetailMarkup();
       detailHost.innerHTML = markup;
       if (sheet.open) {
         sheetBody.innerHTML = markup;
         $('#lo-sheet-title').textContent = diagQuestion ? '题目详情' : '作业诊断';
-      }
+        mountOriginals(sheetBody);
+      }else if(wide.matches)mountOriginals(detailHost);
       return;
     }
     const found = findSelection();
@@ -812,7 +855,7 @@ function renderDetail() {
     const record = cell.record;
     const grade = record?.grade;
     const chip = rowStatus(row);
-    const stats = questionCache.get(assignment.id) || (assignment.questions?.length ? questionStats(data, assignment.id) : null);
+    const stats = questionCache.get(assignment.id) || (assignment.questions?.length ? questionStats(context.diagnosticData||data, assignment.id) : null);
     if (stats) questionCache.set(assignment.id, stats);
     const summary = stats || {questions: [], graded: 0};
     const current = selected?.questionId && selected.studentId === row.student.id && selected.assignmentId === assignment.id ? summary.questions.find(question => question.id === selected.questionId) : null;
@@ -850,7 +893,7 @@ function renderDetail() {
               <span class="lo-q-index">${index + 1}</span>
               <span class="lo-q-prompt">${h(trim(question.prompt, 54))}</span>
               <span class="lo-q-own">${hit ? `${hit.score}/${hit.maxPoints}` : '—'}</span>
-              <span class="lo-q-rate" data-band="${scoreBand(question.rate)?.level || ''}">${formatPercent(question.rate)}</span>
+              <span class="lo-q-rate">${accuracyBadge(question.type==='choice'?question.rate:question.scoreRate)}</span>
             </button></li>`;
           }).join('')}
         </ul>` : `<p class="lo-note">${assignment.offline||assignment.format==='score'?'这份线下作业仅记录总分，可直接修改分数和满分。':'这份作业还没有题目级评分数据；原作答保留，可继续复核。'}</p>`}
@@ -877,7 +920,7 @@ function renderDetail() {
       <p class="lo-prompt">${h(question.prompt || '未记录题干')}</p>
       ${question.options?.length ? `<ol class="lo-options" aria-label="选项">${options.map(option => `<li${option.label === choice ? ' class="chosen"' : ''}><span class="lo-option-label">${h(option.label)}</span><span>${h(option.text || '')}</span>${option.label === choice ? '<em>本人选择</em>' : ''}</li>`).join('')}</ol>` : '<p class="lo-note">该题没有选项结构，可能为简答或材料题。</p>'}
       <div class="lo-qstats">
-        <div><span>班级正确率</span><strong>${formatPercent(question.rate)}</strong><small>${question.correct}/${question.graded} 份</small></div>
+        <div><span>班级正确率</span><strong>${accuracyBadge(question.rate)}</strong><small>${question.correct}/${question.graded} 份</small></div>
         <div><span>有效选项</span><strong>${question.answered}</strong><small>${question.unanswered ? `${question.unanswered} 份未记录选项` : '全部已记录'}</small></div>
       </div>
       <div class="lo-distribution" role="list" aria-label="选项分布">
@@ -926,8 +969,9 @@ function renderDetail() {
   function openSheet(trigger) {
     sheetTrigger = trigger || document.activeElement;
     $('#lo-sheet-title').textContent = '成绩详情';
-    sheetBody.innerHTML = detailHost.innerHTML;
+    sheetBody.innerHTML = tab==='diagnosis' ? diagDetailMarkup() : detailHost.innerHTML;
     if (!sheet.open) sheet.showModal();
+    if(tab==='diagnosis')mountOriginals(sheetBody);
     const close = sheetBody.querySelector('[data-close-detail]');
     (close || sheet.querySelector('[data-close-detail]'))?.focus({preventScroll: true});
   }
@@ -1017,6 +1061,9 @@ function renderDetail() {
   // ---------- events ----------
   root.addEventListener('change', event => {
     const id = event.target.id;
+    if(id==='lo-diag-order'){
+      diagOrder=event.target.value;memory.set({diagOrder});renderDiagnosis(context.diagnoses);$('#lo-diag-order').focus();return;
+    }
     if (id === 'lo-class') { filter.classId = event.target.value; filter.unit = ''; filter.assignmentId = ''; profileId = ''; selected = null; draw(); }
     else if (id === 'lo-unit') { filter.unit = event.target.value; filter.assignmentId = ''; draw(); }
     else if (id === 'lo-period') { filter.period = event.target.value; draw(); }
@@ -1083,6 +1130,8 @@ function renderDetail() {
     if (sort) { sortBy(sort.dataset.sort); return; }
     const tabButton = target.closest('.lo-tabs [data-tab]');
     if (tabButton) { setTab(tabButton.dataset.tab); return; }
+    const analyze=target.closest('[data-ai-assignment]');
+    if(analyze){void openAiReport(null,analyze.dataset.aiAssignment);return;}
     const diagItem = target.closest('[data-diag]');
     if (diagItem) {
       diagId = diagItem.dataset.diag; diagQuestion = ''; diagOpen = true;
@@ -1157,7 +1206,7 @@ function renderDetail() {
     if (action === 'ai-report') { void openAiReport(); return; }
     const aiProfile = target.closest('[data-ai-profile]');
     if (aiProfile) { void openAiReport(aiProfile.dataset.aiProfile); return; }
-    if (target.closest('[data-ai-again]')) { void openAiReport(aiReport?.scope?.studentId || null); return; }
+    if (target.closest('[data-ai-again]')) { void openAiReport(null,null,lastAiScope); return; }
     if (target.closest('[data-ai-publish]')) { renderAiConfirm(); return; }
     if (target.closest('[data-ai-back]')) { if (aiReport) renderAiDraft(aiReport); return; }
     if (target.closest('[data-ai-confirm]')) { void publishAiReport(); return; }
@@ -1256,7 +1305,10 @@ function renderDetail() {
   });
 
   const onMedia = () => {
-    if (wide.matches && sheet.open) sheet.close();
+    if (wide.matches) {
+      if (sheet.open) sheet.close();
+      mountOriginals(detailHost);
+    }
   };
   wide.addEventListener('change', onMedia);
 
@@ -1269,7 +1321,7 @@ function renderDetail() {
   return {
     destroy() {
       if (destroyed) return;
-      destroyed = true;
+      destroyed = true;disposeOriginals();
       wide.removeEventListener('change', onMedia);
       clearTimeout(filter.timer);
       if (scrollFrame) cancelAnimationFrame(scrollFrame);

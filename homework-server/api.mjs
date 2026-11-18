@@ -676,28 +676,36 @@ export async function createHomework({externalAuth} = {}) {
       }
       if (route[0] === 'analytics' && route[1] === 'reports') {
         teacher();
-        const work = await accessibleWork();
+        const creating=method==='POST'&&!route[2];
+        const b=creating ? await body(req) : {};
+        const requestedId=creating&&b.assignmentId ? boundedText(b.assignmentId,120,'作业') : '';
+        const work = requestedId
+          ? {assignments:[await requireAssignment(requestedId,user)], submissions:await db.find('submission',{assignmentId:requestedId})}
+          : await accessibleWork();
         const roster = externalAuth ? await externalAuth.students(auth.signed) : (await db.list('user')).filter(u => u.role === 'student' && u.classIds?.some(x => work.assignments.some(a => a.classIds.includes(x))));
         const students = roster.map(u => ({id: u.id, name: u.name, username: u.username || '', classIds: u.classIds || []}));
         const mistakes = mistakeRows(work.submissions, work.assignments, await db.find('mistake-note', {assignmentId: work.assignments.map(a => a.id)}), await db.find('review-links', {assignmentId: work.assignments.map(a => a.id)}));
-        if (method === 'POST' && !route[2]) {
-          const b = await body(req);
+        if (creating) {
           const classId = boundedText(b.classId, 80, '班级');
-          assert(classId, '请选择班级');
+          const assignmentId = requestedId;
+          assert(classId || assignmentId, '请选择班级或作业');
           const classKey = value => String(value || '').replace(/^bookself-class:/, '');
-          assert((await availableClasses()).some(c => classKey(c.id) === classKey(classId)), '无权访问该班级', 403);
-          const scope = insightScope({classId, unit: boundedText(b.unit || '', 40, '单元'), period: b.period, studentId: b.studentId ? boundedText(b.studentId, 120, '学生') : null});
+          if(classId)assert((await availableClasses()).some(c => classKey(c.id) === classKey(classId)), '无权访问该班级', 403);
+          const assignment=assignmentId ? work.assignments.find(a=>a.id===assignmentId) : null;
+          if(assignmentId)assert(assignment && !assignment.deletedAt && assignment.published && (!classId || assignment.classIds.some(c=>classKey(c)===classKey(classId))), '无法在当前范围分析这份作业',404);
+          const scope = insightScope({classId, assignmentId, unit: boundedText(b.unit || '', 40, '单元'), period: b.period, studentId: b.studentId ? boundedText(b.studentId, 120, '学生') : null});
           const data = insightData({assignments: work.assignments, submissions: work.submissions, mistakes, students});
           const built = buildInsightFacts({scope, data});
+          if(assignmentId)assert(built.stats.published>0,'本作业尚无已发布成绩，出分后可生成分析',409);
           const dataVersion = insightVersion({scope, data});
           const reports = await db.find('insight-report', {teacherId: user.id});
-          const same = report => report.scope?.classId === scope.classId && report.scope?.unit === scope.unit && report.scope?.period === scope.period && report.scope?.studentId === (scope.studentId || null);
-          const reused = reports.find(report => report.status === 'draft' && report.dataVersion === dataVersion && same(report));
+          const same = report => (report.scope?.assignmentId || '') === assignmentId && report.scope?.classId === scope.classId && report.scope?.unit === scope.unit && report.scope?.period === scope.period && report.scope?.studentId === (scope.studentId || null);
+          const reused = reports.find(report => report.status === 'draft' && !(assignmentId && report.aiError) && report.dataVersion === dataVersion && same(report));
           if (reused) return (json(res, {report: reused, reused: true}), true);
           const draft = await draftInsight({db, decrypt, scope, built});
           const report = {
             id: id(), kind: 'insight-report', teacherId: user.id, studentId: scope.studentId || null, classId: scope.classId,
-            scope, dataVersion, source: draft.source, aiError: draft.aiError || '',
+            ...(assignmentId?{assignmentTitle:assignment.title}:{}),scope, dataVersion, source: draft.source, aiError: draft.aiError || '',
             observations: draft.observations, nextSteps: draft.nextSteps, limitations: draft.limitations,
             stats: {students: built.rows.length, assignments: built.assignments.length, average: scope.studentId ? built.profile.row.average : built.stats.average},
             status: 'draft', audience: null, createdAt: now(), publishedAt: null,
@@ -713,7 +721,7 @@ export async function createHomework({externalAuth} = {}) {
             .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
             .slice(0, 50)
             .map(report => ({
-              id: report.id, scope: report.scope, dataVersion: report.dataVersion, source: report.source,
+              id: report.id, scope: report.scope, assignmentTitle:report.assignmentTitle, dataVersion: report.dataVersion, source: report.source,
               status: report.status, stats: report.stats, createdAt: report.createdAt,
               publishedAt: report.publishedAt || null, revokedAt: report.revokedAt || null,
               studentName: report.studentId ? (studentNames.get(report.studentId) || report.scope?.studentName || '') : '',
@@ -768,7 +776,9 @@ export async function createHomework({externalAuth} = {}) {
         for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
         const privateDrafts=user.role==='student'?await db.find('mistake-draft',{studentId:user.id}):[];
         const insights=user.role==='student'?(await db.find('insight-report',{studentId:user.id})).filter(r=>r.status==='published'&&r.audience?.kind==='student').map(r=>({id:r.id,scope:r.scope,dataVersion:r.dataVersion,source:r.source,observations:r.observations,nextSteps:r.nextSteps,limitations:r.limitations,publishedAt:r.publishedAt})).slice(0,3):[];
-        return (json(res,{classes,insights,students,assignments:assignments.map(a=>({...publicAssignment(a),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}})),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.find('mistake-note',user.role==='student'?{studentId:user.id}:{assignmentId:assignments.map(a=>a.id)}),await db.find('review-links',{assignmentId:assignments.map(a=>a.id)})).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
+        return (json(res,{classes,insights,students,assignments:assignments.map(a=>{const publicData=publicAssignment(a);
+          if(user.role==='teacher')publicData.questions?.forEach((q,i)=>{const ref=a.rubric[i];q.sourcePages=ref.sourcePages||'';q.correctOptions=ref.manualGradingRequired?[]:ref.correctOptions||[];});
+          return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes:mistakeRows(submissions,assignments,await db.find('mistake-note',user.role==='student'?{studentId:user.id}:{assignmentId:assignments.map(a=>a.id)}),await db.find('review-links',{assignmentId:assignments.map(a=>a.id)})).map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}))}),true);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);

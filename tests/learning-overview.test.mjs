@@ -4,7 +4,7 @@ import {
   periodRange, scopedAssignments, scopedStudents, assignmentLabel, buildRows, overviewStats,
   questionStats, studentProfile, rowStatus, formatPercent, trendLabel, unitsOf,
   typeBreakdown, correctionSummary, assignmentHistory, studentObservations, classObservations, reportText,
-  assignmentDiagnostics,
+  assignmentDiagnostics, orderedDiagnosisQuestions,
 } from '../homework/learning-analytics-model.js';
 
 const CLASS = 'class-1';
@@ -299,4 +299,24 @@ test('all-class denominator counts only issued work, zero included and blanks ex
 
 test('chapter numbers and part labels survive matrix/profile title formatting',()=>{
  for(const title of ['3.3 MCQ','Unit 3.3 MCQ','3.6 MCQ Part 2'])assert.equal(assignmentLabel({title,libraryUnit:'macro-unit-3',format:'mcq'}),title);
+});
+
+test('diagnosis lists the displayed dates newest first and leaves undated work last', () => {
+  const older = assignment('old', {createdAt:'2026-10-01', dueAt:'2026-10-15'});
+  const sameDue = assignment('same', {createdAt:'2026-10-08', dueAt:older.dueAt});
+  const recent = assignment('recent', {createdAt:'2026-10-16', dueAt:null});
+  const undated = assignment('undated', {createdAt:null, dueAt:null});
+  const input = [undated, older, recent, sameDue];
+  const result = assignmentDiagnostics(data({assignments:input}), input);
+  assert.deepEqual(result.map(row => row.assignment.id), ['recent','same','old','undated']);
+  assert.equal(input[0], undated);
+});
+
+test('rate order retains the original question number, equal rates and missing rates', () => {
+  const questions = [{type:'choice', rate:80}, {type:'choice', rate:null},
+    {type:'short', scoreRate:0}, {type:'choice', rate:80}];
+  const order = direction => orderedDiagnosisQuestions(questions,direction).map(row => row.index);
+  assert.deepEqual(order('asc'), [2,0,3,1]);
+  assert.deepEqual(order('desc'), [0,3,2,1]);
+  assert.deepEqual(order('original'), [0,1,2,3]);
 });

@@ -1509,3 +1509,15 @@ body[data-section="analytics"] #workspace {
 .lo-offline-actions{display:flex;justify-content:flex-end;gap:8px}
 .lo-offline-note{margin:12px 0 0;color:#8a978e;font-size:11px;line-height:1.5}
 .lo-cell[data-status="absent"]{color:#6b6258;background:#f4f0ea;border-style:dashed}
+.lo-diag-actions {display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lo-diag-head {flex-wrap:wrap}
+.lo-diag-section .lo-section-head {flex-wrap:wrap}
+.lo-diag-section select {font:inherit;min-height:32px;border:1px solid var(--lo-line);border-radius:6px;background:white}
+.lo-original {min-width:0;overflow-wrap:anywhere}
+.lo-original-image {display:block;margin-block:8px;cursor:zoom-in}
+.lo-original-image img {display:block;width:100%;height:auto}
+.lo-original-options {list-style:none;padding:0;white-space:pre-wrap}
+.lo-original-options li {margin:6px 0}
+.lo-original-photo {width:100%;height:auto}
+.lo-source-file .homework-surface {min-width:0}
+.lo-source-file .reader-scroll {height:min(48vh,440px)}

@@ -69,3 +69,5 @@
   .mistake-inline .correction-save-actions { background: #edf1ec; }
   .correction-workspace { padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
 }
+
+.score-band.accuracy-band{padding:2px 7px;font:600 0.94em/1.5 system-ui;font-variant-numeric:tabular-nums;white-space:nowrap}

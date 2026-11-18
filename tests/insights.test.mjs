@@ -186,3 +186,18 @@ test('data version covers corrections, per-question scores and stable ordering',
   reordered.students.reverse();
   assert.equal(base, insightVersion({scope, data: reordered}));
 });
+
+test('single-assignment analysis uses only its recipients, grades and per-question evidence',()=>{
+  const data=fixture(),scope=insightScope({classId:'c1',assignmentId:'a1'});
+  const outsider={id:'s9',studentId:'other',assignmentId:'a1',status:'published',publishedGrade:{total:1,maxPoints:1,questions:[]}};
+  data.students.push({id:'other',classIds:['other']});data.submissions.push(outsider);
+  const built=buildInsightFacts({scope,data});
+  assert.deepEqual(built.assignments.map(a=>a.id),['a1']);
+  assert.equal(built.stats.students,2);assert.equal(built.stats.published,1);
+  assert(built.facts.some(f=>f.id==='w.0'&&f.text.includes('正确率')));
+  const first=insightVersion({scope,data});
+  data.submissions[1].publishedGrade.total=0;
+  assert.equal(insightVersion({scope,data}),first);
+  data.submissions[0].publishedGrade.questions[0].score=5;
+  assert.notEqual(insightVersion({scope,data}),first);
+});
