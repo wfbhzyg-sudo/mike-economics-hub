@@ -35,6 +35,10 @@ export function createWorkspaceUI(ctx) {
       state.submissions.filter((s) => s.assignmentId === a.id),
       [a],
     );
+  function studentSubject(a) {
+    const subject=assignmentCourse(a,state.classes);
+    return `<span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>`;
+  }
   function menu(a) {
     return `<button type="button" class="secondary row-more" data-more="${h(a.id)}" aria-label="更多操作：${h(a.title)}">更多</button>`;
   }
@@ -65,7 +69,7 @@ export function createWorkspaceUI(ctx) {
       const stat=(filter,text,cls)=>link('overview/'+a.id+'/'+filter,text,'roster-count '+cls);
       return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title"><span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.opensAt&&Date.parse(a.opensAt)>Date.now()?'开放 '+date(a.opensAt)+(a.dueAt?' · 截止 '+date(a.dueAt):''):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'—':'同步名单…'):summary.missing+(opensLater?' 待开始':' 未提交'),!opensLater&&summary.missing>0?'is-missing':'is-neutral')}${stat('published',summary.published+' 已出分','is-neutral')}${summary.review?stat('review',summary.review+' 待处理','is-review'):''}`:'<span class="hint">发布后统计提交</span>'}</div><div class="actions task-actions">${link(target,opensLater?'查看安排':action,'primary')}${link('edit/'+a.id,'编辑')}${menu(a)}</div></article>`;
     }
-    return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${target?link(target, highlightText(a.title,state.assignmentSearch), "task-name"):`<strong class="task-name">${highlightText(a.title,state.assignmentSearch)}</strong>`}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(studentAction.label)}</span></div><div class="meta"><span>${h(teacher()?a.course:courseLabel(assignmentCourse(a,state.classes)))}</span>${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${!t&&studentAction.opensLater?"开放 "+date(a.opensAt):a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待复核", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${target?link(target, action, "primary"):`<button class="secondary" disabled>${h(action)}</button>`}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
+    return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${target?link(target, highlightText(a.title,state.assignmentSearch), "task-name"):`<strong class="task-name">${highlightText(a.title,state.assignmentSearch)}</strong>`}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(studentAction.label)}</span></div><div class="meta">${studentSubject(a)}${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${!t&&studentAction.opensLater?"开放 "+date(a.opensAt):a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待复核", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${target?link(target, action, "primary"):`<button class="secondary" disabled>${h(action)}</button>`}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
   }
   function bindActions() {
     $$("[data-more]").forEach(
@@ -200,7 +204,7 @@ export function createWorkspaceUI(ctx) {
       tintAttrs = tint
         ? ` data-urgency="1" style="--card-tint:${tint.base};--card-tint-border:${tint.border};--card-tint-hover:${tint.hover}"`
         : "";
-    return `<article class="assignment-card"${tintAttrs} data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${a.course ? `<span>${h(teacher()?a.course:courseLabel(assignmentCourse(a,state.classes)))}</span>` : ""}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : `<button class="secondary" disabled>${h(action.action)}</button>`}</footer></article>`;
+    return `<article class="assignment-card"${tintAttrs} data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${studentSubject(a)}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : `<button class="secondary" disabled>${h(action.action)}</button>`}</footer></article>`;
   }
   function dashboard() {
     const t = teacher(),
@@ -379,7 +383,7 @@ export function createWorkspaceUI(ctx) {
           draw();
         }),
     );
-    $$('[data-subject]').forEach(b=>b.onclick=()=>{subject=b.dataset.subject;rememberCourse(state.user.id,subject);$$('[data-subject]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));draw();});
+    $$('button[data-subject]').forEach(b=>b.onclick=()=>{subject=b.dataset.subject;rememberCourse(state.user.id,subject);$$('button[data-subject]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));draw();});
     $("#assignment-class")?.addEventListener("change",e=>{state.assignmentClass=e.target.value;draw();});
     $("#assignment-search").oninput = draw;
     $("#assignment-course")?.addEventListener("change", (e) => {

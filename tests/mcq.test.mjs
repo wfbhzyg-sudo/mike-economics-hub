@@ -98,6 +98,30 @@ test('page screenshot reaches the vision model without being stored in chat hist
  assert.ok(!JSON.stringify([...db.rows.values()]).includes('data:image'));
  await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'bad',screenshot:'data:image/jpeg;base64,AAAA'}),/截图无法读取/);
  await db.put('self-practice-attempt',{id:'p',studentId:user.id,status:'active'});
- await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'exam'}),/测验中无法发送截图/);
+ await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'exam',assessment:'mock:p'}),/测验中无法发送截图/);
  assert.equal(seen.length,2);
+});
+
+test('resumable untimed practice only locks its own question page; live countdown still locks across tabs',async()=>{
+ const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
+ const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};
+ await db.put('self-practice-attempt',{id:'old',studentId:user.id,status:'active'});
+ assert.equal(await probe(''),'learning');assert.equal(await probe('mock:old'),'exam');
+ await db.put('assignment',{id:'work',version:1});
+ await db.put('mcq-attempt',{id:'record',mode:'exam',assignmentId:'work',version:1,studentId:user.id,startedAt:new Date().toISOString()});
+ assert.equal(await probe('work:work'),'exam');assert.equal(await probe(''),'learning');
+ await db.put('self-practice-attempt',{id:'timer',studentId:user.id,status:'active',deadlineAt:new Date(Date.now()+60000).toISOString()});
+ assert.equal(await probe(''),'exam');
+});
+
+test('earned cosmetics, request retries and release receipts belong to one authenticated learner',async()=>{
+ const db=store(),student={id:'learner',role:'student'},handler=createCompanion({db,callModel:async(_d,_k,m,o)=>o.json?{allowed:true,topic:m.at(-1).content.startsWith('help')?'platform':'economics'}:'你会怎样读图？'});
+ const chat=async(message,requestId)=>(await call(handler,student,'companion','POST',{message,requestId})).value.profile;
+ assert.equal((await chat('price','1')).points,1);assert.equal((await chat('price','1')).points,1);
+ assert.equal((await chat('help','2')).points,1);
+ const state=(await call(handler,student,'companion/position')).value.profile;
+ await assert.rejects(call(handler,student,'companion/profile','POST',{action:'equip',index:4}));
+ await call(handler,student,'companion/profile','POST',{action:'read',ids:[state.editions[0].id]});
+ assert.equal((await call(handler,student,'companion/position')).value.profile.unread,false);
+ assert.equal((await call(handler,{...student,id:'second'},'companion/position')).value.profile.unread,true);
 });

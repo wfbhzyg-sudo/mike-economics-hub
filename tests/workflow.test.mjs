@@ -8,3 +8,11 @@ test('Transferred students retain recorded obligation and historical submissions
 test('PDF normalization maps ligatures, split spans, line breaks and non-BMP offsets precisely',()=>{const index=textIndex([{str:'The efﬁ',hasEOL:false},{str:'cient mar-',hasEOL:true},{str:'ket',hasEOL:true},{str:'供需',hasEOL:true},{str:'均衡 😀',hasEOL:false}]);const match=findText(index,'efficient market')[0];assert(match);assert.deepEqual(match.ranges,[{item:0,start:4,end:7},{item:1,start:0,end:9},{item:2,start:0,end:3}]);assert(findText(index,'供需均衡')[0]);assert.deepEqual(findText(index,'😀')[0].ranges,[{item:4,start:3,end:5}]);});
 test('Multiple literal matches, empty query and escaped UI snippets',()=>{const index=textIndex([{str:'Market market MARKET',hasEOL:false}]);assert.equal(findText(index,'market').length,3);assert.equal(findText(index,'   ').length,0);assert.equal(highlightText('<img onerror="bad">','img'), '&lt;<mark class="search-hit">img</mark> onerror=&quot;bad&quot;&gt;');});
 test('A pending replacement keeps the earlier published grade visible',()=>{const a={id:'task',classIds:['c'],published:true,recipients:captureRecipients(['c'],students)};const data=assignmentRoster(a,students,[{id:'1',studentId:'a',assignmentId:'task',status:'published',submittedAt:'2026-01-01',publishedGrade:{total:4,maxPoints:5}},{id:'2',studentId:'a',assignmentId:'task',status:'queued',submittedAt:'2026-01-02'}]);assert.deepEqual(data.rows.find(r=>r.id==='a').grade,{total:4,maxPoints:5});assert(data.rows.find(r=>r.id==='a').pendingUpdate);});
+
+test('three-class roster keeps assigned historical memberships and counts a shared student once',()=>{
+ const students=[{id:'s',name:'A',classIds:['b','outside']},{id:'z',name:'Z',classIds:['bookself-class:c']}];
+ const a={id:'work',published:true,classIds:['bookself-class:a','bookself-class:b','bookself-class:c'],recipients:{students:[{id:'s',name:'A',classIds:['a']}]}};
+ const result=assignmentRoster(a,students,[{id:'sub',assignmentId:'work',studentId:'s',status:'published'}]);
+ assert.equal(result.rows.length,2);assert.deepEqual(result.rows[0].classIds,a.classIds.slice(0,2));
+ assert.equal(result.counts.missing,1);assert.equal(result.counts.submitted,1);
+});

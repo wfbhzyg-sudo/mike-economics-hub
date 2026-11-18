@@ -942,8 +942,11 @@ export async function createHomework({externalAuth} = {}) {
         if (route[1]) {
           const a = await requireAssignment(route[1], user);
           if(route[2]==='roster'&&method==='GET'){
-            teacher();const students=await availableStudents(),submissions=await db.list('submission');
-            return (json(res,assignmentRoster(a,students,submissions)),true);
+            teacher();
+            const [students,submissions,classes]=await Promise.all([availableStudents(),db.find('submission',{assignmentId:a.id}),availableClasses()]);
+            const key=id=>String(id).replace(/^bookself-class:/,'');
+            const assigned=a.classIds.map(id=>({id,name:classes.find(c=>key(c.id)===key(id))?.name||'历史班级'}));
+            return (json(res,{...assignmentRoster(a,students,submissions),classes:assigned}),true);
           }
           const classEntry = route[2]==='class-scores' && !route[3];
           if(method==='PATCH' && (classEntry || (route[2]==='students' && route[3] && route[4]==='score' && !route[5]))){

@@ -2127,3 +2127,5 @@ legend {
 }
 .subject-tag[data-subject=macro] { background:#a5dfb4 }
 .subject-tag[data-subject=micro] { background:#accff7 }
+
+.roster-class-label{display:flex;align-items:center;gap:8px;font-weight:650;margin:12px 0 4px}.roster-class-label select{min-width:9rem;max-width:min(80%,28rem)}

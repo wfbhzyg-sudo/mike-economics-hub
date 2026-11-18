@@ -14,3 +14,16 @@
 .mike-sent-shot{display:block;max-width:100%;max-height:200px;object-fit:contain;margin-top:8px}.mike-preview[hidden]{display:none}
 
 .mike-preview button[data-action=zoom-shot]{border:0;background:transparent;padding:0}.mike-preview.expanded{flex-wrap:wrap}.mike-preview.expanded button[data-action=zoom-shot]{width:100%}.mike-preview.expanded img{width:100%;height:auto;max-height:min(30dvh,240px)}
+.mike-launcher.has-news span{background:#244c46;color:white;border-color:#244c46}
+.mike-equipped{position:absolute;right:3px;top:32px;width:21px;height:21px;pointer-events:none}
+.mike-chat .mike-tier{min-height:30px;padding:2px 5px;color:#386153;font-size:12px;border:0;background:#e6eee6}
+.mike-drawer{box-sizing:border-box;position:absolute;inset:0;background:#fcfcf9;padding:16px;overflow:auto;overscroll-behavior:contain;z-index:2}
+.mike-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mike-drawer h2{font-size:19px}.mike-drawer h3{font-size:16px}.mike-drawer p{font-size:13px;line-height:1.55;margin:5px 0 12px}
+.mike-drawer progress{width:100%;height:10px;accent-color:#386153}.mike-feature,.mike-chat .mike-skin{display:flex;gap:12px;align-items:center;border:0;border-bottom:1px solid #dae2db;padding:12px 0}
+.mike-chat .mike-skin{width:100%;border-radius:0;background:transparent;text-align:left;color:#233f42}
+.mike-skin span small{display:block}.mike-skin em{margin-left:auto;font:12px system-ui}
+.mike-avatar{position:relative;display:inline-block;width:43px;height:46px;flex:none}.mike-avatar img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}.mike-avatar svg{position:absolute;right:0;bottom:0;width:20px}
+.mike-art{background:#edf1eb;border-radius:8px;display:grid;place-content:center;justify-items:center;gap:4px;min-width:72px;min-height:65px}.mike-art b{font-size:11px;background:white;border-radius:4px;padding:3px 6px}.mike-art .mini-macro{background:#a5dfb4}.mike-art .mini-micro{background:#accff7}
+@media(max-width:600px){.mike-equipped{width:18px;top:25px}.mike-chat header>div{min-width:0}.mike-chat header>img{width:32px;height:32px}.mike-chat header strong{font-size:14px}.mike-drawer{padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
+@media(max-width:600px){.mike-launcher.has-news span{position:absolute;display:block;bottom:-8px;font-size:10px;padding:3px 4px}.mike-chat header .mike-avatar{width:32px;height:36px}}

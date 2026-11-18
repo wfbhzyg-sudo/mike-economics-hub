@@ -21,3 +21,11 @@ Noto Serif SC 和 Instrument Serif 按 SIL OFL 许可自托管，许可原文在
 ## 电子作业
 
 [打开作业工作台](https://mike-economics-hub-production.up.railway.app/homework/)。教师参考答案确认、学生图片/PDF/文字提交、本地 Mac 初批与教师复核发布；使用及部署细节见 [HOMEWORK.md](HOMEWORK.md)。生产需要 PostgreSQL 和私有 S3，凭据只通过环境变量配置。
+
+### 面向教师和学生的功能更新
+
+发布面向用户的功能时，在同一提交的 `homework-server/companion-profile.mjs` 的
+`releases` 首位添加一版说明。使用新且稳定的 id、实际日期、标题，并为每项改进指定
+teacher、student 或 all，写清用户从哪里进入和操作后会看到什么。art 对应
+companion.js 中的简图。保留旧条目供回看。用一个教师和一个学生测试首次提示、
+阅读后跨入口消除提示及新版本重新提醒。更新不需要批量写入账号。
