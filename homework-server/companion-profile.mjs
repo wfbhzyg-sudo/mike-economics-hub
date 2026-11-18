@@ -1,5 +1,12 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-shared-question-view',date:'2026-11-18',title:'作业和模考使用同一套答题界面',
+  items:[
+    {audience:'all',art:'book',title:'书架与游戏大厅可直接返回一页通',text:'进入 Bookself 书架或 EconQuest 探险大厅后，可在首页点击「返回一页通」。'},
+    {audience:'student',art:'news',title:'跨页材料、题号与答题结果',text:'作业和模考使用同一套题面工具。图片加载失败时可原地重试，交卷后用颜色和符号区分满分与失分。'},
+    {audience:'teacher',art:'roster',title:'按学生查看模考次数',text:'「自主模考统计」按名册显示交卷次数，点击数字可查看记录。章节方块的填充高度表示参与覆盖率，填充颜色表示正确率。'}
+  ]
+},{
   id:'2026-11-18-paper-tools',date:'2026-11-18',title:'整份作业连续回看',
   items:[
     {audience:'all',art:'book',title:'原题和成绩排在一起',text:'在学生成绩里打开「作业回顾」，可以从第一题连续看到最后一题，也可以只看失分题。'},
