@@ -4,7 +4,8 @@ export const releases = [{
   items:[
     {audience:'all',art:'book',title:'书架与游戏大厅可直接返回一页通',text:'进入 Bookself 书架或 EconQuest 探险大厅后，可在首页点击「返回一页通」。'},
     {audience:'student',art:'news',title:'跨页材料、题号与答题结果',text:'作业和模考使用同一套题面工具。图片加载失败时可原地重试，交卷后用颜色和符号区分满分与失分。'},
-    {audience:'teacher',art:'roster',title:'按学生查看模考次数',text:'「自主模考统计」按名册显示交卷次数，点击数字可查看记录。章节方块的填充高度表示参与覆盖率，填充颜色表示正确率。'}
+    {audience:'student',art:'news',title:'模考可向 Mike 提问',text:'自主模考中可以使用 Mike，经济关键词会用中英双语呈现。'},
+    {audience:'teacher',art:'roster',title:'查看模考次数与成绩趋势',text:'「自主模考统计」按名册显示交卷次数和最近成绩走势，点击数字可查看记录。章节方块的填充高度表示参与覆盖率，填充颜色表示正确率。'}
   ]
 },{
   id:'2026-11-18-paper-tools',date:'2026-11-18',title:'整份作业连续回看',

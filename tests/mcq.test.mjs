@@ -83,7 +83,7 @@ test('key changes preserve active attempt identity, timer and receipt through ac
  const duplicate=(await call(f.handler,f.student,'mcq/attempt/'+a.id+'/submit','POST',{revision:0,answers:{'1':'A'}})).value;assert.equal(duplicate.submittedId,submitted.submittedId);assert.equal((await f.db.list('submission')).length,1);
 });
 
-test('page screenshot reaches the vision model without being stored in chat history and mock exams block attachments',async()=>{
+test('page screenshot reaches the vision model without being stored in chat history including in self-practice',async()=>{
  const db=store(), user={id:'s',role:'student'}, seen=[];
  const handler=createCompanion({db,callModel:async (_db,_key,m,options)=>{
    seen.push(m.at(-1).content);return options.json?{allowed:true}:'横轴是什么？';
@@ -98,19 +98,21 @@ test('page screenshot reaches the vision model without being stored in chat hist
  assert.ok(!JSON.stringify([...db.rows.values()]).includes('data:image'));
  await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'bad',screenshot:'data:image/jpeg;base64,AAAA'}),/截图无法读取/);
  await db.put('self-practice-attempt',{id:'p',studentId:user.id,status:'active'});
- await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'exam',assessment:'mock:p'}),/测验中无法发送截图/);
- assert.equal(seen.length,2);
+ const mock=(await call(handler,user,'companion','POST',{...body,requestId:'mock-screenshot',assessment:'mock:p'})).value;
+ assert.equal(mock.mode,'learning');assert.equal(mock.screenshotUsed,true);assert.equal(seen.length,4);
 });
 
-test('resumable untimed practice only locks its own question page; live countdown still locks across tabs',async()=>{
+test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};
  await db.put('self-practice-attempt',{id:'old',studentId:user.id,status:'active'});
- assert.equal(await probe(''),'learning');assert.equal(await probe('mock:old'),'exam');
+ assert.equal(await probe(''),'learning');assert.equal(await probe('mock:old'),'learning');
  await db.put('assignment',{id:'work',version:1});
  await db.put('mcq-attempt',{id:'record',mode:'exam',assignmentId:'work',version:1,studentId:user.id,startedAt:new Date().toISOString()});
  assert.equal(await probe('work:work'),'exam');assert.equal(await probe(''),'learning');
  await db.put('self-practice-attempt',{id:'timer',studentId:user.id,status:'active',deadlineAt:new Date(Date.now()+60000).toISOString()});
+ assert.equal(await probe('mock:timer'),'learning');assert.equal(await probe(''),'learning');
+ await db.put('assignment',{id:'work',version:1,timeLimitMinutes:5});
  assert.equal(await probe(''),'exam');
 });
 
