@@ -1,8 +1,12 @@
+import {HttpError} from './validation.mjs';
 // The identity and membership reads remain authoritative on every request.
 // Once the session is valid, independent database reads need not wait in line.
 export async function loadUnifiedIdentity(externalAuth, req, db, now) {
   const signed = await externalAuth.session(req);
   if (!signed) return null;
+  if (signed.role === 'student' && (signed.must_change_password === true || signed.mustChangePassword === true)) {
+    throw new HttpError(428, '首次登录请先修改密码。');
+  }
   const key = 'bookself:' + signed.id;
   const [registeredClasses, existing] = await Promise.all([
     externalAuth.classrooms(signed), db.get(key),

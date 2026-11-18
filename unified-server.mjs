@@ -34,6 +34,9 @@ const server=http.createServer(async(req,res)=>{
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
   if(path.includes('\\')||path.includes('\0')||path.split('/').some(p=>p.startsWith('.'))){res.writeHead(404).end();return;}
   const signed=await auth.session(req);
+  if(signed?.role==='student' && signed.must_change_password && ['/', '/login.html', '/homework', '/homework/', '/homework/index.html', '/enter/bookself', '/enter/econquest'].includes(path) && !(path==='/' && u.searchParams.get('account')==='password')){
+    auth.redirect(res,'/?account=password');return;
+  }
   if(path==='/teacher'||path.startsWith('/teacher/')){
    if(process.env.TEACHER_WORKSPACE_ENABLED!=='1'){res.writeHead(404).end();return;}
    if(!signed){auth.redirect(res,'/?next='+encodeURIComponent(safePath(req.url)));return;}

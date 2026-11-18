@@ -161,8 +161,7 @@ export async function createHomework({externalAuth} = {}) {
       const classIds=registeredClasses.map(x=>x.id);
       const ownerId=process.env.HOMEWORK_OWNER_UNIVERSAL_ID||process.env.HOMEWORK_OWNER_BOOKSELF_ID;
       const canManageGrading=signed.role==='teacher'&&signed.id===ownerId;
-      const user = {...stored,classIds,name:signed.name,role:signed.role,unified:true,canManageGrading,mustChangePassword:signed.mustChangePassword===true};
-      if(user.role==='student'&&user.mustChangePassword)throw new HttpError(428,'首次登录请先修改密码。');
+      const user = {...stored,classIds,name:signed.name,role:signed.role,unified:true,canManageGrading,mustChangePassword:signed.must_change_password===true||signed.mustChangePassword===true};
       return {user,session:{id:'unified',csrf:externalAuth.csrf(req),external:true},signed,registeredClasses};
     }
     const raw = (req.headers.cookie || "")

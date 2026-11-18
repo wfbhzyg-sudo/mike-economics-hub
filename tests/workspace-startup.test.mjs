@@ -115,3 +115,8 @@ test('first visits keep the transaction recheck and do not create records after 
   assert.equal(writes, 1);
   assert(!records.has('bookself:other'));
 });
+
+test('new student must finish the first password change before loading homework', async()=>{
+ const auth={session:async()=>({id:'new-student',role:'student',must_change_password:true})};
+ await assert.rejects(loadUnifiedIdentity(auth,{},{}),{status:428});
+});
