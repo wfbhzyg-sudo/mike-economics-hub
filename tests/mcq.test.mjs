@@ -82,3 +82,22 @@ test('key changes preserve active attempt identity, timer and receipt through ac
  await assert.rejects(call(f.handler,f.student,'mcq/attempt/'+a.id+'/restart','POST',{revision:0}));
  const duplicate=(await call(f.handler,f.student,'mcq/attempt/'+a.id+'/submit','POST',{revision:0,answers:{'1':'A'}})).value;assert.equal(duplicate.submittedId,submitted.submittedId);assert.equal((await f.db.list('submission')).length,1);
 });
+
+test('page screenshot reaches the vision model without being stored in chat history and mock exams block attachments',async()=>{
+ const db=store(), user={id:'s',role:'student'}, seen=[];
+ const handler=createCompanion({db,callModel:async (_db,_key,m,options)=>{
+   seen.push(m.at(-1).content);return options.json?{allowed:true}:'横轴是什么？';
+ }});
+ const sharp=(await import('sharp')).default;
+ const image=await sharp({create:{width:50,height:50,channels:3,background:'green'}}).jpeg().toBuffer();
+ const body={requestId:'screenshot',message:'如何读图？',screenshot:'data:image/jpeg;base64,'+image.toString('base64')};
+ const result=(await call(handler,user,'companion','POST',body)).value;
+ assert.equal(result.screenshotUsed,true);
+ assert.equal(seen.length,2);
+ assert.ok(seen.every(m=>m[1].type==='image_url'&&m[1].image_url.url.startsWith('data:image/jpeg;base64,')));
+ assert.ok(!JSON.stringify([...db.rows.values()]).includes('data:image'));
+ await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'bad',screenshot:'data:image/jpeg;base64,AAAA'}),/截图无法读取/);
+ await db.put('self-practice-attempt',{id:'p',studentId:user.id,status:'active'});
+ await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'exam'}),/测验中无法发送截图/);
+ assert.equal(seen.length,2);
+});

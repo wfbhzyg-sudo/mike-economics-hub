@@ -103,9 +103,9 @@ export async function createHomework({externalAuth} = {}) {
   const files = createFiles(db);
   const limited = new Map();
   const json = sendJSON;
-  const body = async (req) => {
+  const body = async (req, limit) => {
     try {
-      return JSON.parse((await readBody(req)).toString() || "{}");
+      return JSON.parse((await readBody(req, limit)).toString() || "{}");
     } catch (e) {
       if (e.status) throw e;
       throw new HttpError(400, "内容格式不正确");
@@ -580,7 +580,7 @@ export async function createHomework({externalAuth} = {}) {
       const teacher = () =>
         assert(user.role === "teacher", "此操作仅对教师开放", 403);
       const extensionContext={req,res,route,method,user,body,json,availableClasses,availableStudents};
-      if(await library.handle(extensionContext)||await mcq(extensionContext)||await selfPractice.handle(extensionContext)||await companion(extensionContext))return true;
+      if(await library.handle(extensionContext)||await mcq(extensionContext)||await selfPractice.handle(extensionContext)||await companion({...extensionContext,csrf:auth.session.csrf}))return true;
       if (route[0] === "me" && method === "GET")
         return (
           json(res, { user: safeUser(user), csrf: auth.session.csrf, teacherWorkspace:process.env.TEACHER_WORKSPACE_ENABLED==='1' }),
@@ -946,26 +946,42 @@ export async function createHomework({externalAuth} = {}) {
             teacher();const students=await availableStudents(),submissions=await db.list('submission');
             return (json(res,assignmentRoster(a,students,submissions)),true);
           }
-          if(route[2]==='students' && route[3] && route[4]==='score' && !route[5] && method==='PATCH'){
+          const classEntry = route[2]==='class-scores' && !route[3];
+          if(method==='PATCH' && (classEntry || (route[2]==='students' && route[3] && route[4]==='score' && !route[5]))){
             teacher();
-            const b=await body(req), students=await availableStudents();
-            const result=await db.tx(async c=>{
+            const input=await body(req), students=await availableStudents();
+            const key=id=>String(id||'').replace(/^bookself-class:/,'');
+            const classId=classEntry ? key(input.classId) : '';
+            const entries=classEntry ? input.entries : [{...input,studentId:route[3]}];
+            if(classEntry){
+              assert(classId && (await availableClasses()).some(c=>key(c.id)===classId),'请选择可管理的班级',403);
+              assert(Array.isArray(entries) && entries.length>0 && entries.length<=250,'每次可保存 1–250 名学生的分数');
+              assert(entries.every(e=>e && typeof e.studentId==='string') && new Set(entries.map(e=>e.studentId)).size===entries.length,'学生名单无效或重复');
+            }
+            const results=await db.tx(async c=>{
               const assignment=await requireAssignment(a.id,user,c);
               assert(assignment.published&&!assignment.deletedAt,'请先发布或恢复作业',409);
-              const member=students.find(u=>u.id===route[3]&&u.classIds?.some(id=>assignment.classIds.includes(id))) || assignment.recipients?.students?.find(u=>u.id===route[3]&&u.classIds?.some(id=>assignment.classIds.includes(id)));
-              assert(member,'学生不在这份作业的班级中',403);
-              const attempts=await db.find('submission',{assignmentId:a.id,studentId:member.id},c);
-              const record=assignmentRecords(attempts,[assignment])[0];
-              const current=record?.effective || record?.latest;
-              assert((b.submissionId||null)===(current?.id||null),'成绩版本已更新，请刷新后再修改',409);
-              const entry=current || {id:'teacher-score:'+hash(a.id+':'+member.id),type:'submission',assignmentId:a.id,studentId:member.id,studentName:member.name,classIds:member.classIds,manualScoreEntry:true,status:'published',createdAt:now(),version:assignment.version,text:'',files:[],rubricSnapshot:[]};
-              const next=editTeacherScore(entry,assignment,b,user.id,now());
-              await c.query(`UPDATE ${db.jobs} SET status='cancelled',finished=now(),lease=NULL WHERE target=$1 AND kind='grade' AND status IN ('queued','running')`,[entry.id]);
-              await db.put('submission',next,c);
-              await db.audit(user.id,'teacher_score',next.id,c);
-              return next;
+              if(classEntry)assert((assignment.offline || assignment.format==='score') && assignment.classIds.some(id=>key(id)===classId),'请选择这个班级已布置的线下作业',409);
+              const assigned=new Set(assignment.classIds.map(key));
+              const eligible=u=>u.classIds?.some(id=>classEntry ? key(id)===classId : assigned.has(key(id)));
+              const results=[];
+              for(const b of entries){
+                const member=students.find(u=>u.id===b.studentId && eligible(u)) || assignment.recipients?.students?.find(u=>u.id===b.studentId && eligible(u));
+                assert(member,'学生不在这份作业的所选班级中',403);
+                const attempts=await db.find('submission',{assignmentId:a.id,studentId:member.id},c);
+                const record=assignmentRecords(attempts,[assignment])[0];
+                const current=record?.effective || record?.latest;
+                assert((b.submissionId||null)===(current?.id||null),'成绩版本已更新，请刷新后再修改',409);
+                const entry=current || {id:'teacher-score:'+hash(a.id+':'+member.id),type:'submission',assignmentId:a.id,studentId:member.id,studentName:member.name,classIds:member.classIds,manualScoreEntry:true,status:'published',createdAt:now(),version:assignment.version,text:'',files:[],rubricSnapshot:[]};
+                const next=editTeacherScore(entry,assignment,b,user.id,now());
+                await c.query(`UPDATE ${db.jobs} SET status='cancelled',finished=now(),lease=NULL WHERE target=$1 AND kind='grade' AND status IN ('queued','running')`,[entry.id]);
+                await db.put('submission',next,c);
+                await db.audit(user.id,'teacher_score',next.id,c);
+                results.push(next);
+              }
+              return results;
             });
-            return(json(res,{submission:publicSubmission(result)}),true);
+            return(json(res,classEntry?{saved:results.length}:{submission:publicSubmission(results[0])}),true);
           }
           if(method==='GET'&&route[2]==='pdf'){
             rate(req,'pdf',40,user.id);

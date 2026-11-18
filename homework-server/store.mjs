@@ -70,7 +70,7 @@ export function createStore(connectionString, schema = "homework") {
     },
     // Filter before transferring JSON (rubrics and paper snapshots can be large).
     async find(kind, filters, client = pool) {
-      const allowed = new Set(['studentId','assignmentId','owner','teacherId','unitId','version']);
+      const allowed = new Set(['studentId','assignmentId','owner','teacherId','unitId','version','status']);
       const values = [kind], clauses = ['kind=$1'];
       for (const [field, value] of Object.entries(filters)) {
         if (!allowed.has(field)) throw new Error('Invalid record filter');

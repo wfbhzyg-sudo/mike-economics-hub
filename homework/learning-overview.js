@@ -104,6 +104,7 @@ export function mountLearningOverview(ctx, initialData) {
   </div>
   <div class="lo-body" id="lo-body">
     <div class="lo-panel" id="lo-panel-matrix" role="tabpanel" aria-labelledby="lo-tab-matrix" ${tab === 'matrix' ? '' : 'hidden'}>
+      <button type="button" class="lo-btn lo-class-entry" data-class-entry>按班录入线下成绩</button>
       <div class="lo-switch" role="group" aria-label="手机查看方式">
         <button type="button" data-mview="list" aria-pressed="${mobileView === 'list'}">学生列表</button>
         <button type="button" data-mview="grid" aria-pressed="${mobileView === 'grid'}">成绩矩阵</button>
@@ -192,7 +193,7 @@ export function mountLearningOverview(ctx, initialData) {
   }
 
   function assignmentOptions(scope) {
-    return [['', '全部作业'], ...scope.slice().sort(newestAssignmentFirst).map(assignment => [assignment.id, `${assignmentLabel(assignment)} · ${monthDay(workDate(assignment))}`])];
+    return [['', '全部作业'], ...scope.slice().sort(newestAssignmentFirst).map(assignment => [assignment.id, `${assignment.title || assignmentLabel(assignment)} · ${monthDay(workDate(assignment))}`])];
   }
 
   function draw() {
@@ -316,7 +317,7 @@ export function mountLearningOverview(ctx, initialData) {
       <th scope="col" class="lo-student-head" aria-sort="${sortState('name')}">${sortButton('name', '学生')}</th>
       <th scope="col" class="lo-trend-head" aria-sort="${sortState('trend')}">${sortButton('trend', '趋势')}</th>
       <th scope="col" class="lo-avg-head" aria-sort="${sortState('average')}">${sortButton('average', '平均')}</th>
-      ${columns.map(assignment => `<th scope="col" class="lo-col" title="${h(`${assignment.title || ''}${assignment.dueAt ? ` · 截止 ${longDate(assignment.dueAt)}` : ''}`)}"><span>${h(assignmentLabel(assignment))}</span><small>${h(monthDay(workDate(assignment)))}</small></th>`).join('')}
+      ${columns.map(assignment => `<th scope="col" class="lo-col" title="${h(`${assignment.title || ''}${assignment.dueAt ? ` · 截止 ${longDate(assignment.dueAt)}` : ''}`)}"><span>${h(assignment.title || assignmentLabel(assignment))}</span><small>${h(monthDay(workDate(assignment)))}</small></th>`).join('')}
     </tr></thead>`;
     const body = rows.map(row => {
       const student = row.student;
@@ -399,7 +400,7 @@ export function mountLearningOverview(ctx, initialData) {
           <span class="lo-chevron" aria-hidden="true">›</span>
         </summary>
         <div class="lo-card-body">
-          ${recent.length ? `<div class="lo-mini-scores">${recent.map(cell => `<div class="lo-mini"><small>${h(assignmentLabel(cell.assignment))} · ${h(monthDay(workDate(cell.assignment)))}</small><strong>${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : formatPercent(cell.rate)}</strong><span data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></div>`).join('')}</div>` : '<p class="lo-note">还没有已发布成绩。</p>'}
+          ${recent.length ? `<div class="lo-mini-scores">${recent.map(cell => `<div class="lo-mini"><small>${h((cell.assignment.title || assignmentLabel(cell.assignment)))} · ${h(monthDay(workDate(cell.assignment)))}</small><strong>${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : formatPercent(cell.rate)}</strong><span data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></div>`).join('')}</div>` : '<p class="lo-note">还没有已发布成绩。</p>'}
           <div class="lo-card-actions"><button type="button" class="lo-btn" data-profile="${h(row.student.id)}">查看学生档案</button><button type="button" class="lo-btn" data-card-cell="${h(row.student.id)}">查看最近作业详情</button></div>
         </div>
       </details>`;
@@ -453,7 +454,7 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
       <p class="lo-profile-chip"><span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>${profile.openCorrections ? `<span class="lo-chip" data-tone="warn">待订正 ${profile.openCorrections}</span>` : ''}</p>
     </div>
-    <section class="lo-profile-section"><div class="lo-section-head"><h3>最近成绩</h3><small>${recent.length ? `最近 ${recent.length} 次已发布` : ''}</small></div>${recent.length ? `<ul class="lo-recent">${recent.map(cell => `<li><a href="#work/review/${encodeURIComponent(cell.record?.latest?.id || '')}"><span class="lo-recent-name">${h(assignmentLabel(cell.assignment))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span><span class="lo-recent-score">${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : '—'}</span><span class="lo-band-pill" data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></a></li>`).join('')}</ul>` : '<p class="lo-note">还没有已发布成绩。待复核的提交不会显示为 0 分。</p>'}</section>
+    <section class="lo-profile-section"><div class="lo-section-head"><h3>最近成绩</h3><small>${recent.length ? `最近 ${recent.length} 次已发布` : ''}</small></div>${recent.length ? `<ul class="lo-recent">${recent.map(cell => `<li><a href="#work/review/${encodeURIComponent(cell.record?.latest?.id || '')}"><span class="lo-recent-name">${h((cell.assignment.title || assignmentLabel(cell.assignment)))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span><span class="lo-recent-score">${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : '—'}</span><span class="lo-band-pill" data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></a></li>`).join('')}</ul>` : '<p class="lo-note">还没有已发布成绩。待复核的提交不会显示为 0 分。</p>'}</section>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>优先复习的题</h3><small>${profile.weak.length ? `按得分率排序 · ${profile.mistakes} 道失分题` : ''}</small></div>${profile.weak.length ? `<ul class="lo-weak">${profile.weak.map(item => `<li><button type="button" data-open-question data-s="${h(row.student.id)}" data-a="${h(item.assignmentId)}" data-q="${h(item.questionId)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 58))}</span><span class="lo-weak-meta">${h(item.assignmentTitle || '')} · ${item.score}/${item.maxPoints}</span></button></li>`).join('')}</ul>` : '<p class="lo-note">这个范围内没有失分题记录。</p>'}</section>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>成绩构成</h3><small>只统计已发布成绩</small></div>
       <dl class="lo-breakdown">
@@ -467,7 +468,7 @@ export function mountLearningOverview(ctx, initialData) {
         const own = cell.record?.grade;
         const statusChip = rowStatus(profile.row);
         return `<li><button type="button" class="lo-history-row" data-history-cell data-s="${h(row.student.id)}" data-a="${h(cell.assignment.id)}">
-          <span class="lo-history-name">${h(assignmentLabel(cell.assignment))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span>
+          <span class="lo-history-name">${h((cell.assignment.title || assignmentLabel(cell.assignment)))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span>
           <span class="lo-chip" data-tone="${chipTone(cell.status === 'graded' ? statusChip.key : cell.status === 'missing' ? 'missing' : cell.status === 'pending' || cell.status === 'attention' ? 'review' : 'neutral')}">${h(cell.status === 'graded' ? '已出分' : cell.label)}</span>
           <span class="lo-history-score">${own ? `${own.total}<small>/${own.maxPoints}</small>` : '—'}</span>
           <span class="lo-band-pill" data-band="${cell.rate === null ? '' : (scoreBand(cell.rate)?.level || '')}">${formatPercent(cell.rate)}</span>
@@ -835,7 +836,7 @@ function renderDetail() {
     detailHost.innerHTML = markup;
     if (sheet.open) {
       sheetBody.innerHTML = markup;
-      $('#lo-sheet-title').textContent = found ? `${found.row.student.name} · ${assignmentLabel(found.cell.assignment)}` : '成绩详情';
+      $('#lo-sheet-title').textContent = found ? `${found.row.student.name} · ${(found.cell.assignment.title || assignmentLabel(found.cell.assignment))}` : '成绩详情';
     }
   }
 
@@ -915,7 +916,7 @@ function renderDetail() {
     const optionText = new Map(options.map(option => [option.label, option.text || '']));
     return `<div class="lo-detail-inner">
       <button type="button" class="lo-back" data-back-question>← 返回全部题目</button>
-      <header class="lo-detail-head"><div><h2>第 ${summary.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || question.type || '题目')}</h2><p>${h(row.student.name)} · ${h(assignmentLabel(cell.assignment))}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
+      <header class="lo-detail-head"><div><h2>第 ${summary.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || question.type || '题目')}</h2><p>${h(row.student.name)} · ${h((cell.assignment.title || assignmentLabel(cell.assignment)))}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
       <div class="lo-detail-score"><strong>${own ? `${own.score}<small>/${own.maxPoints}</small>` : '—'}</strong>${currentChoiceChip(choice, own)}</div>
       <p class="lo-prompt">${h(question.prompt || '未记录题干')}</p>
       ${question.options?.length ? `<ol class="lo-options" aria-label="选项">${options.map(option => `<li${option.label === choice ? ' class="chosen"' : ''}><span class="lo-option-label">${h(option.label)}</span><span>${h(option.text || '')}</span>${option.label === choice ? '<em>本人选择</em>' : ''}</li>`).join('')}</ol>` : '<p class="lo-note">该题没有选项结构，可能为简答或材料题。</p>'}
@@ -1084,6 +1085,87 @@ function renderDetail() {
     filter.timer = setTimeout(draw, 120);
   });
 
+  function openClassEntry() {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'lo-class-entry-dialog';
+    dialog.setAttribute('aria-labelledby','lo-entry-title');
+    dialog.innerHTML = `<form><header><h2 id="lo-entry-title">按班录入线下成绩</h2><button type="button" data-close aria-label="关闭">×</button></header>
+      <div class="lo-entry-filters"><label>班级<select name="classId"></select></label><label>已布置的线下作业<select name="work"></select></label></div>
+      <p class="lo-note">按 Enter 跳到下一位。留空不计均分，0 分计入。</p><div class="lo-entry-rows"></div>
+      <footer><span role="status"></span><button type="submit" class="lo-btn lo-primary">保存并公布</button></footer></form>`;
+    document.body.append(dialog);
+    const form = dialog.querySelector('form'), roster = form.querySelector('.lo-entry-rows');
+    const info = form.querySelector('[role=status]'), save = form.querySelector('[type=submit]');
+    const cls = form.elements.classId, work = form.elements.work;
+    let cells = [], busy = false, currentClass = '', currentWork = '';
+    const dirty = () => [...roster.querySelectorAll('input')].some(i => i.value !== i.defaultValue || i.validity.badInput);
+    const canLeave = () => !busy && (!dirty() || window.confirm('放弃这次尚未保存的成绩？'));
+    const close = () => { if (canLeave()) dialog.close(); };
+    form.querySelector('[data-close]').onclick = close;
+    dialog.oncancel = e => {e.preventDefault(); close();};
+    dialog.onclose = () => dialog.remove();
+    const byClass = id => scopedAssignments(data,{classId:id,period:'all'})
+      .filter(a => (a.offline || a.format==='score') && a.published && !a.deletedAt).sort(newestAssignmentFirst);
+    const options = classes.map(c => [c.id,c.name]);
+    const initial = filter.classId || classes.find(c => byClass(c.id).length)?.id || classes[0]?.id || '';
+    fill(cls, options, initial);
+    function showRoster() {
+      currentWork = work.value;
+      const assignment = data.assignments.find(a => a.id === currentWork);
+      cells = assignment ? buildRows(data,scopedStudents(data,{classId:cls.value,assignments:[assignment]}),[assignment])
+        .map(row => row.cells[0]).filter(cell => cell && (cell.required || cell.record?.grade))
+        .sort((a,b) => a.student.name.localeCompare(b.student.name,'zh-CN')) : [];
+      const fallback = assignment && scoreMaximum(assignment,data.submissions.filter(s=>s.assignmentId===assignment.id).map(s=>s.publishedGrade));
+      roster.innerHTML = cells.map((cell,i) => {
+        const grade=cell.record?.grade, max=grade?.maxPoints || fallback;
+        return `<div class="lo-entry-row"><label for="lo-score-${i}">${h(cell.student.name)}</label>
+          <input id="lo-score-${i}" type="number" data-index="${i}" min="0" ${max?'max="'+Number(max)+'"':''} step="0.1" inputmode="decimal" value="${h(grade?.total ?? '')}" placeholder="留空">
+          <label>／ <input aria-label="${h(cell.student.name)}的满分" type="number" data-max="${i}" min="0.1" max="1000000" step="0.1" inputmode="decimal" value="${h(max ?? '')}" placeholder="满分"></label></div>`;
+      }).join('');
+      info.textContent = !assignment ? '这个班还没有已布置的线下作业。' : cells.length ? `共 ${cells.length} 位学生` : '没有可录入的学生。';
+      save.disabled=true;
+    }
+    function showWorks() {
+      currentClass = cls.value;
+      const assignments = cls.value ? byClass(cls.value) : [];
+      fill(work, assignments.map(a => [a.id,a.title || '线下作业']), assignments.find(a=>a.id===filter.assignmentId)?.id || assignments[0]?.id || '');
+      showRoster();
+    }
+    cls.onchange = () => {if(canLeave()) showWorks(); else cls.value=currentClass;};
+    work.onchange = () => {if(canLeave()) showRoster(); else work.value=currentWork;};
+    roster.oninput = e => {
+      if(e.target.hasAttribute('data-max')){
+        const field=roster.querySelector('[data-index="'+e.target.dataset.max+'"]');
+        if(e.target.value)field.max=e.target.value;else field.removeAttribute('max');
+      }
+      save.disabled=!dirty();
+    };
+    roster.onkeydown = e => {
+      if(e.key==='Enter'){e.preventDefault();const i=Number(e.target.dataset.index ?? e.target.dataset.max);
+        const next=roster.querySelector('[data-index="'+(i+1)+'"]');(next||save).focus();next?.select();}
+    };
+    form.onsubmit = async e => {
+      e.preventDefault(); if(busy || !dirty()) return;
+      const entries=[];
+      for(const [i,cell] of cells.entries()){
+        const score=roster.querySelector('[data-index="'+i+'"]'), max=roster.querySelector('[data-max="'+i+'"]');
+        if(score.value===score.defaultValue && max.value===max.defaultValue)continue;
+        if(!max.value || !max.checkValidity()){info.textContent='请填写这位学生的有效满分';max.focus();return;}
+        const grade=cell.record?.grade;
+        entries.push({studentId:cell.student.id,score:score.value===''?null:Number(score.value),maxPoints:Number(max.value),
+          submissionId:(cell.record?.effective||cell.record?.latest)?.id || null, revision:grade ? grade.revision||1 : 0});
+      }
+      busy=true;form.inert=true;info.textContent='正在保存…';
+      try {
+        const r=await fetch('/api/homework/assignments/'+encodeURIComponent(currentWork)+'/class-scores',{method:'PATCH',
+          headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:JSON.stringify({classId:currentClass,entries})});
+        const result=await r.json();if(!r.ok)throw Error(result.error || '保存失败');
+        dialog.close();await refresh();toast(`已公布 ${result.saved} 位学生的成绩`);
+      } catch(error){info.textContent=error.message;} finally {busy=false;form.inert=false;}
+    };
+    showWorks();dialog.showModal();
+  }
+
   function offlineEditor(cell) {
     const grade = cell.record?.grade, submission = cell.record?.effective || cell.record?.latest;
     const max = scoreMaximum({...cell.assignment,maxPoints:grade?.maxPoints||cell.assignment.maxPoints},data.submissions.filter(s=>s.assignmentId===cell.assignment.id).map(s=>s.publishedGrade));
@@ -1123,6 +1205,7 @@ function renderDetail() {
 
   root.addEventListener('click', event => {
     const target = event.target;
+    if (target.closest('[data-class-entry]')) { openClassEntry(); return; }
     if (target.closest('[data-edit-score]')) { const found=findSelection(); if(found) offlineEditor(found.cell); return; }
     const cell = target.closest('[data-cell]');
     if (cell) { selectCell(cell.dataset.s, cell.dataset.a); return; }

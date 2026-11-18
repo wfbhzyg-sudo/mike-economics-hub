@@ -42,10 +42,9 @@
 @media(min-width:1101px){body:has(.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher{left:24px;right:auto;bottom:24px}}
 @media(max-width:760px){body:has(.correction-editor :is(input,textarea):focus) .mike-launcher{visibility:hidden;pointer-events:none}}
 
-/* Keep question switching in view and give Mike a reserved mobile navigation slot. */
+/* Keep question switching in view. */
 @media(max-width:760px){
  .mistake-inline{scroll-margin-top:72px}
- body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) #dock{padding-right:64px}
  body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher{right:8px;bottom:calc(8px + env(safe-area-inset-bottom));min-width:44px;min-height:44px;padding:4px}
  body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher img{width:36px;height:36px}
  body:has(.result-paper,.mistake-inline .correction-workspace,.gj-inline-correction:not([hidden]) .correction-workspace,#main>.correction-workspace) .mike-launcher span{display:none}
@@ -103,39 +102,11 @@ dialog.mcq-modal,.homework-surface dialog.mcq-modal{height:fit-content;backgroun
  body[data-mcq-active=true] .mcq-answerbar button{padding:6px 8px;font-size:12px}
  body[data-mcq-active=true] .mike-launcher{bottom:70px}
 }
-/* Reserve a small help slot instead of covering attachments or answer controls. */
-body[data-mcq-active=true] .mcq-top{padding-right:48px}
 body[data-mcq-active=true][data-mcq-question-type] .mike-launcher{top:8px!important;right:10px!important;bottom:auto!important;left:auto!important;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;place-content:center}
 body[data-mcq-active=true] .mike-launcher img{width:38px;height:38px}
 body[data-mcq-active=true] .mike-launcher span{display:none}
 
 .mcq-preflight>h2{font:500 15px/1.5 var(--sans);color:var(--ui-muted)}
-
-/* Give the companion a navigation slot on student overview screens. */
-@media(max-width:760px){
- body:has(> #main)[data-work-task=false]:not([data-work-route=library],[data-mcq-active=true],.sp-immersive) #dock{padding-right:64px}
- body:has(> #main)[data-work-task=false]:not([data-work-route=library],[data-mcq-active=true],.sp-immersive) .mike-launcher{top:auto!important;right:8px!important;left:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;min-width:44px;min-height:44px;width:44px;height:44px;padding:4px}
- body:has(> #main)[data-work-task=false]:not([data-work-route=library],[data-mcq-active=true],.sp-immersive) .mike-launcher img{width:36px;height:36px}
- body:has(> #main)[data-work-task=false]:not([data-work-route=library],[data-mcq-active=true],.sp-immersive) .mike-launcher span{display:none}
-}
-
-/* Student overview pages: one assistant slot beside the four-tab dock. */
-@media (max-width: 760px) {
-  body:has(> #main) #dock { padding-right: 56px; }
-  body:has(> #main):not([data-mcq-active=true],.sp-immersive) .mike-launcher {
-    top: auto !important; left: auto !important;
-    right: 8px !important;
-    bottom: calc(8px + env(safe-area-inset-bottom) + var(--mike-keyboard-inset, 0px)) !important;
-    width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 4px;
-  }
-  body:has(> #main) .mike-launcher img { width: 36px; height: 36px; }
-  body:has(> #main) .mike-launcher span { display: none; }
-  html[data-homework-route="library"]:not(.library-focused) .mike-launcher {
-    top: auto !important;
-    bottom: calc(8px + env(safe-area-inset-bottom) + var(--mike-keyboard-inset, 0px)) !important;
-    right: 8px !important; left: auto !important;
-  }
-}
 
 /* One answer and its independent elimination control share a visual row. */
 .answer-pair { display:flex; min-width:0; align-items:stretch; border:1px solid #c6d2ce; border-radius:10px; background:white; overflow:hidden }

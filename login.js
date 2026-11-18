@@ -6,11 +6,12 @@ function setMode(value){
  mode=value;$('#form-error').textContent='';form.hidden=false;$('#recovery-result').hidden=true;
  $('#form-title').textContent={login:'登录一页通',register:'加入你的班级',recover:'找回密码',password:'修改密码'}[mode];
  $('#form-description').textContent={login:'使用现有 Mike 通用账号',register:'注册后，三个学习平台共用此账号',recover:'使用你的 Mike 通用账号恢复码',password:'修改后，所有设备需要重新登录'}[mode];
- $('#registration-fields').hidden=mode!=='register';$('#recovery-field').hidden=mode!=='recover';$('#current-field').hidden=mode!=='password';$('#username-field').hidden=mode==='password';$('#login-options').hidden=mode!=='login';$('#consent-field').hidden=mode!=='register';$('#register').hidden=mode!=='login';$('#back-login').hidden=mode==='login';
+ $('#registration-fields').hidden=mode!=='register';$('#recovery-field').hidden=mode!=='recover';const old=$('#current-field');if(mode==='password'&&!old)$('#current-password-template').after($('#current-password-template').content.cloneNode(true));else if(mode!=='password')old?.remove();$('#username-field').hidden=mode==='password';$('#login-options').hidden=mode!=='login';$('#consent-field').hidden=mode!=='register';$('#register').hidden=mode!=='login';$('#back-login').hidden=mode==='login';
  $('#back-login').textContent=mode==='password'?'返回一页通':'返回登录';
  $('#password-label').textContent=mode==='recover'||mode==='password'?'新密码':'密码';$('#password').autocomplete=mode==='login'?'current-password':'new-password';$('#password').minLength=mode==='login'?1:12;
  $('#submit').textContent={login:'登录并进入',register:'创建账号',recover:'重设密码',password:'更新密码'}[mode];
- for(const input of form.querySelectorAll('input'))input.required=!input.closest('[hidden]')&&['username','password','name','classCode','recoveryCode','currentPassword','consent'].includes(input.name);
+ form.action='/api/portal/'+mode;
+ for(const input of form.querySelectorAll('input')){input.disabled=Boolean(input.closest('[hidden]'));input.required=!input.disabled&&['username','password','name','classCode','recoveryCode','currentPassword','consent'].includes(input.name);}
 }
 $('#recover').onclick=()=>setMode('recover');$('#register').onclick=()=>setMode('register');$('#back-login').onclick=()=>mode==='password'?location.replace('/'):setMode('login');
 $('#reveal-password').onclick=()=>{const show=$('#password').type==='password';$('#password').type=show?'text':'password';$('#reveal-password').setAttribute('aria-pressed',String(show));$('#reveal-password').setAttribute('aria-label',show?'隐藏密码':'显示密码');};
