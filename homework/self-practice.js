@@ -316,7 +316,8 @@ export function createSelfPracticeUI(ctx) {
       main.querySelector('[data-start-retry]').onclick=reload;return;
     }
     const local=readJSON(LOCAL_KEY+id,null),useLocal=Boolean(local?.dirty);
-    const answers={...paper.answers,...(useLocal?local.answers:{})};
+    const answers={...(useLocal?local.answers:paper.answers)};
+    const excluded={...(useLocal?local.excluded:paper.excluded)};
     const flags=new Set(useLocal?(local.flags||[]):(paper.flags||[]));
     const questions=paper.questions;
     let index=Math.min(questions.length-1,Math.max(0,(useLocal?local.index:paper.index)||0));
@@ -334,12 +335,13 @@ export function createSelfPracticeUI(ctx) {
       <div class="sp-save-state" role="status"><span data-save></span><button type="button" data-retry-save hidden>重试保存</button><button type="button" data-retry-submit hidden>重试交卷</button></div>
     </section>`;
     const page=main.firstElementChild,questionHost=page.querySelector('[data-question]'),railHost=page.querySelector('[data-rail]'),saveState=page.querySelector('[data-save]'),timerHost=page.querySelector('[data-timer]'),nextButton=page.querySelector('[data-next]'),flagButton=page.querySelector('[data-flag]'),retrySave=page.querySelector('[data-retry-save]'),retrySubmit=page.querySelector('[data-retry-submit]');
-    const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,flags:[...flags],index,revision,dirty,savedAt:Date.now()});
+    const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,excluded,flags:[...flags],index,revision,dirty,savedAt:Date.now()});
     const setSave=text=>{if(current())saveState.textContent=text;};
     const paletteCells=()=>questions.map((q,i)=>`<button type="button" class="sp-palette-cell" data-jump="${i}" data-state="${answers[q.id]?'answered':'blank'}${flags.has(q.id)?' flagged':''}${i===index?' current':''}" aria-current="${i===index?'step':'false'}" aria-label="第 ${i+1} 题，${answers[q.id]?'已答 '+answers[q.id]:'未答'}${flags.has(q.id)?'，已标记':''}">${i+1}</button>`).join('');
     const paintState=()=>{
       const q=questions[index],selected=answers[q.id];
-      questionHost.querySelectorAll('[data-choice]').forEach((button,i)=>{button.setAttribute('aria-checked',String(button.dataset.choice===selected));button.tabIndex=selected?(button.dataset.choice===selected?0:-1):(i===0?0:-1);button.disabled=frozen;});
+      questionHost.querySelectorAll('[data-choice]').forEach((button,i)=>{button.setAttribute('aria-checked',String(button.dataset.choice===selected));button.tabIndex=selected?(button.dataset.choice===selected?0:-1):(i===0?0:-1);button.disabled=frozen;button.classList.toggle("excluded",(excluded[q.id]||[]).includes(button.dataset.choice));});
+      for(const dot of questionHost.querySelectorAll("[data-strike]")){dot.disabled=frozen;dot.setAttribute("aria-pressed",String((excluded[q.id]||[]).includes(dot.dataset.strike)));}
       flagButton.disabled=frozen;flagButton.setAttribute('aria-pressed',String(flags.has(q.id)));flagButton.textContent=flags.has(q.id)?'已标记':'标记';
       page.querySelector('[data-prev]').disabled=index===0||submitting;
       nextButton.disabled=submitting||savedRevConflict;
@@ -360,7 +362,7 @@ export function createSelfPracticeUI(ctx) {
       clearTimeout(saveTimer);
       saving=(async()=>{
         while(dirty&&!savedRevConflict){
-          const sentVersion=editVersion,payload={revision,answers:{...answers},flags:[...flags],index};
+          const sentVersion=editVersion,payload={revision,answers:{...answers},excluded:structuredClone(excluded),flags:[...flags],index};
           setSave('正在保存…');
           try{
             const out=await put(`self-practice/attempts/${encodeURIComponent(id)}/answers`,payload);
@@ -387,12 +389,18 @@ export function createSelfPracticeUI(ctx) {
       if(frozen||!current())return;
       if(expired()){submitPaper(true);return;}
       const q=questions[index];if(!q.optionLabels.includes(choice))return;
-      answers[q.id]=choice;paintState();scheduleSave();
+      answers[q.id]=choice;excluded[q.id]=(excluded[q.id]||[]).filter(x=>x!==choice);paintState();scheduleSave();
     };
     const paintQuestion=()=>{
       const q=questions[index];page.querySelector('[data-progress]').textContent=`${index+1} / ${questions.length}`;
-      questionHost.innerHTML=`<article class="sp-card sp-question-card"><div class="sp-question-meta"><span>第 ${index+1} 题</span><span>${h(q.topic)}</span>${q.sourcePages?`<span>${h(q.sourcePages)}</span>`:''}<button type="button" class="sp-zoom" data-zoom-toggle aria-pressed="false">放大</button></div><div class="sp-question-images">${q.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题" decoding="async">`).join('')}</div>${q.prompt?`<p class="sp-prompt">${h(q.prompt)}</p>`:''}<div class="sp-options" data-label-only="${!q.optionLabels.some(label=>optionText(q,label))}" role="radiogroup" aria-label="第 ${index+1} 题，选择答案">${q.optionLabels.map(label=>`<button type="button" class="sp-option" role="radio" aria-checked="false" data-choice="${h(label)}"><span>${h(label)}</span>${optionText(q,label)?`<small>${h(optionText(q,label))}</small>`:''}</button>`).join('')}</div></article>`;
+      questionHost.innerHTML=`<article class="sp-card sp-question-card"><div class="sp-question-meta"><span>第 ${index+1} 题</span><span>${h(q.topic)}</span>${q.sourcePages?`<span>${h(q.sourcePages)}</span>`:''}<button type="button" class="sp-zoom" data-zoom-toggle aria-pressed="false">放大</button></div><div class="sp-stimulus"><div class="sp-question-images">${q.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题" decoding="async">`).join('')}</div>${q.prompt?`<p class="sp-prompt">${h(q.prompt)}</p>`:''}</div><div class="sp-options" data-label-only="${!q.optionLabels.some(label=>optionText(q,label))}" role="radiogroup" aria-label="第 ${index+1} 题，选择答案">${q.optionLabels.map(label=>`<div class="answer-pair"><button type="button" class="sp-option" role="radio" aria-checked="false" data-choice="${h(label)}"><span>${h(label)}</span>${optionText(q,label)?`<small>${h(optionText(q,label))}</small>`:''}</button><button class="strike-dot" type="button" data-strike="${h(label)}" aria-label="排除选项 ${h(label)}" title="排除或恢复 ${h(label)}">⊖</button></div>`).join('')}</div></article>`;
       questionHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
+      for(const dot of questionHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
+        if(frozen||!current())return;if(expired()){submitPaper(true);return;}
+        const label=dot.dataset.strike,set=new Set(excluded[q.id]||[]);
+        if(set.has(label))set.delete(label);else{set.add(label);if(answers[q.id]===label)answers[q.id]='';}
+        excluded[q.id]=[...set];paintState();scheduleSave();
+      };
       const zoom=questionHost.querySelector('[data-zoom-toggle]'),images=questionHost.querySelector('.sp-question-images');
       zoom.onclick=()=>{const on=images.dataset.zoom!=='true';images.dataset.zoom=String(on);zoom.setAttribute('aria-pressed',String(on));zoom.textContent=on?'缩小':'放大';};
       nextButton.textContent=index===questions.length-1?'检查并提交':'下一题';paintState();

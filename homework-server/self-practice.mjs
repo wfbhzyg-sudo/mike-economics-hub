@@ -128,6 +128,7 @@ export function createSelfPractice({db}) {
         ...attempt,
         answers,
         flags,
+        excluded:body.excluded ? Object.fromEntries(attempt.questions.map(q=>[q.id,optionLabels(q).filter(v=>Array.isArray(body.excluded[q.id]) && body.excluded[q.id].includes(v) && answers[q.id]!==v)])) : attempt.excluded,
         index,
         revision: attempt.revision + 1,
         updatedAt: now(),

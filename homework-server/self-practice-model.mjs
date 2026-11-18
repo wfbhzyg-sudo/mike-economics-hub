@@ -233,6 +233,7 @@ export function publicAttempt(attempt, {includeResult = false} = {}) {
     index: attempt.index || 0,
     answers: {...(attempt.answers || {})},
     flags: [...(attempt.flags || [])],
+    excluded:attempt.excluded||{},
     questions: attempt.questions.map(publicQuestion),
     ...(includeResult || attempt.status === 'submitted' ? {result: attempt.result, corrections: attempt.corrections || {}} : {}),
     serverNow: new Date().toISOString(),

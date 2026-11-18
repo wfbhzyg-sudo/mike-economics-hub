@@ -309,9 +309,9 @@ export function mountLearningOverview(ctx, initialData) {
     };
     const head = `<thead><tr>
       <th scope="col" class="lo-student-head" aria-sort="${sortState('name')}">${sortButton('name', '学生')}</th>
+      <th scope="col" class="lo-trend-head" aria-sort="${sortState('trend')}">${sortButton('trend', '趋势')}</th>
       <th scope="col" class="lo-avg-head" aria-sort="${sortState('average')}">${sortButton('average', '平均')}</th>
       ${columns.map(assignment => `<th scope="col" class="lo-col" title="${h(`${assignment.title || ''}${assignment.dueAt ? ` · 截止 ${longDate(assignment.dueAt)}` : ''}`)}"><span>${h(assignmentLabel(assignment))}</span><small>${h(monthDay(workDate(assignment)))}</small></th>`).join('')}
-      <th scope="col" class="lo-trend-head" aria-sort="${sortState('trend')}">${sortButton('trend', '趋势')}</th>
     </tr></thead>`;
     const body = rows.map(row => {
       const student = row.student;
@@ -321,9 +321,9 @@ export function mountLearningOverview(ctx, initialData) {
       }).join('');
       return `<tr data-student-row="${h(student.id)}">
         <th scope="row" class="lo-student"><button type="button" class="lo-student-link" data-profile="${h(student.id)}" title="打开 ${h(student.name)} 的学生档案">${highlightText(student.name, filter.query)}</button><small>${h(student.username || '')}</small></th>
+        ${trendMarkup(row)}
         <td class="lo-avg">${averageMarkup(row)}</td>
         ${cells}
-        ${trendMarkup(row)}
       </tr>`;
     }).join('');
     const empty = rows.length ? '' : `<tr><td class="lo-matrix-empty" colspan="${columns.length + 3}"><p>当前范围没有可显示的学生。</p><p class="lo-note">调整班级、单元或时间范围，或先把学生加入班级。</p></td></tr>`;

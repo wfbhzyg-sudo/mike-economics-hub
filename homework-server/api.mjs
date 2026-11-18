@@ -218,7 +218,12 @@ export async function createHomework({externalAuth} = {}) {
     }
     if(s.choices){
       s.choiceGrade=choiceScore(a.rubric,s.choices);
-      if(a.rubric.every(q=>q.type==='choice')){s.status='needs_review';s.suggestedGrade=s.choiceGrade;s.teacherReviewDraft=null;s.error=null;s.jobId=null;s.updatedAt=now();await db.put('submission',s,c);return;}
+      if(a.rubric.every(q=>q.type==='choice')){
+        s.suggestedGrade=s.choiceGrade;s.teacherReviewDraft=null;s.error=null;s.jobId=null;s.updatedAt=now();
+        if(s.choiceGrade.needsReview) s.status='needs_review';
+        else publishedResult(s,s.choiceGrade,'system',now(),'','automatic');
+        await db.put('submission',s,c);return;
+      }
     }
     s.status = "queued";
     s.suggestedGrade = null;
@@ -452,10 +457,9 @@ export async function createHomework({externalAuth} = {}) {
                   if(target.choiceGrade)result=combineScores(target.choiceGrade,result);
                   target.suggestedGrade = result;
                   target.status = "needs_review";
-                  const settings=await db.get('model-settings',c);
-                  const fingerprint=[settings.provider,settings.baseUrl,settings.model].join('|');
-                  if(target.gradingMode==='auto' && b.protocolVersion===2 && !result.needsReview && settings.autoPublishValidatedFor===fingerprint){
-                    publishedResult(target,result,'worker',now(),'','automatic',settings.model);
+                  if([2,3].includes(b.protocolVersion) && !result.needsReview && Number.isFinite(result.total)){
+                    const settings=await db.get('model-settings',c);
+                    publishedResult(target,result,'worker',now(),'','automatic',settings?.model);
                     await db.audit('worker','auto_publish_grade',target.id,c);
                   }
                 }
@@ -1259,6 +1263,7 @@ export async function createHomework({externalAuth} = {}) {
           const b = await body(req);
           if(route[2]==='review-draft'&&method==='PUT'){
             await db.tx(async c=>{const current=await requireSubmission(s.id,user,c);
+              assert(current.status!=='returned','此提交已退回',409);
               assert(!['queued','grading'].includes(current.status),'批阅还在进行，请完成后再保存',409);
               assert(b.jobId===current.jobId,'批阅版本已更新，请重新打开复核',409);
               assert(Number(b.revision||0)===Number(current.teacherReviewDraft?.revision||0),'另一处已保存复核，请重新打开核对',409);
@@ -1277,6 +1282,7 @@ export async function createHomework({externalAuth} = {}) {
                 a = await requireAssignment(s.assignmentId, user, c);
               assert(!a.deletedAt,"请先恢复作业再继续批阅",409);
               assert(a.version > 0, "尚未确认参考答案");
+              assert(current.status!=='returned','此提交已退回',409);
               await queueGrade(current, a, c);
               await db.audit(user.id, "regrade", s.id, c);
             });
@@ -1287,7 +1293,7 @@ export async function createHomework({externalAuth} = {}) {
               const current = await requireSubmission(s.id, user, c);
               assert(!(await db.get(s.assignmentId,c))?.deletedAt,"请先恢复作业再继续批阅",409);
               assert(
-                !["queued", "grading"].includes(current.status),
+                !["queued", "grading", "returned"].includes(current.status),
                 "请等待初批完成，或先退回提交",
               );
               assert(
@@ -1311,12 +1317,27 @@ export async function createHomework({externalAuth} = {}) {
             return (json(res, { submission: await db.get(s.id) }), true);
           }
           if (route[2] === "return" && method === "POST") {
-            assert(text(b.reason, 1000), "请填写退回原因");
-            s.status = "returned";
-            s.returnedReason = text(b.reason, 1000);
-            s.jobId = null;
-            await db.put("submission", s);
-            await db.audit(user.id, "return", s.id);
+            await db.tx(async c=>{
+              const current=await requireSubmission(s.id,user,c);
+              const assignment=await requireAssignment(current.assignmentId,user,c);
+              assert(!current.manualScoreEntry && !assignment.offline && assignment.format!=='score','线下录分没有学生提交',409);
+              const latest=(await db.find('submission',{studentId:current.studentId,assignmentId:current.assignmentId},c))
+                .filter(item=>item.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt))[0];
+              assert(latest?.id===current.id,'请打开最近一次提交',409);
+              if(current.status==='returned')return;
+              const attempts=await db.find('mcq-attempt',{studentId:current.studentId,assignmentId:current.assignmentId},c);
+              for(const attempt of attempts.filter(item=>item.submittedId===current.id)){
+                await db.put('mcq-attempt-history',{...attempt,id:attempt.id+':'+(attempt.sequence||0)},c);
+                await db.put('mcq-attempt',{...attempt,sequence:(attempt.sequence||0)+1,revision:attempt.revision+1,
+                  returnedFrom:current.id,submittedId:null,startedAt:null},c);
+              }
+              if(current.jobId)await c.query(`UPDATE ${db.jobs} SET status='cancelled',finished=now(),lease=NULL WHERE id=$1 AND status IN ('queued','running')`,[current.jobId]);
+              if(current.publishedGrade)(current.gradeHistory||=[]).push(structuredClone(current.publishedGrade));
+              Object.assign(current,{publishedGrade:null,status:'returned',returnedReason:text(b.reason,1000),
+                returnedAt:now(),returnedBy:user.id,jobId:null,updatedAt:now()});
+              await db.put('submission',current,c);
+              await db.audit(user.id,'return',current.id,c);
+            });
             return (json(res, { ok: true }), true);
           }
         }

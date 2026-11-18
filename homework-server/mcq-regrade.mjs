@@ -8,7 +8,7 @@ export async function keyChangePlan(db,a,b,c){
  assert(q.manualGradingRequired||q.correctOptions?.[0]!==b.answer,'答案没有变化');
  const rubric=a.rubric.map(x=>x.id===q.id?{...x,correctOptions:[b.answer],answer:b.answer,manualGradingRequired:false}:x);
  const latest=new Map();for(const s of (await db.list('submission',c)).filter(s=>s.assignmentId===a.id&&s.choices).sort((x,y)=>Date.parse(x.submittedAt)-Date.parse(y.submittedAt)))latest.set(s.studentId,s);
- const submissions=[...latest.values()].filter(s=>s.version===a.version);
+ const submissions=[...latest.values()].filter(s=>s.version===a.version && s.status!=='returned');
  assert(!submissions.some(s=>['queued','grading'].includes(s.status)),'请等当前批阅完成再修改答案',409);
  const rows=submissions.map(s=>{const base=s.publishedGrade||s.suggestedGrade,short=rubric.filter(q=>q.type!=='choice').map(q=>base?.questions.find(x=>x.id===q.id)?.score),choice=choiceScore(rubric,s.choices).total,after=short.some(x=>x==null)||choice===null?null:choice+short.reduce((n,x)=>n+x,0);return {submissionId:s.id,studentId:s.studentId,before:base?.total??null,after}});
  const token=hash(JSON.stringify([a.id,a.version,b.questionId,b.answer,submissions.map(s=>[s.id,s.updatedAt,s.status,s.choices,s.publishedGrade,s.teacherReviewDraft])]));

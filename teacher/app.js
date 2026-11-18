@@ -82,7 +82,8 @@ function navigation(section){
   :id==='analytics'?section==='analytics'||/^work\/gradebook/.test(current)
   :id==='work/reviews'?/work\/(review|overview)/.test(current)
   :id==='classes'?section==='classes'||section==='student'
-  :section==='work'&&!/work\/(review|overview|gradebook)/.test(current);
+  :id==='bank'?section==='bank'
+  :id==='work/assignments'&&section==='work'&&!/work\/(review|overview|gradebook)/.test(current);
  const links=sections.map(([id,title,name])=>`<a href="#${id}" ${active(id)?'aria-current="page"':''}>${icon(name)}${title}</a>`).join('');
  const secondary=`<div class="tw-nav-secondary"><a href="#games" ${section==='games'?'aria-current="page"':''}>${icon('chart')}拓展学习记录</a>${state.meta.capabilities.admin?`<a href="#settings" ${section==='settings'?'aria-current="page"':''}>${icon('settings')}设置</a>`:''}</div>`;
  const mobileSections=sections.filter(([id])=>!['classes','work/reviews'].includes(id));

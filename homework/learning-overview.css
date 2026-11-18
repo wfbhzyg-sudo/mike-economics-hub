@@ -349,7 +349,7 @@ body[data-section="analytics"] #workspace {
 .lo-matrix thead th.lo-student-head,
 .lo-matrix thead th.lo-avg-head { z-index: 7; }
 .lo-matrix thead th.lo-student-head { left: 0; text-align: left; padding-left: 10px; }
-.lo-matrix thead th.lo-avg-head { left: var(--lo-student-w); }
+.lo-matrix thead th.lo-avg-head { left: calc(var(--lo-student-w) + var(--lo-trend-w)); }
 .lo-matrix thead th.lo-trend-head { width: var(--lo-trend-w); }
 .lo-matrix th.lo-student-head { width: var(--lo-student-w); min-width: var(--lo-student-w); max-width: var(--lo-student-w); }
 .lo-matrix th.lo-avg-head { width: var(--lo-avg-w); min-width: var(--lo-avg-w); max-width: var(--lo-avg-w); }
@@ -412,7 +412,7 @@ body[data-section="analytics"] #workspace {
 }
 .lo-matrix td.lo-avg {
   position: sticky;
-  left: var(--lo-student-w);
+  left: calc(var(--lo-student-w) + var(--lo-trend-w));
   z-index: 3;
   border-right: 1px solid var(--lo-line-soft);
   text-align: center;
@@ -1032,23 +1032,13 @@ body[data-section="analytics"] #workspace {
 /* The sheet already has a titled close bar; keep a single close affordance. */
 .lo-sheet-body .lo-detail-head [data-close-detail] { display: none; }
 
-/* Keep the trend column in view while the assignment columns scroll. */
-@media (min-width: 1024px) {
-  .lo-matrix thead th.lo-trend-head {
-    position: sticky;
-    right: 0;
-    z-index: 6;
-    border-left: 1px solid var(--lo-line);
-  }
-  .lo-matrix td.lo-trend {
-    position: sticky;
-    right: 0;
-    z-index: 3;
-    background: #fff;
-    border-left: 1px solid var(--lo-line-soft);
-  }
-  .lo-matrix tbody tr:hover td.lo-trend { background: #fbfcfa; }
+.lo-matrix thead th.lo-trend-head, .lo-matrix td.lo-trend {
+  position: sticky;
+  left: var(--lo-student-w);
+  z-index: 3;
+  background: #fff;
 }
+.lo-matrix thead th.lo-trend-head { z-index: 7; background: #f3f5f2; }
 
 @media (min-width: 1280px) {
   .lo-page[data-tab="students"] .lo-body { grid-template-columns: minmax(0, 1fr); }
