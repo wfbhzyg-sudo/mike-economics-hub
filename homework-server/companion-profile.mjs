@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-reader-quest',date:'2026-11-18',title:'书架、闯关与伙伴装扮',
+  items:[
+    {audience:'all',art:'book',title:'从书架和探险返回一页通',text:'在书架或探险首页点「← 一页通」。闯关中也可以暂停后返回。'},
+    {audience:'student',art:'news',title:'Mike 的探险装扮',text:'在伙伴手册中换上 EconQuest 装扮。闯关时向 Mike 提问，聊天按键只用于对话。'}
+  ]
+},{
   id:'2026-11-18-peer-review',date:'2026-11-18',title:'同伴思路与对话工具更新',
   items:[
     {audience:'student',art:'book',title:'同伴思路先审核再发表',text:'分享或修改的正文经 DeepSeek 审核通过后，同班同学才会看到。退回后可以继续修改。'},
@@ -41,9 +47,9 @@ export const releases = [{
   ]
 }];
 export const stages=[
-  {at:0,name:'初识',prop:'抱书挥手'}, {at:20,name:'好奇同桌',prop:'随身笔记本'},
-  {at:40,name:'学习搭档',prop:'供需图'}, {at:65,name:'研究伙伴',prop:'放大镜'},
-  {at:85,name:'经济学挚友',prop:'小黑板'}
+  {at:0,name:'初识',prop:'经典课堂'}, {at:20,name:'好奇同桌',prop:'图书馆学者'},
+  {at:40,name:'学习搭档',prop:'峡谷探险家'}, {at:65,name:'研究伙伴',prop:'星空观测者'},
+  {at:85,name:'经济学挚友',prop:'地底寻宝者'}
 ];
 export function profileView(profile={},role){
   const points=profile.points||0, level=stages.filter(s=>points>=s.at).length-1;
