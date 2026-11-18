@@ -18,8 +18,9 @@ export function cleanDrawing(b){
 }
 export function publicUnit(u){return {id:u.id,title:u.title,version:u.version,topics:u.topics.map(({teacherNotes,...t})=>t),resources:u.resources.filter(r=>r.audience!=='teacher'),questionCount:u.questionCount};}
 export function validateSelection(ids,questions,{requireReady=false}={}){
- assert(Array.isArray(ids)&&ids.length>0&&ids.length<=40&&new Set(ids).size===ids.length,'每次选择 1–40 道不同题目');
- const chosen=ids.map(id=>{const q=questions.find(q=>q.id===id);assert(q&&!q.deletedAt&&['choice','short'].includes(q.type)&&q.questionImages?.length,'题目原件缺失，请先补全切片');if(requireReady)assert(automaticGradeReady(q),'答案或评分点尚未核对完成');return q;});
+ assert(Array.isArray(ids)&&ids.length>0&&new Set(ids).size===ids.length,'请选择至少一道题，题目不能重复');
+ const byId=new Map(questions.map(q=>[q.id,q]));
+ const chosen=ids.map(id=>{const q=byId.get(id);assert(q&&!q.deletedAt&&['choice','short'].includes(q.type)&&q.questionImages?.length,'题目原件缺失，请先补全切片');if(requireReady)assert(automaticGradeReady(q),'答案或评分点尚未核对完成');return q;});
  assert(new Set(chosen.map(q=>q.canonicalQuestionId||q.id)).size===chosen.length,'所选题目包含同一道题的不同来源，请保留一份');return chosen;
 }
 

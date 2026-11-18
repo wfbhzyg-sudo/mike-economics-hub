@@ -129,10 +129,12 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const inScope=a=>people.has(a.studentId)&&scopedClasses.some(c=>member(people.get(a.studentId).classIds,c.id)
       && (!singleClassCourse(c)||singleClassCourse(c)===a.course)
       && (a.classIds?.length?member(a.classIds,c.id):singleClassCourse(c)===a.course));
-    const after=Date.parse(query.get('from')||new Date(Date.now()-30*86400000).toISOString()),to=query.get('to');
-    const before=to?Date.parse(to)+86400000:Date.now()+1000;
+    const reportDate=value=>Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(value)?value+'T00:00:00+08:00':value);
+    const after=reportDate(query.get('from')||new Date(Date.now()-30*86400000).toISOString()),to=query.get('to');
+    const before=to?reportDate(to)+86400000:Date.now()+1000;
+    assert(Number.isFinite(after)&&Number.isFinite(before)&&before>after,'请选择有效的统计日期范围');
     const topic=(query.get('topic')||'').trim(), studentId=query.get('studentId')||'', timer=query.get('timer')||'';
-    const matches=q=>!topic||String(q.topic).toLowerCase().includes(topic.toLowerCase());
+    const matches=q=>!topic||String(q.topic).toLowerCase()===topic.toLowerCase();
     const inFilters=(a,date)=>inScope(a)&&(!course||a.course===course)&&(!studentId||a.studentId===studentId)&&(!timer||a.timerMode===timer)
       &&Date.parse(date)>=after&&Date.parse(date)<before;
     if(route[1]){

@@ -266,3 +266,41 @@ body[data-mcq-active=true] .mcq-work .mcq-top{padding-inline-end:60px}
 .mock-trend small[data-direction=up]{color:#245f49}
 .mock-trend small[data-direction=down]{color:#8c3833}
 .mock-trend-note{color:#526575;font-size:12px;margin:7px 0 0}
+
+.study-stats .study-stat-filter{padding:8px 12px;border:1px solid #dce6ef;border-radius:9px;background:#fff}
+.mock-course-label{padding:4px 7px;border-radius:5px;background:#e1edf7;color:#1e5479;font-size:12px;font-weight:700}
+.mock-course-label[data-course=macro]{background:#e1f0e7;color:#285e49}
+.study-stat-filter [data-reset-mock]{min-height:36px;padding:4px 8px;border:0;background:none;color:#225778;font:inherit;font-weight:650;cursor:pointer}
+.study-stat-grid [data-attempts],.study-stat-grid [data-topics]{min-width:0}
+.mock-table-scroll{max-height:clamp(245px,calc(100dvh - 345px),650px);overflow:auto;overscroll-behavior:contain}
+.mock-roster thead th{position:sticky;top:0;z-index:2}
+.mock-roster thead th:first-child{z-index:3}
+.mock-mobile-views{display:none}
+.mock-attempt-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;color:#526575;font-size:13px}
+.sp-wrong-body .sp-wrong-paper{align-self:start}
+.sp-wrong-actions .recap-menu-content .sp-chip{display:inline-block;margin-top:6px}
+@media(max-width:900px){
+ .study-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mock-mobile-views{display:flex;gap:6px;margin-bottom:8px}
+ .mock-mobile-views button{min-height:44px;padding:6px 12px;border:1px solid #cfdde8;border-radius:7px;background:#fff;color:#215578;cursor:pointer}
+ .mock-mobile-views button[aria-pressed=true]{color:#fff;background:#11283f;border-color:#11283f}
+ .study-stat-grid[data-mobile-view=attempts] [data-topics],.study-stat-grid[data-mobile-view=topics] [data-attempts]{display:none}
+ .mock-table-scroll{max-height:none;overflow:visible}
+ .mock-roster,.mock-roster tbody,.mock-roster tr{display:block;width:100%;white-space:normal}
+ .mock-roster thead{display:block}
+ .mock-roster thead tr>:not(:nth-child(2)){display:none}
+ .mock-roster thead tr>th:nth-child(2){display:block;position:static}
+ .mock-roster tr[data-roster-student]{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:5px 0;border-bottom:1px solid #e3eaf0}
+ .mock-roster tr[data-roster-student]>:first-child{position:static;max-width:none;background:transparent}
+ .mock-roster tr[data-roster-student]>:nth-child(3){font-size:11px}
+ .mock-roster tr[data-roster-student]>:is(:nth-child(4),:nth-child(n+6)){display:none}
+ .mock-roster tr[data-roster-student]>:nth-child(5){min-width:0}
+ .mock-roster tr[data-roster-student]>*{border:0;padding:3px 6px}
+ .mock-roster .mock-record-row td{display:block}
+ .mock-roster [data-student]{min-height:44px}
+ .mock-trend{min-width:0}
+}
+.mock-range-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}
+.mock-range-tools .study-filter-panel{min-width:0}
+.mock-range-tools .study-filter-panel[open]{grid-column:1/-1}
+.mock-range-tools .study-filter-panel[open]+button{grid-column:2;grid-row:1}

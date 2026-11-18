@@ -17,3 +17,14 @@ test('An unchecked MCQ produces no invented zero, while verified MCQ still score
  const all=manualAssignmentScore([verified,pending,{id:'3',type:'short',maxPoints:6,manualGradingRequired:true}],{'1':'A','2':'B'});
  assert.equal(all.total,null);assert.equal(all.maxPoints,8);assert.deepEqual(all.questions.map(q=>q.score),[1,null,null]);
 });
+
+test('Teacher papers above 40 questions retain order and reject canonical duplicates',()=>{
+ const rows=Array.from({length:120},(_,i)=>({id:'q'+i,type:'choice',status:'ready',questionImages:['f'],answer:'A'}));
+ for(const length of [41,80,120]){
+  const ids=rows.slice(0,length).reverse().map(q=>q.id);
+  const selected=validateSelection(ids,rows);
+  assert.deepEqual(selected.map(q=>q.id),ids);
+ }
+ assert.throws(()=>validateSelection(['q0','q0'],rows),/不能重复/);
+ assert.throws(()=>validateSelection(['q0','alias'],[...rows,{...rows[0],id:'alias',canonicalQuestionId:'q0'}]),/同一道题/);
+});

@@ -1,3 +1,4 @@
+import {viewMemory} from './view-memory.js';
 import {topicGrid,bindTopicGrid} from './topic-grid.js';
 import {accuracyBadge} from './score-bands.js';
 import {resultBadge} from './result-badge.js';
@@ -296,20 +297,45 @@ export async function renderBookmarks({main,api,state,link,head,toast}) {
 
 export async function renderMockStatistics({main,api,state,toast}){
   const version=state.version;
-  const initial=await api('mock-stats');
+  const localDay=ms=>new Date(ms+8*3600000).toISOString().slice(0,10);
+  const today=localDay(Date.now()),from=localDay(Date.now()-29*86400000);
+  const memory=viewMemory('teacher-mock:'+state.user.id);
+  const baseline=await api('mock-stats?'+new URLSearchParams({from,to:today}));
   if(version!==state.version)return;
-  const today=nl(new Date().toISOString()),from=nl(new Date(Date.now()-30*86400000).toISOString());
+  const initial=baseline;
   main.innerHTML=`<div class="study-stats"><form class="study-stat-filter"><div class="study-filters study-scope-row">
     <label>班级 <select name="classId"><option value="">全部任教班级</option>${initial.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
     <label data-course-field>学科 <select name="course"><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
     <label>学生 <select name="studentId"><option value="">全部学生</option></select></label>
-    </div><details class="study-filter-panel"><summary>更多筛选</summary><div class="study-filters study-extra-filters"><label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
+    <span class="mock-course-label" data-fixed-course hidden></span>
+    </div><div class="mock-range-tools"><details class="study-filter-panel"><summary>日期和更多筛选</summary><div class="study-filters study-extra-filters"><label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
     <label>章节 <input name="topic" type="search" placeholder="例如 2.3"></label>
     <label>计时 <select name="timer"><option value="">全部</option><option value="countdown">倒计时</option><option value="countup">正计时</option></select></label>
-    </div></details></form>
-    <p role="status"></p><div data-overview></div><div class="study-stat-grid"><section class="study-panel" data-attempts></section><aside class="study-panel" data-topics></aside></div></div>`;
+    </div></details><button type="button" data-reset-mock>重置筛选</button></div></form>
+    <p role="status"></p><div data-overview></div><div class="mock-mobile-views" role="group" aria-label="统计视图"><button type="button" data-mock-view="attempts" aria-pressed="true">学生走势</button><button type="button" data-mock-view="topics" aria-pressed="false">章节表现</button></div><div class="study-stat-grid" data-mobile-view="attempts"><section class="study-panel" data-attempts></section><aside class="study-panel" data-topics></aside></div></div>`;
   const root=main.querySelector('.study-stats'), form=root.querySelector('form'),status=root.querySelector('[role=status]');
-  let offset=0,serial=0,opened='',ascending=false,zeroOnly=false;
+  let offset=0,serial=0,opened='',ascending=memory.get('ascending',false),zeroOnly=memory.get('zeroOnly',false);
+  const saved=memory.get('filters',{});
+  for(const key of ['classId','course','from','to','topic','timer']){
+    if(typeof saved[key]==='string')form.elements[key].value=saved[key];
+  }
+  const mobileView=memory.get('mobileView','attempts')==='topics'?'topics':'attempts';
+  const grid=root.querySelector('.study-stat-grid');
+  function chooseView(value){
+    grid.dataset.mobileView=value;
+    root.querySelectorAll('[data-mock-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.mockView===value)));
+    memory.set({mobileView:value});
+  }
+  chooseView(mobileView);
+  root.querySelectorAll('[data-mock-view]').forEach(button=>button.onclick=()=>chooseView(button.dataset.mockView));
+  function classScope(){
+    const fixed=singleClassCourse(initial.classes.find(c=>c.id===form.elements.classId.value));
+    form.elements.course.disabled=Boolean(fixed);
+    form.querySelector('[data-course-field]').hidden=Boolean(fixed);
+    const tag=root.querySelector('[data-fixed-course]');
+    tag.hidden=!fixed;tag.dataset.course=fixed;tag.textContent=fixed?courseLabel(fixed):'';
+  }
+  classScope();
   function paint(data){
     const {stats:s,attempts}=data, selection=form.elements.studentId.value;
 
@@ -318,17 +344,18 @@ export async function renderMockStatistics({main,api,state,toast}){
     const percent=(a,b)=>b?Math.round(a/b*1000)/10+'%':'—', duration = n=>n===null||n===undefined?'—':Math.floor(n/60)+' 分 '+Math.round(n%60)+' 秒';
     const kpis=[['参与学生',s.participants+' / '+s.roster],['已交卷',s.attempts+' 次'],['题次正确率',percent(s.correct,s.points)],['整卷用时中位数',duration(s.median)]];
     root.querySelector('[data-overview]').innerHTML=`<div class="study-metrics">${kpis.map(([label,value])=>`<div><span>${label}</span><strong>${value}</strong></div>`).join('')}</div><p class="hint">已交卷 · ${s.correct} / ${s.points} 正确题次 · ${s.durationSamples} 份有效用时${s.excluded?' · '+s.excluded+' 题次缺少有效计分':''}</p>`;
-    const list=root.querySelector('[data-attempts]'),scrollLeft=list.querySelector('.mock-table-scroll')?.scrollLeft||0;
+    const list=root.querySelector('[data-attempts]'),scrollLeft=list.querySelector('.mock-table-scroll')?.scrollLeft||0,scrollTop=list.querySelector('.mock-table-scroll')?.scrollTop||0;
     const rows=data.rows.filter(row=>!zeroOnly||!row.count).sort((a,b)=>(ascending?a.count-b.count:b.count-a.count)||a.name.localeCompare(b.name,'zh-CN'));
     const details=attempts.map(a=>`<button type="button" class="study-attempt" data-attempt="${esc(a.id)}"><span><strong>${esc(courseLabel(a.course))} · ${esc(a.topics.join('、')||'自主模考')}</strong><small>${esc(localTime.format(new Date(a.submittedAt)))} · ${a.questionCount} 题 · ${a.auto?'到时交卷':a.timerMode==='countdown'?'倒计时':'正计时'}</small></span><span><strong>${a.percent==null?'—':a.percent+'%'}</strong><small>${a.total} / ${a.max} · ${duration(a.duration)}</small></span><span aria-hidden="true">›</span></button>`).join('');
-    list.innerHTML=`<div class="mock-table-heading"><h2>交卷记录</h2><label><input type="checkbox" data-zero ${zeroOnly?'checked':''}>仅看 0 次</label></div><div class="mock-table-scroll" tabindex="0" role="region" aria-label="按学生汇总交卷记录"><table class="mock-roster"><thead><tr><th scope="col">学生</th><th scope="col" aria-sort="${ascending?'ascending':'descending'}"><button type="button" data-sort>已交次数 ${ascending?'↑':'↓'}</button></th><th scope="col">最近交卷</th><th scope="col">正确率</th><th scope="col">成绩趋势</th>${data.weeks.map(w=>`<th scope="col">${esc(w.slice(5))} 周</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`
+    list.innerHTML=`<div class="mock-table-heading"><h2>交卷记录</h2><label><input type="checkbox" data-zero ${zeroOnly?'checked':''}>仅看 0 次</label></div><div class="mock-table-scroll" tabindex="0" role="region" aria-label="按学生汇总交卷记录"><table class="mock-roster"><thead><tr><th scope="col">学生</th><th scope="col" aria-sort="${ascending?'ascending':'descending'}"><button type="button" data-sort>已交次数 ${ascending?'↑':'↓'}</button></th><th scope="col">最近交卷</th><th scope="col">累计正确率</th><th scope="col">成绩趋势</th>${data.weeks.map(w=>`<th scope="col">${esc(w.slice(5))} 周</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`
       <tr data-roster-student="${esc(row.id)}"><th scope="row">${esc(row.name)}</th><td><button type="button" data-student="${esc(row.id)}" aria-expanded="${opened===row.id}" aria-label="${esc(row.name)}，查看 ${row.count} 次交卷">${row.count} 次</button>${row.active?`<small>${row.active} 份进行中</small>`:''}</td><td>${row.last?esc(nl(row.last)):'—'}</td><td>${accuracyBadge(row.max?row.score/row.max*100:null)}</td><td>${mockTrendMarkup(row.trends)}</td>${data.weeks.map(w=>`<td>${row.weeks[w]||'—'}</td>`).join('')}</tr>
       ${opened===row.id?`<tr class="mock-record-row"><td colspan="${5+data.weeks.length}"><div class="mock-records">${details||'<p>此学生在当前范围内暂无交卷。</p>'}<div class="study-pager">${offset?'<button type="button" data-prev>上一页</button>':''}${data.more?'<button type="button" data-next>下一页</button>':''}</div></div></td></tr>`:''}`).join('')}</tbody></table></div>${rows.length?'<p class="mock-trend-note">成绩趋势按学科显示最近 8 次交卷，左旧右新。纵轴 0–100%，pp 为较上次变化的百分点。</p>':'<p class="hint">暂无匹配的学生。</p>'}`;
     list.querySelector('.mock-table-scroll').scrollLeft=scrollLeft;
+    list.querySelector('.mock-table-scroll').scrollTop=scrollTop;
     const topics=root.querySelector('[data-topics]');
     topics.innerHTML='<h2>章节表现</h2>'+topicGrid(data.chapters,esc);
-    list.querySelector('[data-sort]').onclick=()=>{ascending=!ascending;paint(data);list.querySelector('[data-sort]').focus();};
-    list.querySelector('[data-zero]').onchange=e=>{zeroOnly=e.currentTarget.checked;paint(data);list.querySelector('[data-zero]').focus();};
+    list.querySelector('[data-sort]').onclick=()=>{ascending=!ascending;memory.set({ascending});paint(data);list.querySelector('[data-sort]').focus();};
+    list.querySelector('[data-zero]').onchange=e=>{zeroOnly=e.currentTarget.checked;memory.set({zeroOnly});paint(data);list.querySelector('[data-zero]').focus();};
     list.querySelector('[data-next]')?.addEventListener('click',()=>{offset+=25;void load();});
     list.querySelector('[data-prev]')?.addEventListener('click',()=>{offset=Math.max(0,offset-25);void load();});
     for(const button of list.querySelectorAll('[data-attempt]'))button.onclick=()=>openAttempt(button);
@@ -366,7 +393,7 @@ export async function renderMockStatistics({main,api,state,toast}){
       const {attempt:a,name}=await api('mock-stats/'+part(button.dataset.attempt)+'?'+params);
       if(!root.isConnected)return;
       const d=document.createElement('dialog');d.className='study-sheet';d.setAttribute('aria-label','模考详情');
-      d.innerHTML=`<header><strong>${esc(name)} · ${courseLabel(a.course)} · ${a.result.total}/${a.result.maxPoints}</strong><button type="button" data-close>关闭</button></header><div class="study-feed">${a.result.questions.map((q,i)=>`<details class="study-book-row"><summary>第 ${i+1} 题 · ${esc(q.topic)} · ${resultBadge({...q,unanswered:!q.chosen})}</summary><p>${esc(q.prompt)}</p><p>学生作答 ${esc(q.chosen||'未作答')}　正确选项 ${esc(q.correctOption)}</p>${q.questionImages.map(id=>`<img loading="lazy" alt="原题片段" src="/api/homework/files/${part(id)}?mock=${part(a.id)}">`).join('')}${a.corrections[q.id]?`<p>订正 ${esc(a.corrections[q.id].note||a.corrections[q.id].choice)}</p>`:''}</details>`).join('')}</div>`;
+      d.innerHTML=`<header><strong>${esc(name)} · ${courseLabel(a.course)} · ${a.result.total}/${a.result.maxPoints}</strong><button type="button" data-close>关闭</button></header><div class="study-feed"><div class="mock-attempt-summary"><span>${esc(localTime.format(new Date(a.submittedAt)))}</span><span>${a.result.questions.length} 题</span><span>${a.timerMode==='countdown'?'倒计时':'正计时'}</span><span>${esc(a.topicIds?.join('、')||'')}</span></div>${a.result.questions.map((q,i)=>`<details class="study-book-row"><summary>第 ${i+1} 题 · ${esc(q.topic)} · ${resultBadge({...q,unanswered:!q.chosen})}</summary><p>${esc(q.prompt)}</p><p>学生作答 ${esc(q.chosen||'未作答')}　正确选项 ${esc(q.correctOption)}</p>${q.questionImages.map(id=>`<img loading="lazy" alt="原题片段" src="/api/homework/files/${part(id)}?mock=${part(a.id)}">`).join('')}${a.corrections[q.id]?`<p>订正 ${esc(a.corrections[q.id].note||a.corrections[q.id].choice)}</p>`:''}</details>`).join('')}</div>`;
       document.body.append(d);d.showModal();d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>{d.remove();button.focus({preventScroll:true});};
     }catch(e){toast(e.message);}finally{button.disabled=false;}
   }
@@ -375,21 +402,23 @@ export async function renderMockStatistics({main,api,state,toast}){
     offset=0;opened='';
     const count=['topic','timer'].filter(k=>form.elements[k].value).length+
       Number(form.elements.from.value!==from)+Number(form.elements.to.value!==today);
-    form.querySelector('summary').textContent=count?'更多筛选 · '+count:'更多筛选';
+    form.querySelector('summary').textContent=count?'日期和更多筛选 · '+count:'日期和更多筛选';
+    memory.set({filters:Object.fromEntries(new FormData(form))});
     previousTopic=form.elements.topic.value;
     void load();
   }
   form.onchange=e=>{
-    if(e.target.name==='classId'){
-      const fixed=singleClassCourse(initial.classes.find(c=>c.id===e.target.value));
-      form.elements.course.disabled=Boolean(fixed);
-      form.querySelector('[data-course-field]').hidden=Boolean(fixed);
-    }
+    if(e.target.name==='classId'){form.elements.course.value='';classScope();}
     if(['classId','course'].includes(e.target.name))form.elements.studentId.value='';
     apply();
   };
   form.onsubmit=e=>{e.preventDefault();if(form.elements.topic.value!==previousTopic)apply();};
+  form.querySelector('[data-reset-mock]').onclick=()=>{form.reset();form.elements.studentId.value='';classScope();apply();};
   paint(initial);
+  if(Object.keys(saved).length){
+    if(typeof saved.studentId==='string')form.elements.studentId.value=saved.studentId;
+    apply();
+  }
 }
 
 export function studyReportMarkup(report, {teacher=false}={}) {

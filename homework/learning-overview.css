@@ -1535,3 +1535,14 @@ body[data-section="analytics"] #workspace {
 .lo-class-entry-dialog footer{font-size:13px}.lo-class-entry-dialog .lo-note{margin:0}
 
 .lo-mini small,.lo-history-name,.lo-recent-name{white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip}
+
+.lo-class-course{align-self:center;padding:4px 8px;border-radius:5px;background:#e1edf7;color:#1e5479;font-size:12px;font-weight:700}
+.lo-class-course[hidden]{display:none}
+.lo-class-course[data-course=macro]{background:#e1f0e7;color:#285e49}
+.lo-page[data-tab=reports] .lo-body{grid-template-columns:minmax(0,1fr)}
+.lo-page[data-tab=reports] .lo-detail{display:none}
+.lo-report-overview{padding:12px}
+.lo-report-overview .lo-class-report{max-width:68rem}
+.lo-matrix th.lo-col span{white-space:normal;overflow-wrap:anywhere}
+.lo-tab-note{min-width:0}
+@media(max-width:767px){.lo-tabs{flex-wrap:wrap}.lo-tabs [role=tab]{min-height:44px}.lo-tab-note{margin-inline-start:auto}}

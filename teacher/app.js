@@ -1,9 +1,9 @@
-import {singleClassCourse} from '../homework/course-scope.js';
+import {singleClassCourse,classKey} from '../homework/course-scope.js';
 import {bindDisclosureMenus} from '../homework/disclosure-menu.js';
 import {renderMockStatistics} from '/homework/study-workflow.js';
 import {accuracyBadge} from '../homework/score-bands.js';
 import {gradingFields,readGradingPoints} from '../homework/library-grading.js';
-import {canonicalQuestions} from '../homework/library-packs.js';
+import {canonicalQuestions,questionHasTopic} from '../homework/library-packs.js';
 import {mountCropEditor} from './crop-editor.js';
 import {loadTeacherStartup} from './startup.js';
 import {submissionLabel} from '../homework/ui-labels.js';
@@ -119,9 +119,14 @@ async function home(){
  main.innerHTML=`<div class="tw-grid"><section><h2>今天需要处理</h2>${tasks}</section><aside class="tw-rail"><h2>班级学习概况</h2><div class="tw-progress-list">${progress('教材练习',perf?perf.students.filter(s=>s.attempts>0).length:null,classroom().students,'所选教材 · 有练习记录的学生')}${progress('游戏学习',game?.attempted??null,game?.total||classroom().students,'所选课程 · 有学习尝试的学生')}${progress('作业提交',work&&sub?submitted:null,classroom().students,latest?'最近作业：'+latest.title:'尚无已发布作业')}</div><p class="tw-note">各项独立统计，不合成总分。统计当前班级全部记录。</p></aside></div><section class="tw-section"><div class="tw-section-head"><h2>最近布置</h2>${button('games/new','布置游戏任务')}</div>${assignments.length?table(['作业','来源','截止时间','状态','操作'],assignments.slice(0,6).map(a=>`<tr><td><strong>${h(a.title)}</strong><p>${h(a.course)}</p></td><td>电子作业</td><td>${when(a.dueAt)}</td><td>${badge(a.published?'已发布':'草稿',a.published?'good':'')}</td><td>${button('work/'+(a.published?'overview/':'answer/')+a.id,'查看')}</td></tr>`)):empty('还没有电子作业','上传学生题纸，再设置私密参考答案和评分点。')}${game?.assignments.length?table(['游戏任务','来源','开放时间','截止时间','操作'],game.assignments.slice(0,4).map(a=>`<tr><td>${h(a.title)}</td><td><img src="/assets/econ-quest-logo-816e8870.webp" alt="EconQuest"></td><td>${when(a.opens_at)}</td><td>${when(a.closes_at)}</td><td>${button('games','查看')}</td></tr>`)):''}</section>`;
 }
 async function classes(){
+ const version=state.version;
  const memory=viewMemory(state.user.id+':classes:'+state.classId+':'+state.book);
  const current=classroom();const [data,membership]=current?await Promise.all([api('teacher/performance?'+qs({class:current.id,book:state.book})),hw('students')]):[null,null];
- main.innerHTML=`<div class="tw-section-head"><h2>我的班级</h2><span class="tw-note">共用通用账号注册班级码</span></div><div class="tw-class-list">${state.meta.classes.map(c=>`<article class="tw-class-row" data-current="${c.id===state.classId}"><div><h3><button type="button" class="class-name-link" data-class-view="${c.id}" aria-label="查看${h(c.name)}名单" aria-pressed="${c.id===state.classId}">${h(c.name)} <span aria-hidden="true">›</span></button> ${c.archived?badge('已归档'):''}</h3><p>${c.students} 位学生 · 班级码 <strong class="tw-class-code">${h(c.code)}</strong></p></div><div class="tw-actions tw-class-actions"><details class="tw-class-more"><summary class="tw-button tw-small" aria-label="${h(c.name)}的更多操作" title="班级操作">⋯</summary><div class="tw-class-menu"><button data-add-student="${c.id}">添加学生</button><button data-copy="${h(c.code)}">复制班级码</button><button data-rename="${c.id}">重命名班级</button><button data-archive="${c.id}">${c.archived?'恢复班级':'归档班级'}</button></div></details></div></article>`).join('')||'<p class="tw-muted">还没有班级。创建后把班级码交给学生注册即可。</p>'}</div><details class="tw-new-class"><summary>新建班级</summary><form class="tw-inline-form" id="create-class">${field('新班级名称','name','','text','required maxlength="80" placeholder="例如：AP 宏观 3 班"')}<button class="tw-button" type="submit">创建班级</button><p class="tw-form-error" role="alert"></p></form></details>${createStudentDialog()}${accountDrawer()}<p class="tw-note">最多 4 个班级，每班 50 人。归档只折叠教学范围，账号、进度和作业均保留；恢复后可继续使用。</p>${data?`<section class="tw-section"><div class="tw-section-head"><h2 id="class-roster-title" tabindex="-1">${h(current.name)} · 学生</h2><button class="tw-button tw-small" id="export-class">导出学情数据（JSON）</button></div><div class="tw-filter">${field('查找学生','studentSearch','','search','id="student-search" placeholder="姓名或账号"')}</div><div id="roster-table"></div></section>`:''}`;
+ if(version!==state.version)return;
+ main.innerHTML=`<div class="class-workspace"><aside class="class-workspace-nav"><div class="tw-section-head"><h2>我的班级</h2><span class="tw-note">${state.meta.classes.length} 个班</span></div><div class="tw-class-list">${state.meta.classes.map(c=>`<article class="tw-class-row" data-current="${c.id===state.classId}"><div><h3><button type="button" class="class-name-link" data-class-view="${c.id}" aria-label="查看${h(c.name)}名单" aria-pressed="${c.id===state.classId}">${h(c.name)} <span aria-hidden="true">›</span></button> ${c.archived?badge('已归档'):''}</h3><p>${c.students} 位学生${singleClassCourse(c)?' · '+(singleClassCourse(c)==='macro'?'AP 宏观':'AP 微观'):''}</p></div><div class="tw-actions tw-class-actions"><details class="tw-class-more"><summary class="tw-button tw-small" aria-label="${h(c.name)}的更多操作" title="班级操作">⋯</summary><div class="tw-class-menu"><button data-add-student="${c.id}">添加学生</button><button data-copy="${h(c.code)}">复制班级码</button><button data-rename="${c.id}">重命名班级</button><button data-archive="${c.id}">${c.archived?'恢复班级':'归档班级'}</button></div></details></div></article>`).join('')||'<p class="tw-muted">还没有班级。创建后把班级码交给学生注册即可。</p>'}</div><details class="tw-new-class"><summary>新建班级</summary><form class="tw-inline-form" id="create-class">${field('新班级名称','name','','text','required maxlength="80" placeholder="例如：AP 宏观 3 班"')}<button class="tw-button" type="submit">创建班级</button><p class="tw-form-error" role="alert"></p></form></details></aside><div class="class-workspace-main">${data?`<section class="class-roster">
+  <div class="class-roster-head"><div><label class="class-mobile-switch"><span class="tw-note">班级</span><select id="class-mobile-switch" aria-label="切换班级">${state.meta.classes.map(c=>`<option value="${h(c.id)}" ${c.id===current.id?'selected':''}>${h(c.name)}${c.archived?' · 已归档':''}</option>`).join('')}</select></label><h2 id="class-roster-title" tabindex="-1">${h(current.name)} <small>${current.students} 人</small></h2><p>班级码 <strong class="tw-class-code">${h(current.code)}</strong> <button class="tw-text" type="button" data-copy="${h(current.code)}">复制</button></p></div><button class="tw-button tw-primary" type="button" data-add-student="${current.id}">添加学生</button></div>
+  <div class="class-roster-tools"><strong>学生名单</strong><div class="tw-filter">${field('查找学生','studentSearch','','search','id="student-search" placeholder="姓名或账号"')}</div><details class="tw-class-more class-roster-more"><summary class="tw-button tw-small" aria-label="更多名单操作">⋯</summary><div class="tw-class-menu"><button data-rename="${current.id}">重命名班级</button><button data-archive="${current.id}">${current.archived?'恢复班级':'归档班级'}</button><button class="tw-button tw-small" id="export-class">导出学情数据（JSON）</button></div></details></div>
+  <div id="roster-table" class="class-roster-scroll" tabindex="0" aria-label="学生名单"></div></section>`:'<p class="tw-note">创建班级后，可在这里管理学生名单。</p>'}</div></div>${createStudentDialog()}${accountDrawer()}`;
  state.viewCleanup=bindDisclosureMenus(main,'.tw-class-more');
  main.querySelectorAll('.tw-class-menu').forEach(menu=>menu.addEventListener('click',e=>{
   if(e.target.closest('button')){const details=menu.parentElement;details.open=false;details.querySelector('summary').focus({preventScroll:true});}
@@ -134,10 +139,43 @@ async function classes(){
  $('#create-student-copy')?.addEventListener('click',async()=>{const input=$('#create-student-password');if(!input.value){toast('先输入或生成密码');input.focus();return;}try{await navigator.clipboard.writeText(input.value);toast('密码已复制');}catch{input.select();document.execCommand('copy');toast('密码已复制');}});
  onForm('#create-student',async (b,form)=>{const classIds=[...new FormData(form).getAll('classIds')];if(!classIds.length)throw Error('请至少选择一个班级');const result=await mutate('teacher/students/account','POST',{classIds,name:b.name,username:b.username.trim().toLowerCase(),password:b.password,confirm:true});$('#create-student-dialog')?.close();await metadata();toast('已创建 '+result.student.username+'，请把初始密码单独告知学生');await render();});
  bindAction('[data-copy]',async b=>{try{await navigator.clipboard.writeText(b.dataset.copy);toast('班级码已复制');}catch{toast('请长按班级码复制');}});
- bindAction('[data-class-view]',async b=>{state.classId=b.dataset.classView;persist();await render();const title=$('#class-roster-title');title?.focus({preventScroll:true});title?.scrollIntoView({block:'nearest'});});
+ async function switchClass(classId){
+  state.classId=classId;persist();await render();
+  $('#class-roster-title')?.focus({preventScroll:true});
+ }
+ bindAction('[data-class-view]',b=>switchClass(b.dataset.classView));
+ $('#class-mobile-switch')?.addEventListener('change',e=>{void switchClass(e.target.value);});
  bindAction('[data-rename]',async b=>{const c=state.meta.classes.find(c=>c.id===b.dataset.rename),name=prompt('修改班级名称',c.name);if(!name?.trim())return;await mutate('teacher/classes','PATCH',{id:c.id,name});await metadata();toast('班级名称已更新');await render();});
  bindAction('[data-archive]',async b=>{const c=state.meta.classes.find(c=>c.id===b.dataset.archive);if(!confirm(c.archived?'恢复这个班级？':'归档“'+c.name+'”？学生账号和所有学习、作业记录都会保留。'))return;await mutate('teacher/workspace/class','PATCH',{classId:c.id,archived:!c.archived});await metadata();toast(c.archived?'班级已恢复':'班级已归档，可随时恢复');await render();});
- if(data){$('#student-search').value=memory.get('query','');const draw=()=>{const term=$('#student-search').value.trim().toLowerCase(),roster=data.students.filter(s=>[s.name,s.username].join(' ').toLowerCase().includes(term));memory.set({query:term});$('#roster-table').innerHTML=roster.length?table(['学生','阅读页数','最近答案正确率','练习次数','操作'],roster.map(s=>`<tr><td><strong>${highlightText(s.name,term)}</strong><p>${highlightText(s.username,term)}</p></td><td data-label="阅读页数">${s.read}/${s.pages}</td><td data-label="最近答案正确率">${percent(s.overall.percent)}<p>${s.overall.correct}/${s.overall.total} 道</p></td><td data-label="练习次数">${s.attempts}</td><td><div class="tw-actions">${button('student/'+s.id,'完整档案')}<button type="button" class="tw-button tw-small" data-manage="${s.id}">管理账号</button></div></td></tr>`)):empty('没有匹配的学生','调整搜索条件，或请学生使用该班级码注册。');};$('#student-search').oninput=draw;draw();$('#roster-table').addEventListener('click',e=>{const manage=e.target.closest('[data-manage]');if(manage){openAccount(manage.dataset.manage);return;}const a=e.target.closest('a');if(a)memory.set({selected:a.getAttribute('href'),top:window.scrollY});});state.restoreView=()=>{window.scrollTo({top:memory.get('top',0),behavior:'instant'});const a=$$('#roster-table a').find(x=>x.getAttribute('href')===memory.get('selected',''));a?.focus({preventScroll:true});};const accountDialog=$('#account-drawer');
+ if(data){
+  const rosterHost=$('#roster-table'),search=$('#student-search');
+  const memberships=new Map(membership.students.map(s=>[s.id,s.classIds||[]]));
+  const classNames=new Map(state.meta.classes.map(c=>[classKey(c.id),c.name]));
+  search.value=memory.get('query','');
+  function draw(){
+   const term=search.value.trim().toLowerCase();
+   const roster=data.students.filter(s=>[s.name,s.username].join(' ').toLowerCase().includes(term));
+   memory.set({query:term});
+   rosterHost.innerHTML=roster.length?table(['学生 / 账号','班级','操作'],roster.map(s=>{
+    const enrolled=(memberships.get('bookself:'+s.id)||[]).map(id=>classNames.get(classKey(id))).filter(Boolean);
+    return `<tr><td><a class="class-profile-link" href="#student/${encodeURIComponent(s.id)}">${highlightText(s.name,term)}</a><p>${highlightText(s.username,term)}</p></td><td data-label="班级">${h(enrolled.join('、')||current.name)}</td><td><button type="button" class="tw-button tw-small" data-manage="${h(s.id)}" aria-label="管理账号 ${h(s.name)}">管理账号</button></td></tr>`;
+   })):empty('没有匹配的学生','调整搜索条件，或请学生使用该班级码注册。');
+  }
+  search.oninput=draw;draw();
+  rosterHost.scrollTop=memory.get('rosterTop',0);
+  rosterHost.addEventListener('scroll',()=>memory.set({rosterTop:rosterHost.scrollTop}),{passive:true});
+  rosterHost.addEventListener('click',e=>{
+   const manage=e.target.closest('[data-manage]');
+   if(manage){openAccount(manage.dataset.manage);return;}
+   const link=e.target.closest('a');
+   if(link)memory.set({selected:link.getAttribute('href'),top:window.scrollY});
+  });
+  state.restoreView=()=>{
+   window.scrollTo({top:memory.get('top',0),behavior:'instant'});
+   rosterHost.scrollTop=memory.get('rosterTop',0);
+   $$('#roster-table a').find(x=>x.getAttribute('href')===memory.get('selected',''))?.focus({preventScroll:true});
+  };
+  const accountDialog=$('#account-drawer');
   function openAccount(sid){const s=data.students.find(x=>x.id===sid);if(!s)return;const form=$('#account-form');form.reset();accountDialog.dataset.studentId=s.id;accountDialog.dataset.oldName=s.name;accountDialog.dataset.oldUsername=s.username;$('#account-drawer-sub').textContent=`${s.name} · @${s.username} · ${current.name}`;form.elements.name.value=s.name;form.elements.username.value=s.username;form.elements.password.type='password';const member=membership.students.find(x=>x.id==='bookself:'+sid);const ids=(member?.classIds||[]).map(x=>x.replace(/^bookself-class:/,''));accountDialog.dataset.membership=JSON.stringify(ids);$('#account-classes').innerHTML=classChoices('membership',ids);accountDialog.showModal();form.elements.name.focus();}
   accountDialog.addEventListener('close',()=>{dirtyForms.delete($('#account-form'));state.dirty=dirtyForms.size>0;});
   bindAction('[data-close-account]',()=>accountDialog.close());
@@ -173,24 +211,40 @@ async function student(id,part='',scope=''){
  $('#student-grade-scope').onchange=e=>{void student(id,part,e.target.value).catch(error=>toast(error.message));};
 }
 
-const bankState={course:'all',units:new Set(),initialized:false,type:'',status:'all',q:'',page:1,selected:new Map(),catalog:null};
+const bankState={course:'all',unit:'',topic:'',type:'',status:'all',q:'',page:1,selected:new Map(),catalog:null};
 const bankTypeLabel={choice:'选择题',short:'简答题'};
+const bankCourses=[['all','全部学科'],['micro','AP 微观'],['macro','AP 宏观']];
+function bankUnits(){
+ return (bankState.catalog?.units||[]).filter(u=>!u.archived&&(bankState.course==='all'||u.id.startsWith(bankState.course+'-')));
+}
 function bankFiltered(all){
+ const {course,unit,topic,type,status}=bankState;
  const term=bankState.q.trim().toLowerCase();
- return all.filter(q=>(bankState.course==='all'||q.course===bankState.course)&&(!bankState.units.size||bankState.units.has(q.unitId))&&(!bankState.type||q.type===bankState.type)&&(bankState.status==='all'||q.status===bankState.status)&&(!term||String(q.searchText||q.prompt||q.number||'').toLowerCase().includes(term)));
+ const separator=topic.indexOf('|');
+ const topicUnit=separator<0?'':topic.slice(0,separator),topicId=separator<0?'':topic.slice(separator+1);
+ return all.filter(q=>(course==='all'||q.course===course)&&(!unit||q.unitId===unit)&&
+  (!topic||(topic==='unmapped'?!(q.topic||q.relatedTopics?.length):(q.unitId===topicUnit&&questionHasTopic(q,topicId))))&&
+  (!type||q.type===type)&&(status==='all'||(status==='ready')===(q.status==='ready'))&&
+  (!term||[q.number,q.searchText||q.prompt||q.stem,q.topic,q.topicTitle,q.source].some(v=>String(v??'').toLowerCase().includes(term))));
 }
 function bankUnitLabel(t){return String(t||'').match(/Unit\s*\d+/i)?.[0]||t||'';}
 function bankQuestionRow(q){
  const selected=bankState.selected.has(q.id),img=q.questionImages?.[0];
  const stem=String(q.searchText||q.prompt||q.stem||q.title||'').replace(/\s+/g,' ').trim()||('题目 '+(q.number||''));
- return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><div class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'<span>无图</span>'}</div><div class="bank-copy"><h3>${h(q.number||'')}. ${h(stem.slice(0,150))}</h3><p>${h(bankUnitLabel(q.unitTitle||q.unitId))}${q.topicTitle?' · '+h(q.topicTitle):''} · ${bankTypeLabel[q.type]||h(q.type)}${q.status!=='ready'?' · '+badge('待核对','warn'):''}</p></div><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span>${q.canEdit!==false?`<button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button>`:''}</article>`;
+ return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" ${img?'':'disabled'} aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><div class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'<span>无图</span>'}</div><div class="bank-copy"><h3>${h(q.number||'')}. ${h(stem.slice(0,150))}</h3><p>${h(bankUnitLabel(q.unitTitle||q.unitId))}${q.topicTitle?' · '+h(q.topicTitle):''} · ${bankTypeLabel[q.type]||h(q.type)}${q.status!=='ready'?' · '+badge('待核对','warn'):''}</p></div><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span>${q.canEdit!==false?`<button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button>`:''}</article>`;
 }
 function bankSelectedMarkup(){
  const items=[...bankState.selected.values()],unset=items.filter(q=>q.type==='short'&&!(q.maxPoints>0)).length,points=items.reduce((sum,q)=>sum+(Number(q.maxPoints)||(q.type==='choice'?1:0)),0);
- return {html:`<div class="bank-cart-head"><div><strong>已选 ${items.length} 道</strong><p>${unset?'已知 '+points+' 分 · '+unset+' 题待设满分':'共 '+points+' 分'} · 上限 40 道</p></div>${items.length?`<button type="button" class="tw-text" data-bank-clear>清空</button>`:''}</div>${items.length?`<ol class="bank-cart-list">${items.slice(0,8).map(q=>`<li><span>${h(q.number||'')}</span><p>${h(String(q.searchText||q.prompt||'').replace(/\s+/g,' ').slice(0,54))}</p><button type="button" data-bank-remove="${h(q.id)}" aria-label="移除">×</button></li>`).join('')}</ol>${items.length>8?`<p class="tw-note">另有 ${items.length-8} 道未显示</p>`:''}`:'<div class="bank-cart-empty"><strong>还没有选题</strong><p>从左侧题库加入任意题目，可跨单元组合。</p></div>'}` ,count:items.length,points,unset};
+ return {html:`<div class="bank-cart-head"><div><strong>已选 ${items.length} 道</strong><p>${unset?'已知 '+points+' 分 · '+unset+' 题待设满分':'共 '+points+' 分'}</p></div>${items.length?`<button type="button" class="tw-text" data-bank-clear>清空</button>`:''}</div>${items.length?`<ol class="bank-cart-list">${items.map(q=>`<li><span>${h(q.number||'')}</span><p>${h(String(q.searchText||q.prompt||'').replace(/\s+/g,' ').slice(0,54))}</p><button type="button" data-bank-remove="${h(q.id)}" aria-label="移出第 ${h(q.number||'')} 题">×</button></li>`).join('')}</ol>`:'<div class="bank-cart-empty"><strong>还没有选题</strong><p>从左侧题库加入任意题目，可跨单元组合。</p></div>'}` ,count:items.length,points,unset};
 }
 function drawBankCart(){
- const root=$('#bank-cart');if(!root)return;const cart=bankSelectedMarkup();root.innerHTML=cart.html;
+ const root=$('#bank-cart');if(!root)return;
+ const cart=bankSelectedMarkup();
+ for(const host of [root,$('#bank-cart-dialog [data-bank-cart-body]')].filter(Boolean)){
+  const scroll=host.querySelector('.bank-cart-list')?.scrollTop||0;
+  host.innerHTML=cart.html;
+  const list=host.querySelector('.bank-cart-list');if(list)list.scrollTop=scroll;
+ }
  const bar=$('#bank-mobile-cart');if(bar){bar.hidden=cart.count===0;bar.querySelector('[data-bank-count]').textContent=cart.count;bar.querySelector('[data-bank-points]').textContent=cart.unset?'满分待确认':cart.points+' 分';}
  $('#bank-publish').disabled=cart.count===0;$('#bank-publish').textContent=cart.count?'组卷 · '+cart.count+' 题':'组卷并布置';
  $('[data-bank-publish-quick]')?.toggleAttribute('disabled',cart.count===0);
@@ -204,13 +258,20 @@ function drawBankList(){
 }
 function toggleBank(id){
  if(bankState.selected.has(id))bankState.selected.delete(id);
- else{if(bankState.selected.size>=40)return toast('一次最多选择 40 道题');const q=(bankState.questions||[]).find(x=>x.id===id);if(q)bankState.selected.set(id,q);}
- drawBankList();drawBankCart();
+ else{
+  const q=bankState.questions.find(x=>x.id===id);
+  if(!q?.questionImages?.length)return toast('请先补全原题');
+  bankState.selected.set(id,q);
+ }
+ const scroll=$('#bank-list').scrollTop;
+ drawBankList();$('#bank-list').scrollTop=scroll;drawBankCart();
+ [...$$('[data-bank-pick]')].find(x=>x.dataset.bankPick===id)?.focus({preventScroll:true});
 }
 function openBankPublish(){
  const items=[...bankState.selected.values()];if(!items.length)return toast('先从题库选择题目');
  const classes=state.meta.classes.filter(c=>!c.archived);
  const clientId=crypto.randomUUID(),dlg=document.createElement('dialog');dlg.className='tw-dialog bank-publish-dialog';
+ dlg.addEventListener('close',()=>dlg.remove(),{once:true});
  dlg.innerHTML=`<form class="tw-dialog-form"><h2>从题库组卷并布置</h2><p class="tw-note">已选 ${items.length} 道题，保存的是此刻的题目快照；题库后续修改不会改变这份作业。</p>${gradingFields(items,h)}<label class="tw-field"><span>作业名称</span><input name="title" required maxlength="120" value="${h(items.length>1?'题库组卷 · '+new Date().toISOString().slice(0,10):'题库练习')}"></label><fieldset class="bank-class-field"><legend>布置到班级</legend>${classes.map(c=>`<label class="tw-check"><input type="checkbox" name="classIds" value="${c.id}" ${c.id===state.classId?'checked':''}>${h(c.name)}</label>`).join('')}</fieldset><label class="tw-field"><span>截止时间（可选）</span><input name="dueAt" type="datetime-local"></label><label class="tw-check"><input type="checkbox" name="allowLate" checked><span>允许逾期提交</span></label><p class="tw-form-error" role="alert"></p><div class="tw-dialog-actions"><button type="button" class="tw-button" data-bank-cancel>取消</button><button class="tw-button tw-primary" type="submit">发布作业</button></div></form>`;
  document.body.append(dlg);dlg.showModal();dlg.querySelector('[data-bank-cancel]').onclick=()=>dlg.close();
  dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,btn=f.querySelector('[type=submit]'),err=f.querySelector('.tw-form-error');err.textContent='';const classIds=[...f.querySelectorAll('[name=classIds]:checked')].map(x=>x.value);if(!classIds.length){err.textContent='请至少选择一个班级';return;}btn.disabled=true;btn.textContent='正在发布…';
@@ -218,34 +279,79 @@ function openBankPublish(){
   catch(error){err.textContent=error.message;btn.disabled=false;btn.textContent='发布作业';}
  };
 }
+function drawBankFacets(){
+ const units=bankUnits();
+ const active=units.find(u=>u.id===bankState.unit);
+ if(!active)bankState.unit='';
+ const options=active?[active]:units;
+ const groups=options.map(u=>`<optgroup label="${h(u.title)}">${u.topics.map(t=>`<option value="${h(u.id+'|'+t.id)}">${h(t.id+' '+(t.name||t.title||''))}</option>`).join('')}</optgroup>`).join('');
+ const unit=$('#bank-unit'),topic=$('#bank-topic');
+ unit.innerHTML='<option value="">全部单元</option>'+units.map(u=>`<option value="${h(u.id)}">${h(bankState.course==='all'?(bankCourses.find(([id])=>u.id.startsWith(id+'-'))?.[1]||'')+' · '+bankUnitLabel(u.title):bankUnitLabel(u.title))}</option>`).join('');
+ unit.value=bankState.unit;
+ topic.innerHTML='<option value="">全部 Topic</option>'+groups+'<option value="unmapped">未归类</option>';
+ topic.value=bankState.topic;
+ if(topic.selectedIndex<0)topic.value=bankState.topic='';
+ for(const button of $$('[data-bank-course]')){
+  const selected=button.dataset.bankCourse===bankState.course;
+  button.classList.toggle('is-active',selected);button.setAttribute('aria-pressed',String(selected));
+ }
+}
 async function bank(){
+ const version=state.version;
  const [catalog,data]=await Promise.all([hw('library/catalog'),hw('library/questions?unit=all')]);
- data.questions=canonicalQuestions(data.questions||[]);
- bankState.catalog=catalog;bankState.questions=data.questions||[];
- const units=catalog.units.filter(u=>!u.archived);
- if(!bankState.initialized){bankState.initialized=true;bankState.units=new Set(units.map(u=>u.id));}
- const coursesOf=[['all','全部'],['micro','AP 微观'],['macro','AP 宏观']];
- const ready=data.questions.filter(q=>q.status==='ready').length;
- const groups={micro:units.filter(u=>u.id.startsWith('micro-')),macro:units.filter(u=>u.id.startsWith('macro-'))};
- main.innerHTML=`<div class="bank-head"><div><p class="tw-note">全部 ${data.questions.length} 道题 · ${ready} 道已复核 · 可跨 Unit 1–6 自由组合；教学包只是题库的预设视图。</p></div><div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷并布置</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu"><a href="#library">课程教学包</a></div></details></div></div><div class="bank-mobile-tabs">${coursesOf.map(([id,label])=>`<button type="button" class="bank-chip ${bankState.course===id?'is-active':''}" data-bank-course="${id}">${label}</button>`).join('')}</div><div class="bank-layout"><details class="bank-filters" ${matchMedia('(min-width:960px)').matches?'open':''}><summary>筛选题目</summary><div class="bank-filter-body"><p class="bank-filter-title">课程</p><div class="bank-seg">${coursesOf.map(([id,label])=>`<button type="button" class="${bankState.course===id?'is-active':''}" data-bank-course="${id}">${label}</button>`).join('')}</div><p class="bank-filter-title">单元 <button type="button" class="tw-text" data-bank-allunits>全选</button></p>${Object.entries(groups).map(([course,list])=>list.length?`<div class="bank-unit-group"><strong>${course==='micro'?'AP 微观':'AP 宏观'}</strong>${list.map(u=>`<label class="bank-unit"><input type="checkbox" data-bank-unit="${h(u.id)}" ${bankState.units.has(u.id)?'checked':''}><span>${h(u.title.replace(/^AP (Micro|Macro)economics /,''))}</span><small>${data.questions.filter(x=>x.unitId===u.id&&x.status==='ready').length}</small></label>`).join('')}</div>`:'').join('')}<p class="bank-filter-title">题型</p><div class="bank-seg"><button type="button" class="${bankState.type===''?'is-active':''}" data-bank-type="">全部</button><button type="button" class="${bankState.type==='choice'?'is-active':''}" data-bank-type="choice">选择题</button><button type="button" class="${bankState.type==='short'?'is-active':''}" data-bank-type="short">简答题</button></div><p class="bank-filter-title">状态</p><div class="bank-seg"><button type="button" class="${bankState.status==='ready'?'is-active':''}" data-bank-status="ready">已复核</button><button type="button" class="${bankState.status==='needs_review'?'is-active':''}" data-bank-status="needs_review">待核对</button><button type="button" class="${bankState.status==='all'?'is-active':''}" data-bank-status="all">全部</button></div></div></details><section class="bank-results"><div class="bank-search"><input type="search" id="bank-search" placeholder="搜索题干、知识点或题号" value="${h(bankState.q)}"><span id="bank-count"></span><button type="button" class="tw-button tw-small" data-bank-audit>图表待补</button></div><div id="bank-list" class="bank-list"></div><div id="bank-pager" class="bank-pager"></div></section><aside class="bank-cart" id="bank-cart"></aside></div><div class="bank-mobile-cart" id="bank-mobile-cart" hidden><div><strong data-bank-count>0</strong> 道 · <span data-bank-points>0 分</span></div><button type="button" class="tw-button tw-primary" data-bank-publish-quick>组卷并布置</button></div>`;
- drawBankList();drawBankCart();
- const rerender=()=>{drawBankList();drawBankCart();};
- $$('[data-bank-course]').forEach(b=>b.onclick=()=>{bankState.course=b.dataset.bankCourse;bankState.page=1;void bank();});
- $$('[data-bank-type]').forEach(b=>b.onclick=()=>{bankState.type=b.dataset.bankType;bankState.page=1;void bank();});
- $$('[data-bank-status]').forEach(b=>b.onclick=()=>{bankState.status=b.dataset.bankStatus;bankState.page=1;void bank();});
- $$('[data-bank-unit]').forEach(x=>x.onchange=()=>{x.checked?bankState.units.add(x.dataset.bankUnit):bankState.units.delete(x.dataset.bankUnit);bankState.page=1;rerender();});
- $('[data-bank-allunits]').onclick=()=>{const all=units.every(u=>bankState.units.has(u.id));bankState.units=all?new Set():new Set(units.map(u=>u.id));$$('[data-bank-unit]').forEach(x=>x.checked=bankState.units.has(x.dataset.bankUnit));rerender();};
- $('#bank-search').oninput=e=>{bankState.q=e.target.value;bankState.page=1;rerender();};
- $('#bank-list').onclick=e=>{const crop=e.target.closest('[data-bank-crop]');if(crop){location.hash='bank/crop/'+encodeURIComponent(crop.dataset.bankCrop);return;}const pick=e.target.closest('[data-bank-pick]');if(pick){toggleBank(pick.dataset.bankPick);}};
- $('#bank-pager').onclick=e=>{const b=e.target.closest('[data-bank-page]');if(!b)return;bankState.page+=b.dataset.bankPage==='next'?1:-1;drawBankList();};
- $('#bank-cart').onclick=e=>{const rm=e.target.closest('[data-bank-remove]');if(rm){bankState.selected.delete(rm.dataset.bankRemove);drawBankList();drawBankCart();}if(e.target.closest('[data-bank-clear]')){bankState.selected.clear();drawBankList();drawBankCart();}};
+ if(version!==state.version)return;
+ bankState.catalog=catalog;
+ bankState.questions=canonicalQuestions(data.questions||[]);
+ const hasAudit=bankState.questions.some(q=>q.canEdit!==false);
+ main.innerHTML=`<div class="bank-head"><p class="tw-note">按学科、单元和 Topic 找题，跨单元组卷</p>
+  <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷并布置</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#library">课程教学包</a></div></details></div></div>
+  <div class="bank-workspace-filters" role="group" aria-label="筛选题目"><div class="bank-seg">${bankCourses.map(([id,label])=>`<button type="button" data-bank-course="${id}">${label}</button>`).join('')}</div>
+  <select id="bank-unit" aria-label="单元"></select><select id="bank-topic" aria-label="Topic"></select>
+  <select id="bank-type" aria-label="题型"><option value="">全部题型</option><option value="choice">MCQ</option><option value="short">FRQ</option></select>
+  <select id="bank-status" aria-label="核对状态"><option value="all">全部状态</option><option value="ready">已复核</option><option value="needs_review">待核对</option></select>
+  <button type="button" class="tw-text" data-bank-reset>清除筛选</button></div>
+  <div class="bank-layout bank-workspace-layout"><section class="bank-results" aria-labelledby="bank-result-title">
+  <div class="bank-search"><strong id="bank-result-title">匹配题目</strong><input type="search" id="bank-search" aria-label="搜索题库" placeholder="搜索题干、知识点或题号" value="${h(bankState.q)}"><span id="bank-count" role="status"></span></div>
+  <div id="bank-list" class="bank-list" tabindex="0" aria-label="题目列表"></div><div id="bank-pager" class="bank-pager"></div></section><aside class="bank-cart" id="bank-cart" aria-label="作业选题"></aside></div>
+  <div class="bank-mobile-cart" id="bank-mobile-cart" hidden><button type="button" class="tw-button" data-bank-show-cart>已选 <strong data-bank-count>0</strong> 道 ›</button><span data-bank-points>0 分</span><button type="button" class="tw-button tw-primary" data-bank-publish-quick>组卷并布置</button></div>
+  <dialog id="bank-cart-dialog" class="tw-dialog bank-cart-dialog" aria-label="作业选题"><header><strong>作业选题</strong><button type="button" class="tw-button" data-bank-close-cart>关闭</button></header><div data-bank-cart-body></div></dialog>`;
+ drawBankFacets();drawBankList();drawBankCart();
+ const update=()=>{bankState.page=1;$('#bank-list').scrollTop=0;drawBankList();};
+ $$('[data-bank-course]').forEach(b=>b.onclick=()=>{
+  bankState.course=b.dataset.bankCourse;
+  if(bankState.unit&&!bankUnits().some(u=>u.id===bankState.unit))bankState.unit='';
+  if(bankState.topic==='unmapped')bankState.topic='';
+  drawBankFacets();update();
+ });
+ $('#bank-unit').onchange=e=>{bankState.unit=e.target.value;drawBankFacets();update();};
+ for(const key of ['topic','type','status']){
+  const select=$('#bank-'+key);select.value=bankState[key];
+  select.onchange=()=>{bankState[key]=select.value;update();};
+ }
+ $('#bank-search').oninput=e=>{bankState.q=e.target.value;update();};
+ $('[data-bank-reset]').onclick=()=>{
+  Object.assign(bankState,{unit:'',topic:'',type:'',status:'all',q:''});
+  $('#bank-type').value='';$('#bank-status').value='all';$('#bank-search').value='';drawBankFacets();update();
+ };
+ $('#bank-list').onclick=e=>{const crop=e.target.closest('[data-bank-crop]');if(crop){location.hash='bank/crop/'+encodeURIComponent(crop.dataset.bankCrop);return;}const pick=e.target.closest('[data-bank-pick]');if(pick)toggleBank(pick.dataset.bankPick);};
+ $('#bank-pager').onclick=e=>{const b=e.target.closest('[data-bank-page]');if(!b)return;bankState.page+=b.dataset.bankPage==='next'?1:-1;drawBankList();$('#bank-list').scrollTop=0;$('#bank-list').focus({preventScroll:true});};
+ const dialog=$('#bank-cart-dialog');
+ const updateCart=e=>{
+  const rm=e.target.closest('[data-bank-remove]');
+  if(rm)bankState.selected.delete(rm.dataset.bankRemove);
+  else if(e.target.closest('[data-bank-clear]'))bankState.selected.clear();
+  else return;
+  const host=e.currentTarget;
+  drawBankList();drawBankCart();
+  (host.querySelector('[data-bank-remove]')||host.querySelector('[data-bank-close-cart]')||$('#bank-search')).focus({preventScroll:true});
+ };
+ $('#bank-cart').onclick=updateCart;dialog.onclick=updateCart;
+ $('[data-bank-show-cart]').onclick=()=>dialog.showModal();
+ $('[data-bank-close-cart]').onclick=()=>dialog.close();
  $('#bank-publish').onclick=openBankPublish;
  $('[data-bank-publish-quick]').onclick=openBankPublish;
- state.viewCleanup?.();state.viewCleanup=bindDisclosureMenus(main,'.bank-more');
- $('.bank-more a').onclick=()=>{$('.bank-more').open=false;};
-
- const audit=$('[data-bank-audit]');
- if(audit){audit.hidden=!data.questions.some(q=>q.canEdit!==false);audit.onclick=()=>{location.hash='bank/crop';};}
+ state.viewCleanup=bindDisclosureMenus(main,'.bank-more');
+ $('.bank-more').addEventListener('click',e=>{if(e.target.closest('a'))$('.bank-more').open=false;});
 }
 
 const cropVisual=/(figure|graph|table|diagram|chart|shown|curve|axis|slope|shift)/i;

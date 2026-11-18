@@ -1,3 +1,4 @@
+import {courseLabel,singleClassCourse} from './course-scope.js';
 import {studyReportMarkup} from './study-workflow.js';
 import {scoreMaximum} from './score-entry.js';
 // Teacher-facing learning overview: class matrix, student profiles and
@@ -37,6 +38,7 @@ export function mountLearningOverview(ctx, initialData) {
   const {state, main, h, toast} = ctx;
   const link = ctx.link;
   const ai = ctx.ai || null;
+  const reportTabs=['matrix','diagnosis','students','reports'];
   let data = initialData;
   let destroyed = false;
   const classes = state.meta?.classes || [];
@@ -46,14 +48,14 @@ export function mountLearningOverview(ctx, initialData) {
   const rememberedClass = storedFilter.classId ?? state.classId ?? '';
   const filter = {
     classId: rememberedClass===''||classes.some(item => item.id === rememberedClass) ? rememberedClass : (classes[0]?.id || ''),
-    unit: '', period: PERIODS.some(([id]) => id === storedFilter.period) ? storedFilter.period : '4w',
-    assignmentId: '', query: '', status: 'all',
+    unit: typeof storedFilter.unit==='string'?storedFilter.unit:'', period: PERIODS.some(([id]) => id === storedFilter.period) ? storedFilter.period : '4w',
+    assignmentId: typeof storedFilter.assignmentId==='string'?storedFilter.assignmentId:'', query: typeof storedFilter.query==='string'?storedFilter.query:'', status: STATUS_FILTERS.some(([id])=>id===storedFilter.status)?storedFilter.status:'all',
     sort: SORTS.some(([id]) => id === storedFilter.sort) ? storedFilter.sort : 'name',
     direction: storedFilter.direction === 'desc' ? 'desc' : 'asc',
   };
   if (filter.sort !== 'name') filter.direction = filter.direction === 'asc' ? 'asc' : 'desc';
   const storedTab = memory.get('tab', 'matrix');
-  let tab = ['matrix', 'students', 'diagnosis'].includes(storedTab) ? storedTab : 'matrix';
+  let tab = reportTabs.includes(storedTab) ? storedTab : 'matrix';
   let diagId = typeof memory.get('diagId', '') === 'string' ? memory.get('diagId', '') : '';
   let diagQuestion = typeof memory.get('diagQuestion', '') === 'string' ? memory.get('diagQuestion', '') : '';
   let diagOrder=memory.get('diagOrder','number');
@@ -78,6 +80,7 @@ export function mountLearningOverview(ctx, initialData) {
   main.innerHTML = `<section class="lo-page" id="lo-page" data-tab="${tab}" data-mview="${mobileView}">
   <div class="lo-toolbar" role="group" aria-label="学情范围与筛选">
     <label class="lo-field" id="lo-class-field"><span>班级</span><select id="lo-class"></select></label>
+    <span class="lo-class-course" id="lo-class-course" hidden></span>
     <label class="lo-field" id="lo-unit-field"><span>单元</span><select id="lo-unit"></select></label>
     <label class="lo-field"><span>范围</span><select id="lo-period"></select></label>
     <label class="lo-field" id="lo-assignment-field"><span>作业</span><select id="lo-assignment"></select></label>
@@ -100,7 +103,8 @@ export function mountLearningOverview(ctx, initialData) {
   <div class="lo-tabs" role="tablist" aria-label="学情视图">
     <button type="button" role="tab" id="lo-tab-matrix" aria-controls="lo-panel-matrix" aria-selected="${tab === 'matrix'}" tabindex="${tab === 'matrix' ? 0 : -1}" data-tab="matrix">成绩总览</button>
     <button type="button" role="tab" id="lo-tab-diagnosis" aria-controls="lo-panel-diagnosis" aria-selected="${tab === 'diagnosis'}" tabindex="${tab === 'diagnosis' ? 0 : -1}" data-tab="diagnosis">题目诊断</button>
-    <button type="button" role="tab" id="lo-tab-students" aria-controls="lo-panel-students" aria-selected="${tab === 'students'}" tabindex="${tab === 'students' ? 0 : -1}" data-tab="students">学情报告</button>
+    <button type="button" role="tab" id="lo-tab-students" aria-controls="lo-panel-students" aria-selected="${tab === 'students'}" tabindex="${tab === 'students' ? 0 : -1}" data-tab="students">学生档案</button>
+    <button type="button" role="tab" id="lo-tab-reports" aria-controls="lo-panel-reports" aria-selected="${tab === 'reports'}" tabindex="${tab === 'reports' ? 0 : -1}" data-tab="reports">学情报告</button>
     <span class="lo-tab-note" id="lo-count"></span>
   </div>
   <div class="lo-body" id="lo-body">
@@ -123,11 +127,14 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
     </div>
     <div class="lo-panel" id="lo-panel-students" role="tabpanel" aria-labelledby="lo-tab-students" ${tab === 'students' ? '' : 'hidden'}>
-      ${ai ? '<header class="lo-panel-bar"><strong>班级报告</strong><div><button type="button" class="lo-btn" data-action="report-history">报告历史</button><button type="button" class="lo-btn lo-primary" data-action="ai-report">生成学情分析</button></div></header>' : ''}
       <div class="lo-profile-layout" id="lo-profile-layout">
         <div class="lo-profile-list" id="lo-profile-list" aria-label="学生列表"></div>
         <div class="lo-profile" id="lo-profile"></div>
       </div>
+    </div>
+    <div class="lo-panel" id="lo-panel-reports" role="tabpanel" aria-labelledby="lo-tab-reports" ${tab === 'reports' ? '' : 'hidden'}>
+      <header class="lo-panel-bar"><strong>当前范围的学情报告</strong><div><button type="button" class="lo-btn" data-action="class-report">班级学情摘要</button>${ai ? '<button type="button" class="lo-btn" data-action="report-history">报告历史</button><button type="button" class="lo-btn lo-primary" data-action="ai-report">生成学情分析</button>' : ''}</div></header>
+      <div class="lo-report-overview" id="lo-report-overview"></div>
     </div>
     <aside class="lo-detail" id="lo-detail" aria-label="成绩详情"></aside>
   </div>
@@ -207,6 +214,9 @@ export function mountLearningOverview(ctx, initialData) {
     const unitScope = filter.unit ? classScope.filter(item => item.libraryUnit === filter.unit) : classScope;
 
     fill($('#lo-class'), [['', '全部班级'], ...classes.map(item => [item.id, `${item.name}${item.archived ? ' · 已归档' : ''}`])], filter.classId);
+    const classCourse=singleClassCourse(classes.find(item=>item.id===filter.classId));
+    const courseTag=$('#lo-class-course');courseTag.hidden=!classCourse;courseTag.dataset.course=classCourse;
+    courseTag.textContent=classCourse?courseLabel(classCourse):'';
     $('#lo-unit-field').hidden = units.length < 2;
     fill($('#lo-unit'), [['', '全部单元'], ...units.map(unit => [unit, unit])], filter.unit);
     fill($('#lo-period'), PERIODS, filter.period);
@@ -236,6 +246,7 @@ export function mountLearningOverview(ctx, initialData) {
     memory.set({filter: savedFilter, tab, mobileView, profileId, selection: selected, diagId, diagQuestion, diagOpen});
 
     renderStats(stats, assignments);
+    $('#lo-report-overview').innerHTML=`<p class="lo-note">${h(classLabel()||'全部班级')} · ${h(scopeCaption(stats))}</p>${classObservationsMarkup()}`;
     renderCount(visible.length, rows.length);
     renderMatrix(assignments, visible);
     renderList(visible);
@@ -551,7 +562,7 @@ export function mountLearningOverview(ctx, initialData) {
       return;
     }
     ensureDiag(diagnoses);
-    diagList.innerHTML = diagnoses.map(item => {
+    diagList.innerHTML = diagnoses.slice().sort((a,b)=>newestAssignmentFirst(a.assignment,b.assignment)).map(item => {
       const assignment = item.assignment;
       return `<button type="button" class="lo-diag-item" data-diag="${h(assignment.id)}" aria-pressed="${assignment.id === diagId}">
         <span class="lo-diag-name">${h(assignmentLabel(assignment))}</span>
@@ -854,12 +865,15 @@ function renderDetail() {
   }
 
   function emptyDetailMarkup() {
-    const attention = [...context.visible].sort((a, b) => (b.missing + b.needsReview + b.openCorrections) - (a.missing + a.needsReview + a.openCorrections)).slice(0, 4);
+    const attention = context.visible.filter(row=>row.missing||row.needsReview||row.openCorrections).sort((a, b) => (b.missing + b.needsReview + b.openCorrections) - (a.missing + a.needsReview + a.openCorrections)).slice(0, 4);
+    const weak=context.diagnoses.flatMap(d=>d.knowledge.map(item=>({...item,assignment:d.assignment})))
+      .filter(item=>item.rate!=null&&item.rate<60).sort((a,b)=>a.rate-b.rate)
+      .filter((item,index,items)=>items.findIndex(other=>other.knowledge===item.knowledge)===index).slice(0,3);
     return `<div class="lo-detail-empty">
       <h2>从矩阵选择一名学生</h2>
       <p>点击任一成绩可查看原题、本人作答与班级数据。双击可改分，手机点开详情后选择「修改成绩」。矩阵内可用方向键移动，Enter 打开。</p>
       ${attention.length ? `<h3>优先关注</h3><ul class="lo-attention-list">${attention.map(row => `<li><button type="button" class="lo-attention" data-profile="${h(row.student.id)}"><span>${h(row.student.name)}</span><small>${row.missing ? `待交 ${row.missing}` : ''}${row.missing && row.needsReview ? ' · ' : ''}${row.needsReview ? `待复核 ${row.needsReview}` : ''}${row.openCorrections ? `${row.missing || row.needsReview ? ' · ' : ''}待订正 ${row.openCorrections}` : ''}</small></button></li>`).join('')}</ul>` : ''}
-      ${classObservationsMarkup()}
+      ${weak.length?`<h3>薄弱知识点</h3><ul class="lo-attention-list">${weak.map(item=>`<li><button type="button" class="lo-attention" data-weak-assignment="${h(item.assignment.id)}"><span>${h(item.knowledge)} ${accuracyBadge(item.rate)}</span><small>${h(assignmentLabel(item.assignment))} ›</small></button></li>`).join('')}</ul>`:''}
       <p class="lo-note">五色为课堂得分率参考分档（见「更多 → 图例」），非 AP 官方换算；留空不计均分，明确录入的 0 分计入均分。</p>
     </div>`;
   }
@@ -1007,10 +1021,10 @@ function renderDetail() {
   }
 
   function setTab(next, redraw = true) {
-    tab = ['matrix', 'students', 'diagnosis'].includes(next) ? next : 'matrix';
+    tab = reportTabs.includes(next) ? next : 'matrix';
     memory.set({tab});
     root.dataset.tab = tab;
-    for (const name of ['matrix', 'students', 'diagnosis']) {
+    for (const name of reportTabs) {
       const button = $(`#lo-tab-${name}`);
       const active = tab === name;
       button.setAttribute('aria-selected', String(active));
@@ -1228,6 +1242,14 @@ function renderDetail() {
     if (tabButton) { setTab(tabButton.dataset.tab); return; }
     const analyze=target.closest('[data-ai-assignment]');
     if(analyze){void openAiReport(null,analyze.dataset.aiAssignment);return;}
+    const weak = target.closest('[data-weak-assignment]');
+    if(weak){
+      diagId=weak.dataset.weakAssignment;diagQuestion='';diagOpen=true;
+      memory.set({diagId,diagQuestion,diagOpen});
+      setTab('diagnosis',false);renderDiagnosis(context.diagnoses);renderDetail();
+      diagHost.focus({preventScroll:true});
+      return;
+    }
     const diagItem = target.closest('[data-diag]');
     if (diagItem) {
       diagId = diagItem.dataset.diag; diagQuestion = ''; diagOpen = true;
@@ -1384,7 +1406,7 @@ function renderDetail() {
   $('#lo-tab-matrix').parentElement.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     event.preventDefault();
-    const order = ['matrix', 'diagnosis', 'students'];
+    const order = reportTabs;
     const index = Math.max(0, order.indexOf(tab));
     const next = order[(index + (event.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length];
     setTab(next);

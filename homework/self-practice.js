@@ -597,7 +597,7 @@ export function createSelfPracticeUI(ctx) {
         };
       };
     });
-    main.querySelectorAll('[data-wrong-zoom]').forEach(button=>button.onclick=()=>{const images=button.closest('[data-wrong]').querySelector('.sp-wrong-images');const on=images.dataset.zoom!=='true';images.dataset.zoom=String(on);button.setAttribute('aria-pressed',String(on));button.textContent=on?'缩小原题':'放大原题';});
+    main.querySelectorAll('[data-wrong-zoom]').forEach(button=>button.onclick=()=>{const images=button.closest('[data-wrong]').querySelector('.sp-wrong-images');const on=images.dataset.zoom!=='true';images.dataset.zoom=String(on);button.setAttribute('aria-pressed',String(on));button.textContent=on?'适应宽度':'放大';});
     const last = {course: attempt.course, topics: attempt.topicIds, count: attempt.questions.length, timer: attempt.timerMode, minutes: attempt.timeLimitMinutes || 25};
     saveCreate(last);
 
@@ -608,11 +608,11 @@ export function createSelfPracticeUI(ctx) {
     return `<article class="sp-wrong-item" data-wrong="${h(question.id)}">
       <header><strong>第 ${h(question.number || question.id)} 题</strong><span>${h(question.topic)}</span><span class="sp-wrong-mark">${resultBadge({...question,unanswered:!question.chosen})}</span></header>
       <div class="sp-wrong-body">
-        <div class="sp-wrong-images">${question.prompt?`<p>${h(question.prompt)}</p>`:""}${question.questionImages.map((fileId) => `<img src="/api/homework/files/${encodeURIComponent(fileId)}" alt="第 ${h(question.number || question.id)} 题原题" loading="lazy">`).join('')}</div>
+        <div class="sp-wrong-paper"><div class="recap-paper-head"><strong>原题</strong><button type="button" class="secondary" data-wrong-zoom aria-pressed="false">放大</button></div><div class="sp-wrong-images">${question.prompt?`<p>${h(question.prompt)}</p>`:""}${question.questionImages.map((fileId) => `<img src="/api/homework/files/${encodeURIComponent(fileId)}" alt="第 ${h(question.number || question.id)} 题原题" loading="lazy">`).join('')}</div></div>
         <div class="sp-wrong-options">${question.optionLabels.map((label) => `<div class="sp-wrong-option" data-state="${label === question.correctOption ? 'correct' : label === question.chosen ? 'chosen' : ''}"><span>${h(label)}</span>${label === question.correctOption ? '<small>正确</small>' : label === question.chosen ? '<small>我的选择</small>' : ''}</div>`).join('')}</div>
       </div>
       <p class="sp-correction-note" data-correction-note ${correction ? '' : 'hidden'}>${correction ? `已订正为 ${h(correction.choice)}（记录订正，不改分）` : ''}</p>
-      <div class="sp-wrong-actions"><button type="button" class="secondary" data-wrong-zoom aria-pressed="false">放大原题</button><button type="button" class="secondary" data-correct>重新选择并订正</button><a class="secondary" href="#mistakes/${encodeURIComponent(attempt.id)}/${encodeURIComponent(question.id)}">在错题本订正</a>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div>
+      <div class="sp-wrong-actions recap-actions"><details class="recap-menu"><summary>更多操作 ⋯</summary><div class="recap-menu-content"><a class="secondary" href="#mistakes/${encodeURIComponent(attempt.id)}/${encodeURIComponent(question.id)}">在错题本订正</a>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div></details><button type="button" class="primary" data-correct>去订正</button></div>
     </article>`;
   }
 

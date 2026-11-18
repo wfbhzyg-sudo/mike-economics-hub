@@ -1854,6 +1854,47 @@
 .homework-surface .course-badge{display:inline-flex;border-radius:5px;padding:2px 6px;background:#e8eeed;color:#315b53;font-weight:600}
 .homework-surface .course-badge[data-course=macro]{background:#e9edf7;color:#3e5279}
 
+/* The original question is the primary surface in a graded recap. */
+.homework-surface .recap-directory{margin:8px 0;padding:7px 10px;border:1px solid var(--line,#dce5ec);border-radius:8px;background:#fff}
+.homework-surface .recap-directory summary{cursor:pointer;font-size:13px;font-weight:650}
+.homework-surface .recap-directory>div{display:flex;flex-wrap:wrap;gap:6px;max-height:124px;overflow:auto;padding:7px 0 0}
+.homework-surface .recap-directory button{min-width:32px;min-height:34px;border:1px solid #d6e1ea;border-radius:6px;background:#f2f5f8;color:#173c57}
+.homework-surface .recap-directory button[data-tone=good]{background:#e1f0e6}.homework-surface .recap-directory button[data-tone=loss]{background:#fae6e8}
+.homework-surface .recap-question{border:1px solid #dce5ec;border-radius:9px;background:white;margin:0 0 8px}
+.homework-surface .recap-question>summary{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 12px;color:#15334d}
+.homework-surface .recap-question[open]>summary{background:#f1f6fa;border-radius:9px 9px 0 0;border-bottom:1px solid #dce5ec}
+.homework-surface .recap-question .recap-number{flex:none;font-weight:700}
+.homework-surface .recap-question .recap-label{min-width:0;flex:1;overflow-wrap:anywhere;color:#476176}
+.homework-surface .recap-question .recap-detail{display:grid;gap:9px;padding:10px 12px}
+.homework-surface .recap-paper,.homework-surface .sp-wrong-paper,.homework-surface .recap-feedback{min-width:0;border:1px solid #dce5ec;border-radius:8px;padding:8px 10px;background:#fff}
+.homework-surface .recap-paper-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;color:#203b53;font-size:13px}
+.homework-surface .recap-toolbar,.homework-surface .recap-toolbar>div{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.homework-surface .recap-paper-head button{padding:4px 8px;border:0;border-radius:6px;background:#eef4f8;color:#174e72;font:inherit;cursor:pointer;min-height:32px}
+.homework-surface .recap-paper-head button[aria-pressed=true]{background:#dcebf6;color:#123b58}
+.homework-surface .recap-paper .result-original{margin:0;min-width:0;max-width:100%;overflow:auto;overscroll-behavior-inline:contain}
+.homework-surface .recap-paper .result-original.recap-zoomed > :is(img,.mark-image){width:150%;max-width:none}
+.homework-surface .recap-paper .result-original.recap-zoomed .mark-image img{width:100%;max-width:none}
+.homework-surface .recap-answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.homework-surface .recap-answers>div{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:7px 9px;background:#f0f5f8;border-radius:6px;overflow-wrap:anywhere}
+.homework-surface .recap-answers span{font-size:12px;color:#506478}
+.homework-surface .recap-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;min-width:0}
+.homework-surface .recap-actions>.primary{padding:7px 12px;margin-inline-start:auto}
+.homework-surface .recap-menu{flex:0 1 auto;position:relative;max-width:100%;font-size:13px}
+.homework-surface .recap-menu>summary{padding:7px 4px;cursor:pointer;color:#19557d;font-weight:650}
+.homework-surface .recap-menu-content{max-width:100%;padding:8px;background:white;border:1px solid #cbdce8;border-radius:8px;box-shadow:0 5px 16px #2048671f}
+.homework-surface .recap-menu-content .study-controls{display:flex;gap:6px;flex-wrap:wrap;margin:0}
+.homework-surface .recap-menu-content :is(.review-appeal,.evidence){margin-top:6px}
+.homework-surface .recap-menu-content textarea{min-width:0;width:100%}
+@media(min-width:1000px){.homework-surface .recap-list{max-height:clamp(320px,calc(100dvh - 365px),740px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}}
+@media(max-width:700px){
+ .homework-surface .recap-question>summary,.homework-surface .recap-question .recap-detail{padding:8px}
+ .homework-surface .recap-question .recap-label{order:3;flex:1 1 100%;font-size:12px}
+ .homework-surface .recap-paper-head button,.homework-surface .recap-actions>.primary,.homework-surface .recap-menu>summary,.homework-surface .recap-directory button{min-height:44px}
+ .homework-surface .recap-directory>div{max-height:155px}
+}
+.homework-surface .recap-answers>div:only-child{grid-column:1/-1}
+@media(max-width:700px){.homework-surface .recap-actions{padding-inline-end:56px}}
+
 /* V3 workspaces: task-first layout, semantic sections and stable touch targets. */
 .homework-surface{
   --navy: var(--ui-primary);

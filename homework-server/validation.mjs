@@ -20,8 +20,8 @@ const numeric = (value) =>
   typeof value === "number" || (typeof value === "string" && value.trim() !== "");
 export function rubric(input) {
   assert(
-    Array.isArray(input) && input.length > 0 && input.length <= 40,
-    "请提供 1–40 道题的评分标准",
+    Array.isArray(input) && input.length > 0,
+    "请提供至少一道题的评分标准",
   );
   const seen = new Set();
   return input.map((q, i) => {

@@ -190,11 +190,11 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  async function bank(initial={}){
   const raw=await getQuestions(),qs=initial.ids?raw:canonicalQuestions(raw);if(disposed)return;
   const storageKey=`lib-selection:${state.user.id}:${unitId}:${initial.context||'custom'}`;
-  const selected=new Set(recall(storageKey,initial.ids||[]).filter(id=>qs.some(q=>q.id===id&&q.questionImages?.length)&&(!initial.ids||initial.ids.includes(id))).slice(0,40));
+  const selected=new Set(recall(storageKey,initial.ids||[]).filter(id=>qs.some(q=>q.id===id&&q.questionImages?.length)&&(!initial.ids||initial.ids.includes(id))));
   let preview=null,filterTopic=initial.topic??(unitScope?'':topic.id),type=initial.type??'choice',search='',statusFilter='',skill='',collection='',onlySelected=false;
   const context=initial.title?`<div class="lib-bank-context"><button data-back-packs>返回作业包</button><strong>${h(initial.title)}</strong></div>`:'';
   const filters=!initial.ids?`<details class="lib-filters"><summary>筛选<span data-filter-count></span></summary><div><label>范围<select data-filter-topic><option value="">整个 ${unitLabel}</option>${unit.topics.map(t=>`<option value="${t.id}" ${filterTopic===t.id?'selected':''}>${t.id} ${h(t.name||t.title)}</option>`).join('')}</select></label><label>题型<select data-type><option value="">全部</option><option value="choice" ${type==='choice'?'selected':''}>MCQ</option><option value="short" ${type==='short'?'selected':''}>FRQ · ${unitLabel}</option></select></label><label>Skill<select data-skill><option value="">全部</option>${[1,2,3].map(n=>`<option value="${n}">Skill ${n}</option>`).join('')}</select></label><label>来源<select data-collection><option value="">全部</option><option value="bank">Topic bank</option><option value="progress">Progress Check</option><option value="exam">Past papers</option></select></label><label>核对状态<select data-filter-status><option value="">全部</option><option value="ready">已核对</option><option value="pending">待核对</option></select></label></div></details>`:'';
-  content.innerHTML=`${context}<div class="lib-bank-top">${!initial.ids||initial.ids.length>8?'<label class="lib-search"><span class="sr-only">搜索题号或原文</span><input type="search" placeholder="题号或原文"></label>':''}${filters}<div class="lib-bank-actions"><details class="lib-selection-more"><summary>选择</summary><div><button data-pick>选择当前可用题（最多40）</button><button data-clear>清空选择</button></div></details><button data-selected-view aria-pressed="false" title="查看已选题目"></button><button class="primary" data-publish>布置所选</button></div></div><p class="lib-bank-scope" data-scope></p><div class="lib-bank"><details class="lib-bank-directory" open><summary>题目目录 <span data-visible-count></span></summary><div class="lib-question-list"></div></details><div class="lib-question-preview"></div></div>`;
+  content.innerHTML=`${context}<div class="lib-bank-top">${!initial.ids||initial.ids.length>8?'<label class="lib-search"><span class="sr-only">搜索题号或原文</span><input type="search" placeholder="题号或原文"></label>':''}${filters}<div class="lib-bank-actions"><details class="lib-selection-more"><summary>选择</summary><div><button data-pick>选择当前可用题</button><button data-clear>清空选择</button></div></details><button data-selected-view aria-pressed="false" title="查看已选题目"></button><button class="primary" data-publish>布置所选</button></div></div><p class="lib-bank-scope" data-scope></p><div class="lib-bank"><details class="lib-bank-directory" open><summary>题目目录 <span data-visible-count></span></summary><div class="lib-question-list"></div></details><div class="lib-question-preview"></div></div>`;
   if(teacher){const pending=qs.filter(x=>x.status!=='ready').length;const top=$('.lib-bank-top');if(top&&pending)top.insertAdjacentHTML('beforeend',`<button data-review-queue>待核对 ${pending}</button>`);$('[data-review-queue]')?.addEventListener('click',()=>{statusFilter='pending';const sel=$('[data-filter-status]');if(sel)sel.value='pending';onlySelected=false;draw();});}
   if(matchMedia('(max-width:900px)').matches)$('.lib-bank-directory').open=false;
   closeBankMenus?.();closeBankMenus=bindDisclosureMenus(content,'.lib-filters,.lib-selection-more');
@@ -202,14 +202,14 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   const eligible=()=>packQuestions(qs,initial.ids);
   const visible=()=>eligible().filter(q=>onlySelected?selected.has(q.id):(!type||q.type===type)&&(!filterTopic||type==='short'||questionHasTopic(q,filterTopic))&&(!skill||String(q.skill||'').startsWith(skill))&&(!collection||q.collection===collection)&&(!statusFilter||(statusFilter==='ready'?q.status==='ready':q.status!=='ready'))&&(!search||(`${q.number} ${q.searchText||''} ${q.source}`).toLowerCase().includes(search.toLowerCase())));
   function update(){
-   remember(storageKey,[...selected]);const button=$('[data-selected-view]');button.textContent=`已选 ${selected.size} / 40`;button.setAttribute('aria-pressed',String(onlySelected));$('[data-publish]').disabled=!selected.size;
+   remember(storageKey,[...selected]);const button=$('[data-selected-view]');button.textContent=`已选 ${selected.size} 道`;button.setAttribute('aria-pressed',String(onlySelected));$('[data-publish]').disabled=!selected.size;
    const rows=visible(),hidden=[...selected].filter(id=>!rows.some(q=>q.id===id)).length;
    $('[data-scope]').textContent=onlySelected?'当前仅显示已选题目':(initial.ids?`${initial.ids.length} 题 · 原卷顺序`:[type==='short'?unitLabel:filterTopic?'Topic '+filterTopic:unitLabel,type==='choice'?'MCQ':type==='short'?'FRQ':'MCQ + FRQ',skill?'Skill '+skill:'',collection,statusFilter==='ready'?'已核对':statusFilter?'待核对':''].filter(Boolean).join(' · '))+(hidden?` · ${hidden} 道已选题在当前筛选之外`:'');
    const scope=$('[data-scope]');scope.hidden=Boolean(initial.ids&&!onlySelected&&!hidden);
    const count=$('[data-filter-count]');if(count)count.textContent=[skill,collection,statusFilter].filter(Boolean).length?` · ${[skill,collection,statusFilter].filter(Boolean).length}`:'';
    const current=$('[data-preview-select]');if(current&&preview){current.textContent=selected.has(preview.id)?'已加入作业':'加入作业';current.setAttribute('aria-pressed',String(selected.has(preview.id)));current.disabled=!preview.questionImages?.length;}
   }
-  function select(id,checked){if(checked&&selected.size>=40&&!selected.has(id)){toast('每份作业最多40题；先取消一题即可替换');return false;}checked?selected.add(id):selected.delete(id);return true;}
+  function select(id,checked){checked?selected.add(id):selected.delete(id);return true;}
   function pageList(value){if(Array.isArray(value))return value.map(Number).filter(Number.isFinite);if(Number.isFinite(Number(value)))return [Number(value)];const nums=String(value||'').match(/\d+/g);return nums?nums.map(Number):[];}
   function questionOptions(q){
     const parsed=[],source=String(q.searchText||''),re=/\(([A-E])\)\s*([\s\S]*?)(?=\s*\([A-E]\)|$)/g;let m;
@@ -259,7 +259,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   bind('[data-filter-topic]',v=>filterTopic=v);bind('[data-type]',v=>type=v);bind('[data-skill]',v=>skill=v);bind('[data-collection]',v=>collection=v);bind('[data-filter-status]',v=>statusFilter=v);
   const input=$('.lib-search input');if(input)input.oninput=e=>{search=e.target.value.trim();draw();};
   $('[data-selected-view]').onclick=()=>{onlySelected=!onlySelected;draw();};
-  $('[data-pick]').onclick=()=>{for(const q of visible().filter(q=>q.questionImages?.length)){if(selected.size>=40)break;selected.add(q.id);}$('.lib-selection-more').open=false;draw();};
+  $('[data-pick]').onclick=()=>{for(const q of visible().filter(q=>q.questionImages?.length)){selected.add(q.id);}$('.lib-selection-more').open=false;draw();};
   $('[data-clear]').onclick=()=>{selected.clear();onlySelected=false;$('.lib-selection-more').open=false;draw();};
   $('[data-publish]').onclick=()=>publish([...selected],initial.title);draw();
  }
