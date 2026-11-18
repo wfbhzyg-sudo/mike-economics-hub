@@ -1,5 +1,9 @@
+import {topicGrid,bindTopicGrid} from './topic-grid.js';
+import {accuracyBadge} from './score-bands.js';
+import {resultBadge} from './result-badge.js';
 import {courseLabel,singleClassCourse} from './course-scope.js';
 
+const localTime=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',dateStyle:'short',timeStyle:'short',hourCycle:'h23'});
 const nl = value => value ? String(value).slice(0,10) : '';
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const part = encodeURIComponent;
@@ -287,7 +291,7 @@ export async function renderMockStatistics({main,api,state,toast}){
     </div></details></form>
     <p role="status"></p><div data-overview></div><div class="study-stat-grid"><section class="study-panel" data-attempts></section><aside class="study-panel" data-topics></aside></div></div>`;
   const root=main.querySelector('.study-stats'), form=root.querySelector('form'),status=root.querySelector('[role=status]');
-  let offset=0,serial=0;
+  let offset=0,serial=0,opened='',ascending=false,zeroOnly=false;
   function paint(data){
     const {stats:s,attempts}=data, selection=form.elements.studentId.value;
 
@@ -297,21 +301,34 @@ export async function renderMockStatistics({main,api,state,toast}){
     const kpis=[['参与学生',s.participants+' / '+s.roster],['已交卷',s.attempts+' 次'],['题次正确率',percent(s.correct,s.points)],['整卷用时中位数',duration(s.median)]];
     root.querySelector('[data-overview]').innerHTML=`<div class="study-metrics">${kpis.map(([label,value])=>`<div><span>${label}</span><strong>${value}</strong></div>`).join('')}</div><p class="hint">已交卷 · ${s.correct} / ${s.points} 正确题次 · ${s.durationSamples} 份有效用时${s.excluded?' · '+s.excluded+' 题次缺少有效计分':''}</p>`;
     const list=root.querySelector('[data-attempts]');
-    list.innerHTML='<h2>交卷记录</h2>'+(attempts.map(a=>`<button type="button" class="study-attempt" data-attempt="${esc(a.id)}"><span><strong>${esc(a.name)}</strong><small>${esc(courseLabel(a.course))} · ${nl(a.submittedAt)} · ${a.auto?'到时交卷':a.timerMode==='countdown'?'倒计时':'正计时'}</small></span><span><strong>${a.total} / ${a.max}</strong><small>${duration(a.duration)}</small></span><span aria-hidden="true">›</span></button>`).join('')||'<p class="hint">该筛选范围暂无已交卷记录。</p>')+
-      `<div class="study-pager">${offset?'<button type="button" data-prev>上一页</button>':''}${data.more?'<button type="button" data-next>下一页</button>':''}</div>`;
-    root.querySelector('[data-topics]').innerHTML='<h2>章节表现</h2>'+(s.participants&&s.participants<5?'<p class="hint">样本较少，请结合实际作答判断。</p>':'')+(s.topics.map(t=>`<div class="study-topic"><span>${esc(t.label)}</span><strong>${t.correct} / ${t.total}</strong><meter value="${t.correct}" min="0" max="${t.total}" aria-label="正确题次"></meter></div>`).join('')||'<p class="hint">暂无章节题次。</p>');
+    const rows=data.rows.filter(row=>!zeroOnly||!row.count).sort((a,b)=>(ascending?a.count-b.count:b.count-a.count)||a.name.localeCompare(b.name,'zh-CN'));
+    const details=attempts.map(a=>`<button type="button" class="study-attempt" data-attempt="${esc(a.id)}"><span><strong>${esc(courseLabel(a.course))} · ${esc(a.topics.join('、')||'自主模考')}</strong><small>${esc(localTime.format(new Date(a.submittedAt)))} · ${a.questionCount} 题 · ${a.auto?'到时交卷':a.timerMode==='countdown'?'倒计时':'正计时'}</small></span><span><strong>${a.total} / ${a.max}</strong><small>${duration(a.duration)}</small></span><span aria-hidden="true">›</span></button>`).join('');
+    list.innerHTML=`<div class="mock-table-heading"><h2>交卷记录</h2><label><input type="checkbox" data-zero ${zeroOnly?'checked':''}>仅看 0 次</label></div><div class="mock-table-scroll" tabindex="0" role="region" aria-label="按学生汇总交卷记录"><table class="mock-roster"><thead><tr><th scope="col">学生</th><th scope="col" aria-sort="${ascending?'ascending':'descending'}"><button type="button" data-sort>已交次数 ${ascending?'↑':'↓'}</button></th><th scope="col">最近交卷</th><th scope="col">正确率</th>${data.weeks.map(w=>`<th scope="col">${esc(w.slice(5))} 周</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`
+      <tr data-roster-student="${esc(row.id)}"><th scope="row">${esc(row.name)}</th><td><button type="button" data-student="${esc(row.id)}" aria-expanded="${opened===row.id}" aria-label="${esc(row.name)}，查看 ${row.count} 次交卷">${row.count} 次</button>${row.active?`<small>${row.active} 份进行中</small>`:''}</td><td>${row.last?esc(nl(row.last)):'—'}</td><td>${accuracyBadge(row.max?row.score/row.max*100:null)}</td>${data.weeks.map(w=>`<td>${row.weeks[w]||'—'}</td>`).join('')}</tr>
+      ${opened===row.id?`<tr class="mock-record-row"><td colspan="${4+data.weeks.length}"><div class="mock-records">${details||'<p>此学生在当前范围内暂无交卷。</p>'}<div class="study-pager">${offset?'<button type="button" data-prev>上一页</button>':''}${data.more?'<button type="button" data-next>下一页</button>':''}</div></div></td></tr>`:''}`).join('')}</tbody></table></div>${rows.length?'':'<p class="hint">暂无匹配的学生。</p>'}`;
+    const topics=root.querySelector('[data-topics]');
+    topics.innerHTML='<h2>章节表现</h2>'+topicGrid(data.chapters,esc);
+    list.querySelector('[data-sort]').onclick=()=>{ascending=!ascending;paint(data);list.querySelector('[data-sort]').focus();};
+    list.querySelector('[data-zero]').onchange=e=>{zeroOnly=e.currentTarget.checked;paint(data);list.querySelector('[data-zero]').focus();};
     list.querySelector('[data-next]')?.addEventListener('click',()=>{offset+=25;void load();});
     list.querySelector('[data-prev]')?.addEventListener('click',()=>{offset=Math.max(0,offset-25);void load();});
     for(const button of list.querySelectorAll('[data-attempt]'))button.onclick=()=>openAttempt(button);
+    for(const button of list.querySelectorAll('[data-student]'))button.onclick=()=>{
+      opened=opened===button.dataset.student?'':button.dataset.student;
+      offset=0;
+      void load(button.dataset.student);
+    };
   }
-  async function load(){
+  bindTopicGrid(root);
+  async function load(focusId){
     const n=++serial;status.textContent='正在读取记录…';
     const panels=[root.querySelector('[data-overview]'),root.querySelector('.study-stat-grid')];
     panels.forEach(el=>{el.inert=true;el.setAttribute('aria-busy','true');});
     try{
-      const params=new URLSearchParams(new FormData(form));params.set('offset',offset);
+      const params=new URLSearchParams(new FormData(form));params.set('offset',offset);if(opened)params.set('detailStudent',opened);
       const data=await api('mock-stats?'+params);
-      if(root.isConnected&&n===serial){paint(data);status.textContent='';panels.forEach(el=>{el.hidden=false;});}
+      if(root.isConnected&&n===serial){paint(data);status.textContent='';panels.forEach(el=>{el.hidden=false;el.inert=false;});
+        if(focusId)root.querySelector(`[data-student="${CSS.escape(focusId)}"]`)?.focus({preventScroll:true});}
     }catch(e){
       if(root.isConnected&&n===serial){
         panels.forEach(el=>{el.hidden=true;});
@@ -330,13 +347,13 @@ export async function renderMockStatistics({main,api,state,toast}){
       const {attempt:a,name}=await api('mock-stats/'+part(button.dataset.attempt)+'?'+params);
       if(!root.isConnected)return;
       const d=document.createElement('dialog');d.className='study-sheet';d.setAttribute('aria-label','模考详情');
-      d.innerHTML=`<header><strong>${esc(name)} · ${courseLabel(a.course)} · ${a.result.total}/${a.result.maxPoints}</strong><button type="button" data-close>关闭</button></header><div class="study-feed">${a.result.questions.map((q,i)=>`<details class="study-book-row"><summary>第 ${i+1} 题 · ${esc(q.topic)} · ${q.correct?'正确':'失分'}</summary><p>${esc(q.prompt)}</p><p>学生作答 ${esc(q.chosen||'未作答')}　正确选项 ${esc(q.correctOption)}</p>${q.questionImages.map(id=>`<img loading="lazy" alt="原题片段" src="/api/homework/files/${part(id)}?mock=${part(a.id)}">`).join('')}${a.corrections[q.id]?`<p>订正 ${esc(a.corrections[q.id].note||a.corrections[q.id].choice)}</p>`:''}</details>`).join('')}</div>`;
+      d.innerHTML=`<header><strong>${esc(name)} · ${courseLabel(a.course)} · ${a.result.total}/${a.result.maxPoints}</strong><button type="button" data-close>关闭</button></header><div class="study-feed">${a.result.questions.map((q,i)=>`<details class="study-book-row"><summary>第 ${i+1} 题 · ${esc(q.topic)} · ${resultBadge({...q,unanswered:!q.chosen})}</summary><p>${esc(q.prompt)}</p><p>学生作答 ${esc(q.chosen||'未作答')}　正确选项 ${esc(q.correctOption)}</p>${q.questionImages.map(id=>`<img loading="lazy" alt="原题片段" src="/api/homework/files/${part(id)}?mock=${part(a.id)}">`).join('')}${a.corrections[q.id]?`<p>订正 ${esc(a.corrections[q.id].note||a.corrections[q.id].choice)}</p>`:''}</details>`).join('')}</div>`;
       document.body.append(d);d.showModal();d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>{d.remove();button.focus({preventScroll:true});};
     }catch(e){toast(e.message);}finally{button.disabled=false;}
   }
   let previousTopic=form.elements.topic.value;
   function apply(){
-    offset=0;
+    offset=0;opened='';
     const count=['topic','timer'].filter(k=>form.elements[k].value).length+
       Number(form.elements.from.value!==from)+Number(form.elements.to.value!==today);
     form.querySelector('summary').textContent=count?'更多筛选 · '+count:'更多筛选';

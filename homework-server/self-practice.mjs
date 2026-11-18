@@ -1,4 +1,4 @@
-import {optionLabels} from './self-practice-model.mjs';
+import {optionLabels,publicOptionText} from './self-practice-model.mjs';
 import {questionHasTopic} from '../homework/library-packs.js';
 import {now} from './store.mjs';
 import {assert, HttpError} from './validation.mjs';
@@ -221,6 +221,7 @@ export function createSelfPractice({db}) {
         topic: input.topicIds.includes(question.topic) ? question.topic : input.topicIds.find((topic) => questionHasTopic(question, topic)),
         prompt: question.prompt || '',
         options: optionLabels(question),
+        optionText: publicOptionText(question),
         answer: String(question.answer || '').toUpperCase(),
         questionImages: question.questionImages || [],
         sourcePages: question.sourcePages || '',

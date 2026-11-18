@@ -48,8 +48,14 @@ export function questionImageIds(question) {
 
 export const optionLabels = q => (Array.isArray(q?.options) && q.options.length ? q.options : q?.optionLabels || []).map(v => typeof v === 'object' ? String(v.label || '') : String(v)).filter(v => /^[A-E]$/.test(v));
 
+export function publicOptionText(question) {
+  return Object.fromEntries(optionLabels(question).map(label => [label,
+    String(question.optionText?.[label] || question.options?.find(o => o?.label === label)?.text || '')]));
+}
+
+
 export function questionEligible(question, {unit, imageExists} = {}) {
-  if (!question || question.status !== 'ready') return false;
+  if (!question || question.status !== 'ready' || question.questionVisualStatus === 'incomplete') return false;
   if (question.type !== 'choice') return false;
   if (question.duplicateOf || question.canonicalQuestionId) return false;
   if (Array.isArray(question.reviewFlags) && question.reviewFlags.length) return false;
@@ -205,6 +211,7 @@ export function publicQuestion(question) {
     topic: question.topic || '',
     prompt: question.prompt || '',
     optionLabels: optionLabels(question),
+    optionText: publicOptionText(question),
     questionImages: questionImageIds(question),
     sourcePages: question.sourcePages || '',
     knowledge: question.knowledge || '',
@@ -268,6 +275,7 @@ export function scoreAttempt(attempt, submittedAt = new Date()) {
       maxPoints: 1,
       questionImages: questionImageIds(question),
       optionLabels: optionLabels(question),
+    optionText: publicOptionText(question),
       prompt: question.prompt || '',
       sourcePages: question.sourcePages || '',
       knowledge: question.knowledge || '',

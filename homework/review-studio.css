@@ -57,3 +57,10 @@ body:has(#preview.attachment-dialog[open]){overflow:hidden}
 .review-studio .rv-work-menu>div[popover]:popover-open{display:grid}
 
 .review-studio .rv-return-dialog button{min-height:44px}
+.rv-score-row[data-question-result] [data-score-symbol]{font-weight:800}
+.rv-score-row[data-question-result=correct]{box-shadow:inset 3px 0 #3d8b60}
+.rv-score-row[data-question-result=wrong]{box-shadow:inset 3px 0 #bb554d}
+.rv-score-row[data-question-result=partial]{box-shadow:inset 3px 0 #c78e30}
+.rv-score-row[data-question-result=correct] [data-score-symbol]{color:#19643e}
+.rv-score-row[data-question-result=wrong] [data-score-symbol]{color:#9c312b}
+.rv-score-row[data-question-result=partial] [data-score-symbol]{color:#805107}

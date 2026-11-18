@@ -1,6 +1,9 @@
+import {accuracyBadge} from './score-bands.js';
+import {topicGrid,bindTopicGrid} from './topic-grid.js';
+import {resultBadge} from './result-badge.js';
+import {questionView,answerNavigation,bindQuestionPaper,questionIndexMarkup,bindQuestionIndex} from './question-view.js';
 import {questionMarker} from './question-marker.js';
 import {studyControls} from './study-workflow.js';
-import {accuracyBadge} from './score-bands.js';
 import {selectedCourse,rememberCourse} from './course-scope.js';
 const DAY = 86_400_000;
 const CREATE_KEY = 'sp:create';
@@ -330,26 +333,27 @@ export function createSelfPracticeUI(ctx) {
     const serverOffset=Date.parse(paper.serverNow||new Date().toISOString())-Date.now();
     const seconds=()=>paper.timerMode==='countdown'?Math.max(0,Math.ceil((Date.parse(paper.deadlineAt)-Date.now()-serverOffset)/1000)):Math.max(0,Math.floor((Date.now()+serverOffset-Date.parse(paper.startedAt))/1000));
     const expired=()=>paper.timerMode==='countdown'&&seconds()<=0;
+    const views={...local?.views};
     document.body.classList.add('sp-immersive');
-    main.innerHTML=`<section class="sp-run" data-page="run">
-      <header class="sp-run-head"><button type="button" class="sp-back" data-exit aria-label="退出本次练习">←</button><div class="sp-run-title"><strong>${courseName(paper.course)} · 模考</strong><span data-progress></span></div><div class="sp-timer" data-timer role="timer" aria-live="off"></div><button type="button" class="sp-flag" data-flag>标记</button><button type="button" class="sp-palette-button" data-palette>答题卡</button></header>
-      <div class="sp-run-body"><div class="sp-question" data-question></div><aside class="sp-rail" data-rail></aside></div>
-      <footer class="sp-run-foot"><button type="button" class="secondary" data-prev>上一题</button><button type="button" class="secondary" data-palette>答题卡</button><button type="button" class="primary" data-next>下一题</button></footer>
-      <div class="sp-save-state" role="status"><span data-save></span><button type="button" data-retry-save hidden>重试保存</button><button type="button" data-retry-submit hidden>重试交卷</button></div>
+    document.body.dataset.mcqActive='true';
+    document.body.dataset.mcqQuestionType='choice';
+    main.innerHTML=`<section class="sp-run mcq-work" data-page="run">
+      <header class="mcq-toolbar mcq-top"><button type="button" data-exit aria-label="退出本次练习">← 模考</button><h1>${courseName(paper.course)} · 模考</h1><div class="mcq-session-status"><span class="mcq-save" data-save role="status"></span><button type="button" data-retry-save hidden>重试保存</button><button type="button" data-retry-submit hidden>重试交卷</button><span id="mcq-timer" data-timer role="timer"></span></div></header>
+      <section class="mcq-question" data-question></section><div class="mcq-answerbar" data-answers></div>
     </section>`;
     const study=studyControls({api,toast,user:state.user,source:'mock',assignmentId:id});
-    const page=main.firstElementChild,questionHost=page.querySelector('[data-question]'),railHost=page.querySelector('[data-rail]'),saveState=page.querySelector('[data-save]'),timerHost=page.querySelector('[data-timer]'),nextButton=page.querySelector('[data-next]'),flagButton=page.querySelector('[data-flag]'),retrySave=page.querySelector('[data-retry-save]'),retrySubmit=page.querySelector('[data-retry-submit]');
-    const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,excluded,flags:[...flags],index,revision,dirty,savedAt:Date.now()});
+    const page=main.firstElementChild,questionHost=page.querySelector('[data-question]'),answerHost=page.querySelector('[data-answers]'),saveState=page.querySelector('[data-save]'),timerHost=page.querySelector('[data-timer]'),retrySave=page.querySelector('[data-retry-save]'),retrySubmit=page.querySelector('[data-retry-submit]');
+    const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,excluded,flags:[...flags],views,index,revision,dirty,savedAt:Date.now()});
     const setSave=text=>{if(current())saveState.textContent=text;};
-    const paletteCells=()=>questions.map((q,i)=>`<button type="button" class="sp-palette-cell" data-jump="${i}" data-state="${answers[q.id]?'answered':'blank'}${flags.has(q.id)?' flagged':''}${i===index?' current':''}" aria-current="${i===index?'step':'false'}" aria-label="第 ${i+1} 题，${answers[q.id]?'已答 '+answers[q.id]:'未答'}${flags.has(q.id)?'，已标记':''}">${i+1}</button>`).join('');
     const paintState=()=>{
       const q=questions[index],selected=answers[q.id];
-      questionHost.querySelectorAll('[data-choice]').forEach((button,i)=>{button.setAttribute('aria-checked',String(button.dataset.choice===selected));button.tabIndex=selected?(button.dataset.choice===selected?0:-1):(i===0?0:-1);button.disabled=frozen;button.classList.toggle("excluded",(excluded[q.id]||[]).includes(button.dataset.choice));});
-      for(const dot of questionHost.querySelectorAll("[data-strike]")){dot.disabled=frozen;dot.setAttribute("aria-pressed",String((excluded[q.id]||[]).includes(dot.dataset.strike)));}
-      flagButton.disabled=frozen;flagButton.setAttribute('aria-pressed',String(flags.has(q.id)));flagButton.textContent=flags.has(q.id)?'已标记':'标记';
-      page.querySelector('[data-prev]').disabled=index===0||submitting;
-      nextButton.disabled=submitting||savedRevConflict;
-      railHost.innerHTML=`<div class="sp-rail-card"><h3>答题卡</h3><div class="sp-palette-grid">${paletteCells()}</div><div class="sp-legend"><span><i data-dot="answered"></i>已答</span><span><i data-dot="blank"></i>未答</span><span><i data-dot="flagged"></i>标记</span></div><button type="button" class="primary wide" data-review ${submitting||savedRevConflict?'disabled':''}>检查并提交</button></div>`;
+      answerHost.querySelectorAll('[data-choice]').forEach((button,i)=>{button.setAttribute('aria-checked',String(button.dataset.choice===selected));button.tabIndex=selected?(button.dataset.choice===selected?0:-1):(i===0?0:-1);button.disabled=frozen;button.classList.toggle("excluded",(excluded[q.id]||[]).includes(button.dataset.choice));});
+      for(const dot of answerHost.querySelectorAll('[data-strike]')){dot.disabled=frozen;dot.setAttribute('aria-pressed',String((excluded[q.id]||[]).includes(dot.dataset.strike)));}
+      const flag=questionHost.querySelector('#mcq-flag');
+      flag.disabled=frozen;flag.setAttribute('aria-pressed',String(flags.has(q.id)));flag.textContent=flags.has(q.id)?'⚑ 已标记':'⚑ 标记';
+      answerHost.querySelector('#mcq-clear').disabled=frozen||!selected;
+      answerHost.querySelector('[data-prev]').disabled=index===0||submitting;
+      answerHost.querySelector('[data-next]').disabled=submitting||savedRevConflict;
     };
     const showConflict=()=>{
       if(!current()||page.querySelector('.sp-conflict'))return;
@@ -396,39 +400,47 @@ export function createSelfPracticeUI(ctx) {
       answers[q.id]=choice;excluded[q.id]=(excluded[q.id]||[]).filter(x=>x!==choice);paintState();scheduleSave();
     };
     const paintQuestion=()=>{
-      const q=questions[index];page.querySelector('[data-progress]').textContent=`${index+1} / ${questions.length}`;
-      questionHost.innerHTML=`<article class="sp-card sp-question-card"><div class="sp-question-meta"><span>第 ${index+1} 题</span><span>${h(q.topic)}</span>${q.sourcePages?`<span>${h(q.sourcePages)}</span>`:''}<div class="question-tools" role="group" aria-label="题面工具"><button type="button" class="sp-zoom" data-zoom-toggle aria-pressed="false">放大</button></div></div><div class="sp-stimulus"><div class="sp-question-images">${q.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题" decoding="async">`).join('')}</div>${q.prompt?`<p class="sp-prompt">${h(q.prompt)}</p>`:''}</div><div class="sp-options" data-label-only="${!q.optionLabels.some(label=>optionText(q,label))}" role="radiogroup" aria-label="第 ${index+1} 题，选择答案">${q.optionLabels.map(label=>`<div class="answer-pair"><button type="button" class="sp-option" role="radio" aria-checked="false" data-choice="${h(label)}"><span>${h(label)}</span>${optionText(q,label)?`<small>${h(optionText(q,label))}</small>`:''}</button><button class="strike-dot" type="button" data-strike="${h(label)}" aria-label="排除选项 ${h(label)}" title="排除或恢复 ${h(label)}">⊖</button></div>`).join('')}</div></article>`;
+      const q=questions[index],view=views[q.id]||{};
+      const screen=questionView(q,h,{number:index+1,zoom:view.zoom,textOpen:view.text,label:`第 ${index+1} / ${questions.length} 题`});
+      questionHost.innerHTML=screen.tools+screen.paper;
+      answerHost.innerHTML=screen.choices+answerNavigation({choice:true,first:index===0,last:index===questions.length-1});
       const tools=questionHost.querySelector('.question-tools'),marker=questionMarker(tools,JSON.stringify(['mock',state.user.id,id,q.id]),toast);
-      marker.attachImages(questionHost.querySelector('.sp-question-images'));
-      const prompt=questionHost.querySelector('.sp-prompt');
-      if(prompt)marker.attachText(prompt,'prompt');
+      const paperElement=bindQuestionPaper(page,marker,{view,changed:storeView,firstTextKey:'prompt'});
+      function storeView(){
+        const next={zoom:paperElement.classList.contains('zoom'),text:!questionHost.querySelector('#mcq-accessible').hidden,x:paperElement.scrollLeft,y:paperElement.scrollTop};
+        if(JSON.stringify(next)!==JSON.stringify(views[q.id])){views[q.id]=next;persistLocal();}
+      }
+      paperElement.addEventListener('scroll',storeView,{passive:true});
       study.mount(tools,q,false);
-      questionHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
-      for(const dot of questionHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
+      answerHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
+      for(const dot of answerHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
         if(frozen||!current())return;if(expired()){submitPaper(true);return;}
         const label=dot.dataset.strike,set=new Set(excluded[q.id]||[]);
-        if(set.has(label))set.delete(label);else{set.add(label);if(answers[q.id]===label)answers[q.id]='';}
+        if(set.has(label))set.delete(label);else{set.add(label);if(answers[q.id]===label)delete answers[q.id];}
         excluded[q.id]=[...set];paintState();scheduleSave();
       };
-      const zoom=questionHost.querySelector('[data-zoom-toggle]'),images=questionHost.querySelector('.sp-question-images');
-      zoom.onclick=()=>{const on=images.dataset.zoom!=='true';images.dataset.zoom=String(on);zoom.setAttribute('aria-pressed',String(on));zoom.textContent=on?'缩小':'放大';};
-      nextButton.textContent=index===questions.length-1?'检查并提交':'下一题';paintState();
+      questionHost.querySelector('#mcq-flag').onclick=()=>{if(frozen)return;if(flags.has(q.id))flags.delete(q.id);else flags.add(q.id);paintState();scheduleSave();};
+      answerHost.querySelector('#mcq-clear').onclick=()=>{if(frozen)return;delete answers[q.id];paintState();scheduleSave();};
+      answerHost.querySelector('[data-palette]').onclick=paletteDialog;
+      answerHost.querySelector('[data-prev]').onclick=()=>goTo(index-1);
+      answerHost.querySelector('[data-next]').onclick=()=>index===questions.length-1?review():goTo(index+1);
+      paintState();
     };
-    const goTo=next=>{if(submitting||!current())return;const target=Math.max(0,Math.min(questions.length-1,next));if(target===index)return;index=target;paintQuestion();scheduleSave();};
+    const goTo=next=>{if(submitting||!current())return;const target=Math.max(0,Math.min(questions.length-1,next));if(target===index)return;index=target;paintQuestion();scheduleSave();main.scrollTo({top:0});questionHost.querySelector('#mcq-question-heading').focus({preventScroll:true});};
     const paletteDialog=()=>{
-      if(!current())return;closeDialogs();const dialog=document.createElement('dialog');dialog.className='sp-dialog sp-palette-dialog';
-      dialog.innerHTML=`<header><h2>答题卡</h2><button type="button" class="sp-icon" data-close aria-label="关闭">×</button></header><div class="sp-palette-grid sp-palette-large">${paletteCells()}</div><footer><button type="button" class="primary wide" data-review>检查并提交</button></footer>`;
+      if(!current())return;closeDialogs();const dialog=document.createElement('dialog');dialog.className='sp-dialog mcq-palette-dialog';
+      dialog.innerHTML=`<header><h2>答题卡</h2><button type="button" class="sp-icon" data-close aria-label="关闭">×</button></header><section class="sp-submit-body"><p>未答 ${questions.filter(q=>!answers[q.id]).length} 题 · 标记 ${flags.size} 题</p>${questionIndexMarkup}</section><footer><button type="button" class="primary wide" data-review>检查并提交</button></footer>`;
       attachDialog(dialog);dialog.addEventListener('close',()=>dialog.remove());dialog.querySelector('[data-close]').onclick=()=>dialog.close();
-      dialog.querySelectorAll('[data-jump]').forEach(button=>button.onclick=()=>{dialog.close();goTo(Number(button.dataset.jump));});
+      bindQuestionIndex(dialog,{questions,index,answered:q=>Boolean(answers[q.id]),flags,jump:n=>{dialog.close();goTo(n);}});
       dialog.querySelector('[data-review]').onclick=()=>{dialog.close();review();};dialog.showModal();
     };
     const review=async()=>{
       if(frozen||reviewing||!current())return;reviewing=true;
       try{
         await sync();if(!current()||frozen)return;
-        closeDialogs();const unanswered=questions.filter(q=>!answers[q.id]).length,dialog=document.createElement('dialog');dialog.className='sp-dialog sp-submit-dialog';
-        dialog.innerHTML=`<header><h2>检查并提交</h2><button type="button" class="sp-icon" data-close aria-label="关闭">×</button></header><div class="sp-submit-body"><p>${questions.length} 题中已答 <strong>${questions.length-unanswered}</strong> 题，未答 <strong>${unanswered}</strong> 题。</p>${unanswered?'<p class="sp-warn">未答题按 0 分计。交卷后不能修改原答案。</p>':''}${dirty?'<p class="sp-warn">还有答案未同步，交卷时会再次保存。</p>':''}</div><footer><button type="button" class="secondary" data-close>再看看</button><button type="button" class="primary" data-confirm>确认交卷</button></footer>`;
-        attachDialog(dialog);dialog.addEventListener('close',()=>dialog.remove());dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>dialog.close());dialog.querySelector('[data-confirm]').onclick=()=>{dialog.close();submitPaper(false);};dialog.showModal();
+        closeDialogs();const unanswered=questions.filter(q=>!answers[q.id]).length,dialog=document.createElement('dialog');dialog.className='sp-dialog sp-submit-dialog mcq-palette-dialog';
+        dialog.innerHTML=`<header><h2>检查并提交</h2><button type="button" class="sp-icon" data-close aria-label="关闭">×</button></header><div class="sp-submit-body"><p>${questions.length} 题中已答 <strong>${questions.length-unanswered}</strong> 题，未答 <strong>${unanswered}</strong> 题。</p>${unanswered?'<p class="sp-warn">未答题按 0 分计。交卷后不能修改原答案。</p>':''}${dirty?'<p class="sp-warn">还有答案未同步，交卷时会再次保存。</p>':''}${questionIndexMarkup}</div><footer><button type="button" class="secondary" data-close>再看看</button><button type="button" class="primary" data-confirm>确认交卷</button></footer>`;
+        attachDialog(dialog);bindQuestionIndex(dialog,{questions,index,answered:q=>Boolean(answers[q.id]),flags,jump:n=>{dialog.close();goTo(n);}});dialog.addEventListener('close',()=>dialog.remove());dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>dialog.close());dialog.querySelector('[data-confirm]').onclick=()=>{dialog.close();submitPaper(false);};dialog.showModal();
       }finally{reviewing=false;}
     };
     const submitPaper=async(auto)=>{
@@ -444,9 +456,6 @@ export function createSelfPracticeUI(ctx) {
     };
     const tick=()=>{if(!current())return;timerHost.textContent=formatClock(seconds());timerHost.dataset.low=paper.timerMode==='countdown'&&seconds()<=60?'true':'false';if(expired()&&!frozen)submitPaper(true);};
     retrySave.onclick=()=>sync();retrySubmit.onclick=()=>submitPaper(expired());
-    railHost.addEventListener('click',event=>{const jump=event.target.closest('[data-jump]');if(jump)goTo(Number(jump.dataset.jump));else if(event.target.closest('[data-review]'))review();});
-    page.querySelectorAll('[data-palette]').forEach(button=>button.onclick=paletteDialog);page.querySelector('[data-prev]').onclick=()=>goTo(index-1);nextButton.onclick=()=>index===questions.length-1?review():goTo(index+1);
-    flagButton.onclick=()=>{if(frozen)return;const key=questions[index].id;if(flags.has(key))flags.delete(key);else flags.add(key);paintState();scheduleSave();};
     page.querySelector('[data-exit]').onclick=async()=>{
       if(submitting)return;const saved=await sync();if(!current()||savedRevConflict)return;
       if(!saved&&!confirm('还有答案未同步。离开前建议重试保存，仍要离开吗？'))return;
@@ -457,13 +466,13 @@ export function createSelfPracticeUI(ctx) {
       const q=questions[index],letter=event.key.toUpperCase();
       if(q.optionLabels.includes(letter)){event.preventDefault();choose(letter);}
       else if(event.target.closest('[role=radio]')&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
-        event.preventDefault();const n=q.optionLabels.indexOf(event.target.closest('[data-choice]').dataset.choice),step=['ArrowLeft','ArrowUp'].includes(event.key)?-1:1,label=q.optionLabels[(n+step+q.optionLabels.length)%q.optionLabels.length];choose(label);questionHost.querySelector(`[data-choice="${label}"]`).focus();
+        event.preventDefault();const n=q.optionLabels.indexOf(event.target.closest('[data-choice]').dataset.choice),step=['ArrowLeft','ArrowUp'].includes(event.key)?-1:1,label=q.optionLabels[(n+step+q.optionLabels.length)%q.optionLabels.length];choose(label);answerHost.querySelector(`[data-choice="${label}"]`).focus();
       }else if(event.key==='ArrowRight'){event.preventDefault();goTo(index+1);}else if(event.key==='ArrowLeft'){event.preventDefault();goTo(index-1);}
     };
     const online=()=>{if(expired())submitPaper(true);else if(dirty)sync();};
     const unload=event=>{if(dirty){event.preventDefault();event.returnValue='';}};
     document.addEventListener('keydown',keyHandler);window.addEventListener('online',online);window.addEventListener('beforeunload',unload);
-    destroy=()=>{study.destroy();disposed=true;++creationVersion;document.removeEventListener('keydown',keyHandler);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);document.body.classList.remove('sp-immersive');clearInterval(timer);clearTimeout(saveTimer);closeDialogs();};
+    destroy=()=>{study.destroy();disposed=true;++creationVersion;document.removeEventListener('keydown',keyHandler);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);document.body.classList.remove('sp-immersive');delete document.body.dataset.mcqActive;delete document.body.dataset.mcqQuestionType;clearInterval(timer);clearTimeout(saveTimer);closeDialogs();};
     paintQuestion();setSave(dirty?'有未同步答案':'已保存到账号');if(savedRevConflict)showConflict();else if(dirty)sync();timer=setInterval(tick,1000);tick();
   }
 
@@ -509,15 +518,25 @@ export function createSelfPracticeUI(ctx) {
           <p class="sp-band" data-band="${result.percent < 20 ? 1 : result.percent < 40 ? 2 : result.percent < 60 ? 3 : result.percent < 80 ? 4 : 5}">练习分档，非官方 AP 预测分</p>
           <div class="sp-actions"><button type="button" class="primary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">调整范围</a></div>
         </section>
-        <section class="sp-card sp-topic-card"><h2>章节表现</h2>${result.topics.map((topic) => `<div class="sp-topic-row"><span>${h(topic.topic)}</span><div class="sp-topic-bar"><i style="width:${Math.round((topic.correct / topic.count) * 100)}%"></i></div><b>${accuracyBadge(topic.count?topic.correct/topic.count*100:null)} · ${topic.correct}/${topic.count}</b></div>`).join('')}</section>
+        <section class="sp-card sp-topic-card"><h2>章节表现</h2>${topicGrid(result.topics.map(t=>({label:t.topic,correct:t.correct,total:t.count,roster:t.count,
+          participants:result.questions.filter(q=>q.topic===t.topic&&q.chosen).length})),h,{mine:true})}</section>
       </div>
       <section class="sp-card sp-wrong" aria-labelledby="sp-wrong-title">
         <div class="sp-card-head"><h2 id="sp-wrong-title">错题与订正</h2><a class="secondary" href="#mistakes">错题本</a><span class="sp-muted">${wrong.length} 道失分题${result.autoSubmitted ? ' · 到时未答按 0 分' : ''}</span></div>
-        ${wrong.length ? wrong.map((question) => wrongMarkup(attempt, question, corrections)).join('') : '<p class="sp-empty">全部答对，没有需要订正的题。</p>'}
+        <div class="filter-tabs" role="group" aria-label="回顾模考"><button type="button" data-recap="wrong" aria-pressed="true">失分题</button><button type="button" data-recap="all" aria-pressed="false">全部题目</button></div>
+        ${result.questions.map((question,i)=>question.correct?`<details class="sp-correct-recap" data-recap-correct hidden><summary><strong>第 ${i+1} 题</strong>${resultBadge(question)}</summary><div class="result-original">${question.prompt?`<p>${h(question.prompt)}</p>`:''}${question.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${i+1} 题原题" loading="lazy">`).join('')}<p class="review-choice">我的答案　<strong>${h(question.chosen)}</strong></p></div></details>`:wrongMarkup(attempt,question,corrections)).join('')}
+        ${wrong.length?'':'<p class="sp-empty" data-recap-empty>全部答对，没有需要订正的题。</p>'}
       </section>
       <footer class="sp-result-foot"><button type="button" class="secondary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">返回自主模考</a></footer>
     </section>`;
 
+    bindTopicGrid(main.querySelector('.sp-topic-card'));
+    for(const button of main.querySelectorAll('[data-recap]'))button.onclick=()=>{
+      const all=button.dataset.recap==='all';
+      for(const tab of main.querySelectorAll('[data-recap]'))tab.setAttribute('aria-pressed',String(tab===button));
+      for(const row of main.querySelectorAll('[data-recap-correct]'))row.hidden=!all;
+      const empty=main.querySelector('[data-recap-empty]');if(empty)empty.hidden=all;
+    };
     for(const item of main.querySelectorAll('[data-wrong]')){
       const tools=document.createElement('div');tools.className='question-tools';
       item.querySelector('.sp-wrong-body').before(tools);
@@ -587,7 +606,7 @@ export function createSelfPracticeUI(ctx) {
   function wrongMarkup(attempt, question, corrections) {
     const correction = corrections[question.id];
     return `<article class="sp-wrong-item" data-wrong="${h(question.id)}">
-      <header><strong>第 ${h(question.number || question.id)} 题</strong><span>${h(question.topic)}</span><span class="sp-wrong-mark">${question.chosen ? '我的答案 ' + h(question.chosen) : '未作答'}</span></header>
+      <header><strong>第 ${h(question.number || question.id)} 题</strong><span>${h(question.topic)}</span><span class="sp-wrong-mark">${resultBadge({...question,unanswered:!question.chosen})}</span></header>
       <div class="sp-wrong-body">
         <div class="sp-wrong-images">${question.prompt?`<p>${h(question.prompt)}</p>`:""}${question.questionImages.map((fileId) => `<img src="/api/homework/files/${encodeURIComponent(fileId)}" alt="第 ${h(question.number || question.id)} 题原题" loading="lazy">`).join('')}</div>
         <div class="sp-wrong-options">${question.optionLabels.map((label) => `<div class="sp-wrong-option" data-state="${label === question.correctOption ? 'correct' : label === question.chosen ? 'chosen' : ''}"><span>${h(label)}</span>${label === question.correctOption ? '<small>正确</small>' : label === question.chosen ? '<small>我的选择</small>' : ''}</div>`).join('')}</div>

@@ -1,3 +1,4 @@
+import {resultBadge} from './result-badge.js';
 import {questionMarker} from './question-marker.js';
 import {correctionAnswerEvidence} from './choice-correction.js';
 import {mountPDFReader} from './pdf-reader.js';
@@ -5,7 +6,7 @@ import {mountReviewGallery} from './review-gallery.js';
 export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact=false,onEdit}){
  let destroyed=false,reader=null,gallery=null,questionGallery=null;const tasks=new Map();
  const tabs=[['question','原题'],['answer','我的原作答'],['history','订正记录 · '+m.corrections.length]];
- root.innerHTML=`<div class="correction-reference-head"><strong>边看边订正</strong>${onEdit?'<button type="button" class="text-button" data-write-correction>写订正</button>':''}<button type="button" class="text-button" data-collapse-reference aria-expanded="true" aria-controls="correction-reference-body">收起参考区</button></div><div class="correction-reference-body" id="correction-reference-body"><div class="correction-reference-tabs" role="tablist" aria-label="订正参考资料">${tabs.map(([id,name],i)=>`<button type="button" role="tab" id="correction-tab-${id}" data-reference="${id}" aria-selected="${i===0}" aria-controls="correction-panel-${id}" tabindex="${i===0?0:-1}">${name}</button>`).join('')}</div>${tabs.map(([id],i)=>`<section class="correction-reference-panel" role="tabpanel" id="correction-panel-${id}" aria-labelledby="correction-tab-${id}" tabindex="0" ${i?'hidden':''}></section>`).join('')}</div>`;
+ root.innerHTML=`<div class="correction-reference-head"><strong>边看边订正</strong>${resultBadge(m)}${onEdit?'<button type="button" class="text-button" data-write-correction>写订正</button>':''}<button type="button" class="text-button" data-collapse-reference aria-expanded="true" aria-controls="correction-reference-body">收起参考区</button></div><div class="correction-reference-body" id="correction-reference-body"><div class="correction-reference-tabs" role="tablist" aria-label="订正参考资料">${tabs.map(([id,name],i)=>`<button type="button" role="tab" id="correction-tab-${id}" data-reference="${id}" aria-selected="${i===0}" aria-controls="correction-panel-${id}" tabindex="${i===0?0:-1}">${name}</button>`).join('')}</div>${tabs.map(([id],i)=>`<section class="correction-reference-panel" role="tabpanel" id="correction-panel-${id}" aria-labelledby="correction-tab-${id}" tabindex="0" ${i?'hidden':''}></section>`).join('')}</div>`;
  const $=s=>root.querySelector(s);let submission;
  const getSubmission=()=>submission||(submission=api('submissions/'+m.submissionId).then(v=>v.submission).catch(e=>{submission=null;throw e;}));
  async function question(panel){

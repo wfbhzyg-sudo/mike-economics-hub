@@ -56,15 +56,16 @@ export function summarizeMock(attempts, roster, matchesQuestion = () => true) {
   const topics = new Map();
   for (const a of attempts) for (const q of a.result.questions.filter(matchesQuestion)) {
     if (!finiteScore(q)) { cut++; continue; }
-    const label = q.topic || '未分章节', bucket = topics.get(label) || {label,correct:0,total:0};
-    bucket.correct+=q.score; bucket.total+=q.maxPoints; topics.set(label,bucket);
+    const label = q.topic || '未分章节', key = a.course+':'+label;
+    const bucket = topics.get(key) || {label,course:a.course,correct:0,total:0,people:new Set()};
+    bucket.correct+=q.score; bucket.total+=q.maxPoints; bucket.people.add(a.studentId);topics.set(key,bucket);
     correct+=q.score; points+=q.maxPoints;
   }
   const durations = attempts.map(a=>a.result.durationSeconds).filter(v=>Number.isFinite(v)&&v>=0).sort((a,b)=>a-b);
   const m = (durations.length-1)/2;
   return {participants:new Set(attempts.map(a=>a.studentId)).size, roster, attempts:attempts.length, correct, points,
     excluded:cut, durationSamples:durations.length, median:durations.length?(durations[Math.floor(m)]+durations[Math.ceil(m)])/2:null,
-    topics:[...topics.values()].sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))};
+    topics:[...topics.values()].map(({people,...topic})=>({...topic,participants:people.size})).sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))};
 }
 
 const reviewReasons=new Map([
@@ -119,26 +120,58 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const scopedClasses=classes.filter(c=>(!classId||classKey(c.id)===classKey(classId))&&(!course||!singleClassCourse(c)||course===singleClassCourse(c)));
     const students=(await availableStudents()).filter(s=>scopedClasses.some(c=>member(s.classIds,c.id)));
     const people=new Map(students.map(s=>[s.id,s]));
-    const allows=a=>validResult(a)&&people.has(a.studentId)&&scopedClasses.some(c=>member(people.get(a.studentId).classIds,c.id)
+    const inScope=a=>people.has(a.studentId)&&scopedClasses.some(c=>member(people.get(a.studentId).classIds,c.id)
       && (!singleClassCourse(c)||singleClassCourse(c)===a.course)
       && (a.classIds?.length?member(a.classIds,c.id):singleClassCourse(c)===a.course));
-    if(route[1]){
-      const a=await db.get(route[1]);
-      assert(a?.type==='self-practice-attempt'&&allows(a)&&(!course||a.course===course),'未找到有权查看的模考',404);
-      return {attempt:publicAttempt(a,{includeResult:true}),name:people.get(a.studentId).name};
-    }
     const after=Date.parse(query.get('from')||new Date(Date.now()-30*86400000).toISOString()),to=query.get('to');
     const before=to?Date.parse(to)+86400000:Date.now()+1000;
     const topic=(query.get('topic')||'').trim(), studentId=query.get('studentId')||'', timer=query.get('timer')||'';
     const matches=q=>!topic||String(q.topic).toLowerCase().includes(topic.toLowerCase());
-    const attempts=people.size?(await db.find('self-practice-attempt',{studentId:[...people.keys()],status:'submitted'}))
-      .filter(a=>allows(a)&&(!course||a.course===course)&&(!studentId||a.studentId===studentId)&&(!timer||a.timerMode===timer)
-        &&Date.parse(a.submittedAt)>=after&&Date.parse(a.submittedAt)<before&&a.result.questions.some(matches))
-      .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)||b.id.localeCompare(a.id)):[];
+    const inFilters=(a,date)=>inScope(a)&&(!course||a.course===course)&&(!studentId||a.studentId===studentId)&&(!timer||a.timerMode===timer)
+      &&Date.parse(date)>=after&&Date.parse(date)<before;
+    if(route[1]){
+      const a=await db.get(route[1]);
+      assert(a?.type==='self-practice-attempt'&&validResult(a)&&inScope(a)&&(!course||a.course===course),'未找到有权查看的模考',404);
+      return {attempt:publicAttempt(a,{includeResult:true}),name:people.get(a.studentId).name};
+    }
+    const selected=studentId?students.filter(s=>s.id===studentId):students;
+    const detailStudent=query.get('detailStudent')||'';
+    assert(!detailStudent||selected.some(s=>s.id===detailStudent),'无权查看此学生',403);
+    const stored=selected.length?await db.find('self-practice-attempt',{studentId:selected.map(s=>s.id),status:['submitted','active']}):[];
+    const attempts=[...new Map(stored.filter(a=>validResult(a)&&inFilters(a,a.submittedAt)&&a.result.questions.some(matches)).map(a=>[a.id,a])).values()]
+      .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)||b.id.localeCompare(a.id));
+    const stats=summarizeMock(attempts,selected.length,matches);
+    const rows=new Map(selected.map(s=>[s.id,{id:s.id,name:s.name,count:0,active:0,last:null,score:0,max:0,weeks:{}}]));
+    const weeks=new Set();
+    for(const a of attempts){
+      const row=rows.get(a.studentId), day=new Date(Date.parse(a.submittedAt)+8*3600000);
+      day.setUTCDate(day.getUTCDate()-(day.getUTCDay()+6)%7);
+      const week=day.toISOString().slice(0,10);
+      weeks.add(week);
+      row.weeks[week]=(row.weeks[week]||0)+1;
+      row.count++;
+      row.last ||= a.submittedAt;
+      for(const q of a.result.questions.filter(matches))if(finiteScore(q)){row.score+=q.score;row.max+=q.maxPoints;}
+    }
+    for(const a of stored)if(a.status==='active'&&inFilters(a,a.startedAt)&&(!a.deadlineAt||Date.parse(a.deadlineAt)>Date.now())&&(a.questions||[]).some(matches))rows.get(a.studentId).active++;
+    const classCourses=new Set(scopedClasses.map(c=>singleClassCourse(c)));
+    const includeCourse=c=>course?c===course:(classCourses.has(null)||classCourses.has(undefined)||classCourses.has('')||classCourses.has(c));
+    const expected=(await db.list('library-unit')).filter(u=>includeCourse(u.id.split('-')[0])).flatMap(u=>{
+      const c=u.id.split('-')[0];
+      return (u.topics||[]).filter(t=>matches({topic:t.id})).map(t=>({course:c,label:t.id,title:t.title||t.name||t.id,roster:selected.filter(s=>scopedClasses.some(cls=>member(s.classIds,cls.id)&&(!singleClassCourse(cls)||singleClassCourse(cls)===c))).length}));
+    });
+    const catalog=new Map(expected.map(t=>[t.course+':'+t.label,{...t,correct:0,total:0,participants:0}]));
+    for(const t of stats.topics){
+      const key=t.course+':'+t.label;
+      if(!catalog.has(key))catalog.set(key,{roster:selected.filter(s=>scopedClasses.some(cls=>member(s.classIds,cls.id)&&(!singleClassCourse(cls)||singleClassCourse(cls)===t.course))).length});
+      Object.assign(catalog.get(key),t);
+    }
     const offset=Math.min(100000,Math.max(0,Math.trunc(Number(query.get('offset'))||0)));
+    const visible=detailStudent?attempts.filter(a=>a.studentId===detailStudent):attempts;
     return {classes:classes.map(c=>({id:c.id,name:c.name,course:singleClassCourse(c)})),students:students.map(s=>({id:s.id,name:s.name})),
-      stats:summarizeMock(attempts,studentId?(people.has(studentId)?1:0):students.length,matches),more:attempts.length>offset+25,
-      attempts:attempts.slice(offset,offset+25).map(a=>({id:a.id,name:people.get(a.studentId).name,course:a.course,submittedAt:a.submittedAt,timerMode:a.timerMode,
+      stats, chapters:[...catalog.values()], rows:[...rows.values()],weeks:[...weeks].sort().reverse(),more:visible.length>offset+25,
+      attempts:visible.slice(offset,offset+25).map(a=>({id:a.id,name:people.get(a.studentId).name,course:a.course,submittedAt:a.submittedAt,timerMode:a.timerMode,
+        topics:[...new Set(a.result.questions.map(q=>q.topic).filter(Boolean))],questionCount:a.result.questions.length,
         total:a.result.total,max:a.result.maxPoints,duration:a.result.durationSeconds,auto:a.result.autoSubmitted}))};
   }
 
