@@ -1894,6 +1894,9 @@
 }
 .homework-surface .recap-answers>div:only-child{grid-column:1/-1}
 @media(max-width:700px){.homework-surface .recap-actions{padding-inline-end:56px}}
+@media(max-width:700px){
+ .homework-surface .recap-actions>.primary{scroll-margin-bottom:calc(80px + env(safe-area-inset-bottom))}
+}
 
 /* V3 workspaces: task-first layout, semantic sections and stable touch targets. */
 .homework-surface{

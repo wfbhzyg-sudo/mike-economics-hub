@@ -1932,3 +1932,6 @@ main:focus,main:focus-visible {outline:none;}
 }
 .recap-answers>div:only-child{grid-column:1/-1}
 @media(max-width:700px){.recap-actions{padding-inline-end:56px}}
+@media(max-width:700px){
+ .recap-actions>.primary{scroll-margin-bottom:calc(80px + env(safe-area-inset-bottom))}
+}

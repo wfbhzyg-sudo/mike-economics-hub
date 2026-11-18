@@ -304,3 +304,7 @@ body[data-mcq-active=true] .mcq-work .mcq-top{padding-inline-end:60px}
 .mock-range-tools .study-filter-panel{min-width:0}
 .mock-range-tools .study-filter-panel[open]{grid-column:1/-1}
 .mock-range-tools .study-filter-panel[open]+button{grid-column:2;grid-row:1}
+@media(max-width:700px){
+ .mock-roster tr[data-roster-student]{padding-inline-end:54px}
+ .mock-roster tr[data-roster-student]>:nth-child(5){justify-self:end}
+}

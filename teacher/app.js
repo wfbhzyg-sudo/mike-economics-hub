@@ -211,7 +211,7 @@ async function student(id,part='',scope=''){
  $('#student-grade-scope').onchange=e=>{void student(id,part,e.target.value).catch(error=>toast(error.message));};
 }
 
-const bankState={course:'all',unit:'',topic:'',type:'',status:'all',q:'',page:1,selected:new Map(),catalog:null};
+const bankState={course:'all',unit:'',topic:'',type:'',status:'all',q:'',page:1,selected:new Map(),catalog:null,activeUnitIds:new Set()};
 const bankTypeLabel={choice:'选择题',short:'简答题'};
 const bankCourses=[['all','全部学科'],['micro','AP 微观'],['macro','AP 宏观']];
 function bankUnits(){
@@ -222,7 +222,7 @@ function bankFiltered(all){
  const term=bankState.q.trim().toLowerCase();
  const separator=topic.indexOf('|');
  const topicUnit=separator<0?'':topic.slice(0,separator),topicId=separator<0?'':topic.slice(separator+1);
- return all.filter(q=>(course==='all'||q.course===course)&&(!unit||q.unitId===unit)&&
+ return all.filter(q=>bankState.activeUnitIds.has(q.unitId)&&(course==='all'||q.course===course)&&(!unit||q.unitId===unit)&&
   (!topic||(topic==='unmapped'?!(q.topic||q.relatedTopics?.length):(q.unitId===topicUnit&&questionHasTopic(q,topicId))))&&
   (!type||q.type===type)&&(status==='all'||(status==='ready')===(q.status==='ready'))&&
   (!term||[q.number,q.searchText||q.prompt||q.stem,q.topic,q.topicTitle,q.source].some(v=>String(v??'').toLowerCase().includes(term))));
@@ -301,6 +301,7 @@ async function bank(){
  const [catalog,data]=await Promise.all([hw('library/catalog'),hw('library/questions?unit=all')]);
  if(version!==state.version)return;
  bankState.catalog=catalog;
+ bankState.activeUnitIds=new Set(catalog.units.filter(u=>!u.archived).map(u=>u.id));
  bankState.questions=canonicalQuestions(data.questions||[]);
  const hasAudit=bankState.questions.some(q=>q.canEdit!==false);
  main.innerHTML=`<div class="bank-head"><p class="tw-note">按学科、单元和 Topic 找题，跨单元组卷</p>
