@@ -3,7 +3,7 @@ import {classKey as discussionClassKey} from './course-scope.js';
 import {submissionLabel} from './ui-labels.js';
 import {loadWorkspaceData} from './route-data.js';
 import {showLibrary} from './library-ui.js';
-import {createMCQUI} from './mcq.js';
+import {createMCQUI} from './mcq.js?v=study-20261118';
 import {prepareForm,validateForm} from './form-feedback.js';
 import {mountPDFReader} from "./pdf-reader.js";
 import {createWorkspaceUI} from "./workspace-ui.js";
