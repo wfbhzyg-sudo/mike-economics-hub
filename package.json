@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
+    "pretest": "node scripts/scope-homework.mjs --check",
     "test": "node --test tests/*.test.mjs",
     "test:integration": "node tests/homework-integration.mjs",
     "test:model": "node tests/homework-model.mjs"
