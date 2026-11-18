@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-18-workspace-colors', date:'2026-11-18', title:'工作台换上了新的阅读配色',
+  items:[
+    {audience:'teacher',art:'roster',title:'导航与教学内容分区',text:'深蓝色区域用于导航，当前入口反白。作业、名单和报告使用白底，成绩分档与交未交仍沿用原来的颜色。'},
+    {audience:'student',art:'book',title:'更容易看清当前选择',text:'从深蓝色导航切换课程与作业。答题时，选中的选项会变为深蓝底白字，排除项仍有删除线。'}
+  ]
+},{
   id:'2026-11-18-companion', date:'2026-11-18', title:'伙伴手册与班级提交',
   items:[
     {audience:'student',art:'book',title:'和 Mike 一起学经济',text:'每次完成经济学提问或相关追问可累积好感度。点聊天标题下的称号查看进度、换头像。'},

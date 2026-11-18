@@ -1,0 +1,154 @@
+/* Shared layer, loaded after the two shells and their task-specific styles. */
+:root {
+  --shell-ground: #f1f4f7;
+  --on-navy: #fff;
+  --on-navy-muted: #d2dfeb;
+  --shell-rule: #405670;
+  --paper: #fff;
+  --tw-paper: #fff;
+  --tw-soft: var(--ui-selected);
+  --sp-primary: var(--ui-primary);
+  --sp-ink: var(--ui-ink);
+  --sp-bg: var(--shell-ground);
+  --sp-soft: var(--ui-selected);
+  --lo-bg: var(--shell-ground);
+  --lo-ink: var(--ui-ink);
+  --lo-sel: var(--ui-selected);
+  --lo-navy: var(--ui-primary);
+  --workspace-art: url('/assets/workspace-art/student-study.webp');
+}
+:root[data-teacher-workspace] {
+  --workspace-art: url('/assets/workspace-art/teacher-studio.webp');
+}
+html, body {background:var(--shell-ground);color:var(--ui-ink)}
+#main, .tw-page, .homework-surface {background:#fff;color:var(--ui-ink)}
+.homework-surface {--ink:var(--ui-ink);--paper:#fff;--navy:var(--ui-primary)}
+.library-work,.lib-dialog {--lib-paper:#fff;--lib-ink:var(--ui-ink);--lib-line:var(--ui-line)}
+.gj-page {--gj-ground:#fff;--gj-ink:var(--ui-ink);--gj-alt:var(--shell-ground)}
+:is(.library-work,.lib-dialog) .lib-directory {background:var(--shell-ground)}
+.paper .sh-summary {background:var(--shell-ground);color:var(--ui-ink)}
+.sh-summary strong,.assignment-card .card-progress {color:var(--ui-ink)}
+/* Navigation is the dark frame. Menus opened from that frame are reading surfaces. */
+body > .brand,body > .tw-brand,#dock,.tw-sidebar,.tw-mobile-nav {
+  background-color:var(--ui-primary);color:var(--on-navy);border-color:var(--shell-rule);
+}
+body > .brand,body > .tw-brand {background-image:none}
+.brand .brand-title,.brand .back,.brand .account,.tw-brand > a,.tw-account summary,
+#dock .work-nav-item,.tw-sidebar nav a,.tw-mobile-nav :is(a,button),
+.tw-sidebar button[data-open-more] {color:var(--on-navy)}
+.brand .brand-title img,.tw-brand > a img {filter:brightness(0) invert(1)}
+#dock .work-nav-label {color:var(--on-navy-muted)}
+.tw-brand .tw-brand-more {background:transparent;border-color:#91a2b6;color:white}
+.tw-account > div {background:white;color:var(--ui-ink)}
+.tw-account > div :is(a,button) {color:var(--ui-ink)}
+#dock .work-nav-item[aria-current=page],.tw-sidebar nav a[aria-current=page],
+.tw-mobile-nav :is(a,button)[aria-current=page] {
+  background:#fff;color:var(--ui-primary);font-weight:700;
+}
+@media (hover:hover) {
+  #dock .work-nav-item:not([aria-current=page]):hover,.tw-sidebar nav a:not([aria-current=page]):hover,
+  .tw-mobile-nav :is(a,button):not([aria-current=page]):hover,.tw-brand-more:hover {
+    background:var(--ui-primary-hover);color:#fff;
+  }
+}
+.workspace-vignette {display:none;pointer-events:none}
+/* Navigation illustrations are decorative backgrounds; they never push a control or reserve a row. */
+@media (min-width: 761px) and (min-height: 740px) {
+  #dock,.tw-sidebar {
+    background-image:linear-gradient(to bottom,var(--ui-primary),transparent 32%),var(--workspace-art);
+    background-position:center bottom,center bottom;
+    background-size:100% 95px,100% auto;background-repeat:no-repeat;
+  }
+}
+@media (min-width:380px) and (max-width:760px) {
+  .brand .workspace-vignette,.tw-brand .workspace-vignette {
+    display:block;flex:0 80 78px;min-width:0;height:40px;
+    background:var(--workspace-art) center / cover no-repeat;
+    mask-image:linear-gradient(to right,transparent,#000 18% 80%,transparent);
+  }
+  .tw-brand .workspace-vignette {margin-right:4px}
+}
+/* Actions on white: primary and selected controls share ink. Explicit selectors
+   exclude score cells, warning labels, answer keys and authored diagrams. */
+body :is(.primary,.tw-primary,.lo-btn.lo-primary,.rv-publish):not(:disabled) {
+  background-color:var(--ui-primary);border-color:var(--ui-primary);color:white;
+}
+body :is(.workspace-home,.paper,.homework-surface,.library-work,.sp-create,.sp-result,dialog) :is(.course-scope,.filter-tabs,.input-modes,.sp-seg,.sp-course,.lib-course-tabs,
+.lib-preview-nav,.lib-answer-options,.mcq-palette-filters,.correction-reference-tabs,.assignment-detail-tabs,
+.paper-view-switch,.review-view-switch,.bank-mobile-tabs,.sp-correct-options) button:is([aria-pressed=true],[aria-selected=true]),
+body .tw-tabs a[aria-current=page],body .lib-unit-tree button[aria-current=page] {
+  background:var(--ui-primary);color:white;border-color:var(--ui-primary);box-shadow:none;
+}
+body .lib-tabs button[aria-current=page],body .lo-tabs [role=tab][aria-selected=true] {
+  color:var(--ui-primary);background:var(--ui-selected);box-shadow:inset 0 -3px var(--ui-primary);
+}
+body :is(.mcq-work,.sp-run) .answer-pair:has([aria-checked=true]) {
+  border-color:var(--ui-primary);background:var(--ui-selected);
+}
+body :is(.mcq-work,.sp-run) .answer-pair [data-choice][aria-checked=true] {
+  background:var(--ui-primary);color:white;
+}
+body :is(.mcq-work,.sp-run) .answer-pair .strike-dot[aria-pressed=true] {
+  background:#dce2e9;color:#313f4a;
+}
+body .mcq-work,.mcq-modal {--ink:var(--ui-ink);--line:var(--ui-line)}
+body .mcq-work {background:#fff;color:var(--ui-ink)}
+body .mcq-work .mcq-answerbar {background:var(--shell-ground);border-color:var(--ui-line)}
+body .sp-card,body .mcq-card,.work-section .work-section-body,.rv-score-panel {background:#fff}
+body .work-section .work-section-heading {background:var(--ui-primary);color:white}
+.work-section .work-section-heading :is(h2,.text-button,span) {color:inherit}
+body .tw-page mark,body .paper mark {background:#ffe4a3;color:#1a2027}
+@media (hover:hover) {
+  body :is(.tw-page,.paper,.library-work,.sp-run,.mcq-work) .primary:hover:not(:disabled),
+  body .tw-page .tw-primary:hover:not(:disabled) {background:var(--ui-primary-hover);color:white}
+}
+body :is(input[type=checkbox],input[type=radio]) {accent-color:var(--ui-primary)}
+body :is(.brand,.tw-brand,#dock,.tw-sidebar,.tw-mobile-nav) :focus-visible {outline:2px solid #8acaff;outline-offset:-3px}
+body :is(.tw-account > div) :focus-visible {outline-color:var(--ui-focus)}
+@media print {
+  .workspace-vignette {display:none}
+  #dock,.tw-sidebar {background-image:none}
+}
+
+/* Focused tasks retain their original canvas dimensions and grading colors. */
+.review-studio .rv-header,.sp-run .sp-run-head {
+  background:var(--ui-primary);color:white;border-color:var(--shell-rule);
+}
+.rv-header .rv-private,.rv-header .rv-title > summary,.sp-run-head .sp-run-title span {
+  color:var(--on-navy-muted);
+}
+.rv-header .rv-title > div,.rv-header .rv-work-menu > div {background:white;color:var(--ui-ink)}
+.sp-run-head .sp-timer:not([data-low=true]) {color:var(--ui-ink);background:#fff}
+.review-studio .rv-header button:hover:not(:disabled) {color:var(--ui-ink);background:var(--ui-selected)}
+.review-studio .rv-score-panel {background:white;color:var(--ui-ink)}
+:where(.paper,.homework-surface) .answer-source > summary,
+.library-work .lib-bank-top [data-selected-view][aria-pressed=true],
+.library-work .lib-preview-heading [data-preview-select][aria-pressed=true],
+.library-work .lib-board-kind[aria-pressed=true] {background:var(--ui-selected);color:var(--ui-selected-ink);border-color:var(--ui-primary)}
+:is(.library-work,.lib-dialog) .lib-unit-tree button[aria-current=page] {background:var(--ui-primary);color:white}
+:is(.library-work,.lib-dialog) .lib-course-tabs button[aria-pressed=true] {background:var(--ui-primary);color:white}
+@media(max-width:760px) {
+  .homework-surface .workspace-home .assignment-search-controls {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;min-width:0;
+  }
+  .homework-surface .workspace-home .assignment-search-controls label,
+  .homework-surface .workspace-home .assignment-search-controls :is(select,input) {
+    min-width:0;max-width:100%;width:100%;box-sizing:border-box;
+  }
+  .homework-surface .workspace-home .assignment-search-controls .search-field,
+  .homework-surface .assignment-search-controls label:only-child,
+  .homework-surface .assignment-search-controls label:first-child:nth-last-child(2) {grid-column:1/-1}
+  .homework-surface .assignment-management-row .task-title {justify-content:flex-start;flex-wrap:wrap}
+}
+body .mcq-work > .mcq-top {
+  background:var(--ui-primary);color:white;border-radius:var(--ui-control-radius);
+  padding-inline:8px;
+}
+.mcq-work > .mcq-top h1,.mcq-work > .mcq-top #mcq-timer {color:white}
+.mcq-work > .mcq-top .mcq-save {color:#d1eadc}
+.mcq-work > .mcq-top #mcq-timer[data-urgent=true] {color:#ffcfab}
+body :is(.gj-view-switch,.rv-source-switch,.correction-editor .mcq-letters) button:is([aria-pressed=true],[aria-checked=true]),
+.review-studio .rv-page-strip [aria-current=page] {
+  background:var(--ui-primary);color:white;border-color:var(--ui-primary);
+}
+.review-studio .rv-thumbnails [aria-current=page] {border-color:var(--ui-primary);background:var(--ui-selected)}

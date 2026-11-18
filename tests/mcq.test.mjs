@@ -122,6 +122,8 @@ test('earned cosmetics, request retries and release receipts belong to one authe
  const state=(await call(handler,student,'companion/position')).value.profile;
  await assert.rejects(call(handler,student,'companion/profile','POST',{action:'equip',index:4}));
  await call(handler,student,'companion/profile','POST',{action:'read',ids:[state.editions[0].id]});
+ assert.equal((await call(handler,student,'companion/position')).value.profile.unread,state.editions.length>1);
+ await call(handler,student,'companion/profile','POST',{action:'read',ids:state.editions.map(r=>r.id)});
  assert.equal((await call(handler,student,'companion/position')).value.profile.unread,false);
  assert.equal((await call(handler,{...student,id:'second'},'companion/position')).value.profile.unread,true);
 });

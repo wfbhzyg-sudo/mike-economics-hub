@@ -2,14 +2,14 @@
 name: "Mike 的经济一页通"
 description: "One Bookself account opens seven learning destinations in an original editorial frame."
 colors:
-  task-primary: "#213e55"
-  task-primary-hover: "#1b3c5c"
-  task-ink: "#203446"
-  task-muted: "#53636c"
-  task-line: "#d5dcd8"
-  task-selected: "#dfe9ef"
-  task-selected-ink: "#2c536e"
-  task-focus: "#337caf"
+  task-primary: "#11283f"
+  task-primary-hover: "#243f5b"
+  task-ink: "#171c21"
+  task-muted: "#505d69"
+  task-line: "#cdd4dc"
+  task-selected: "#e7eef6"
+  task-selected-ink: "#183a5d"
+  task-focus: "#17639e"
   navy: "#0b1f3a"
   ink: "#203d36"
   cream: "#eee7d6"
@@ -819,3 +819,7 @@ This scoped amendment and the task-prefixed frontmatter tokens supersede earlier
 - Course overflow shows a compact, teacher-only **资料开放 · N 班** state. The release dialog clearly adds access: existing released classes stay checked/disabled, newly selected classes are added, and the visible count updates from the server response. It does not suggest that unchecking revokes access. Assignment publication remains separate.
 - Original-question, answer and correction viewers derive all accessible labels, album captions and empty-state messages from the current document kind. Browser tab titles follow the actual task. The common helper identity is **Mike 经济学伙伴**, launched by **问问 Mike**.
 - Generate `teacher/homework.css` through `node scripts/scope-homework.mjs`; never edit that generated copy alone. The authenticated asset list must include every shared module and stylesheet.
+
+## Teacher and homework workspaces
+
+Use midnight navy for application navigation and primary actions. The current destination reverses to white inside a navy rail. Paper, question images and documents sit on white with near-black type. Keep subject, urgency, submission and score colors semantic. Use the role-specific editorial art only in available navigation space.
