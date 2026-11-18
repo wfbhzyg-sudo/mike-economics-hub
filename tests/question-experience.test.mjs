@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {publicQuestion,questionEligible} from '../homework-server/self-practice-model.mjs';
-import {summarizeMock} from '../homework-server/study-workflow.mjs';
+import {summarizeMock,mockScorePercent} from '../homework-server/study-workflow.mjs';
 import {questionResult} from '../homework/result-badge.js';
 import {topicGrid} from '../homework/topic-grid.js';
 
@@ -34,4 +34,11 @@ test('unanswered, zero, partially correct, full marks and pending are distinct',
   assert.equal(questionResult({score:2,maxPoints:3}).key,'partial');
   assert.equal(questionResult({score:3,maxPoints:3}).key,'correct');
   assert.equal(questionResult({score:null,maxPoints:3}).label,'待评分');
+});
+
+test('mock percentage preserves real zero and compares different paper totals',()=>{
+  assert.equal(mockScorePercent({total:1,maxPoints:3}),33.3);
+  assert.equal(mockScorePercent({total:0,maxPoints:10}),0);
+  assert.equal(mockScorePercent({total:null,maxPoints:10}),null);
+  assert.equal(mockScorePercent({total:3,maxPoints:0}),null);
 });

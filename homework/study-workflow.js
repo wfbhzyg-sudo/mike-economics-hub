@@ -7,6 +7,24 @@ const localTime=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',dateSt
 const nl = value => value ? String(value).slice(0,10) : '';
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const part = encodeURIComponent;
+
+function mockTrendMarkup(trends = []) {
+  if (!trends.length) return '<span class="mock-trend-empty">— <small>尚无成绩</small></span>';
+  return trends.map(({course,points})=>{
+    const latest=points.at(-1).percent;
+    const change=points.length>1?Math.round((latest-points.at(-2).percent)*10)/10:null;
+    const description=points.map(p=>localTime.format(new Date(p.submittedAt))+' '+p.percent+'%').join('、');
+    const coords=points.map((p,i)=>[points.length===1?42:4+76*i/(points.length-1),26-p.percent*.22]);
+    const [x,y]=coords.at(-1), direction=change>0?'up':change<0?'down':'steady';
+    return `<div class="mock-trend" data-trend-course="${esc(course)}" title="${esc(description)}">
+      <svg viewBox="0 0 84 30" role="img" aria-label="${esc(courseLabel(course)+' · '+description)}">
+        <path class="mock-trend-guide" d="M4 4H80 M4 15H80 M4 26H80"/>
+        ${coords.length>1?`<polyline points="${coords.map(p=>p.join(',')).join(' ')}"/>`:''}
+        <circle cx="${x}" cy="${y}" r="2.5"/>
+      </svg><span>${trends.length>1?`<small>${esc(courseLabel(course))}</small>`:''}<strong>${latest}%</strong><small data-direction="${direction}">${change===null?'首次':change===0?'持平':(change>0?'+':'')+change+' pp'}</small></span></div>`;
+  }).join('');
+}
+
 const action = (api,url,body,method='POST') => api(url,{method,body});
 
 export function studyControls({api,toast,user,source='assignment',assignmentId,version=1,classes=[]}) {
@@ -300,12 +318,13 @@ export async function renderMockStatistics({main,api,state,toast}){
     const percent=(a,b)=>b?Math.round(a/b*1000)/10+'%':'—', duration = n=>n===null||n===undefined?'—':Math.floor(n/60)+' 分 '+Math.round(n%60)+' 秒';
     const kpis=[['参与学生',s.participants+' / '+s.roster],['已交卷',s.attempts+' 次'],['题次正确率',percent(s.correct,s.points)],['整卷用时中位数',duration(s.median)]];
     root.querySelector('[data-overview]').innerHTML=`<div class="study-metrics">${kpis.map(([label,value])=>`<div><span>${label}</span><strong>${value}</strong></div>`).join('')}</div><p class="hint">已交卷 · ${s.correct} / ${s.points} 正确题次 · ${s.durationSamples} 份有效用时${s.excluded?' · '+s.excluded+' 题次缺少有效计分':''}</p>`;
-    const list=root.querySelector('[data-attempts]');
+    const list=root.querySelector('[data-attempts]'),scrollLeft=list.querySelector('.mock-table-scroll')?.scrollLeft||0;
     const rows=data.rows.filter(row=>!zeroOnly||!row.count).sort((a,b)=>(ascending?a.count-b.count:b.count-a.count)||a.name.localeCompare(b.name,'zh-CN'));
-    const details=attempts.map(a=>`<button type="button" class="study-attempt" data-attempt="${esc(a.id)}"><span><strong>${esc(courseLabel(a.course))} · ${esc(a.topics.join('、')||'自主模考')}</strong><small>${esc(localTime.format(new Date(a.submittedAt)))} · ${a.questionCount} 题 · ${a.auto?'到时交卷':a.timerMode==='countdown'?'倒计时':'正计时'}</small></span><span><strong>${a.total} / ${a.max}</strong><small>${duration(a.duration)}</small></span><span aria-hidden="true">›</span></button>`).join('');
-    list.innerHTML=`<div class="mock-table-heading"><h2>交卷记录</h2><label><input type="checkbox" data-zero ${zeroOnly?'checked':''}>仅看 0 次</label></div><div class="mock-table-scroll" tabindex="0" role="region" aria-label="按学生汇总交卷记录"><table class="mock-roster"><thead><tr><th scope="col">学生</th><th scope="col" aria-sort="${ascending?'ascending':'descending'}"><button type="button" data-sort>已交次数 ${ascending?'↑':'↓'}</button></th><th scope="col">最近交卷</th><th scope="col">正确率</th>${data.weeks.map(w=>`<th scope="col">${esc(w.slice(5))} 周</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`
-      <tr data-roster-student="${esc(row.id)}"><th scope="row">${esc(row.name)}</th><td><button type="button" data-student="${esc(row.id)}" aria-expanded="${opened===row.id}" aria-label="${esc(row.name)}，查看 ${row.count} 次交卷">${row.count} 次</button>${row.active?`<small>${row.active} 份进行中</small>`:''}</td><td>${row.last?esc(nl(row.last)):'—'}</td><td>${accuracyBadge(row.max?row.score/row.max*100:null)}</td>${data.weeks.map(w=>`<td>${row.weeks[w]||'—'}</td>`).join('')}</tr>
-      ${opened===row.id?`<tr class="mock-record-row"><td colspan="${4+data.weeks.length}"><div class="mock-records">${details||'<p>此学生在当前范围内暂无交卷。</p>'}<div class="study-pager">${offset?'<button type="button" data-prev>上一页</button>':''}${data.more?'<button type="button" data-next>下一页</button>':''}</div></div></td></tr>`:''}`).join('')}</tbody></table></div>${rows.length?'':'<p class="hint">暂无匹配的学生。</p>'}`;
+    const details=attempts.map(a=>`<button type="button" class="study-attempt" data-attempt="${esc(a.id)}"><span><strong>${esc(courseLabel(a.course))} · ${esc(a.topics.join('、')||'自主模考')}</strong><small>${esc(localTime.format(new Date(a.submittedAt)))} · ${a.questionCount} 题 · ${a.auto?'到时交卷':a.timerMode==='countdown'?'倒计时':'正计时'}</small></span><span><strong>${a.percent==null?'—':a.percent+'%'}</strong><small>${a.total} / ${a.max} · ${duration(a.duration)}</small></span><span aria-hidden="true">›</span></button>`).join('');
+    list.innerHTML=`<div class="mock-table-heading"><h2>交卷记录</h2><label><input type="checkbox" data-zero ${zeroOnly?'checked':''}>仅看 0 次</label></div><div class="mock-table-scroll" tabindex="0" role="region" aria-label="按学生汇总交卷记录"><table class="mock-roster"><thead><tr><th scope="col">学生</th><th scope="col" aria-sort="${ascending?'ascending':'descending'}"><button type="button" data-sort>已交次数 ${ascending?'↑':'↓'}</button></th><th scope="col">最近交卷</th><th scope="col">正确率</th><th scope="col">成绩趋势</th>${data.weeks.map(w=>`<th scope="col">${esc(w.slice(5))} 周</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`
+      <tr data-roster-student="${esc(row.id)}"><th scope="row">${esc(row.name)}</th><td><button type="button" data-student="${esc(row.id)}" aria-expanded="${opened===row.id}" aria-label="${esc(row.name)}，查看 ${row.count} 次交卷">${row.count} 次</button>${row.active?`<small>${row.active} 份进行中</small>`:''}</td><td>${row.last?esc(nl(row.last)):'—'}</td><td>${accuracyBadge(row.max?row.score/row.max*100:null)}</td><td>${mockTrendMarkup(row.trends)}</td>${data.weeks.map(w=>`<td>${row.weeks[w]||'—'}</td>`).join('')}</tr>
+      ${opened===row.id?`<tr class="mock-record-row"><td colspan="${5+data.weeks.length}"><div class="mock-records">${details||'<p>此学生在当前范围内暂无交卷。</p>'}<div class="study-pager">${offset?'<button type="button" data-prev>上一页</button>':''}${data.more?'<button type="button" data-next>下一页</button>':''}</div></div></td></tr>`:''}`).join('')}</tbody></table></div>${rows.length?'<p class="mock-trend-note">成绩趋势按学科显示最近 8 次交卷，左旧右新。纵轴 0–100%，pp 为较上次变化的百分点。</p>':'<p class="hint">暂无匹配的学生。</p>'}`;
+    list.querySelector('.mock-table-scroll').scrollLeft=scrollLeft;
     const topics=root.querySelector('[data-topics]');
     topics.innerHTML='<h2>章节表现</h2>'+topicGrid(data.chapters,esc);
     list.querySelector('[data-sort]').onclick=()=>{ascending=!ascending;paint(data);list.querySelector('[data-sort]').focus();};

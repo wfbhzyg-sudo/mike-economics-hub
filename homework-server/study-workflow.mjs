@@ -13,6 +13,12 @@ const validResult = a => a.status === 'submitted' && a.result?.questions?.length
 const finiteScore = q => Number.isFinite(q?.score) && Number.isFinite(q?.maxPoints) && q.maxPoints > 0;
 const subject = a => a.libraryCourse || namedCourse(a.course) || 'unknown';
 
+export function mockScorePercent({total, maxPoints}) {
+  if (!Number.isFinite(total) || !Number.isFinite(maxPoints) || maxPoints <= 0 || total < 0 || total > maxPoints) return null;
+  return Math.round(1000 * total / maxPoints) / 10;
+}
+
+
 export function mockMistakes(attempts, notes, drafts) {
   const entries = new Map(notes.map(n => [JSON.stringify([n.assignmentId,n.questionId]),n]));
   const draftEntries = new Map(drafts.filter(d => !d.cleared).map(d => [JSON.stringify([d.assignmentId,d.questionId]),d]));
@@ -141,7 +147,7 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const attempts=[...new Map(stored.filter(a=>validResult(a)&&inFilters(a,a.submittedAt)&&a.result.questions.some(matches)).map(a=>[a.id,a])).values()]
       .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)||b.id.localeCompare(a.id));
     const stats=summarizeMock(attempts,selected.length,matches);
-    const rows=new Map(selected.map(s=>[s.id,{id:s.id,name:s.name,count:0,active:0,last:null,score:0,max:0,weeks:{}}]));
+    const rows=new Map(selected.map(s=>[s.id,{id:s.id,name:s.name,count:0,active:0,last:null,score:0,max:0,weeks:{},trends:new Map()}]));
     const weeks=new Set();
     for(const a of attempts){
       const row=rows.get(a.studentId), day=new Date(Date.parse(a.submittedAt)+8*3600000);
@@ -151,6 +157,12 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
       row.weeks[week]=(row.weeks[week]||0)+1;
       row.count++;
       row.last ||= a.submittedAt;
+      const percent=mockScorePercent(a.result);
+      if(percent!==null){
+        const trail=row.trends.get(a.course)||[];
+        if(trail.length<8)trail.push({percent,submittedAt:a.submittedAt});
+        row.trends.set(a.course,trail);
+      }
       for(const q of a.result.questions.filter(matches))if(finiteScore(q)){row.score+=q.score;row.max+=q.maxPoints;}
     }
     for(const a of stored)if(a.status==='active'&&inFilters(a,a.startedAt)&&(!a.deadlineAt||Date.parse(a.deadlineAt)>Date.now())&&(a.questions||[]).some(matches))rows.get(a.studentId).active++;
@@ -169,10 +181,10 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const offset=Math.min(100000,Math.max(0,Math.trunc(Number(query.get('offset'))||0)));
     const visible=detailStudent?attempts.filter(a=>a.studentId===detailStudent):attempts;
     return {classes:classes.map(c=>({id:c.id,name:c.name,course:singleClassCourse(c)})),students:students.map(s=>({id:s.id,name:s.name})),
-      stats, chapters:[...catalog.values()], rows:[...rows.values()],weeks:[...weeks].sort().reverse(),more:visible.length>offset+25,
+      stats, chapters:[...catalog.values()], rows:[...rows.values()].map(({trends,...row})=>({...row,trends:[...trends].map(([course,points])=>({course,points:points.reverse()}))})),weeks:[...weeks].sort().reverse(),more:visible.length>offset+25,
       attempts:visible.slice(offset,offset+25).map(a=>({id:a.id,name:people.get(a.studentId).name,course:a.course,submittedAt:a.submittedAt,timerMode:a.timerMode,
         topics:[...new Set(a.result.questions.map(q=>q.topic).filter(Boolean))],questionCount:a.result.questions.length,
-        total:a.result.total,max:a.result.maxPoints,duration:a.result.durationSeconds,auto:a.result.autoSubmitted}))};
+        total:a.result.total,max:a.result.maxPoints,percent:mockScorePercent(a.result),duration:a.result.durationSeconds,auto:a.result.autoSubmitted}))};
   }
 
   async function question(user, source, key, item, version, c) {
