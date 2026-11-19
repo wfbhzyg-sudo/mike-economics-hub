@@ -7,9 +7,9 @@
 <link rel="preload" as="image" href="/assets/notebook/desk-still-wide.webp?v=folio4" media="(min-width:721px), (orientation:landscape)">
 <title>Mike 的经济一页通</title>
 <link rel="icon" href="/assets/mike-hub-mark.svg">
-<link rel="stylesheet" href="/assets/notebook/desk-v1.css?v=folio4">
+<link rel="stylesheet" href="/assets/notebook/desk-v1.css?v=journal1">
 <script src="/apps.js" defer></script>
-<script src="/assets/notebook/bootstrap-v1.js?v=folio5" type="module"></script>
+<script src="/assets/notebook/bootstrap-v1.js?v=journal1" type="module"></script>
 <script src="/portal-nav.js?v=20261119-notebook" type="module"></script>
 <noscript><style>#desk-start{display:none}#fallback[hidden]{display:block!important}</style></noscript>
 </head><body data-primary="homework">
@@ -24,18 +24,19 @@
  <li><a data-entry="nebs" href="https://moni.10jqka.com.cn/mnweb/match-platform/outShare.html?competition_id=2060290&amp;competition_categories=156_001&amp;backwash_type=hexin&amp;client_userid=WUcEY&amp;back_source=wxhy&amp;share_hxapp=isc&amp;fontzoom=no">NEBS 模拟股票大赛 <span aria-hidden="true">↗</span></a></li>
  <li><a data-entry="micro-materials" href="https://www.wolai.com/8bZk12F5qDGB5bw9EzJS26">AP 微观学习材料 <span aria-hidden="true">↗</span></a></li>
  <li><a data-entry="macro-materials" href="https://www.wolai.com/2ePCpWjmYeWXzuCp3xS1Mn">AP 宏观学习材料 <span aria-hidden="true">↗</span></a></li>
- </ul><div id="fallback-actions"><a href="/?view=list">经典视图</a><a href="/?view=desk" id="enable-desk" hidden>尝试打开 3D 视图</a></div></section>
+ </ul><div id="fallback-actions"><button id="flat-news" type="button">最新变化</button><a href="/?view=list">经典视图</a><a href="/?view=desk" id="enable-desk" hidden>尝试打开 3D 视图</a></div></section>
  <header id="masthead" hidden><div class="identity">Mike · 经济一页通</div><nav aria-label="书桌视图"><a class="control thin-link" href="/?view=list">经典视图</a></nav></header>
- <section id="desk-cover" aria-label="笔记本封面" hidden><button id="open-cover" class="primary" type="button">打开笔记本</button></section>
+ <section id="desk-cover" aria-label="笔记本封面" hidden><button id="open-cover" class="page-corner cover-arrow" type="button" aria-label="打开笔记本" title="打开笔记本"><svg viewBox="0 0 34 25" aria-hidden="true"><path d="M5 7c7-1 17 0 23 8m0 0-10 2m10-2-4-8"/><path d="M6 9c7-.5 14 1 18 4"/></svg></button></section>
  <div id="hotspots">
   <button class="hot prop" type="button" id="lampSpot" hidden aria-label="拨动台灯开关" aria-pressed="true"></button>
   <button class="hot prop" type="button" id="penSpot" hidden aria-label="拿起或放下铅笔，用方向键移动"></button>
-  <button class="hot prop" id="close" type="button" aria-label="合上本子" title="合上本子" hidden><svg viewBox="0 0 32 22" aria-hidden="true"><path d="M5 16c5-2 7-.9 11 2.3 3.5-3.3 6.3-4 11-2.3V5c-4.4-1.2-7.3-.3-11 3.1C12.5 4.7 9.5 3.8 5 5v11Zm11-7.8v10"/><path d="M3 18c6-1.6 9-.4 13 2 4-2.5 7.3-3.6 13-2"/></svg></button>
+  <button id="news-tab" type="button" hidden><span>最新变化</span><i aria-hidden="true"></i></button>
   <button class="hot page-corner" id="prev" type="button" aria-label="上一页" hidden><svg viewBox="0 0 34 25" aria-hidden="true"><path d="M29 7C22 6 12 7 6 15m0 0 10 2M6 15l4-8"/><path d="M28 9c-7-.5-14 1-18 4"/></svg></button>
   <button class="hot page-corner" id="next" type="button" aria-label="下一页" hidden><svg viewBox="0 0 34 25" aria-hidden="true"><path d="M5 7c7-1 17 0 23 8m0 0-10 2m10-2-4-8"/><path d="M6 9c7-.5 14 1 18 4"/></svg></button>
  </div>
  <div id="rail" class="sr" hidden><span id="sectionName"></span><span id="pageNumber"></span></div>
  <section id="loading" hidden><div><div id="sketch" aria-hidden="true"></div><p>正在打开</p><h1 id="destination"></h1><progress id="destination-progress" aria-label="正在加载目标页面"></progress></div></section>
+ <div id="journal-transcript" class="sr"></div>
  <div id="status" class="sr" role="status"></div>
 </main>
-<script src="/companion.js?v=folio4" type="module"></script></body></html>
+<script src="/companion.js?v=journal1" type="module"></script></body></html>

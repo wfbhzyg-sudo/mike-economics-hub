@@ -1,5 +1,17 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-notebook-journal',date:'2026-11-19',title:'夹在笔记本里的更新日志',
+  items:[
+    {audience:'all',art:'book',title:'从页角翻开与合上',text:'点封面右下角的箭头打开笔记本。在第一页再往前翻，就会合上封面。'},
+    {audience:'all',art:'news',title:'最新变化',text:'点露在书边的便签查看本次更新。向右翻可读到以往的记录，再点便签可回到刚才的位置。'}
+  ]
+},{
+  id:'2026-11-19-correction',date:'2026-11-19',title:'订正后即可核对答案',
+  items:[
+    {audience:'all',art:'book',title:'保留原成绩与订正记录',text:'选择题保存订正后显示本次对错及正确选项。简答题有参考答案时可对照，没有可靠答案时显示待核对。'},
+    {audience:'teacher',art:'news',title:'两种布置方式',text:'新建作业时可直接选择在线作答或上传作答。'}
+  ]
+},{
   id:'2026-11-18-shared-question-view',date:'2026-11-18',title:'作业和模考使用同一套答题界面',
   items:[
     {audience:'all',art:'book',title:'书架与游戏大厅可直接返回一页通',text:'进入 Bookself 书架或 EconQuest 探险大厅后，可在首页点击「返回一页通」。'},

@@ -144,3 +144,20 @@ body[data-phase="loading"] :is(#masthead,.portal-account,#mike-companion){visibi
 
 #masthead .identity,#desk-cover .primary{font-family:"Desk Hand",var(--serif);font-weight:400}
 #masthead .identity{color:#fff0d3;text-shadow:0 1px 3px #342519}
+#desk-cover{padding:0}
+.cover-arrow{display:grid;place-items:center;width:48px;height:48px;border:0;background:transparent;cursor:pointer}
+#open-cover svg{width:35px;color:#f8dfa5;filter:drop-shadow(0 1px 1px #483120)}
+#news-tab{position:absolute;z-index:1;pointer-events:auto;transform:translate(-50%,-50%) rotate(-3deg);min-height:44px;padding:0 9px 6px;border:0;background:transparent;color:#423624;isolation:isolate;white-space:nowrap;font:600 13px/1.1 var(--serif);cursor:pointer}
+#news-tab::before{content:"";position:absolute;inset:6px 0 7px;z-index:-1;background:linear-gradient(#ecd49b,#ddbb7f 85%,#b59a69);border:1px solid #a98a54;border-radius:3px 7px 0 0;box-shadow:1px -1px 3px #37251439}
+#news-tab[data-unread] i,#flat-news[data-unread]::after{content:"";display:inline-block;width:7px;height:7px;margin-left:4px;border-radius:50%;background:#ad332b;vertical-align:top}
+#news-tab:focus-visible,.cover-arrow:focus-visible{outline:2px solid #46617d;outline-offset:1px}
+#flat-news{border:0;background:transparent;color:#423624;font:inherit;cursor:pointer}
+.news-reader{max-width:min(90vw,36rem);width:34rem;max-height:85dvh;padding:clamp(16px,4vw,30px);color:#2d3931;background:#f6efdf;border:1px solid #99866c;border-radius:3px}
+.news-reader::backdrop{background:#291e15aa}
+.news-reader header,.news-reader footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.news-reader header h2{margin:0}
+.news-reader button{min-height:44px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}.news-reader button:disabled{opacity:.4}
+.news-reader article{margin:1em 0;overflow-wrap:anywhere;white-space:pre-wrap}
+
+#news-tab::before{clip-path:polygon(0 15%,5% 4%,90% 0,100% 20%,100% 100%,0 100%)}
+#news-tab::after{content:"";position:absolute;inset:7px 2px auto auto;width:6px;height:5px;background:#b99b63;clip-path:polygon(0 0,100% 100%,0 100%);pointer-events:none}
+.news-reader article svg{display:block;width:100%;height:min(55dvh,32rem)}

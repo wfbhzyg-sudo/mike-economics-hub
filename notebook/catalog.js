@@ -54,6 +54,7 @@ export function portalCatalog(apps){
       ...app,category:'',title:app.name,tint:'#bbc7e0',svg:archive,
     }))});
   }
+  canonical.push({kind:'end',name:'内容更新中。。。',entries:[]});
   return canonical;
 }
 export const sideName=(section,side,index)=>{

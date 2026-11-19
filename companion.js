@@ -92,7 +92,7 @@ async function refreshOutfit(){
 function applyProfile(next,announce=false){
  if(!next)return;
  const unlocked=announce&&profile&&next.level>profile.level;
- profile=next;tier.hidden=false;updates.hidden=false;
+ profile=next;document.dispatchEvent(new CustomEvent('mike:release-profile',{detail:{profile,csrf}}));tier.hidden=false;updates.hidden=false;
  panel.querySelector('header small').hidden=true;
  let emblem=panel.querySelector('header .mike-avatar');
  if(next.student){if(!emblem){panel.querySelector('header>img').insertAdjacentHTML('beforebegin',avatar(next.equipped));emblem=panel.querySelector('header .mike-avatar');}else {emblem.querySelector('img').src=outfit(next.equipped);emblem.querySelector('svg').outerHTML=symbol(next.equipped);}}
@@ -107,6 +107,8 @@ function applyProfile(next,announce=false){
  if(section&&(!drawer.contains(ui.activeElement)||drawer.querySelector('[data-retry-profile]')))paintDrawer();
  if(unlocked)status.textContent=next.stages[next.level].name+'已解锁，可在伙伴手册中换装。';
 }
+document.addEventListener('notebook:request-profile',()=>{if(profile)document.dispatchEvent(new CustomEvent('mike:release-profile',{detail:{profile,csrf}}));});
+document.addEventListener('notebook:read-profile',e=>{if(profile)applyProfile({...profile,unread:e.detail.unread});});
 function paintDrawer(){
  const p=profile;
  if(!p){

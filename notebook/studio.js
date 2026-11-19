@@ -1,3 +1,4 @@
+import {font as journalFont,styles as journalStyles} from '../assets/notebook/journal-layout.js';
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {sideName} from './catalog.js';
@@ -77,7 +78,7 @@ function paperSurface(image,chapter,side,index){
   const outer=x===0?600:0;
   const edge=g.createLinearGradient(outer,0,x===0?572:28,0);edge.addColorStop(0,'#9e846633');edge.addColorStop(1,'#9e846600');g.fillStyle=edge;g.fillRect(0,0,600,848);
   // Bind lettering to the same texture on the resting and turning faces.
-  text(g,sideName(chapter,side,index),49,77,39,{font:lettering,weight:400,color:'#31433a'});
+  if(chapter.kind!=='end' && (chapter.kind!=='journal'||chapter.pages[side]))text(g,sideName(chapter,side,index),49,77,39,{font:lettering,weight:400,color:'#31433a'});
   g.save();
   if(side===0){g.translate(600,0);g.scale(-1,1);}
   // Matching half stitches meet along the gutter of each open spread.
@@ -89,7 +90,12 @@ function paperSurface(image,chapter,side,index){
   g.restore();
   stroke(g,[[49,102],[551,102]],'#8e816d93');
   stroke(g,[[49,752],[551,752]],'#9d8b71a8');
-  text(g,String(index*2+side+1).padStart(2,'0'),300,802,22,{align:'center',font:'Georgia',color:'#5b5144'});
+  const page=chapter.pages?.[side];
+  if(page)for(const line of page.lines){
+    g.font=journalFont(line.kind);g.fillStyle=journalStyles[line.kind].color;g.textAlign='left';g.fillText(line.text,56,line.y);
+  }
+  if(chapter.kind==='end' && side===1)text(g,'内容更新中。。。',300,429,42,{align:'center',font:lettering,weight:400});
+  if(chapter.kind!=='journal'||page)text(g,String(page?.number??(index*2+side+1)).padStart(2,'0'),300,802,22,{align:'center',font:'Georgia',color:'#5b5144'});
   return c;
 }
 function image(url){
@@ -315,7 +321,8 @@ export async function studio(chapters,mobile){
     }
   }
   const fronts=noteGeometry(),backs=cardGeometryBack(fronts),shade=edgeShadow();
-  const addSpreads=sections=>Promise.all(sections.map(async(chapter,i)=>{
+  const addSpreads=(sections,offset=0)=>Promise.all(sections.map(async(chapter,localIndex)=>{
+    const i=offset+localIndex;
     const surfaces=[0,1].map(j=>texture(paperSurface(fiber,chapter,j,i)));
     const sides=surfaces.map((map,j)=>{
       const face=mesh(book,new T.PlaneGeometry(W,H,64,12),material('#fffdf9',map),j===0?-W/2:W/2,0,PAPER_Z,false);
