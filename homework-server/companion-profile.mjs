@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-companion-direct-explanations',date:'2026-11-20',title:'问 Mike，直接听讲解',
+  items:[{audience:'all',art:'news',title:'经济问题可以直接问',text:'问定义、公式或政策影响时，Mike 会直接解释。遇到具体练习，可以问解题方法，或让 Mike 用另一道例题演示。'}]
+},{
   id:'2026-11-20-assignment-list-refresh',date:'2026-11-20',title:'查看刚发布的作业',
   items:[{audience:'student',art:'book',title:'重新点「作业」',text:'老师刚布置了新作业时，再点一次导航里的「作业」即可刷新当前列表，已选的筛选条件会保留。'}]
 },{
