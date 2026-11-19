@@ -37,7 +37,11 @@ export function prepareForm(form) {
     delete field.dataset.validationError;
     form.querySelector(`[data-error-for="${field.id}"]`)?.remove();
     const summary = form.querySelector('.form-validation');
-    if (summary && !summary.querySelector('li')) summary.remove();
+    if (summary) {
+      const count=summary.querySelectorAll('li').length;
+      if(count) summary.querySelector('h3').textContent='还有 ' + count + ' 项需要检查';
+      else summary.remove();
+    }
   };
   form.addEventListener('input', clear);
   form.addEventListener('change', clear);

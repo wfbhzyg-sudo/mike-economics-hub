@@ -532,10 +532,9 @@ async function answerPage(id) {
     const questions=readRubric(rubricForm);
     const confirmed=await new Promise(resolve=>{
       const trigger=document.activeElement,d=document.createElement('dialog');d.className='work-dialog publish-check';d.setAttribute('aria-labelledby','publish-check-title');let accepted=false;
-      d.innerHTML=`<h2 id="publish-check-title">确认发布</h2><nav class="editor-steps" aria-label="发布步骤"><button type="button" data-paper-step>1 题纸与信息</button><button type="button" data-review-step>2 核对答案</button><span aria-current="step">3 确认发布</span></nav><p class="publish-check-title">${h(a.title)}</p><dl><div><dt>布置给</dt><dd>${h(a.classIds.map(id=>state.classes.find(c=>c.id===id)?.name||'原班级').join('、'))}</dd></div><div><dt>截止</dt><dd>${a.dueAt?date(a.dueAt):'不限时间'}</dd></div><div><dt>题目</dt><dd>${questions.length} 题 · ${questions.reduce((n,q)=>n+Number(q.maxPoints||0),0)} 分</dd></div><div><dt>学生题纸</dt><dd>${qu.ids().length?qu.ids().length+' 份附件':'文字题面 · 无附件'}</dd></div><div><dt>成绩</dt><dd>AI 给分，批改完成后自动发布</dd></div></dl><p class="hint">题纸与作答要求对学生可见，参考答案仅教师可见。</p><div class="actions"><button type="button" class="secondary" data-return>返回修改</button><button type="button" class="primary" data-confirm>确认并发布作业</button></div>`;
+      d.innerHTML=`<h2 id="publish-check-title">${h(a.title)}</h2><nav class="editor-steps" aria-label="发布步骤"><button type="button" data-paper-step>1 题纸与信息</button><span>2 核对答案</span><span aria-current="step">3 确认发布</span></nav><dl><div><dt>布置给</dt><dd>${h(a.classIds.map(id=>state.classes.find(c=>c.id===id)?.name||'原班级').join('、'))}</dd></div><div><dt>截止</dt><dd>${a.dueAt?date(a.dueAt):'不限时间'}</dd></div><div><dt>题目</dt><dd>${questions.length} 题 · ${questions.reduce((n,q)=>n+Number(q.maxPoints||0),0)} 分</dd></div><div><dt>学生题纸</dt><dd>${qu.ids().length?qu.ids().length+' 份附件':'文字题面 · 无附件'}</dd></div><div><dt>成绩</dt><dd>${['mcq','mixed'].includes(a.format)&&questions.every(q=>q.type==='choice')?'按答案计分':'后台批改，待核对题可由教师评分'}</dd></div></dl><div class="actions"><button type="button" class="secondary" data-return>返回核对答案</button><button type="button" class="primary" data-confirm>确认并发布作业</button></div>`;
       main.append(d);
       d.querySelector('[data-paper-step]').onclick=()=>{d.close();go('edit/'+id);};
-      d.querySelector('[data-review-step]').onclick=()=>d.close();
       d.querySelector('[data-return]').onclick=()=>d.close();d.querySelector('[data-confirm]').onclick=()=>{accepted=true;d.close()};d.onclose=()=>{d.remove();if(trigger?.isConnected)trigger.focus({preventScroll:true});resolve(accepted)};d.showModal();
     });
     if(!confirmed||!isCurrent())return;
@@ -772,13 +771,18 @@ async function resultPage(id) {
   }
   const toggle=$('[data-review-toggle]'),list=$('#question-results'),rows=$$('.result-question');
   const visible=()=>rows.filter(row=>!row.hidden);
+  let lastOpened=JSON.stringify(recap.get('opened',[])),layoutFrame=0,scrollTimer=0,scrollDirty=false;
   function syncToggle(){
     const current=visible();toggle.hidden=!current.length;
     toggle.textContent=current.every(row=>row.open)?'全部收起':'全部展开';
-    recap.set({opened:rows.filter(row=>row.open).map(row=>row.dataset.reviewId)});
+    const opened=rows.filter(row=>row.open).map(row=>row.dataset.reviewId),key=JSON.stringify(opened);
+    if(key!==lastOpened){recap.set({opened});lastOpened=key;}
   }
   toggle.onclick=()=>{const current=visible(),open=current.some(row=>!row.open);for(const row of current)row.open=open;syncToggle();};
-  rows.forEach(row=>row.addEventListener('toggle',syncToggle));
+  function scheduleToggle(){
+    if(!layoutFrame)layoutFrame=requestAnimationFrame(()=>{layoutFrame=0;syncToggle();});
+  }
+  rows.forEach(row=>row.addEventListener('toggle',scheduleToggle));
   const filter=value=>{
     rows.forEach((row,index)=>{
       row.hidden=value==='wrong'&&row.dataset.loss!=='true';
@@ -794,7 +798,17 @@ async function resultPage(id) {
     row.open=true;row.querySelector('summary').focus({preventScroll:true});row.scrollIntoView({block:'nearest'});
   });
   list.scrollTop=recap.get('scrollTop',0);
-  list.addEventListener('scroll',()=>recap.set({scrollTop:list.scrollTop}),{passive:true});
+  function flushScroll(){
+    clearTimeout(scrollTimer);
+    if(scrollDirty){recap.set({scrollTop:list.scrollTop});scrollDirty=false;}
+  }
+  function flushReview(){
+    cancelAnimationFrame(layoutFrame);layoutFrame=0;syncToggle();flushScroll();
+  }
+  list.addEventListener('scroll',()=>{scrollDirty=true;clearTimeout(scrollTimer);scrollTimer=setTimeout(flushScroll,120);},{passive:true});
+  window.addEventListener('pagehide',flushReview);
+  const disposeReview=state.viewCleanup;
+  state.viewCleanup=()=>{flushReview();window.removeEventListener('pagehide',flushReview);disposeReview?.();};
   $$('a[href^="#mistakes/"]',list).forEach(link=>link.addEventListener('click',()=>{
     recap.set({returnQuestion:link.closest('.result-question').id,documentScroll:window.scrollY});
   }));

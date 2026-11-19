@@ -1092,8 +1092,8 @@ function renderDetail() {
     if(id==='lo-diag-order'){
       diagOrder=event.target.value;memory.set({diagOrder});renderDiagnosis(context.diagnoses);
       const row=[...root.querySelectorAll('.lo-qrow')].find(el=>el.dataset.diagQuestion===diagQuestion);
-      if(row){row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});row.classList.add('lo-reordered');}
-      else $('#lo-diag-order').focus({preventScroll:true});return;
+      if(row)row.classList.add('lo-reordered');
+      $('#lo-diag-order').focus({preventScroll:true});return;
     }
     if (id === 'lo-class') { filter.classId = event.target.value; filter.unit = ''; filter.assignmentId = ''; profileId = ''; selected = null; draw(); }
     else if (id === 'lo-unit') { filter.unit = event.target.value; filter.assignmentId = ''; draw(); }

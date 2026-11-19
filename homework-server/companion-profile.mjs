@@ -1,5 +1,10 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-desk-index',date:'2026-11-19',title:'桌边目录与课堂回顾',
+  items:[{audience:'all',art:'news',title:'桌边的纸签',text:'点右上角「目录」查看账户和经典视图。在手机上翻页时，反向滑动可以把正在翻动的书页拉回来。'},
+    {audience:'teacher',art:'book',title:'核对后发布',text:'确认窗直接显示作业名称。逐项补齐必填内容时，错误计数同步减少。'},
+    {audience:'student',art:'book',title:'回看整份作业',text:'可以一次展开各题。进入错题订正后再返回，继续查看原题的位置。'}]
+},{
   id:'2026-11-19-classroom-motion',date:'2026-11-19',title:'课堂工作台与互动需求图',
   items:[{audience:'teacher',art:'book',title:'直接返回发布步骤',text:'核对答案和确认发布时可返回题纸。班级成绩矩阵支持悬停或键盘查看原始分数。'},
     {audience:'student',art:'book',title:'移动需求曲线',text:'在微观 Unit 2 的需求与均衡课中移动曲线，观察价格与数量。订正结果会同时标明保存状态。'}]
