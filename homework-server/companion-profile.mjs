@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-assignment-list-refresh',date:'2026-11-20',title:'查看刚发布的作业',
+  items:[{audience:'student',art:'book',title:'重新点「作业」',text:'老师刚布置了新作业时，再点一次导航里的「作业」即可刷新当前列表，已选的筛选条件会保留。'}]
+},{
   id:'2026-11-20-classroom-workflow',date:'2026-11-20',title:'备课、作答与订正',
   items:[
     {audience:'teacher',art:'book',title:'选题可续，原题可查',text:'刷新后可继续上次选题。点开题目查看完整题图和共用材料，再决定是否加入。'},

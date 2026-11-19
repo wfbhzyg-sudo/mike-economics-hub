@@ -231,6 +231,15 @@ function installNavigation() {
       ];
   dock.hidden = false;
   dock.innerHTML = items.map((item,i)=>`<a href="#${item.route}" class="work-nav-item" aria-current="${i===0?'page':'false'}"><span>${icon(item.icon)}</span>${item.label}</a>`).join('');
+  const assignmentsLink = dock.querySelector('a[href="#assignments"]');
+  if (!teacher && assignmentsLink) {
+    assignmentsLink.addEventListener("click", event => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+          location.hash !== "#assignments") return;
+      event.preventDefault();
+      if (main.getAttribute("aria-busy") !== "true") void render(false);
+    });
+  }
   nav={select(index){dock.querySelectorAll('a').forEach((a,i)=>a.setAttribute('aria-current',i===index?'page':'false'));},destroy(){dock.replaceChildren();}};
   $("#account").hidden = false;
   $("#account").innerHTML = h(state.user.name) + icon("external");
