@@ -1,0 +1,18 @@
+body:has(#desk) .portal-account[data-desk-index]{position:fixed;inset:auto max(12px,env(safe-area-inset-right)) auto auto;top:max(9px,env(safe-area-inset-top));z-index:15;color:#312d28;font-family:system-ui,sans-serif}
+body:has(#desk) [data-desk-index] summary{box-sizing:border-box;width:106px;min-width:0;height:48px;min-height:44px;display:flex;align-items:center;justify-content:center;padding:3px 4px 0 19px;color:#302a23;background:transparent url('/assets/notebook/paper-index.svg') center/contain no-repeat;border:0;border-radius:0;box-shadow:none;list-style:none;cursor:pointer;font:600 16px/1.05 "Desk Hand","Kaiti SC","Songti SC",serif;letter-spacing:.10em;filter:drop-shadow(0 2px 1px #21190e66)}
+[data-desk-index] summary::-webkit-details-marker{display:none}
+body:has(#desk) [data-desk-index] summary::after{content:'';margin:0 0 0 6px;width:5px;height:5px;border:solid currentColor;border-width:0 1px 1px 0;transform:rotate(45deg);background:transparent}
+body:has(#desk) [data-desk-index][open] summary::after{transform:rotate(225deg)}
+body:has(#desk) [data-desk-index] .portal-account-menu{position:absolute;top:calc(100% - 1px);right:5px;margin:0;width:174px;overflow:auto;max-height:calc(100dvh - 84px);box-sizing:border-box;padding:6px 9px;background:#f3ead4;color:#312d28;border:1px solid #a99370;border-radius:2px;box-shadow:2px 3px 0 -1px #bbac8e,3px 7px 13px #2119104d;transform-origin:95% 0}
+[data-desk-index][open] .portal-account-menu{animation:indexOpen .14s ease-out both}
+body:has(#desk) [data-desk-index] .portal-account-menu :is(a,button){width:100%;display:flex;align-items:center;justify-content:flex-start;box-sizing:border-box;min-height:44px;padding:8px 9px;font:500 14px/1.3 system-ui,sans-serif;color:#302d28;background:transparent;border:0;border-radius:1px;text-align:left;text-decoration:none}
+body:has(#desk) [data-desk-index] .portal-account-menu :is(a,button):hover{background:#e7dcc2}
+body:has(#desk) [data-desk-index] .portal-user-name{display:block;max-width:100%;overflow-wrap:anywhere;font:600 13px/1.3 system-ui,sans-serif;color:#564c40;padding:8px 9px;border-bottom:1px solid #c9b996}
+body:has(#desk) [data-desk-index] .portal-account-menu button:not([hidden]){border-top:1px solid #c9b996}
+body:has(#desk) [data-desk-index] :focus-visible{outline:2px solid #1b5060;outline-offset:2px}
+body:has(#desk) [data-desk-index] [hidden]{display:none!important}
+body:has([data-desk-index]) #masthead nav,body:has([data-desk-index]) #desk-start>.thin-link{visibility:hidden}
+@keyframes indexOpen{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:720px){body:has(#desk) [data-desk-index] summary{width:91px;height:44px;font-size:15px}}
+@media(prefers-reduced-motion:reduce){[data-desk-index][open] .portal-account-menu{animation:none}}
+body:has(#desk) [data-desk-index] summary::before{content:none;margin:0}

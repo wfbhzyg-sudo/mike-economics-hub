@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 56" fill="none">
+<defs><linearGradient id="stock" x2=".7" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#f5e6bc"/><stop offset="1" stop-color="#dbbd86"/></linearGradient><pattern id="tooth" width="17" height="11" patternUnits="userSpaceOnUse"><path d="m1 3 2-.4m5 6 .9-.3m5-6 .7-.2" stroke="#715838" opacity=".32" stroke-width=".65"/></pattern></defs>
+<path d="m6 15 113-4 3 35-112 6Z" fill="#7a6450" opacity=".6"/>
+<path d="m6 12 115-4 2 36-114 6Z" fill="#b1aa89" stroke="#564735"/>
+<path d="m6 10 114-1 1 35L6 45Z" fill="url(#stock)" stroke="#715940" stroke-width="1.4"/>
+<path d="m6 10 114-1 1 35L6 45Z" fill="url(#tooth)"/>
+<path d="m11 40 105-1" stroke="#a88552" opacity=".65"/>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="m22 17-.1-9c0-6.2 9-6.8 9-.4v15.1c0 5.8-7.1 6.1-7.1.5l-.1-10.3c-.1-2.6 3.2-2.8 3.2-.1l.1 8.1" stroke="#745934" stroke-width="3.4"/><path d="m21.4 16.3-.1-8.8c0-6.1 9-6.2 9-.2v15c0 5.6-7 5.8-7 .6l-.1-10.4" stroke="#e0c28c" stroke-width="1.15"/></g></svg>
