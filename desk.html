@@ -1,17 +1,21 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#372a23">
+<link rel="preload" as="image" href="/assets/notebook/desk-still-portrait.webp" media="(max-width:720px) and (orientation:portrait)">
+<link rel="preload" as="image" href="/assets/notebook/desk-still-wide.webp" media="(min-width:721px), (orientation:landscape)">
 <title>Mike 的经济一页通</title>
 <link rel="icon" href="/assets/mike-hub-mark.svg">
-<link rel="stylesheet" href="/assets/notebook/desk-v1.css">
+<link rel="stylesheet" href="/assets/notebook/desk-v1.css?v=20261119-desk2">
 <script src="/apps.js" defer></script>
-<script src="/assets/notebook/bootstrap-v1.js" type="module"></script>
+<script src="/assets/notebook/bootstrap-v1.js?v=20261119-desk2" type="module"></script>
 <script src="/portal-nav.js?v=20261119-notebook" type="module"></script>
-</head><body>
+<noscript><style>#desk-start{display:none}#fallback[hidden]{display:block!important}</style></noscript>
+</head><body data-primary="homework">
 <main id="desk" aria-label="Mike 的经济一页通书桌">
  <canvas id="scene" aria-hidden="true" hidden></canvas>
- <section id="fallback"><h1>Mike 的经济一页通</h1><ul id="flat-list">
+ <div id="desk-start"><span class="sr" role="status">正在加载笔记本</span><a class="control thin-link" href="/?view=list">经典视图</a></div>
+ <section id="fallback" hidden><h1>Mike 的经济一页通</h1><ul id="flat-list">
  <li><a data-entry="homework-submit" href="/homework/">电子作业工作台 <span aria-hidden="true">↗</span></a></li>
  <li><a data-entry="bookself" href="/enter/bookself">Bookself <span aria-hidden="true">↗</span></a></li>
  <li><a data-entry="econquest" href="/enter/econquest">EconQuest <span aria-hidden="true">↗</span></a></li>
@@ -20,15 +24,17 @@
  <li><a data-entry="micro-materials" href="https://www.wolai.com/8bZk12F5qDGB5bw9EzJS26">AP 微观学习材料 <span aria-hidden="true">↗</span></a></li>
  <li><a data-entry="macro-materials" href="https://www.wolai.com/2ePCpWjmYeWXzuCp3xS1Mn">AP 宏观学习材料 <span aria-hidden="true">↗</span></a></li>
  </ul><div id="fallback-actions"><a href="/?view=list">经典视图</a><a href="/?view=desk" id="enable-desk" hidden>尝试打开 3D 视图</a></div></section>
- <header id="masthead" hidden><div class="identity">Mike · 经济一页通</div><nav aria-label="书桌工具"><a class="control thin-link" href="/?view=list">经典视图</a><button class="control" id="lamp" type="button" aria-pressed="false">台灯</button><button class="control" id="pencil" type="button">推一下笔</button><button class="control" id="close" type="button" hidden>合上本子</button></nav></header>
+ <header id="masthead" hidden><div class="identity">Mike · 经济一页通</div><nav aria-label="书桌视图"><a class="control thin-link" href="/?view=list">经典视图</a></nav></header>
  <section id="desk-cover" aria-label="笔记本封面" hidden><button id="open-cover" class="primary" type="button">打开笔记本</button></section>
- <div id="hotspots"><button class="hot" type="button" id="lampSpot" hidden aria-label="拨动台灯开关"></button><button class="hot" type="button" id="penSpot" hidden aria-label="拖动书桌上的铅笔"></button></div>
- <nav id="rail" aria-label="笔记本翻页" hidden>
-  <button class="control" id="prev" type="button" aria-label="上一页"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12.5 4.5-5.5 5.5 5.5 5.5" stroke="currentColor" stroke-width="1.7"/></svg></button>
-  <div class="position"><span id="sectionName"></span><span id="pageNumber"></span></div>
-  <button class="control" id="next" type="button" aria-label="下一页"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4.5 5.5 5.5L7 15.5" stroke="currentColor" stroke-width="1.7"/></svg></button>
- </nav>
+ <div id="hotspots">
+  <button class="hot prop" type="button" id="lampSpot" hidden aria-label="拨动台灯开关" aria-pressed="true"></button>
+  <button class="hot prop" type="button" id="penSpot" hidden aria-label="拿起或放下铅笔，用方向键移动"></button>
+  <button class="hot prop" id="close" type="button" aria-label="合上本子" title="合上本子" hidden><svg viewBox="0 0 32 22" aria-hidden="true"><path d="M5 16c5-2 7-.9 11 2.3 3.5-3.3 6.3-4 11-2.3V5c-4.4-1.2-7.3-.3-11 3.1C12.5 4.7 9.5 3.8 5 5v11Zm11-7.8v10"/><path d="M3 18c6-1.6 9-.4 13 2 4-2.5 7.3-3.6 13-2"/></svg></button>
+  <button class="hot page-corner" id="prev" type="button" aria-label="上一页" hidden><svg viewBox="0 0 34 25" aria-hidden="true"><path d="M29 7C22 6 12 7 6 15m0 0 10 2M6 15l4-8"/><path d="M28 9c-7-.5-14 1-18 4"/></svg></button>
+  <button class="hot page-corner" id="next" type="button" aria-label="下一页" hidden><svg viewBox="0 0 34 25" aria-hidden="true"><path d="M5 7c7-1 17 0 23 8m0 0-10 2m10-2-4-8"/><path d="M6 9c7-.5 14 1 18 4"/></svg></button>
+ </div>
+ <div id="rail" class="sr" hidden><span id="sectionName"></span><span id="pageNumber"></span></div>
  <section id="loading" hidden><div><div id="sketch" aria-hidden="true"></div><p>正在打开</p><h1 id="destination"></h1><div class="more"><a id="continue-link">直接打开</a><button id="return" type="button" class="primary">回到这一页</button></div></div></section>
  <div id="status" class="sr" role="status"></div>
 </main>
-<script src="/companion.js?v=20261119-send" type="module"></script></body></html>
+<script src="/companion.js?v=20261119-desk2" type="module"></script></body></html>

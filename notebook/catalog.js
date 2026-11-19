@@ -33,16 +33,21 @@ const aliases = {teacher:'teacher-workspace',homework:'homework-submit',micro:'m
 export function portalCatalog(apps){
   const byId=new Map(apps.map(app=>[app.id,app]));
   const used=new Set();
-  const canonical=chapters.map(section=>({
-    name:section.name,
-    entries:section.entries.map(visual=>{
+  const canonical=chapters.map((section,index)=>{
+    const entries=section.entries.map(visual=>{
       const id=aliases[visual.id]||visual.id;
       const app=byId.get(id);
       if(!app)return null;
       used.add(id);
       return {...visual,href:app.href,id};
-    }),
-  }));
+    });
+    if(index===0){
+      const [teacher,homework,reading,quest]=entries;
+      const primary=teacher||homework;
+      return {name:teacher?'教学与班级':homework?'作业与订正':section.name,entries:[primary,null,reading,quest]};
+    }
+    return {name:section.name,entries};
+  });
   const additions=apps.filter(app=>!used.has(app.id));
   for(let i=0;i<additions.length;i+=4){
     canonical.push({name:'拓展资源',entries:additions.slice(i,i+4).map(app=>({
@@ -52,7 +57,7 @@ export function portalCatalog(apps){
   return canonical;
 }
 export const sideName=(section,side,index)=>{
-  if(index===0)return side===0?'教学与作业':'阅读与探索';
+  if(index===0)return side===0?section.name:'阅读与探索';
   if(index===1)return side===0?'资料与竞赛':'AP 学习材料';
   return section.name;
 };

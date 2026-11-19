@@ -71,3 +71,47 @@
  .notebook-login .login-layout{flex-direction:column;align-items:center;justify-content:flex-start}
  .notebook-login[data-account-mode="login"] .login-paper{padding-left:8px}
 }
+
+.notebook-login[data-account-mode="login"]{
+  --cover-center:calc(50% + min(15vw,24svh));
+  --label-width:min(26vw,43svh);
+  --label-top:max(110px,calc(50svh - min(8.2vw,13.1svh)));
+  background-color:#3c3028;
+}
+.notebook-login[data-account-mode="login"]::before{
+  background: url('/assets/notebook/desk-still-wide.webp') center / var(--still-size,100% auto) no-repeat;
+}
+.notebook-login[data-account-mode="login"] .portal-title{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;padding:0}
+.notebook-login[data-account-mode="login"] .login-layout{
+  display:block;aspect-ratio:auto;width:var(--label-width);max-width:none;min-height:0;margin:0 0 0 var(--cover-center);
+  padding:var(--label-top) 0 max(22px,env(safe-area-inset-bottom));transform:translateX(-46%);
+  background:none;border:0;box-shadow:none;
+}
+.notebook-login[data-account-mode="login"] .login-paper{width:100%;max-width:none;margin:0;padding:0}
+.notebook-login[data-account-mode="login"] .form-heading{margin-bottom:7px}
+.notebook-login[data-account-mode="login"] .form-heading h1{font:700 clamp(17px,2.1vw,23px)/1.2 "Songti SC",Georgia,serif;text-shadow:0 1px 3px #301d12;margin:0}
+.notebook-login[data-account-mode="login"] .form-heading p{display:none}
+.notebook-login .submit{background:#263a49;color:#fff6df;box-shadow:0 2px 5px #2b1a154a}
+.notebook-login .field:focus-within{outline:2px solid #385d78;outline-offset:1px}
+.notebook-login .text-button,.notebook-login .form-options{text-shadow:0 1px 4px #302013}
+.notebook-login[data-account-mode="login"] .form-error:not(:empty){margin:0 0 4px}
+.notebook-login[data-account-mode="login"] .login-layout:has(.form-error:not(:empty)){min-height:0}
+@media(min-aspect-ratio:16/10){.notebook-login[data-account-mode="login"]{--still-size:auto 100%}}
+@media(max-width:720px) and (orientation:portrait){
+  .notebook-login[data-account-mode="login"]{
+    --cover-center:50%;
+    --label-width:73vw;
+    --label-top:max(172px,calc(50svh - 14vw));
+    --still-size:100% auto;
+  }
+  .notebook-login[data-account-mode="login"]::before{background-image:url('/assets/notebook/desk-still-portrait.webp')}
+  .notebook-login[data-account-mode="login"] .form-bottom{margin-top:0}
+}
+@media(max-height:470px) and (orientation:landscape){
+  .notebook-login[data-account-mode="login"]{--label-width:max(220px,43svh);--label-top:max(100px,calc(50svh - 10svh))}
+}
+@media(max-width:365px){
+  .notebook-login[data-account-mode="login"]{--label-top:max(153px,calc(50svh - 14vw))}
+  .notebook-login[data-account-mode="login"] .form-heading h1{font-size:17px}
+  .notebook-login[data-account-mode="login"] .field{margin-bottom:5px}
+}

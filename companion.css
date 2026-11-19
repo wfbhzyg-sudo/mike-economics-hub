@@ -105,3 +105,5 @@
 :host([data-paper-active]) .mike-launcher > img{width:40px;height:40px}
 :host([data-paper-active]) .mike-launcher > .mike-launcher-label{display:none}
 @media(max-width:600px) and (min-height:461px){.mike-chat header > .mike-wear{--wear-size:76px}}
+
+:host([data-notebook]) .mike-launcher{bottom:max(12px,env(safe-area-inset-bottom))}

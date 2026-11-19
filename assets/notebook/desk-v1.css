@@ -100,3 +100,34 @@ button:disabled{cursor:default}
  #fallback a{min-height:44px}
  #desk-cover .primary{min-width:138px}
 }
+
+#desk{height:100svh;min-height:0;touch-action:pan-y pinch-zoom}
+#desk-start{position:absolute;inset:0;z-index:3;background:#3c3028 url('/assets/notebook/walnut.webp') center/cover;pointer-events:none}
+#desk-start a{position:absolute;top:max(14px,env(safe-area-inset-top));right:176px;pointer-events:auto;text-decoration:none;display:flex;align-items:center}
+#desk-cover{transform:translate(-50%,-50%)}
+#masthead nav{margin-right:156px}
+#masthead .thin-link{border-color:#ebd9bd46}
+#close,.page-corner{display:grid;place-items:center;color:#5b412b}
+#close{margin:0}
+#close svg,.page-corner svg{width:31px;max-width:90%;overflow:visible;fill:none;stroke:currentColor;stroke-width:1.65px;stroke-linecap:round;stroke-linejoin:round}
+#close svg{width:23px;stroke-width:1.35px}
+.page-corner svg path+path,#close svg path+path{opacity:.47;stroke-width:.9px}
+#close:focus-visible,.page-corner:focus-visible{outline-color:#7f5732;outline-offset:-4px}
+#penSpot{z-index:2}
+#desk .hot{touch-action:manipulation}
+#desk #penSpot{touch-action:none}
+#loading{padding-bottom:max(18px,env(safe-area-inset-bottom))}
+@media(max-width:850px){
+  #masthead nav{margin:0;top:auto;bottom:auto;right:138px}
+  #masthead .thin-link{padding-inline:8px}
+}
+@media(max-width:425px){
+  #masthead nav{top:47px;right:0}
+  #desk-start a{top:max(58px,calc(env(safe-area-inset-top) + 47px));right:10px}
+}
+
+#desk-start{background-image:url('/assets/notebook/desk-still-wide.webp'),url('/assets/notebook/walnut.webp');background-size:var(--still-size,100% auto),cover;background-repeat:no-repeat}
+@media(min-aspect-ratio:16/10){#desk-start{--still-size:auto 100%}}
+@media(max-width:720px) and (orientation:portrait){
+  #desk-start{background-image:url('/assets/notebook/desk-still-portrait.webp'),url('/assets/notebook/walnut.webp');background-size:100% auto,cover}
+}

@@ -1,8 +1,5 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import grain from '../assets/notebook/walnut.webp';
-import leather from '../assets/notebook/leather.webp';
-import paperPhoto from '../assets/notebook/paper.webp';
 import {sideName} from './catalog.js';
 
 export const W=3.32,H=4.7,NOTE_W=2.67,NOTE_H=1.48;
@@ -70,11 +67,10 @@ function paperSurface(image,archive,side,index){
   const shadow=g.createLinearGradient(x,0,end,0);shadow.addColorStop(0,'#49351948');shadow.addColorStop(.3,'#49351b21');shadow.addColorStop(1,'#49351b00');g.fillStyle=shadow;g.fillRect(0,0,600,848);
   const outer=x===0?600:0;
   const edge=g.createLinearGradient(outer,0,x===0?572:28,0);edge.addColorStop(0,'#9e846633');edge.addColorStop(1,'#9e846600');g.fillStyle=edge;g.fillRect(0,0,600,848);
-  text(g,index===0&&side===0?'Mike 的经济一页通':sideName(archive,side,index),52,73,34,{weight:700});
+  text(g,sideName(archive,side,index),52,73,34,{weight:700});
   stroke(g,[[49,102],[551,102]],'#8e816d93');
-  stroke(g,[[49,762],[551,762]],'#9d8b71a8');
-  text(g,sideName(archive,side,index),52,799,19,{color:'#5b5144'});
-  text(g,String(index*2+side+1).padStart(2,'0'),551,799,20,{align:'right',font:'Georgia',color:'#5b5144'});
+  stroke(g,[[49,752],[551,752]],'#9d8b71a8');
+  text(g,String(index*2+side+1).padStart(2,'0'),300,802,22,{align:'center',font:'Georgia',color:'#5b5144'});
   return c;
 }
 function image(url){
@@ -172,7 +168,7 @@ function makeCard(parent,item,slot,map,front,back,shade){
   rear.morphTargetInfluences=rect.morphTargetInfluences;
   const shadow=flat(root,new T.MeshBasicMaterial({map:shade,transparent:true,depthWrite:false,opacity:.6}),.006,-.014,-.020,NOTE_W*1.145,NOTE_H*1.17,false);
   shadow.receiveShadow=false;
-  return {root,rect,rear,shadow,flatGeo:front,item,y:slot%2===0?.88:-.81,angle:[.027,-.037,-.021,.032][slot],corner:1,lift:0};
+  return {root,rect,rear,shadow,flatGeo:front,item,y:slot%2===0?.88:-.81,scaleY:1,angle:[.027,-.037,-.021,.032][slot],corner:1,lift:0};
 }
 export function bendPoint(x,t,out){
   const phi=Math.PI*t,curve=Math.sin(Math.PI*t)*1.08/W;
@@ -188,13 +184,20 @@ function leafMesh(scene){
   const faces=[mesh(scene,geom,material('#fffaf0'),0,0,0),mesh(scene,back,material('#fffaf0'),0,0,0,false)];
   return {faces,base:geom.attributes.position.array.slice()};
 }
-export function bendLeaf(leaf,t){
+export function curlHeight(x,y,direction,strength){
+  const outer=Math.max(0,((direction*x)/W-.19)/.31);
+  const bottom=Math.max(0,(-y/H-.32)/.18);
+  return .26*strength*outer*outer*bottom*bottom;
+}
+export function bendLeaf(leaf,t,corner){
   for(const [f,face] of leaf.faces.entries()){
     const geo=face.geometry,p=geo.attributes.position,n=geo.attributes.normal;
     const offset=f===0?.001:-.001;
     for(let i=0;i<p.count;i++){
       const x=leaf.base[3*i],angle=leafTangency(x,t),sx=-Math.sin(angle),sz=Math.cos(angle);
-      bendPoint(x,t,stationary);p.setXYZ(i,stationary.x+sx*offset,leaf.base[3*i+1],stationary.z+sz*offset);
+      bendPoint(x,t,stationary);const y=leaf.base[3*i+1];
+      const curled=curlHeight(x-W/2,y,1,corner);
+      p.setXYZ(i,stationary.x+sx*(offset+curled),y,stationary.z+sz*(offset+curled));
       n.setXYZ(i,f?-sx:sx,0,f?-sz:sz);
     }
     p.needsUpdate=true;
@@ -248,8 +251,8 @@ function shapePencil(scene){
   for(const x of [.69,.74,.79])rod(metal,x,.072,.072,.018,18);
   return root;
 }
-export async function studio(chapters){
-  const [table,skin,fiber]=await Promise.all([image(grain),image(leather),image(paperPhoto)]);
+export async function studio(chapters,mobile){
+  const [table,skin,fiber]=await Promise.all(['walnut','leather','paper'].map(name=>image('/assets/notebook/'+name+'.webp')));
   const scene=new T.Scene();scene.background=new T.Color('#342720');
   const {pool}=shapingDesk(scene,table),lamp=shapeLamp(scene),pencil=shapePencil(scene);
   const book=new T.Group();book.name='Notebook';scene.add(book);
@@ -267,14 +270,20 @@ export async function studio(chapters){
       rounded(parent,k%2===0?cream:leafEdge,sign*(W/2+offset),offset,-.033+k*.009,W+.01,H+.01,.010,.005);
     }
   }
-  const fronts=noteGeometry(),backs=cardGeometryBack(fronts),shade=edgeShadow(),spreads=[];
-  for(const [i,chapter] of chapters.entries()){
+  const fronts=noteGeometry(),backs=cardGeometryBack(fronts),shade=edgeShadow();
+  const spreads=await Promise.all(chapters.map(async(chapter,i)=>{
     const surfaces=[0,1].map(j=>texture(paperSurface(fiber,chapter,j,i)));
-    const sides=surfaces.map((map,j)=>flat(book,material('#fffdf9',map),j===0?-W/2:W/2,0,j===0?.168:.035,W,H,false));
+    const sides=surfaces.map((map,j)=>{
+      const face=mesh(book,new T.PlaneGeometry(W,H,16,12),material('#fffdf9',map),j===0?-W/2:W/2,0,j===0?.168:.035,false);
+      face.frustumCulled=false;
+      return face;
+    });
     const cards=await Promise.all(chapter.entries.map(async (entry,slot)=>{
       if(!entry)return null;
       const img=await noteSurface(fiber,entry);
-      return {...makeCard(book,entry,slot,texture(img),fronts,backs,shade),slot};
+      const card=makeCard(book,entry,slot,texture(img),fronts,backs,shade);
+      if(i===0&&slot===0){card.y=.54;card.scaleY=1.42;}
+      return {...card,slot};
     }));
     const available=cards.filter(Boolean);
     for(const c of available){
@@ -282,11 +291,11 @@ export async function studio(chapters){
       c.root.position.set(left?-W/2:W/2,c.y,left?.203:.070);
       c.root.rotation.z=c.angle;
     }
-    spreads.push({sides,surfaces,cards:available});
-  }
+    return {sides,surfaces,cards:available};
+  }));
   const leaf=leafMesh(book);
   const key=new T.DirectionalLight('#fff3df',2.48);key.position.set(-3.7,4.7,10.3);
-  key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=4;key.shadow.blurSamples=7;
+  key.castShadow=true;key.shadow.mapSize.setScalar(mobile?1024:2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=4;key.shadow.blurSamples=7;
   const room=new T.HemisphereLight('#d9e6ff','#96694e',1.62);scene.add(key,room);
   return {scene,book,hinge,spreads,leaf,lamp,pencil,pool,key,room,coverArt};
 }

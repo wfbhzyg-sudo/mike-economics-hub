@@ -1,10 +1,12 @@
 import * as T from 'three';
 import {portalCatalog,sideName} from './catalog.js';
-import {studio,W,H,NOTE_W,NOTE_H,corners,lampHome,penHome,bendLeaf,bendPoint,leafTangency} from './studio.js';
+import {studio,W,H,NOTE_W,NOTE_H,corners,lampHome,penHome,bendLeaf,bendPoint,leafTangency,curlHeight} from './studio.js';
 import loader from '../assets/notebook/loader.svg';
 
 const $=id=>document.getElementById(id);
-const desk=$('desk'),canvas=$('scene'),cover=$('desk-cover'),flat=$('fallback'),hotspots=$('hotspots');
+const desk=$('desk'),canvas=$('scene'),cover=$('desk-cover'),flat=$('fallback'),hotspots=$('hotspots'),still=$('desk-start');
+const pen=$('penSpot'),close=$('close'),prev=$('prev'),next=$('next'),lamp=$('lampSpot');
+const returnKey='mike:notebook:return';
 let chapters=[];
 const reduce=matchMedia('(prefers-reduced-motion: reduce)');
 const hover=matchMedia('(hover:hover) and (pointer:fine)');
@@ -16,8 +18,9 @@ const clamp01=t=>T.MathUtils.clamp(t,0,1);
 const project=new T.Vector3(),bending=new T.Vector3();
 let phase='cover',scene=null,renderer=null,camera=null;
 let frame=0,lastTime=0,openness=0,spreadIndex=0,side=0,viewSide=0;
-let motion=null,closeAfterTurn=false,hovered=null,activeEntry=null,activeCorner=1;
-let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penShifted=false,penDrag=null;
+let motion=null,hovered=null,activeEntry=null,activeCorner=1;
+let cornerHover=0,cornerAmount=0,sideCurl=0,closeHover=false,coverLift=0,firstDraw=true;
+let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penDrag=null,penHeld=false,penMoved=false;
 let mobileGesture=null,blockedUntil=0,previousFocus=null;
 const buttons=new Map();
 
@@ -50,10 +53,10 @@ function backwardAvailable(){
 }
 function sync(){
   const open=phase==='open',showRail=['open','turning','shifting'].includes(phase);
-  $('close').hidden=!showRail;
+  close.hidden=!open||!renderer;
+  prev.hidden=!open||!backwardAvailable()||!renderer;
+  next.hidden=!open||!forwardAvailable()||!renderer;
   $('rail').hidden=!showRail;
-  $('prev').disabled=!open||!backwardAvailable();
-  $('next').disabled=!open||!forwardAvailable();
   $('sectionName').textContent=narrow()?sideName(chapters[spreadIndex],side,spreadIndex):chapters[spreadIndex].name;
   const from=spreadIndex*2+1;
   $('pageNumber').textContent=narrow()?String(from+side).padStart(2,'0'):`${String(from).padStart(2,'0')}–${String(from+1).padStart(2,'0')}`;
@@ -68,9 +71,9 @@ function sync(){
     button.hidden=noScene||!open||!allow.has(entry);
     button.tabIndex=button.hidden?-1:0;
   }
-  if(noScene){$('rail').hidden=true;$('close').hidden=true;}
-  $('lamp').setAttribute('aria-pressed',String(lampOn));
-  $('lampSpot').hidden=$('penSpot').hidden=noScene||phase==='loading'||phase==='destination';
+  if(noScene)$('rail').hidden=true;
+  lamp.setAttribute('aria-pressed',String(lampOn));
+  lamp.hidden=pen.hidden=noScene||phase==='loading';
 }
 
 function begin(kind,seconds,step,end){
@@ -81,26 +84,34 @@ function begin(kind,seconds,step,end){
 }
 function coverMotion(open){
   if(open&&phase!=='cover')return;
-  if(!open&&['turning','shifting'].includes(phase)){closeAfterTurn=true;return;}
   if(!renderer||!open&&phase!=='open')return;
-  closeAfterTurn=false;clearHover();const start=openness,target=open?1:0;
+  clearHover();cornerHover=cornerAmount=0;closeHover=false;dropPen();
+  const start=openness,target=open?1:0;
+  const lift=coverLift;
   setPhase(open?'opening':'closing',open?'正在翻开笔记本':'正在合上笔记本');
-  begin('cover',open?.92:.76,t=>{openness=mix(start,target,smooth(t));},()=>{
-    if(open){setPhase('open',chapters[spreadIndex].name);focusEntry();}
-    else {
-      spreadIndex=side=viewSide=0;activeEntry=null;
+  begin('cover',open?.68:.63,t=>{openness=mix(start,target,smooth(t));coverLift=lift*(1-t);},()=>{
+    if(open){setPhase('open',chapters[spreadIndex].name);if(keyboardFocus)focusEntry();}
+    else{
+      activeEntry=null;
       setPhase('cover','已回到封面');$('open-cover').focus({preventScroll:true});
     }
   });
 }
-function go(direction){
+let keyboardFocus=false;
+function go(direction,keyboard=false){
   if(!renderer||phase!=='open'||(direction>0?!forwardAvailable():!backwardAvailable()))return;
-  clearHover();
+  clearHover();dropPen();closeHover=false;
+  const inherited=Math.max(0,cornerAmount*direction);
+  cornerHover=cornerAmount=0;
   if(narrow()&&((direction>0&&side<finalSide(spreadIndex))||(direction<0&&side>0))){
     const start=viewSide,newSide=side+direction;
     setPhase('shifting');
-    begin('side',.32,t=>{viewSide=mix(start,newSide,smooth(t));},()=>{
-      viewSide=side=newSide;completePage();
+    begin('side',.49,t=>{
+      const progress=smooth(t);
+      viewSide=mix(start,newSide,progress);
+      sideCurl=(inherited*(1-progress)+Math.sin(Math.PI*progress)*.9)*direction;
+    },()=>{
+      viewSide=side=newSide;sideCurl=0;completePage(direction,keyboard);
     });
     return;
   }
@@ -109,22 +120,27 @@ function go(direction){
   const from=direction>0?0:1,to=1-from;
   const low=Math.min(spreadIndex,nextSpread),high=Math.max(spreadIndex,nextSpread);
   setPhase('turning',direction>0?'往后翻页':'往前翻页');
-  if(scene){
-    configureTurn(low,high);
-    poseTurn(low,high,from);
-  }
-  begin('page',.81,t=>{
+  configureTurn(low,high);
+  poseTurn(low,high,from,inherited);
+  begin('page',.66,t=>{
     const p=smooth(t);
-    if(scene)poseTurn(low,high,mix(from,to,p));
+    poseTurn(low,high,mix(from,to,p),inherited*(1-p));
     viewSide=mix(startSide,nextSide,p);
   },()=>{
-    spreadIndex=nextSpread;viewSide=side=nextSide;completePage();
+    spreadIndex=nextSpread;viewSide=side=nextSide;completePage(direction,keyboard);
   });
 }
-function completePage(){
-  setPhase('open',`${$('sectionName').textContent}。可选择便签。`);
-  if(closeAfterTurn)coverMotion(false);
-  else $('pageNumber').setAttribute('aria-label','页码 '+$('pageNumber').textContent);
+function rememberPage(){
+  try{history.replaceState({...history.state,notebookSpread:spreadIndex,notebookSide:side},'');}catch{}
+}
+function completePage(direction,keyboard){
+  setPhase('open');
+  $('status').textContent=$('sectionName').textContent+'，第 '+$('pageNumber').textContent+' 页。';
+  rememberPage();
+  if(keyboard){
+    const control=direction>0?next:prev;
+    if(!control.hidden)control.focus({preventScroll:true});else focusEntry();
+  }
 }
 function focusEntry(){
   const first=visibleEntries()[0];
@@ -154,6 +170,7 @@ function connectNotes(){
     hovered=entry;wake();
   };
   note.onblur=()=>{if(hovered===entry)clearHover();};
+  note.onpointerdown=e=>{if(e.pointerType==='touch'&&phase==='open')prepareDestination(entry);};
   note.onclick=e=>{
     if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();
@@ -164,45 +181,57 @@ function connectNotes(){
  }
 }
 
-$('open-cover').onclick=()=>coverMotion(true);
-$('close').onclick=()=>coverMotion(false);
-$('prev').onclick=()=>go(-1);
-$('next').onclick=()=>go(1);
-$('lamp').onclick=$('lampSpot').onclick=()=>{
+$('open-cover').onclick=e=>{keyboardFocus=e.detail===0;coverMotion(true);};
+close.onclick=()=>coverMotion(false);
+for(const [button,direction] of [[prev,-1],[next,1]]){
+  button.onclick=e=>go(direction,e.detail===0);
+  button.onpointerenter=e=>{if(hover.matches&&e.pointerType!=='touch'){cornerHover=direction;wake();}};
+  button.onpointerleave=()=>{if(cornerHover===direction){cornerHover=0;wake();}};
+  button.onfocus=()=>{if(button.matches(':focus-visible')){cornerHover=direction;wake();}};
+  button.onblur=()=>{if(cornerHover===direction){cornerHover=0;wake();}};
+}
+close.onpointerenter=e=>{if(hover.matches&&e.pointerType!=='touch'){closeHover=true;wake();}};
+close.onpointerleave=close.onblur=()=>{closeHover=false;wake();};
+close.onfocus=()=>{closeHover=close.matches(':focus-visible');wake();};
+lamp.onclick=()=>{
   lampOn=!lampOn;sync();$('status').textContent=lampOn?'台灯已打开':'台灯已关闭';wake();
 };
-function nudge(){
-  penShifted=!penShifted;
-  penGoal.copy(penHome).add(new T.Vector3(penShifted?.23:0,penShifted?-.29:0,0));
-  penAngle=penShifted?-.79:-1.10;
-  $('status').textContent='铅笔已移动';wake();
+function holdPen(){
+  penHeld=true;pen.setAttribute('aria-pressed','true');
+  penGoal.z=.41;wake();
 }
-$('pencil').onclick=nudge;
-$('penSpot').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();nudge();}};
-
+function dropPen(){
+  if(!penHeld&&!penDrag)return;
+  const id=penDrag?.id;
+  penDrag=null;penHeld=false;pen.setAttribute('aria-pressed','false');
+  if(id!==undefined&&pen.hasPointerCapture(id))pen.releasePointerCapture(id);
+  penGoal.z=penHome.z;wake();
+}
 function unitsPerPixel(){return (camera.top-camera.bottom)/canvas.clientHeight;}
-$('penSpot').onpointerdown=e=>{
-  if(!scene)return;
-  penDrag={id:e.pointerId,x:e.clientX,y:e.clientY,px:scene.pencil.position.x,py:scene.pencil.position.y,moved:false};
-  e.currentTarget.setPointerCapture(e.pointerId);
+function movePen(x,y){
+  const inset=.82;
+  penGoal.x=T.MathUtils.clamp(x,camera.position.x+camera.left+inset,camera.position.x+camera.right-inset);
+  penGoal.y=T.MathUtils.clamp(y,camera.position.y+camera.bottom+.38,camera.position.y+camera.top-.38);
+  penMoved=true;wake();
+}
+pen.onpointerdown=e=>{
+  if(!scene||!e.isPrimary||e.button!==0||!['open','cover'].includes(phase))return;
+  penDrag={id:e.pointerId,x:e.clientX,y:e.clientY,px:scene.pencil.position.x,py:scene.pencil.position.y,angle:penAngle};
+  mobileGesture=null;pen.setPointerCapture(e.pointerId);holdPen();
 };
-$('penSpot').onpointermove=e=>{
+pen.onpointermove=e=>{
   if(!penDrag||penDrag.id!==e.pointerId)return;
-  const dx=e.clientX-penDrag.x,dy=e.clientY-penDrag.y;
-  if(Math.hypot(dx,dy)<5&&!penDrag.moved)return;
-  penDrag.moved=true;const rate=unitsPerPixel();
-  penGoal.set(T.MathUtils.clamp(penDrag.px+dx*rate,3.83,5.03),T.MathUtils.clamp(penDrag.py-dy*rate,-1.62,1.53),penHome.z);
-  penAngle=-1.1+T.MathUtils.clamp(dx*.003,-.28,.28);wake();
+  const dx=e.clientX-penDrag.x,dy=e.clientY-penDrag.y,rate=unitsPerPixel();
+  if(Math.hypot(dx,dy)<3)return;
+  movePen(penDrag.px+dx*rate,penDrag.py-dy*rate);
+  penAngle=penDrag.angle+T.MathUtils.clamp(dx*.002,-.20,.20);
 };
-$('penSpot').onpointerup=e=>{
-  if(penDrag?.id!==e.pointerId)return;
-  if(!penDrag.moved)nudge();
-  penDrag=null;
-};
-$('penSpot').onpointercancel=()=>{penDrag=null;};
+pen.onpointerup=pen.onpointercancel=pen.onlostpointercapture=e=>{if(penDrag?.id===e.pointerId)dropPen();};
+pen.onclick=e=>{if(e.detail===0&&!penDrag){if(penHeld)dropPen();else holdPen();}};
+pen.onblur=()=>{if(!penDrag)dropPen();};
 
 desk.addEventListener('touchstart',e=>{
-  if(phase!=='open'||e.touches.length!==1||e.target.closest('#masthead,#rail,#penSpot'))return;
+  if(phase!=='open'||e.touches.length!==1||e.target.closest('#masthead,.prop,.page-corner'))return;
   mobileGesture={x:e.touches[0].clientX,y:e.touches[0].clientY};
 },{passive:true});
 desk.addEventListener('touchend',e=>{
@@ -215,22 +244,30 @@ desk.addEventListener('touchend',e=>{
 },{passive:true});
 desk.addEventListener('touchcancel',()=>{mobileGesture=null;},{passive:true});
 document.addEventListener('keydown',e=>{
-  if(e.ctrlKey||e.altKey||e.metaKey||e.target.matches('input'))return;
+  if(e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select, [contenteditable], .portal-account')||e.target.id==='mike-companion')return;
+  if(e.target===pen&&penHeld&&e.key.startsWith('Arrow')){
+    e.preventDefault();
+    const steps={ArrowLeft:[-.24,0],ArrowRight:[.24,0],ArrowUp:[0,.24],ArrowDown:[0,-.24]};
+    const [x,y]=steps[e.key];movePen(penGoal.x+x,penGoal.y+y);return;
+  }
   if(e.key==='Escape'){
+    if(penHeld){dropPen();return;}
     if(phase==='loading')returnToPage();
-    else if(['open','turning','shifting'].includes(phase))coverMotion(false);
+    else if(phase==='open')coverMotion(false);
   }
   if(phase==='open'&&['ArrowLeft','ArrowRight'].includes(e.key)){
-    e.preventDefault();go(e.key==='ArrowRight'?1:-1);
+    e.preventDefault();go(e.key==='ArrowRight'?1:-1,true);
   }
 });
 
+const hints=new Set();
 const routeStyles=new Map([['/homework/','/homework/style.css'],['/teacher/','/teacher/style.css']]);
 function prepareDestination(entry){
   if(navigator.connection?.saveData)return;
   const target=new URL(entry.href,location.href);
   const href=target.origin===location.origin?routeStyles.get(target.pathname):target.origin;
-  if(!href)return;
+  if(!href||hints.has(href))return;
+  hints.add(href);
   const hint=document.createElement('link');
   hint.rel=target.origin===location.origin?'prefetch':'preconnect';hint.href=href;
   document.head.append(hint);
@@ -243,7 +280,7 @@ function peel(entry,corner,origin){
   const inherited=card?.lift||0;
   clearHover();prepareDestination(entry);
   setPhase('peeling','正在揭下便签');
-  begin('peel',.47,t=>{
+  begin('peel',.32,t=>{
     if(!card)return;
     const u=smooth(t),[sx,sy]=corners[activeCorner];
     resetCard(card,card.slot);
@@ -258,11 +295,13 @@ function navigate(entry){
   $('destination').textContent=entry.title;
   $('continue-link').href=entry.href;
   setPhase('loading','正在打开 '+entry.title);
-  try{history.replaceState({...history.state,notebookSpread:spreadIndex,notebookSide:side},'');}catch{}
+  rememberPage();
+  try{sessionStorage.setItem(returnKey,JSON.stringify({spreadIndex,side,at:Date.now()}));}catch{}
   // Let the sketch reach the screen before handing the tab to the normal browser navigation.
   requestAnimationFrame(()=>setTimeout(()=>{if(phase==='loading')location.assign(entry.href);},0));
 }
 function returnToPage(){
+  try{sessionStorage.removeItem(returnKey);}catch{}
   activeEntry=null;$('loading').hidden=true;setPhase('open','已回到这一页');
   previousFocus?.focus({preventScroll:true});previousFocus=null;
 }
@@ -281,16 +320,21 @@ function seat(station,parent,x,y,z,angle=0){
 function resetCard(card,index,hinged=false){
   const left=index<2;
   card.rect.geometry=card.flatGeo;card.rect.frustumCulled=true;
-  card.rear.visible=true;card.shadow.visible=true;
+  card.rear.visible=true;card.shadow.visible=true;card.root.scale.set(1,card.scaleY,1);
   seat(card.root,hinged&&left?scene.hinge:scene.book,left?-W/2:W/2,card.y,left?(hinged?.063:.203):.070,card.angle);
 }
 function prepareStatic(dt){
   const hinged=phase==='opening'||phase==='closing'||phase==='cover';
   for(const [i,spread] of scene.spreads.entries()){
     const current=i===spreadIndex;
-    for(const [side,surface] of spread.sides.entries()){
+    for(const [paperSide,surface] of spread.sides.entries()){
       surface.visible=current;
-      if(current)seat(surface,hinged&&side===0?scene.hinge:scene.book,side===0?-W/2:W/2,0,side===0?(hinged?.028:.168):.035);
+      if(current){
+        seat(surface,hinged&&paperSide===0?scene.hinge:scene.book,paperSide===0?-W/2:W/2,0,paperSide===0?(hinged?.028:.168):.035);
+        const corner=phase==='shifting'?sideCurl:cornerAmount;
+        const direction=narrow()&&corner&&paperSide===side?Math.sign(corner):paperSide===0?-1:1;
+        curlSurface(surface,direction,narrow()&&paperSide!==side?0:corner);
+      }
     }
     for(const card of spread.cards){
       card.root.visible=current;
@@ -311,11 +355,14 @@ function prepareStatic(dt){
 function configureTurn(low,high){
   for(const [i,spread] of scene.spreads.entries()){
     spread.sides.forEach((face,side)=>{face.visible=(i===low&&side===0)||(i===high&&side===1);});
-    spread.cards.forEach(card=>{card.root.visible=(i===low||i===high);resetCard(card,card.slot);});
+    spread.cards.forEach(card=>{
+      card.root.visible=(i===low||i===high);
+      if(card.root.visible){resetCard(card,card.slot);card.lift=0;weights(card,card.corner,0,0);}
+    });
   }
   const map=[scene.spreads[low].surfaces[1],scene.spreads[high].surfaces[0]];
   scene.leaf.faces.forEach((f,i)=>{
-    f.visible=true;f.material.map=map[i];f.material.needsUpdate=true;
+    f.visible=true;f.material.map=map[i];
   });
 }
 function pressToLeaf(card,t,z,rear){
@@ -327,27 +374,45 @@ function pressToLeaf(card,t,z,rear){
   card.rect.frustumCulled=false;
   card.rear.visible=false;
   card.shadow.visible=false;
-  card.root.position.set(0,0,0);
+  card.root.position.set(0,0,0);card.root.scale.set(1,1,1);
   card.root.rotation.set(0,0,0);
   const base=card.flatGeo.attributes.position,out=card.curvedGeo.attributes.position;
   const cos=Math.cos(card.angle),sin=Math.sin(card.angle),sign=rear?-1:1;
-  const flutter=.067*Math.sin(Math.PI*t);
+  const flutter=.052*Math.sin(Math.PI*t);
   for(let i=0;i<out.count;i++){
-    const u=base.getX(i),v=base.getY(i);
+    const u=base.getX(i),v=base.getY(i)*card.scaleY;
     const x=W/2+sign*(cos*u-sin*v),y=card.y+sin*u+cos*v;
     const a=leafTangency(x,t);
     bendPoint(x,t,bending);
     const freeCorner=(.5-v/NOTE_H)**2*(.6+.4*u/NOTE_W);
-    const offset=sign*(.025+flutter*freeCorner);
+    const offset=sign*(.035+flutter*freeCorner);
     out.setXYZ(i,bending.x-Math.sin(a)*offset,y,bending.z+z+Math.cos(a)*offset);
   }
   out.needsUpdate=true;
   card.curvedGeo.computeVertexNormals();
 }
-function poseTurn(low,high,t){
-  bendLeaf(scene.leaf,t);
-  const z=mix(.043,.174,t);
+function curlSurface(face,direction,amount){
+  const strength=Math.max(0,amount*direction);
+  if(face.userData.curl===strength)return;
+  face.userData.curl=strength;
+  const pos=face.geometry.attributes.position;
+  for(let i=0;i<pos.count;i++)pos.setZ(i,curlHeight(pos.getX(i),pos.getY(i),direction,strength));
+  pos.needsUpdate=true;
+  face.geometry.computeVertexNormals();
+}
+function poseTurn(low,high,t,corner){
+  bendLeaf(scene.leaf,t,corner);
+  const z=mix(.035,.168,t);
   scene.leaf.faces.forEach(face=>{face.position.z=z;});
+  // Bury the stack under the moving paper while it is still covering that stack.
+  for(const [spread,side,depth] of [[low,0,-.075*smooth(clamp01((t-.53)/.47))],[high,1,-.075*smooth(clamp01((.47-t)/.47))]]){
+    const surface=scene.spreads[spread].sides[side];
+    curlSurface(surface,side===0?-1:1,0);
+    surface.position.z=(side===0?.168:.035)+depth;
+    for(const card of scene.spreads[spread].cards){
+      if(Math.floor(card.slot/2)===side)card.root.position.z=(side===0?.203:.070)+depth;
+    }
+  }
   scene.spreads[low].cards.filter(card=>card.slot>=2).forEach(card=>pressToLeaf(card,t,z,false));
   scene.spreads[high].cards.filter(card=>card.slot<2).forEach(card=>pressToLeaf(card,t,z,true));
 }
@@ -360,25 +425,33 @@ function deviceCamera(){
   camera.top=heightUnits/2;camera.bottom=-heightUnits/2;camera.left=-heightUnits*aspect/2;camera.right=-camera.left;
   camera.position.set(mix(mobile?W/2:.13,openX,openness),mobile?-.04:0,15);
   camera.updateProjectionMatrix();camera.updateMatrixWorld();
-  scene.hinge.rotation.y=(1-openness)*Math.PI;
+  scene.hinge.rotation.y=(1-openness)*Math.PI-coverLift*.025;
+  const propX=mobile?camera.position.x-W*.20:lampHome.x;
+  scene.lamp.root.position.set(propX,mobile?2.85:lampHome.y,0);
+  scene.lamp.root.scale.setScalar(mobile?.55:1);
+  scene.lamp.bulb.position.set(mobile?propX+.34:-3.28,mobile?2.74:1.22,2.23);
+  scene.pencil.scale.setScalar(mobile?.67:1);
+  const helperX=mobile?camera.position.x+W*.18:penHome.x;
+  const helperY=mobile?-2.64:penHome.y;
+  if(!penHeld&&(!penMoved||(phase!=='open'&&phase!=='cover')&&Math.abs(penGoal.x-camera.position.x)>camera.right-.66)){
+    penGoal.x=helperX;penGoal.y=helperY;penAngle=mobile?-.16:-1.10;penMoved=false;
+    if(mobile||firstDraw){scene.pencil.position.x=helperX;scene.pencil.position.y=helperY;}
+  }
   scene.scene.updateMatrixWorld(true);
 }
 function xy(v){
   v.project(camera);
   return [(v.x+1)*canvas.clientWidth/2,(1-v.y)*canvas.clientHeight/2];
 }
-function positionRect(button,pts,prop=false){
+function positionRect(button,pts,min=0){
   const xs=pts.map(([x])=>x),ys=pts.map(([,y])=>y);
   const l=Math.min(...xs),t=Math.min(...ys),w=Math.max(...xs)-l,h=Math.max(...ys)-t;
-  Object.assign(button.style,{left:l+'px',top:t+'px',width:w+'px',height:h+'px'});
-  if(prop){
-    button.hidden=phase==='loading'||phase==='destination'||l<0||l+w>canvas.clientWidth||t<62||t+h>canvas.clientHeight-42;
-    button.tabIndex=button.hidden?-1:0;
-  }
+  const width=Math.max(w,min),height=Math.max(h,min);
+  Object.assign(button.style,{left:l+(w-width)/2+'px',top:t+(h-height)/2+'px',width:width+'px',height:height+'px'});
 }
 function controlsOnScene(){
   if(phase==='cover'){
-    const [x,y]=xy(project.set(W/2,-.12,.318));
+    const [x,y]=xy(project.set(W/2,-.33,.318));
     cover.style.left=x+'px';cover.style.top=y+'px';
   }
   if(phase==='open')for(const card of pageCards()){
@@ -387,10 +460,17 @@ function controlsOnScene(){
     const quad=[[-1,-1],[-1,1],[1,1],[1,-1]].map(([x,y])=>xy(card.root.localToWorld(new T.Vector3(x*NOTE_W/2,y*NOTE_H/2,0))));
     positionRect(button,quad);
   }
-  const lampPoints=[[-.86,-.85],[.93,.94]].map(([x,y])=>xy(project.set(lampHome.x+x,lampHome.y+y,.38)));
-  positionRect($('lampSpot'),lampPoints,true);
+  if(phase==='open'){
+    for(const [button,direction] of [[prev,-1],[next,1]]){
+      const x=narrow()?(side===0?-W/2:W/2)+direction*W*.37:direction*W*.89;
+      positionRect(button,[xy(project.set(x,-H*.431,.2))],44);
+    }
+    const x=narrow()?(side===0?-.50:.50):-.20;
+    positionRect(close,[xy(project.set(x,H*.425,.21))],44);
+  }
+  positionRect(lamp,[xy(scene.lamp.button.getWorldPosition(project))],44);
   const pencilPoints=[[-1,-.10],[-1,.10],[1,.10],[1,-.10]].map(([x,y])=>xy(scene.pencil.localToWorld(new T.Vector3(x,y,0))));
-  positionRect($('penSpot'),pencilPoints,true);
+  positionRect(pen,pencilPoints,44);
 }
 function objectMotion(dt){
   const target=lampOn?1:0,ratio=reduce.matches?1:1-Math.exp(-11*dt);
@@ -398,16 +478,23 @@ function objectMotion(dt){
   const movingLamp=Math.abs(lampAmount-target)>.006;
   if(!movingLamp)lampAmount=target;
   // The lamp adds a reflected pool to the walnut and a warm local fill to the paper.
+  const pose=lampAmount*.032+.045;
+  scene.lamp.button.scale.y=1+pose;
   scene.lamp.bulb.intensity=lampAmount*9.5;
   scene.lamp.shadeUnder.material.emissiveIntensity=lampAmount*.79;
   scene.pool.material.opacity=lampAmount;
   scene.pencil.position.lerp(penGoal,ratio);
   scene.pencil.rotation.z=mix(scene.pencil.rotation.z,penAngle,ratio);
-  return movingLamp||scene.pencil.position.distanceToSquared(penGoal)>.00003||Math.abs(scene.pencil.rotation.z-penAngle)>.003;
+  const wanted=reduce.matches?0:cornerHover;
+  cornerAmount=mix(cornerAmount,wanted,1-Math.exp(-24*dt));
+  if(Math.abs(cornerAmount-wanted)<.004)cornerAmount=wanted;
+  const liftedCover=closeHover&&!reduce.matches?1:0;
+  if(phase==='open')coverLift=mix(coverLift,liftedCover,1-Math.exp(-24*dt));
+  return Math.abs(coverLift-liftedCover)>.004&&phase==='open'||cornerAmount!==wanted||movingLamp||scene.pencil.position.distanceToSquared(penGoal)>.00003||Math.abs(scene.pencil.rotation.z-penAngle)>.003;
 }
 function draw(now){
   frame=0;
-  const dt=Math.min(.055,(now-(lastTime||now))/1000);
+  const dt=Math.min(.04,(now-(lastTime||now-16))/1000);
   lastTime=now;
   if(motion){
     const active=motion;
@@ -416,52 +503,66 @@ function draw(now){
     active.step(t);
     if(t===1){motion=null;active.end();}
   }
-  if(phase!=='turning')prepareStatic(dt);
   const props=objectMotion(dt);
-  deviceCamera();renderer.render(scene.scene,camera);controlsOnScene();
+  if(phase!=='turning')prepareStatic(dt);
+  deviceCamera();
+  try{renderer.render(scene.scene,camera);}catch(error){
+    console.warn('Notebook rendering was interrupted.',error);fallback();return;
+  }
+  controlsOnScene();
+  if(firstDraw){
+    firstDraw=false;still.hidden=true;document.body.dataset.ready='3d';$('masthead').hidden=false;
+    if(phase==='cover'&&openingOnLoad)requestAnimationFrame(()=>coverMotion(true));
+  }
   const lifts=phase==='open'&&pageCards().some(card=>card.lift>0&&card.lift<1);
-  if(props||motion||lifts)wake();
+  if(props||motion||lifts)wake();else lastTime=0;
 }
 function resize(){
   if(!renderer||!scene)return;
+  renderer.setPixelRatio(Math.min(devicePixelRatio,narrow()?1.35:1.65));
   renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
-  if(!narrow()&&!motion)side=viewSide=0;
+  if(!motion)viewSide=narrow()?side:0;
   sync();wake();
 }
 
 function fallback(){
   if(frame)cancelAnimationFrame(frame);
   frame=0;renderer=null;motion=null;
-  document.body.dataset.ready='2d';
+  still.hidden=true;document.body.dataset.ready='2d';
   phase='open';
   $('masthead').hidden=true;$('rail').hidden=true;$('loading').hidden=true;
   sync();
   $('rail').hidden=true;
 }
-export async function start(apps,animateOpening){
+let openingOnLoad=false;
+export async function start(apps,animateOpening,canPresent){
   chapters=portalCatalog(apps);
-  spreadIndex=Math.min(chapters.length-1,Math.max(0,Number(history.state?.notebookSpread)||0));
-  side=viewSide=narrow()?Math.min(finalSide(spreadIndex),Number(history.state?.notebookSide)||0):0;
+  let saved=null;
+  try{
+    const recent=JSON.parse(sessionStorage.getItem(returnKey));
+    sessionStorage.removeItem(returnKey);
+    if(!animateOpening&&recent&&Date.now()-recent.at<45*60_000)saved=recent;
+  }catch{}
+  spreadIndex=Math.min(chapters.length-1,Math.max(0,Number(history.state?.notebookSpread??saved?.spreadIndex)||0));
+  side=narrow()?Math.min(finalSide(spreadIndex),Math.max(0,Number(history.state?.notebookSide??saved?.side)||0)):0;
+  viewSide=side;
   connectNotes();
   try{
     const gl=canvas.getContext('webgl2',{antialias:true,alpha:false,powerPreference:'low-power'});
     if(!gl){fallback();return;}
     const context=new T.WebGLRenderer({canvas,context:gl});
-    context.setPixelRatio(Math.min(devicePixelRatio,1.65));
-    context.shadowMap.enabled=true;context.shadowMap.type=T.VSMShadowMap;
+    context.shadowMap.enabled=true;
+    context.shadowMap.type=T.VSMShadowMap;
     context.toneMapping=T.ACESFilmicToneMapping;context.toneMappingExposure=1.12;
-    scene=await studio(chapters);
+    scene=await studio(chapters,narrow());
+    if(!canPresent()){context.dispose();return;}
     renderer=context;camera=new T.OrthographicCamera(-6,6,4,-4,.01,40);
     canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fallback();});
     window.addEventListener('resize',resize);
-    document.body.dataset.ready='3d';$('masthead').hidden=false;
-    const previous=document.activeElement?.dataset.entry;
-    if(animateOpening&&!reduce.matches&&!previous){
-      openness=0;setPhase('cover');resize();coverMotion(true);
-    }else{
-      openness=1;setPhase('open');resize();
-      if(previous)for(const [entry,node] of buttons)if(entry.id===previous&&!node.hidden)node.focus({preventScroll:true});
-    }
+    openingOnLoad=animateOpening&&!reduce.matches;
+    openness=openingOnLoad?0:1;
+    setPhase(openingOnLoad?'cover':'open');
+    resize();
   }catch(error){
     console.warn('Notebook view is unavailable.',error);
     fallback();
