@@ -179,7 +179,21 @@ document.addEventListener('notebook:journal',async({detail:{pages,onRead}})=>{
   journalOrigin={index:spreadIndex,side,cover:phase==='cover'};
   chapters.length=catalogCount;
   for(let i=0;i<pages.length;i+=2)chapters.push({kind:'journal',name:'更新日志',entries:[],pages:pages.slice(i,i+2)});
-  const shown=()=>{if(!renderer||!journal())return;onRead();tab.focus({preventScroll:true});};
+  const shown=()=>{
+    if(!renderer||!journal())return;
+    onRead();tab.focus({preventScroll:true});
+    const map=scene.spreads[catalogCount]?.surfaces[0];
+    if(!map)return;
+    const g=map.image.getContext('2d'),start=performance.now();
+    let last=0;
+    const mark=now=>{
+      if(!renderer||phase!=='open'||spreadIndex!==catalogCount||scene.spreads[catalogCount]?.surfaces[0]!==map)return;
+      const t=reduce.matches?1:Math.min(1,(now-start)/220);
+      g.save();g.strokeStyle='#996b47';g.lineWidth=2;g.beginPath();g.moveTo(50+126*last,88);g.lineTo(50+126*t,88);g.stroke();g.restore();last=t;
+      map.needsUpdate=true;wake();if(t<1)requestAnimationFrame(mark);
+    };
+    requestAnimationFrame(mark);
+  };
   if(!journalOrigin.cover){turnTo(catalogCount,0,1,false,0,shown);return;}
   setPhase('binding');
   try{[scene.spreads[catalogCount]]=await scene.addSpreads([chapters[catalogCount]],catalogCount);}

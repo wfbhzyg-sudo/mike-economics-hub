@@ -1,5 +1,9 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-classroom-motion',date:'2026-11-19',title:'课堂工作台与互动需求图',
+  items:[{audience:'teacher',art:'book',title:'直接返回发布步骤',text:'核对答案和确认发布时可返回题纸。班级成绩矩阵支持悬停或键盘查看原始分数。'},
+    {audience:'student',art:'book',title:'移动需求曲线',text:'在微观 Unit 2 的需求与均衡课中移动曲线，观察价格与数量。订正结果会同时标明保存状态。'}]
+},{
   id:'2026-11-19-notebook-task-return',date:'2026-11-19',title:'办完待办，回到书桌原页',
   items:[{audience:'student',art:'book',title:'交卷后看下一份',text:'从书桌点进作业，交卷后点「返回书桌」就能看到下一份待交作业。全部完成后，纸面留白。'},
     {audience:'teacher',art:'book',title:'批阅进度同步到书桌',text:'从书桌进入批阅或复核，发布成绩后可继续处理同组提交，也可返回书桌查看最新数量。'}]
@@ -112,7 +116,7 @@ export const stages=[
 export function profileView(profile={},role){
   const points=profile.points||0, level=stages.filter(s=>points>=s.at).length-1;
   const editions=releases.map(r=>({...r,items:r.items.filter(i=>i.audience==='all'||i.audience===role)})).filter(r=>r.items.length);
-  return {student:role==='student',points,level,equipped:profile.equipped||0,appearanceSource:profile.appearanceSource==='partner'?'partner':'quest',stages,editions,unread:editions.some(r=>!(profile.read||[]).includes(r.id))};
+  return {appearanceKey:profile.id,student:role==='student',points,level,equipped:profile.equipped||0,appearanceSource:profile.appearanceSource==='partner'?'partner':'quest',stages,editions,unread:editions.some(r=>!(profile.read||[]).includes(r.id))};
 }
 export function awardPoint(profile,at=new Date()){
   const day=new Date(at.getTime()+8*3600000).toISOString().slice(0,10);

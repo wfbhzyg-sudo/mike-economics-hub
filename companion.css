@@ -107,3 +107,6 @@
 @media(max-width:600px) and (min-height:461px){.mike-chat header > .mike-wear{--wear-size:76px}}
 
 :host([data-notebook]) .mike-launcher{bottom:max(12px,env(safe-area-inset-bottom))}
+
+.mike-current-look.mike-unlocked{background-color:#ececd8;background-image:radial-gradient(#758e82 1px,transparent 1.2px);background-size:6px 6px;border-radius:8px}
+@media (min-width:601px) and (prefers-reduced-motion:no-preference){.mike-current-look.mike-unlocked{animation:mike-ink-once .52s ease-out both}@keyframes mike-ink-once{from{background-size:3px 3px}to{background-size:7px 7px;background-color:transparent;background-image:none}}}

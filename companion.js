@@ -25,7 +25,7 @@ new MutationObserver(syncPaperSurface).observe(document.body,{attributes:true,at
 syncPaperSurface();
 
 const $=s=>ui.querySelector(s),launcher=$('.mike-launcher'),panel=$('.mike-chat'),log=$('.mike-chat-messages'),form=$('form'),input=$('textarea'),status=$('.mike-chat-status');let csrf='',user=null,controller=null,requestId=null,captured='',inertNodes=[],mode='learning',lastFocus=null,motion=null;
-let profile=null,section='',returnFocus=null;
+let profile=null,section='',returnFocus=null,pendingUnlock=null;
 const drawer=document.createElement('section');
 drawer.className='mike-drawer';drawer.hidden=true;drawer.setAttribute('aria-label','伙伴面板');
 panel.append(drawer);
@@ -105,6 +105,10 @@ function applyProfile(next,announce=false){
  launcher.classList.toggle('has-news',next.unread);updates.textContent=next.unread?'更新 ●':'更新';
  renderOutfit();
  if(section&&(!drawer.contains(ui.activeElement)||drawer.querySelector('[data-retry-profile]')))paintDrawer();
+ if(unlocked){
+   pendingUnlock=next.level;
+   try{if(next.appearanceKey)localStorage.setItem('mike:unlock:'+next.appearanceKey,String(next.level));}catch{}
+ }
  if(unlocked)status.textContent=next.stages[next.level].name+'已解锁，可在伙伴手册中换装。';
 }
 document.addEventListener('notebook:request-profile',()=>{if(profile)document.dispatchEvent(new CustomEvent('mike:release-profile',{detail:{profile,csrf}}));});
@@ -169,6 +173,12 @@ async function showDrawer(which,from){
  if(which==='news'&&!profile)return;section=which;returnFocus=from;drawer.hidden=false;
  for(const node of panel.children)if(node!==drawer)node.inert=true;
  paintDrawer();drawer.querySelector('[data-back]').focus();
+ const unlockKey=profile?.appearanceKey&&'mike:unlock:'+profile.appearanceKey;
+ if(which==='handbook'&&unlockKey){try{const stored=localStorage.getItem(unlockKey);if(stored)pendingUnlock=Number(stored);}catch{}}
+ if(which==='handbook'&&pendingUnlock!==null&&pendingUnlock<=profile?.level&&profile.student){
+   const card=drawer.querySelector('.mike-current-look');
+   if(card){card.classList.add('mike-unlocked');pendingUnlock=null;try{if(unlockKey)localStorage.removeItem(unlockKey);}catch{}}
+ }
  if(which==='news'&&profile.unread){
    try{const d=await api('companion/profile',{method:'POST',body:JSON.stringify({action:'read',ids:profile.editions.map(v=>v.id)})});applyProfile(d.profile);if(section==='news')drawer.querySelector('[data-back]').focus();}catch{/* Unread stays visible for retry on next visit. */}
  }
