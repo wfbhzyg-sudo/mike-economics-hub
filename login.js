@@ -9,7 +9,7 @@ async function next(animate=false){const a=params.get('authorize');if(a?.startsW
      if(scene&&document.body.dataset.ready==='3d'){
        const [session,bootstrap]=await Promise.all([
          fetch('/api/portal/session',{cache:'no-store'}).then(r=>r.json()),
-         import('/assets/notebook/bootstrap-v1.js?v=taskreturn1'),import('/apps.js')
+         import('/assets/notebook/bootstrap-v1.js?v=classmotion1'),import('/apps.js')
        ]);
        if(session.user&&!session.user.mustChangePassword){
          const teacher=session.user.role==='teacher'&&session.teacherWorkspace;

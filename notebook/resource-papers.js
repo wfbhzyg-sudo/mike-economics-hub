@@ -51,7 +51,8 @@ function markets(g,ink){
   candle(ink,516,122,227,207,153);
   line(g,[[346,121],[336,205],[341,330]],'#ab987d48',3);
   line(g,[[350,122],[340,205],[345,331]],'#fff7de99',2);
-  arrow(g,636,323,navy);
+  g.save();g.setLineDash([4,6]);line(g,[[496,0],[496,374]],'#927858',2);g.restore();
+  label(g,'NEBS',550,151,23,red,'Georgia');arrow(g,636,323,navy);
 }
 function graphPaper(g,ink){
   for(let x=0;x<680;x+=25)line(g,[[x,0],[x,374]],'#779e922c',1.2);

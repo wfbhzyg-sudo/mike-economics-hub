@@ -212,6 +212,11 @@ function noteGeometry(w=NOTE_W,h=NOTE_H,cut='') {
     for(let i=0;i<p.count;i++){
       const x=p.getX(i),y=p.getY(i);
       const dist=(w/2-sx*x)*.72+(h/2-sy*y)*.7;
+      if(cut==='resources'&&index===0){
+        const v=y/h+.5,angle=.19*v*v;
+        points.set([x,-h/2+(y+h/2)*Math.cos(angle),Math.sin(angle)*(y+h/2)],i*3);
+        continue;
+      }
       const a=Math.max(0,1-dist/span)*limit;
       const inset=rad*(a-Math.sin(a));
       points.set([x-inset*sx*.72,y-inset*sy*.7,rad*(1-Math.cos(a))],i*3);
@@ -349,6 +354,11 @@ function shapePencil(scene){
   rod(metal,.745,.071,.07,.17,18);
   rod(eraser,.866,.061,.062,.14,18);
   for(const x of [.69,.74,.79])rod(metal,x,.072,.072,.018,18);
+  const mask=canvas(128,48),g=mask.getContext('2d');
+  g.scale(64,24);const grad=g.createRadialGradient(1,1,0,1,1,1);
+  grad.addColorStop(0,'#382b23bf');grad.addColorStop(.48,'#382b2366');grad.addColorStop(1,'#382b2300');
+  g.fillStyle=grad;g.fillRect(0,0,2,2);
+  root.userData.shade=flat(scene,new T.MeshBasicMaterial({map:texture(mask),transparent:true,depthWrite:false}),0,0,0,2.08,.24,false);
   return root;
 }
 function shapeBookmark(book){
@@ -387,7 +397,12 @@ export async function studio(chapters,mobile){
   const backBoard=rounded(book,binding,W/2,0,-.10,W+.17,H+.18,.16,.075);
   const frontBoard=rounded(hinge,binding,-W/2,0,-.10,W+.17,H+.18,.15,.075);
   const coverArt=coverSurface(skin);
+  const emboss=canvas(340,480),eg=emboss.getContext('2d');
+  eg.fillStyle='#888';eg.fillRect(0,0,340,480);eg.scale(.5,.5);
+  text(eg,'Mike 的经济一页通',357,293,59,{align:'center',font:lettering,color:'#555',weight:400});
+  stroke(eg,[[61,23],[61,937]],'#676767',4);
   const cover=flat(hinge,material('#fffaf1',texture(coverArt)),-W/2,0,-.178,W+.115,H+.13,false);
+  if(!mobile){cover.material.bumpMap=new T.CanvasTexture(emboss);cover.material.bumpScale=.008;}
   cover.rotation.y=Math.PI;
   rounded(book,material('#463427'),0,0,-.09,.18,H+.11,.15,.055);
   for(const [parent,sign] of [[hinge,-1],[book,1]]){
@@ -419,6 +434,19 @@ export async function studio(chapters,mobile){
         const geometry=shaped?noteGeometry(NOTE_W,NOTE_H,entry.id):fronts;
         const card=makeCard(book,entry,slot,texture(face),geometry,shaped?cardGeometryBack(geometry):backs,shade);
         card.rear.material.color.set(design.stock);
+        if(entry.id==='resources'){
+          flat(card.root,material('#f2e5c9'),0,.09,-.009,NOTE_W*.95,NOTE_H*.87,false);
+        }
+        if(entry.id==='nebs'){
+          const left=face.width*.73,stub=canvas(face.width-left,face.height),g=stub.getContext('2d');
+          g.drawImage(face,left,0,stub.width,stub.height,0,0,stub.width,stub.height);
+          card.stub=flat(card.root,material('#ffffff',texture(stub)),NOTE_W*.365,0,.007,NOTE_W*.27,NOTE_H,false);
+          const bodyGeo=new T.PlaneGeometry(NOTE_W*.73,NOTE_H);
+          const uv=bodyGeo.attributes.uv;
+          for(let i=0;i<uv.count;i++)uv.setX(i,uv.getX(i)*.73);
+          card.ticketBody=mesh(card.root,bodyGeo,card.rect.material,-NOTE_W*.135,0,.001,false);
+          card.stub.visible=card.ticketBody.visible=false;
+        }
         if(inkCanvas)card.ink=bindInk(card.rect.material,inkCanvas,design.axis);
         return {...card,slot};
       }

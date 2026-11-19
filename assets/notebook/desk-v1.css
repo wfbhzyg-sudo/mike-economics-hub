@@ -137,9 +137,9 @@ button:disabled{cursor:default}
 #loading{background:#f5efdf url('/assets/notebook/folio-paper.svg') center/cover;color:#39493e}
 #destination-progress{width:min(220px,52vw);height:5px;accent-color:#68866f}
 body[data-phase="loading"] :is(#masthead,.portal-account,#mike-companion){visibility:hidden}
-#desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-wide.webp?v=tasklamp1')}
+#desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-wide.webp?v=classmotion1')}
 @media(max-width:720px) and (orientation:portrait){
-  #desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-portrait.webp?v=tasklamp1')}
+  #desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-portrait.webp?v=classmotion1')}
 }
 
 #masthead .identity,#desk-cover .primary{font-family:"Desk Hand",var(--serif);font-weight:400}

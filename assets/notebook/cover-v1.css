@@ -79,7 +79,7 @@
   background-color:#3c3028;
 }
 .notebook-login[data-account-mode="login"]::before{
-  background: url('/assets/notebook/desk-still-wide.webp?v=tasklamp1') center / cover no-repeat;
+  background: url('/assets/notebook/desk-still-wide.webp?v=classmotion1') center / cover no-repeat;
 }
 .notebook-login[data-account-mode="login"] .portal-title{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;padding:0}
 .notebook-login[data-account-mode="login"] .login-layout{
@@ -104,7 +104,7 @@
     --label-top:max(172px,calc(50svh - 14vw));
     --still-size:100% auto;
   }
-  .notebook-login[data-account-mode="login"]::before{background-image:url('/assets/notebook/desk-still-portrait.webp?v=tasklamp1')}
+  .notebook-login[data-account-mode="login"]::before{background-image:url('/assets/notebook/desk-still-portrait.webp?v=classmotion1')}
   .notebook-login[data-account-mode="login"] .form-bottom{margin-top:0}
 }
 @media(max-height:470px) and (orientation:landscape){

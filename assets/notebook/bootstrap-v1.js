@@ -188,7 +188,7 @@ if(!entries.length||(saveData&&!explicit)){
   }catch{}
   // Keep a usable destination during a stuck download without committing to it during a normal load.
   const timeout=setTimeout(flat,8500);
-  import('/assets/notebook/scene-v1.js?v=taskreturn1').then(book=>{
+  import('/assets/notebook/scene-v1.js?v=classmotion1').then(book=>{
     if(document.body.dataset.ready!=='2d')return book.start(entries,play,()=>document.body.dataset.ready!=='2d');
   }).catch(flat).finally(()=>clearTimeout(timeout));
 }

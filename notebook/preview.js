@@ -379,15 +379,30 @@ function peel(entry,corner,origin){
     }
   }
   setPhase('peeling','正在揭下便签');
+  let finished=false;
+  const leave=()=>{
+    if(finished||phase!=='peeling'||activeEntry!==entry)return;
+    finished=true;clearTimeout(deadline);
+    if(motion?.kind==='peel')motion=null;
+    navigate(entry);
+  };
+  const deadline=setTimeout(leave,360);
   begin('peel',.32,t=>{
     if(!card)return;
     const u=smooth(t),[sx,sy]=corners[activeCorner];
     resetCard(card,card.slot);
+    if(card.stub){
+      card.ticketBody.visible=true;card.rect.visible=false;
+      card.stub.visible=true;card.stub.position.set(card.w*(.365+.27*u),-.10*u,.009+.48*u);
+      card.stub.rotation.z=-.18*u;
+      card.ticketBody.rotation.z=.012*Math.sin(u*Math.PI);
+      card.rear.visible=false;return;
+    }
     weights(card,activeCorner,inherited*(1-u),u);
     card.shadow.visible=false;
     card.root.position.add(new T.Vector3(-sx*.29*u,-sy*.3*u,.98*u));
     card.root.rotation.z+=sx*.17*u;
-  },()=>navigate(entry));
+  },leave);
 }
 function navigate(entry){
   $('loading').hidden=false;
@@ -421,6 +436,7 @@ function seat(station,parent,x,y,z,angle=0){
   station.position.set(x,y,z);station.rotation.set(0,0,angle);
 }
 function resetCard(card,index,hinged=false){
+  if(card.stub){card.stub.visible=card.ticketBody.visible=false;card.rect.visible=true;}
   const left=index<2;
   card.rect.geometry=card.flatGeo;card.rect.frustumCulled=true;
   card.rear.visible=true;card.shadow.visible=true;card.root.scale.setScalar(1);
@@ -725,6 +741,10 @@ function placePen(dt){
   const height=Math.max(floor,mix(pen.position.z,target,reduce.matches?1:1-Math.exp(-18*dt)));
   const moving=Math.abs(height-target)>.001;
   pen.position.z=moving?height:target;
+  const shade=pen.userData.shade,spread=Math.min(1,Math.max(0,(pen.position.z-floor)/.29));
+  shade.position.set(pen.position.x+.025+spread*.09,pen.position.y-.012-spread*.065,support+.004);
+  shade.rotation.z=pen.rotation.z;shade.scale.set(scale*(1+.09*spread),scale*(.72+spread*1.6),1);
+  shade.material.opacity=.48-.29*spread;
   return moving;
 }
 function revealInks(now){
