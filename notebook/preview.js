@@ -7,7 +7,8 @@ const $=id=>document.getElementById(id);
 const desk=$('desk'),canvas=$('scene'),cover=$('desk-cover'),flat=$('fallback'),hotspots=$('hotspots'),still=$('desk-start');
 const pen=$('penSpot'),close=$('close'),prev=$('prev'),next=$('next'),lamp=$('lampSpot');
 const returnKey='mike:notebook:return';
-let chapters=[];
+let chapters=[],locked=false;
+const titles=$('paper-titles');
 const reduce=matchMedia('(prefers-reduced-motion: reduce)');
 const hover=matchMedia('(hover:hover) and (pointer:fine)');
 const narrow=()=>innerWidth<=720&&innerHeight>innerWidth;
@@ -52,7 +53,7 @@ function backwardAvailable(){
   return (narrow()&&side>0)||spreadIndex>0;
 }
 function sync(){
-  const open=phase==='open',showRail=['open','turning','shifting'].includes(phase);
+  const open=phase==='open'&&!locked,showRail=['open','turning','shifting'].includes(phase);
   close.hidden=!open||!renderer;
   prev.hidden=!open||!backwardAvailable()||!renderer;
   next.hidden=!open||!forwardAvailable()||!renderer;
@@ -62,7 +63,13 @@ function sync(){
   $('pageNumber').textContent=narrow()?String(from+side).padStart(2,'0'):`${String(from).padStart(2,'0')}–${String(from+1).padStart(2,'0')}`;
   document.body.dataset.spread=String(spreadIndex);
   document.body.dataset.side=String(side);
-  cover.hidden=phase!=='cover'||!renderer;
+  titles.hidden=!showRail||!renderer||locked;
+  const mobile=narrow();
+  for(const [i,label] of [...titles.children].entries()){
+    label.hidden=mobile&&i===1;
+    label.textContent=sideName(chapters[spreadIndex],mobile?side:i,spreadIndex);
+  }
+  cover.hidden=locked||phase!=='cover'||!renderer;
   const noScene=!scene||!renderer;
   flat.hidden=!noScene;
   canvas.hidden=noScene;
@@ -244,7 +251,7 @@ desk.addEventListener('touchend',e=>{
 },{passive:true});
 desk.addEventListener('touchcancel',()=>{mobileGesture=null;},{passive:true});
 document.addEventListener('keydown',e=>{
-  if(e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select, [contenteditable], .portal-account')||e.target.id==='mike-companion')return;
+  if(locked||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select, [contenteditable], .portal-account')||e.target.id==='mike-companion')return;
   if(e.target===pen&&penHeld&&e.key.startsWith('Arrow')){
     e.preventDefault();
     const steps={ArrowLeft:[-.24,0],ArrowRight:[.24,0],ArrowUp:[0,.24],ArrowDown:[0,-.24]};
@@ -279,6 +286,14 @@ function peel(entry,corner,origin){
   const card=pageCards().find(c=>c.item===entry);
   const inherited=card?.lift||0;
   clearHover();prepareDestination(entry);
+  const target=new URL(entry.href,location.href);
+  if(target.origin===location.origin&&routeStyles.has(target.pathname)&&!navigator.connection?.saveData){
+    const src=target.pathname+'app.js';
+    if(!hints.has(src)){
+      hints.add(src);
+      const link=document.createElement('link');link.rel='modulepreload';link.href=src;document.head.append(link);
+    }
+  }
   setPhase('peeling','正在揭下便签');
   begin('peel',.32,t=>{
     if(!card)return;
@@ -293,7 +308,11 @@ function peel(entry,corner,origin){
 function navigate(entry){
   $('loading').hidden=false;
   $('destination').textContent=entry.title;
-  $('continue-link').href=entry.href;
+  try{
+    const target=new URL(entry.href,location.href);
+    if(target.origin===location.origin&&routeStyles.has(target.pathname))
+      sessionStorage.setItem('mike:arrival',JSON.stringify({path:target.pathname,at:Date.now()}));
+  }catch{}
   setPhase('loading','正在打开 '+entry.title);
   rememberPage();
   try{sessionStorage.setItem(returnKey,JSON.stringify({spreadIndex,side,at:Date.now()}));}catch{}
@@ -305,7 +324,7 @@ function returnToPage(){
   activeEntry=null;$('loading').hidden=true;setPhase('open','已回到这一页');
   previousFocus?.focus({preventScroll:true});previousFocus=null;
 }
-$('return').onclick=returnToPage;
+
 window.addEventListener('pageshow',e=>{if(e.persisted&&phase==='loading')returnToPage();});
 
 function weights(card,corner,up,peel){
@@ -320,7 +339,7 @@ function seat(station,parent,x,y,z,angle=0){
 function resetCard(card,index,hinged=false){
   const left=index<2;
   card.rect.geometry=card.flatGeo;card.rect.frustumCulled=true;
-  card.rear.visible=true;card.shadow.visible=true;card.root.scale.set(1,card.scaleY,1);
+  card.rear.visible=true;card.shadow.visible=true;card.root.scale.setScalar(1);
   seat(card.root,hinged&&left?scene.hinge:scene.book,left?-W/2:W/2,card.y,left?(hinged?.063:.203):.070,card.angle);
 }
 function prepareStatic(dt){
@@ -380,11 +399,11 @@ function pressToLeaf(card,t,z,rear){
   const cos=Math.cos(card.angle),sin=Math.sin(card.angle),sign=rear?-1:1;
   const flutter=.052*Math.sin(Math.PI*t);
   for(let i=0;i<out.count;i++){
-    const u=base.getX(i),v=base.getY(i)*card.scaleY;
+    const u=base.getX(i),v=base.getY(i);
     const x=W/2+sign*(cos*u-sin*v),y=card.y+sin*u+cos*v;
     const a=leafTangency(x,t);
     bendPoint(x,t,bending);
-    const freeCorner=(.5-v/NOTE_H)**2*(.6+.4*u/NOTE_W);
+    const freeCorner=(.5-v/card.h)**2*(.6+.4*u/card.w);
     const offset=sign*(.035+flutter*freeCorner);
     out.setXYZ(i,bending.x-Math.sin(a)*offset,y,bending.z+z+Math.cos(a)*offset);
   }
@@ -454,10 +473,18 @@ function controlsOnScene(){
     const [x,y]=xy(project.set(W/2,-.33,.318));
     cover.style.left=x+'px';cover.style.top=y+'px';
   }
+  if(!titles.hidden){
+    const mobile=narrow(),unit=1/unitsPerPixel();
+    for(const [i,label] of [...titles.children].entries()){
+      const left=mobile?camera.position.x-W/2:i===0?-W:0;
+      const [x,y]=xy(project.set(left+W*.082,H*.452,0));
+      Object.assign(label.style,{left:x+'px',top:y+'px',fontSize:(W*.056*unit)+'px'});
+    }
+  }
   if(phase==='open')for(const card of pageCards()){
     const button=buttons.get(card.item);
     if(button.hidden)continue;
-    const quad=[[-1,-1],[-1,1],[1,1],[1,-1]].map(([x,y])=>xy(card.root.localToWorld(new T.Vector3(x*NOTE_W/2,y*NOTE_H/2,0))));
+    const quad=[[-1,-1],[-1,1],[1,1],[1,-1]].map(([x,y])=>xy(card.root.localToWorld(new T.Vector3(x*card.w/2,y*card.h/2,0))));
     positionRect(button,quad);
   }
   if(phase==='open'){
@@ -535,7 +562,8 @@ function fallback(){
   $('rail').hidden=true;
 }
 let openingOnLoad=false;
-export async function start(apps,animateOpening,canPresent){
+export async function start(apps,animateOpening,canPresent,guest=false){
+  locked=guest;
   chapters=portalCatalog(apps);
   let saved=null;
   try{
@@ -554,17 +582,27 @@ export async function start(apps,animateOpening,canPresent){
     context.shadowMap.enabled=true;
     context.shadowMap.type=T.VSMShadowMap;
     context.toneMapping=T.ACESFilmicToneMapping;context.toneMappingExposure=1.12;
-    scene=await studio(chapters,narrow());
+    scene=await studio(guest?[]:chapters,narrow());
     if(!canPresent()){context.dispose();return;}
     renderer=context;camera=new T.OrthographicCamera(-6,6,4,-4,.01,40);
     canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fallback();});
     window.addEventListener('resize',resize);
     openingOnLoad=animateOpening&&!reduce.matches;
-    openness=openingOnLoad?0:1;
-    setPhase(openingOnLoad?'cover':'open');
+    openness=guest||openingOnLoad?0:1;
+    setPhase(guest||openingOnLoad?'cover':'open');
     resize();
   }catch(error){
     console.warn('Notebook view is unavailable.',error);
     fallback();
   }
+}
+
+export async function unlock(apps,showDesk){
+  if(!locked||!renderer||!scene)throw Error('Cover is unavailable');
+  const sections=portalCatalog(apps);
+  const spreads=await scene.addSpreads(sections);
+  if(!renderer)throw Error('Cover lost its graphics context');
+  chapters=sections;scene.spreads=spreads;spreadIndex=side=viewSide=0;
+  connectNotes();dropPen();locked=false;
+  showDesk();sync();coverMotion(true);
 }

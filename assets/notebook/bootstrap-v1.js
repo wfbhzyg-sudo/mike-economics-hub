@@ -3,7 +3,7 @@ const cover=document.querySelector('#desk-start');
 const fallback=document.querySelector('#fallback');
 const saveData=navigator.connection?.saveData;
 const explicit=new URLSearchParams(location.search).get('view')==='desk';
-const teacher=document.body.dataset.primary==='teacher';
+export function configureDesk(teacher){
 const apps=(window.HUB_APPS||[]).filter(app=>!teacher||app.id!=='homework-submit');
 if(teacher)apps.unshift({id:'teacher-workspace',name:'教师工作台',url:'/teacher/'});
 const entries=apps.flatMap(app=>{
@@ -21,6 +21,10 @@ if(entries.length){
     return row;
   }));
 }
+return entries;
+}
+async function boot(){
+const entries=configureDesk(document.body.dataset.primary==='teacher');
 const flat=()=>{
   document.body.dataset.ready='2d';
   cover.hidden=true;fallback.hidden=false;
@@ -37,7 +41,10 @@ if(!entries.length||(saveData&&!explicit)){
   }catch{}
   // Keep a usable destination during a stuck download without committing to it during a normal load.
   const timeout=setTimeout(flat,8500);
-  import('/assets/notebook/scene-v1.js?v=20261119-desk2').then(book=>{
+  import('/assets/notebook/scene-v1.js?v=studio3').then(book=>{
     if(document.body.dataset.ready!=='2d')return book.start(entries,play,()=>document.body.dataset.ready!=='2d');
   }).catch(flat).finally(()=>clearTimeout(timeout));
 }
+
+}
+if(!document.body.classList.contains("notebook-login"))void boot();

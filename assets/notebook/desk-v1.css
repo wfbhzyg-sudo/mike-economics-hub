@@ -102,7 +102,7 @@ button:disabled{cursor:default}
 }
 
 #desk{height:100svh;min-height:0;touch-action:pan-y pinch-zoom}
-#desk-start{position:absolute;inset:0;z-index:3;background:#3c3028 url('/assets/notebook/walnut.webp') center/cover;pointer-events:none}
+#desk-start{position:absolute;inset:0;z-index:3;background:#dfc8a3;pointer-events:none}
 #desk-start a{position:absolute;top:max(14px,env(safe-area-inset-top));right:176px;pointer-events:auto;text-decoration:none;display:flex;align-items:center}
 #desk-cover{transform:translate(-50%,-50%)}
 #masthead nav{margin-right:156px}
@@ -126,8 +126,19 @@ button:disabled{cursor:default}
   #desk-start a{top:max(58px,calc(env(safe-area-inset-top) + 47px));right:10px}
 }
 
-#desk-start{background-image:url('/assets/notebook/desk-still-wide.webp'),url('/assets/notebook/walnut.webp');background-size:var(--still-size,100% auto),cover;background-repeat:no-repeat}
-@media(min-aspect-ratio:16/10){#desk-start{--still-size:auto 100%}}
+#paper-titles{position:absolute;inset:0;pointer-events:none;z-index:1}
+#paper-titles span{position:absolute;line-height:1.25;font-family:var(--serif);font-weight:700;color:#344741;white-space:nowrap}
+#masthead .identity,#masthead .thin-link,.portal-account summary,#desk-start .thin-link,#desk-start a,#desk-cover .primary{
+  color:#35463d;background:#f6edd8;border:1px solid #8b806a;
+  border-radius:3% 2% 4% 1% / 6% 8% 5% 9%;box-shadow:1px 2px 0 #60554146;
+  font-family:var(--serif);font-weight:650;
+}
+#masthead .identity{background:transparent;border:0;box-shadow:none}
+#desk-cover .primary{padding-inline:20px;background:#e6e9d5;border:1px solid #647665}
+#loading{background:#f5efdf url('/assets/notebook/folio-paper.svg') center/cover;color:#39493e}
+#destination-progress{width:min(220px,52vw);height:5px;accent-color:#68866f}
+body[data-phase="loading"] :is(#masthead,.portal-account,#mike-companion){visibility:hidden}
+#desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-wide.webp?v=studio3')}
 @media(max-width:720px) and (orientation:portrait){
-  #desk-start{background-image:url('/assets/notebook/desk-still-portrait.webp'),url('/assets/notebook/walnut.webp');background-size:100% auto,cover}
+  #desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-portrait.webp?v=studio3')}
 }

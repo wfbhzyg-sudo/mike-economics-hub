@@ -2,13 +2,13 @@
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#372a23">
-<link rel="preload" as="image" href="/assets/notebook/desk-still-portrait.webp" media="(max-width:720px) and (orientation:portrait)">
-<link rel="preload" as="image" href="/assets/notebook/desk-still-wide.webp" media="(min-width:721px), (orientation:landscape)">
+<link rel="preload" as="image" href="/assets/notebook/desk-still-portrait.webp?v=studio3" media="(max-width:720px) and (orientation:portrait)">
+<link rel="preload" as="image" href="/assets/notebook/desk-still-wide.webp?v=studio3" media="(min-width:721px), (orientation:landscape)">
 <title>Mike 的经济一页通</title>
 <link rel="icon" href="/assets/mike-hub-mark.svg">
-<link rel="stylesheet" href="/assets/notebook/desk-v1.css?v=20261119-desk2">
+<link rel="stylesheet" href="/assets/notebook/desk-v1.css?v=studio3">
 <script src="/apps.js" defer></script>
-<script src="/assets/notebook/bootstrap-v1.js?v=20261119-desk2" type="module"></script>
+<script src="/assets/notebook/bootstrap-v1.js?v=studio3" type="module"></script>
 <script src="/portal-nav.js?v=20261119-notebook" type="module"></script>
 <noscript><style>#desk-start{display:none}#fallback[hidden]{display:block!important}</style></noscript>
 </head><body data-primary="homework">
@@ -26,6 +26,7 @@
  </ul><div id="fallback-actions"><a href="/?view=list">经典视图</a><a href="/?view=desk" id="enable-desk" hidden>尝试打开 3D 视图</a></div></section>
  <header id="masthead" hidden><div class="identity">Mike · 经济一页通</div><nav aria-label="书桌视图"><a class="control thin-link" href="/?view=list">经典视图</a></nav></header>
  <section id="desk-cover" aria-label="笔记本封面" hidden><button id="open-cover" class="primary" type="button">打开笔记本</button></section>
+ <div id="paper-titles" aria-hidden="true" hidden><span></span><span></span></div>
  <div id="hotspots">
   <button class="hot prop" type="button" id="lampSpot" hidden aria-label="拨动台灯开关" aria-pressed="true"></button>
   <button class="hot prop" type="button" id="penSpot" hidden aria-label="拿起或放下铅笔，用方向键移动"></button>
@@ -34,7 +35,7 @@
   <button class="hot page-corner" id="next" type="button" aria-label="下一页" hidden><svg viewBox="0 0 34 25" aria-hidden="true"><path d="M5 7c7-1 17 0 23 8m0 0-10 2m10-2-4-8"/><path d="M6 9c7-.5 14 1 18 4"/></svg></button>
  </div>
  <div id="rail" class="sr" hidden><span id="sectionName"></span><span id="pageNumber"></span></div>
- <section id="loading" hidden><div><div id="sketch" aria-hidden="true"></div><p>正在打开</p><h1 id="destination"></h1><div class="more"><a id="continue-link">直接打开</a><button id="return" type="button" class="primary">回到这一页</button></div></div></section>
+ <section id="loading" hidden><div><div id="sketch" aria-hidden="true"></div><p>正在打开</p><h1 id="destination"></h1><progress id="destination-progress" aria-label="正在加载目标页面"></progress></div></section>
  <div id="status" class="sr" role="status"></div>
 </main>
-<script src="/companion.js?v=20261119-desk2" type="module"></script></body></html>
+<script src="/companion.js?v=studio3" type="module"></script></body></html>

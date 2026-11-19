@@ -1,6 +1,6 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {sideName} from './catalog.js';
+import teachingBoard from '../assets/notebook/teaching-board.svg';
 
 export const W=3.32,H=4.7,NOTE_W=2.67,NOTE_H=1.48;
 export const corners=[[-1,-1],[1,-1],[-1,1],[1,1]];
@@ -43,9 +43,9 @@ function inset(g,x,y,w,h,r,color,width){
   g.beginPath();g.roundRect(x,y,w,h,r);g.stroke();
 }
 function coverSurface(image){
-  const c=stock(image,680,960),g=c.getContext('2d');
+  const c=stock(image,1360,1920),g=c.getContext('2d');g.scale(2,2);
   g.fillStyle='#302b251b';g.fillRect(0,0,680,960);
-  const edge=g.createLinearGradient(0,0,90,0);edge.addColorStop(0,'#272b30');edge.addColorStop(.42,'#3c3331');edge.addColorStop(.87,'#4d3730');edge.addColorStop(1,'#3c281700');
+  const edge=g.createLinearGradient(0,0,90,0);edge.addColorStop(0,'#626e67');edge.addColorStop(.79,'#707e72');edge.addColorStop(.88,'#58675f');edge.addColorStop(1,'#705c4c00');
   g.fillStyle=edge;g.fillRect(0,0,90,960);
   inset(g,61,23,593,914,21,'#2c1c129e',2);
   inset(g,72,34,571,891,16,'#e1b685a8',1);
@@ -56,8 +56,8 @@ function coverSurface(image){
   }
   stroke(g,[[-31,-22],[-31,25],[34,25]],'#282723',2);stroke(g,[[-25,17],[26,-21]],'#2a2e2c',2.8);stroke(g,[[-25,-15],[28,17]],'#50301d',2.8);
   g.restore();
-  text(g,'Mike 的经济一页通',358,295,56,{align:'center',color:'#39271a',weight:700});
-  text(g,'Mike 的经济一页通',357,293,56,{align:'center',color:'#f0d4a4',weight:700});
+
+  text(g,'Mike 的经济一页通',357,293,56,{align:'center',color:'#3f342e',weight:700});
   stroke(g,[[236,325],[478,325]],'#433227a0',1);
   return c;
 }
@@ -67,7 +67,7 @@ function paperSurface(image,archive,side,index){
   const shadow=g.createLinearGradient(x,0,end,0);shadow.addColorStop(0,'#49351948');shadow.addColorStop(.3,'#49351b21');shadow.addColorStop(1,'#49351b00');g.fillStyle=shadow;g.fillRect(0,0,600,848);
   const outer=x===0?600:0;
   const edge=g.createLinearGradient(outer,0,x===0?572:28,0);edge.addColorStop(0,'#9e846633');edge.addColorStop(1,'#9e846600');g.fillStyle=edge;g.fillRect(0,0,600,848);
-  text(g,sideName(archive,side,index),52,73,34,{weight:700});
+  // The heading is typeset in the stationary page header above the turning leaf.
   stroke(g,[[49,102],[551,102]],'#8e816d93');
   stroke(g,[[49,752],[551,752]],'#9d8b71a8');
   text(g,String(index*2+side+1).padStart(2,'0'),300,802,22,{align:'center',font:'Georgia',color:'#5b5144'});
@@ -99,6 +99,26 @@ async function noteSurface(paper,item){
   stroke(g,[[592,326],[626,326],[615,316]],ink,2.2);stroke(g,[[626,326],[615,336]],ink,2.2);
   return c;
 }
+async function workplate(fiber,item){
+  const w=960,h=1160;
+  const c=stock(fiber,w,h),g=c.getContext('2d');
+  const teaching=item.id==='teacher-workspace';
+  const art=await image('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(teaching?teachingBoard:item.svg));
+  g.fillStyle=teaching?'#e7ebd7':'#f8e9c5';g.fillRect(0,0,w,h);
+  g.globalCompositeOperation='multiply';g.globalAlpha=.35;g.drawImage(fiber,0,0,w,h);g.globalAlpha=1;
+  g.drawImage(art,90,185,780,780*art.height/art.width);g.globalCompositeOperation='source-over';
+  inset(g,25,25,w-50,h-50,3,'#796a4988',3);
+  inset(g,36,36,w-72,h-72,2,'#84745466',1);
+  text(g,teaching?'TEACHING  /  ECONOMICS':'PRACTICE  /  ECONOMICS',76,123,29,{font:'Georgia',color:'#48594d'});
+  stroke(g,[[76,157],[884,157]],'#7b705d',2);
+  text(g,item.title,76,862,teaching?91:78,{weight:700});
+  text(g,item.description,80,940,34,{color:'#514b3c'});
+  stroke(g,[[76,1001],[884,1001]],'#7b705d',1.8);
+  text(g,teaching?'进入教学工作台':'进入作业工作台',80,1073,31,{weight:600,color:'#314b42'});
+  stroke(g,[[811,1060],[871,1060],[854,1045]],'#314b42',3);
+  stroke(g,[[871,1060],[854,1075]],'#314b42',3);
+  return c;
+}
 function material(color,map=null,params={}){
   return new T.MeshStandardMaterial({color,map,roughness:.9,...params});
 }
@@ -122,19 +142,19 @@ function disk(parent,mat,x,y,z,top,bottom,height,segments=48){
 function ring(parent,mat,x,y,z,r,t){
   return mesh(parent,new T.TorusGeometry(r,t,10,64),mat,x,y,z);
 }
-function noteGeometry() {
-  const g=new T.PlaneGeometry(NOTE_W,NOTE_H,32,20),p=g.attributes.position;
+function noteGeometry(w=NOTE_W,h=NOTE_H) {
+  const g=new T.PlaneGeometry(w,h,32,24),p=g.attributes.position;
   // Tiny, regular nicking along the outer cut edges catches the light when the corners lift.
   for(let i=0;i<p.count;i++){
     const x=p.getX(i),y=p.getY(i);
-    if(Math.abs(x)>NOTE_W/2-.01||Math.abs(y)>NOTE_H/2-.01)p.setXY(i,x+Math.sin(y*47)*.0035,y+Math.cos(x*51)*.0035);
+    if(Math.abs(x)>w/2-.01||Math.abs(y)>h/2-.01)p.setXY(i,x+Math.sin(y*47)*.0035,y+Math.cos(x*51)*.0035);
   }
   g.morphAttributes.position=[.94,2.05].flatMap((span,index)=>corners.map(([sx,sy])=>{
     const limit=index===0?1.25:2.63,rad=span/limit;
     const points=new Float32Array(p.count*3);
     for(let i=0;i<p.count;i++){
       const x=p.getX(i),y=p.getY(i);
-      const dist=(NOTE_W/2-sx*x)*.72+(NOTE_H/2-sy*y)*.7;
+      const dist=(w/2-sx*x)*.72+(h/2-sy*y)*.7;
       const a=Math.max(0,1-dist/span)*limit;
       const inset=rad*(a-Math.sin(a));
       points.set([x-inset*sx*.72,y-inset*sy*.7,rad*(1-Math.cos(a))],i*3);
@@ -161,14 +181,14 @@ function edgeShadow(){
   g.fillStyle='#49382363';g.beginPath();g.roundRect(9,10,142,77,3);g.fill();
   return texture(c);
 }
-function makeCard(parent,item,slot,map,front,back,shade){
+function makeCard(parent,item,slot,map,front,back,shade,w=NOTE_W,h=NOTE_H){
   const root=new T.Group();parent.add(root);root.rotation.order='YXZ';
   const rect=mesh(root,front,material('#ffffff',map),0,0,0);
   const rear=mesh(root,back,material(item.tint,null,{roughness:1}),0,0,BACK_OFFSET,false);
   rear.morphTargetInfluences=rect.morphTargetInfluences;
-  const shadow=flat(root,new T.MeshBasicMaterial({map:shade,transparent:true,depthWrite:false,opacity:.6}),.006,-.014,-.020,NOTE_W*1.145,NOTE_H*1.17,false);
+  const shadow=flat(root,new T.MeshBasicMaterial({map:shade,transparent:true,depthWrite:false,opacity:.6}),.006,-.014,-.020,w*1.145,h*1.17,false);
   shadow.receiveShadow=false;
-  return {root,rect,rear,shadow,flatGeo:front,item,y:slot%2===0?.88:-.81,scaleY:1,angle:[.027,-.037,-.021,.032][slot],corner:1,lift:0};
+  return {root,rect,rear,shadow,flatGeo:front,item,y:slot%2===0?.88:-.81,w,h,angle:[.027,-.037,-.021,.032][slot],corner:1,lift:0};
 }
 export function bendPoint(x,t,out){
   const phi=Math.PI*t,curve=Math.sin(Math.PI*t)*1.08/W;
@@ -180,6 +200,8 @@ function leafMesh(scene){
   const geom=new T.PlaneGeometry(W,H,40,18);
   geom.translate(W/2,0,0);
   const back=geom.clone(),idx=back.index.array;
+  const uv=back.attributes.uv;
+  for(let i=0;i<uv.count;i++)uv.setX(i,1-uv.getX(i));
   for(let i=0;i<idx.length;i+=3)[idx[i+1],idx[i+2]]=[idx[i+2],idx[i+1]];
   const faces=[mesh(scene,geom,material('#fffaf0'),0,0,0),mesh(scene,back,material('#fffaf0'),0,0,0,false)];
   return {faces,base:geom.attributes.position.array.slice()};
@@ -208,7 +230,10 @@ export function bendLeaf(leaf,t,corner){
 function shapingDesk(scene,image){
   const deskCanvas=canvas(1280,850),g=deskCanvas.getContext('2d');
   g.drawImage(image,0,0,1280,850);
-  const top=flat(scene,material('#b6a090',texture(deskCanvas)),0,0,-.21,19,12,false);
+  const grain=texture(deskCanvas);
+  grain.wrapS=grain.wrapT=T.MirroredRepeatWrapping;
+  grain.repeat.set(5,5);
+  const top=flat(scene,material('#fff9eb',grain),0,0,-.21,72,48,false);
   const glow=canvas(200,200),gradient=glow.getContext('2d'),r=gradient.createRadialGradient(100,100,15,100,100,100);
   r.addColorStop(0,'#ffd3a576');r.addColorStop(.55,'#f4b77330');r.addColorStop(1,'#ffbd8000');
   gradient.fillStyle=r;gradient.fillRect(0,0,200,200);
@@ -218,9 +243,9 @@ function shapingDesk(scene,image){
 }
 function shapeLamp(scene){
   const root=new T.Group();root.position.copy(lampHome);root.position.z=0;scene.add(root);
-  const brass=material('#b0945b',null,{metalness:.3,roughness:.48});
+  const brass=material('#d4ab6f');
   const dark=material('#3a3b33');
-  const green=material('#435a51',null,{roughness:.39,metalness:.22});
+  const green=material('#849d8c');
   disk(root,dark,-.23,.4,-.08,.48,.56,.15);
   disk(root,brass,-.23,.4,.022,.51,.50,.054);
   disk(root,green,-.23,.4,.079,.47,.49,.069);
@@ -238,7 +263,7 @@ function shapeLamp(scene){
 }
 function shapePencil(scene){
   const root=new T.Group();scene.add(root);root.position.copy(penHome);root.rotation.z=-1.10;
-  const paint=material('#c8934e'),wood=material('#dab882'),lead=material('#263141'),metal=material('#afa6a2',null,{metalness:.4,roughness:.37}),eraser=material('#995b56');
+  const paint=material('#c8934e'),wood=material('#dab882'),lead=material('#263141'),metal=material('#afa6a2',null,{metalness:.04,roughness:.92}),eraser=material('#995b56');
   const rod=(a,x,tr,br,length,segments=6)=>{
     const m=mesh(root,new T.CylinderGeometry(tr,br,length,segments),a,x,0,0);
     m.rotation.z=Math.PI/2;return m;
@@ -252,7 +277,7 @@ function shapePencil(scene){
   return root;
 }
 export async function studio(chapters,mobile){
-  const [table,skin,fiber]=await Promise.all(['walnut','leather','paper'].map(name=>image('/assets/notebook/'+name+'.webp')));
+  const [table,skin,fiber]=await Promise.all(['desk-grain','cover-cloth','folio-paper'].map(name=>image('/assets/notebook/'+name+'.svg')));
   const scene=new T.Scene();scene.background=new T.Color('#342720');
   const {pool}=shapingDesk(scene,table),lamp=shapeLamp(scene),pencil=shapePencil(scene);
   const book=new T.Group();book.name='Notebook';scene.add(book);
@@ -271,7 +296,7 @@ export async function studio(chapters,mobile){
     }
   }
   const fronts=noteGeometry(),backs=cardGeometryBack(fronts),shade=edgeShadow();
-  const spreads=await Promise.all(chapters.map(async(chapter,i)=>{
+  const addSpreads=sections=>Promise.all(sections.map(async(chapter,i)=>{
     const surfaces=[0,1].map(j=>texture(paperSurface(fiber,chapter,j,i)));
     const sides=surfaces.map((map,j)=>{
       const face=mesh(book,new T.PlaneGeometry(W,H,16,12),material('#fffdf9',map),j===0?-W/2:W/2,0,j===0?.168:.035,false);
@@ -280,9 +305,13 @@ export async function studio(chapters,mobile){
     });
     const cards=await Promise.all(chapter.entries.map(async (entry,slot)=>{
       if(!entry)return null;
+      if(i===0&&slot===0){
+        const w=2.98,h=3.60,face=noteGeometry(w,h);
+        const card=makeCard(book,entry,slot,texture(await workplate(fiber,entry)),face,cardGeometryBack(face),shade,w,h);
+        return {...card,slot,y:-.04,angle:.009};
+      }
       const img=await noteSurface(fiber,entry);
       const card=makeCard(book,entry,slot,texture(img),fronts,backs,shade);
-      if(i===0&&slot===0){card.y=.54;card.scaleY=1.42;}
       return {...card,slot};
     }));
     const available=cards.filter(Boolean);
@@ -293,9 +322,10 @@ export async function studio(chapters,mobile){
     }
     return {sides,surfaces,cards:available};
   }));
+  const spreads=await addSpreads(chapters);
   const leaf=leafMesh(book);
-  const key=new T.DirectionalLight('#fff3df',2.48);key.position.set(-3.7,4.7,10.3);
+  const key=new T.DirectionalLight('#fff5da',1.45);key.position.set(-3.7,4.7,10.3);
   key.castShadow=true;key.shadow.mapSize.setScalar(mobile?1024:2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=4;key.shadow.blurSamples=7;
-  const room=new T.HemisphereLight('#d9e6ff','#96694e',1.62);scene.add(key,room);
-  return {scene,book,hinge,spreads,leaf,lamp,pencil,pool,key,room,coverArt};
+  const room=new T.HemisphereLight('#fff9e8','#b7a491',2.3);scene.add(key,room);
+  return {scene,book,hinge,spreads,addSpreads,leaf,lamp,pencil,pool,key,room,coverArt};
 }
