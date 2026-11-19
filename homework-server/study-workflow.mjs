@@ -1,3 +1,4 @@
+import {correctionFeedback} from './correction-feedback.mjs';
 import {deepseek} from './ai.mjs';
 import {hash, id, now} from './store.mjs';
 import {assert, boundedText} from './validation.mjs';
@@ -28,7 +29,11 @@ export function mockMistakes(attempts, notes, drafts) {
     return a.result.questions.flatMap((q, i) => {
       if (!finiteScore(q) || q.score >= q.maxPoints) return [];
       const key = JSON.stringify([a.id,q.id]), n = entries.get(key), saved = a.corrections?.[q.id];
+      const corrections = [...(n?.corrections || [])];
+      if (saved) corrections.push({id:'mock:'+q.id,choice:saved.choice,text:[saved.choice,saved.note].filter(Boolean).join(' · '),createdAt:saved.updatedAt});
+      corrections.sort((left,right)=>String(left.createdAt).localeCompare(String(right.createdAt)));
       return [{
+        correctionFeedback:correctionFeedback({type:'choice',answer:q.correctOption || snapshot.get(q.id)?.answer},corrections.at(-1)),
         assignmentId:a.id, questionId:q.id, questionNumber:i+1, assignmentTitle:'自主模考 · '+(a.course==='macro'?'AP 宏观':'AP 微观'),
         source:'mock', libraryQuestionId:q.id, bankVersion:snapshot.get(q.id)?.version,
         course:a.course, topic:q.topic || snapshot.get(q.id)?.topic, libraryUnit:snapshot.get(q.id)?.unitId || null, type:'choice', prompt:q.prompt,
@@ -36,7 +41,7 @@ export function mockMistakes(attempts, notes, drafts) {
         options:optionLabels(snapshot.get(q.id) || q).map(label => ({label,text:''})),
         originalChoice:q.chosen || '', score:q.score, maxPoints:q.maxPoints, publishedAt:a.submittedAt,
         note:n?.note || '', status:n?.status || (saved ? (saved.choice===q.correctOption?'mastered':'review') : 'todo'),
-        corrections:[...(saved?[{id:'mock:'+q.id,text:[saved.choice,saved.note].filter(Boolean).join(' · '),createdAt:saved.updatedAt}]:[]),...(n?.corrections || [])],
+        corrections,
         revision:n?.revision||0, draftUpdatedAt:draftEntries.get(key)?.updatedAt || null,
       }];
     });

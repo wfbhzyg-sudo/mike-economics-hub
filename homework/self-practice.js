@@ -1,3 +1,4 @@
+import {feedbackMarkup} from './choice-correction.js';
 import {mountLessonLinks} from './lesson-panel.js';
 import {accuracyBadge} from './score-bands.js';
 import {topicGrid,bindTopicGrid} from './topic-grid.js';
@@ -92,7 +93,7 @@ export function createSelfPracticeUI(ctx) {
 
     main.innerHTML = `<section class="paper sp-create" data-page="create">
   <header class="sp-create-head">
-    <div><p class="sp-kicker">SELF PRACTICE</p><h1>自主模考</h1><p class="sp-sub">选择章节，抽一套只属于你的练习。不进入班级成绩。</p></div>
+    <div><h1>自主模考</h1><p class="sp-sub">模考不计入班级成绩。</p></div>
     <div class="sp-course" role="tablist" aria-label="选择学科">
       <button type="button" role="tab" data-course="micro" aria-selected="${settings.course === 'micro'}">AP 微观</button>
       <button type="button" role="tab" data-course="macro" aria-selected="${settings.course === 'macro'}">AP 宏观</button>
@@ -110,7 +111,7 @@ export function createSelfPracticeUI(ctx) {
       <div class="sp-field" data-minutes-row ${settings.timer === 'countdown' ? '' : 'hidden'}><label class="sp-label" for="sp-minutes">考试时长</label><div class="sp-inline"><input id="sp-minutes" type="number" min="1" max="240" step="1" value="${settings.minutes}" inputmode="numeric"><span>分钟</span></div><p class="sp-warn" data-minutes-warn role="status"></p></div>
       <div class="sp-summary" data-summary aria-live="polite"></div>
       <button type="button" class="primary sp-start" data-start>一键开始</button>
-      <p class="sp-note">开始后才会计时。答案只保存在你的账号与这台设备上。</p>
+      <p class="sp-note">进入试卷后开始计时。</p>
     </section>
   </div>
   <section class="sp-recent" aria-labelledby="sp-recent-title">
@@ -264,7 +265,7 @@ export function createSelfPracticeUI(ctx) {
   }
 
   function recentMarkup(attempts, h) {
-    if (!attempts.length) return '<p class="sp-empty">还没有模考记录。选好章节，从第一套开始。</p>';
+    if (!attempts.length) return '<p class="sp-empty">还没有模考记录。</p>';
     return `<div class="sp-recent-list">${attempts.map((attempt) => `<button type="button" class="sp-recent-row" data-open-attempt="${h(attempt.id)}" data-status="${h(attempt.status)}">
       <span class="sp-recent-main"><strong>${h(courseName(attempt.course))} · ${attempt.topicIds.length} 章 · ${attempt.questionCount} 题</strong><small>${new Date(attempt.createdAt).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small></span>
       <span class="sp-recent-side">${attempt.result ? `<b>${attempt.result.total}/${attempt.result.maxPoints}</b><small>${accuracyBadge(attempt.result.percent)}</small>` : attempt.status === 'active' ? '<b>继续</b>' : attempt.status === 'created' ? '<b>未开始</b>' : '<b>已交卷</b>'}</span>
@@ -512,7 +513,7 @@ export function createSelfPracticeUI(ctx) {
     const corrections = attempt.corrections || {};
     main.innerHTML = `<section class="paper sp-result" data-page="result">
       <header class="sp-result-head">
-        <div><p class="sp-kicker">SELF PRACTICE RESULT</p><h1>成绩与订正</h1><p class="sp-sub">${new Date(result.submittedAt).toLocaleString('zh-CN')} 交卷${result.autoSubmitted ? ' · 到时自动交卷' : ''}</p></div>
+        <div><h1>成绩与订正</h1><p class="sp-sub">${new Date(result.submittedAt).toLocaleString('zh-CN')} 交卷${result.autoSubmitted ? ' · 到时自动交卷' : ''}</p></div>
         <a class="secondary" href="#self-practice">再来一套</a>
       </header>
       <div class="sp-result-grid">
@@ -597,7 +598,7 @@ export function createSelfPracticeUI(ctx) {
             if(version!==creationVersion)return;
             box.remove();
             item.querySelector('[data-correct]').hidden = false;
-            item.querySelector('[data-correction-note]').textContent = `已订正为 ${picked}（记录订正，不改分）`;
+            item.querySelector('[data-correction-note]').innerHTML = mockFeedback(result.questions.find(q=>q.id===question.id),picked);
             item.querySelector('[data-correction-note]').hidden = false;
             toast('订正已保存');
           } catch (error) { box.querySelector('.sp-warn').textContent = error.message;box.querySelector('[data-save-correct]').disabled=false; }
@@ -610,6 +611,10 @@ export function createSelfPracticeUI(ctx) {
 
   }
 
+  function mockFeedback(question,choice) {
+    const answer=question?.correctOption;
+    return feedbackMarkup(answer?{state:!choice?'compare':choice===answer?'correct':'incorrect',choice,answer}:{state:'pending'},h);
+  }
   function wrongMarkup(attempt, question, corrections) {
     const correction = corrections[question.id];
     return `<article class="sp-wrong-item" data-wrong="${h(question.id)}">
@@ -618,7 +623,7 @@ export function createSelfPracticeUI(ctx) {
         <div class="sp-wrong-paper"><div class="recap-paper-head"><strong>原题</strong><button type="button" class="secondary" data-wrong-zoom aria-pressed="false">放大</button></div><div class="sp-wrong-images">${question.prompt?`<p>${h(question.prompt)}</p>`:""}${question.questionImages.map((fileId) => `<img src="/api/homework/files/${encodeURIComponent(fileId)}" alt="第 ${h(question.number || question.id)} 题原题" loading="lazy">`).join('')}</div></div>
         <div class="sp-wrong-options">${question.optionLabels.map((label) => `<div class="sp-wrong-option" data-state="${label === question.correctOption ? 'correct' : label === question.chosen ? 'chosen' : ''}"><span>${h(label)}</span>${label === question.correctOption ? '<small>正确</small>' : label === question.chosen ? '<small>我的选择</small>' : ''}</div>`).join('')}</div>
       </div>
-      <p class="sp-correction-note" data-correction-note ${correction ? '' : 'hidden'}>${correction ? `已订正为 ${h(correction.choice)}（记录订正，不改分）` : ''}</p>
+      <div data-correction-note ${correction ? '' : 'hidden'}>${correction ? mockFeedback(question,correction.choice) : ''}</div>
       <div class="sp-wrong-actions recap-actions"><div data-mock-lesson></div><details class="recap-menu"><summary>更多操作 ⋯</summary><div class="recap-menu-content"><a class="secondary" href="#mistakes/${encodeURIComponent(attempt.id)}/${encodeURIComponent(question.id)}">在错题本订正</a>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div></details><button type="button" class="primary" data-correct>去订正</button></div>
     </article>`;
   }

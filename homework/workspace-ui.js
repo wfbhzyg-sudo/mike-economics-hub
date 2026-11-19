@@ -149,16 +149,11 @@ export function createWorkspaceUI(ctx) {
   }
   function studentSummaryMarkup(assignments=state.assignments) {
     const now = Date.now();
-    const counted = assignments.map((a) => assignmentState(a, state.submissions, now));
-    const todo = counted.filter((s) => s.key === "todo").length;
-    const submitted = counted.filter((s) => s.key === "processing").length;
-    const graded = counted.filter((s) => s.key === "done").length;
     const week = assignments.filter((a) => {
       const due = Date.parse(a.dueAt || "");
       return Number.isFinite(due) && due > now && due - now <= 7 * 86400000 && assignmentState(a, state.submissions, now).key !== "done";
     }).length;
-    const item = (label, value) => `<div><span>${label}</span><strong>${value}</strong></div>`;
-    return `<div class="sh-summary" role="group" aria-label="本班作业概况">${item("待完成", todo)}${item("已提交", submitted)}${item("已评分", graded)}${item("本周截止", week)}</div>`;
+    return week ? `<p class="hint">近 7 天截止 · ${week} 份</p>` : "";
   }
   const DAY_MS = 86400000;
   function cardTint(a, now = Date.now()) {
@@ -186,28 +181,24 @@ export function createWorkspaceUI(ctx) {
       tone = { todo: "blue", processing: "lilac", done: "sage", closed: "sand", offline: "sand" }[info.key] || "blue";
     const due = action.opensLater ? `开放 ${date(a.opensAt)}` : a.dueAt ? `截止 ${date(a.dueAt)}` : "不限截止时间";
     let detail = "";
-    if (offline) {
-      detail = `<p class="card-progress">${info.key==='done'?'成绩已由老师录入':'线下成绩，由老师录入'}</p>`;
-    } else if (info.key === "done" && grade) {
+    if (info.key === "done" && grade && grade.total != null) {
       const total = Number(grade.total ?? 0),
         wrong = (grade.questions || []).filter((q) => q.score != null && q.score < q.maxPoints).length,
         rate = max ? Math.round((total / max) * 100) : null;
       detail = `<p class="card-score"><strong>${total}</strong><span>/ ${max || "?"}</span>${rate != null ? `<em>${rate}%</em>` : ""}${wrong ? `<span class="card-correct">需订正 ${wrong} 题</span>` : ""}</p>`;
-    } else if (info.key === "processing") {
-      detail = `<p class="card-progress">已提交 · ${h(info.label)}</p>`;
-    } else {
+    } else if (!offline && info.key === "todo") {
       const total = a.format === "mcq" ? questions.filter((q) => q.type === "choice").length : 0,
         answered = Math.max(Number(a.attemptProgress?.answered || 0), info.draft ? Object.values(info.draft.choices || {}).filter(Boolean).length : 0);
       detail = total
-        ? `<p class="card-progress">${info.draft ? "草稿已保存" : "作答进度"} · ${answered}/${total} 题 ${Math.round((answered / total) * 100)}%</p>`
-        : `<p class="card-progress">${action.opensLater ? "尚未开放" : "尚未开始"}</p>`;
+        ? `<p class="card-progress">${answered ? "已保存 " + answered + "/" + total + " 题" : "共 " + total + " 题"}</p>`
+        : (info.draft ? '<p class="card-progress">草稿已保存</p>' : "");
     }
     const title = action.target ? link(action.target, highlightText(a.title, state.assignmentSearch), "card-title") : `<span class="card-title">${highlightText(a.title, state.assignmentSearch)}</span>`;
     const tint = info.key === "todo" ? cardTint(a) : null,
       tintAttrs = tint
         ? ` data-urgency="1" style="--card-tint:${tint.base};--card-tint-border:${tint.border};--card-tint-hover:${tint.hover}"`
         : "";
-    return `<article class="assignment-card"${tintAttrs} data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${studentSubject(a)}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : `<button class="secondary" disabled>${h(action.action)}</button>`}</footer></article>`;
+    return `<article class="assignment-card"${tintAttrs} data-state="${info.key}"><header><h3>${title}</h3><span class="badge" data-tone="${tone}">${h(action.label)}</span></header><p class="card-meta">${studentSubject(a)}<span>${due}</span></p>${detail}<footer>${action.target ? link(action.target, action.action, "primary") : ""}</footer></article>`;
   }
   function dashboard() {
     const t = teacher(),
@@ -287,7 +278,7 @@ export function createWorkspaceUI(ctx) {
       const pane = $("#task-workspace");
       pane.className = "";
       if (!rows.length) {
-        pane.innerHTML = `<div class="empty"><h2>${state.assignments.length ? "没有符合条件的作业" : t ? "准备第一份作业" : "老师发布后，作业会出现在这里"}</h2><p>${state.assignments.length ? "可以清空搜索或切换分类。" : t ? "从学生题纸开始，再确认参考答案。" : "已沿用你的通用账号班级，无需再次加入。"}</p>${state.assignments.length ? '<button class="secondary" data-reset>清空筛选</button>' : t ? link("new", "新建作业", "primary") : link("account", "查看我的班级")}</div>`;
+        pane.innerHTML = `<div class="empty"><h2>${state.assignments.length ? "没有符合条件的作业" : t ? "准备第一份作业" : "老师发布后，作业会出现在这里"}</h2>${state.assignments.length ? '<button class="secondary" data-reset>清空筛选</button>' : t ? link("new", "新建作业", "primary") : link("account", "查看我的班级")}</div>`;
         $("[data-reset]")?.addEventListener("click", () => {
           state.assignmentFilter = "all";
           state.assignmentSearch = "";

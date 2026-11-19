@@ -56,11 +56,10 @@
         art.querySelectorAll('[data-course]').forEach(e=>{if(labels[e.dataset.course])e.textContent=labels[e.dataset.course];});
         for(const text of app.contents||(homework?['开学—月考','月考—期中','期中—期末','第二学期']:['白皮书','课程与考试说明','Unit PPT 及大纲','复习笔记'])){const row=document.createElement('span');row.textContent=text;art.querySelector('[data-course="contents"]').append(row);}
       }
-      const caption=document.createElement('p');caption.className='panel-caption';caption.textContent=app.caption||'';art.append(caption);
       const select=document.createElement('button');select.type='button';select.className='select-panel';select.setAttribute('aria-label',`选择 ${app.name}，${app.description||''}`);select.setAttribute('aria-pressed','false');select.setAttribute('aria-controls',`entry-${app.id}`);
       const link=document.createElement('a');link.className='entry-link';link.id=`entry-${app.id}`;link.tabIndex=-1;link.setAttribute('aria-hidden','true');if(app.url)link.href=app.url;else link.setAttribute('aria-disabled','true');
       const label=document.createElement('span');label.textContent=app.url?(app.entryLabel||`进入 ${app.name}`):'入口待配置';link.append(label);link.insertAdjacentHTML('beforeend',arrow);panel.append(art,select,link);track.append(panel);
-      const refs={};for(const cls of ['backdrop','book-logo','book-scene','quest-logo','question','ropes','party','resource-brand','resource-sheet','course-title','course-scene','nebs-brand','nebs-heading','nebs-poster','generic-name','generic-image','panel-caption'])refs[cls]=art.querySelector('.'+cls);
+      const refs={};for(const cls of ['backdrop','book-logo','book-scene','quest-logo','question','ropes','party','resource-brand','resource-sheet','course-title','course-scene','nebs-brand','nebs-heading','nebs-poster','generic-name','generic-image'])refs[cls]=art.querySelector('.'+cls);
       art.querySelectorAll('img').forEach(img=>img.addEventListener('error',()=>{img.style.visibility='hidden';},{once:true}));
       return {app,panel,art,select,link,refs};
     });
@@ -98,7 +97,6 @@
       const headY=top+(mobile?(i===0?90:42):96),linkY=bottom-(mobile?64:160);
       link.style.width=`${Math.min(mobile?216:242,regionW-16)}px`;
       if(r.backdrop){r.backdrop.style.width=`${mobile?W+2:layer}px`;r.backdrop.style.height=`${mobile?layer:H}px`;pose(r.backdrop,0,0);}
-      pose(r['panel-caption'],x-150*Math.min(1,(regionW-12)/300),bottom-(mobile?30:105),Math.min(1,(regionW-12)/300));
       if(app.theme==='bookself'){
         const lw=Math.min(mobile?220:on?390:310,regionW-24);pose(r['book-logo'],x-lw/2,headY,lw/310);
         const sy=top+(mobile?(i===0?174:132):240),available=(on?linkY-24:bottom-(mobile?50:112))-sy;

@@ -101,7 +101,7 @@ async function noteSurface(paper,item){
   const highlight=g.createLinearGradient(0,0,0,65);highlight.addColorStop(0,'#fff7de53');highlight.addColorStop(1,'#fff7de00');
   g.fillStyle=highlight;g.fillRect(0,0,680,65);
   stroke(g,[[35,40],[645,38]],'#26354659',1.2);
-  text(g,item.category,36,77,20,{font:'Georgia',weight:400,color:'#3e483c'});
+  const cue={bookself:'互动教材',econquest:'经济闯关'}[item.id];
   g.drawImage(img,34,103,231,182);
   const size=item.title.length>=10?36:44;
   let label=item.title;
@@ -110,10 +110,10 @@ async function noteSurface(paper,item){
     g.font=`400 ${size}px ${lettering}`;return g.measureText(label).width;
   };
   if(metrics()>370){
-    g.save();g.translate(272,176);g.scale(370/metrics(),1);
+    g.save();g.translate(272,cue?176:202);g.scale(370/metrics(),1);
     text(g,label,0,0,size,{font:lettering,weight:400});g.restore();
-  }else text(g,label,272,176,size,{font:lettering,weight:400});
-  text(g,item.description,275,223,24,{color:'#35453f',weight:500});
+  }else text(g,label,272,cue?176:202,size,{font:lettering,weight:400});
+  if(cue)text(g,cue,275,223,24,{color:'#35453f',weight:500});
   stroke(g,[[37,296],[639,297]],'#26354655',1.25);
   stroke(g,[[592,326],[626,326],[615,316]],ink,2.2);stroke(g,[[626,326],[615,336]],ink,2.2);
   return c;
@@ -128,12 +128,8 @@ async function workplate(fiber,item){
   g.drawImage(art,90,185,780,780*art.height/art.width);g.globalCompositeOperation='source-over';
   inset(g,25,25,w-50,h-50,3,'#796a4988',3);
   inset(g,36,36,w-72,h-72,2,'#84745466',1);
-  text(g,teaching?'TEACHING  /  ECONOMICS':'PRACTICE  /  ECONOMICS',76,123,29,{font:'Georgia',color:'#48594d'});
-  stroke(g,[[76,157],[884,157]],'#7b705d',2);
-  text(g,item.title,76,862,teaching?96:82,{font:lettering,weight:400});
-  text(g,item.description,80,940,34,{color:'#514b3c'});
+  text(g,item.title,76,939,teaching?96:82,{font:lettering,weight:400});
   stroke(g,[[76,1001],[884,1001]],'#7b705d',1.8);
-  text(g,teaching?'进入教学工作台':'进入作业工作台',80,1073,31,{weight:600,color:'#314b42'});
   stroke(g,[[811,1060],[871,1060],[854,1045]],'#314b42',3);
   stroke(g,[[871,1060],[854,1075]],'#314b42',3);
   return c;

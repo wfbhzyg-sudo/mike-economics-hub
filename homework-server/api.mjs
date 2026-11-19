@@ -813,14 +813,14 @@ export async function createHomework({externalAuth} = {}) {
           if(user.role==='teacher')publicData.questions?.forEach((q,i)=>{const ref=a.rubric[i];q.sourcePages=ref.sourcePages||'';q.correctOptions=ref.manualGradingRequired?[]:ref.correctOptions||[];});
           return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes}),true);
       }
-      async function correctionRows(user,assignmentId,c){
+      async function correctionRows(user,assignmentId,c,notes=[]){
         const attempt=await db.get(assignmentId,c);
         if(attempt?.type==='self-practice-attempt'){
           assert(attempt.studentId===user.id,'找不到错题',404);
-          return mockMistakes([attempt],[],[]);
+          return mockMistakes([attempt],notes,[]);
         }
         const work=await accessibleWork(c);
-        return mistakeRows(work.submissions,work.assignments);
+        return mistakeRows(work.submissions,work.assignments,notes);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);
@@ -843,19 +843,23 @@ export async function createHomework({externalAuth} = {}) {
         assert(user.role==='student','请使用学生账号');const b=await body(req);
         const key='mistake:'+hash(user.id+':'+route[1]+':'+route[2]);
         const saved=await db.tx(async c=>{
-          const rows=await correctionRows(user,route[1],c);
-          assert(rows.some(r=>r.assignmentId===route[1]&&r.questionId===route[2]),'该题不在你的当前错题集中',404);
+          const correction={id:id(),text:boundedText(b.correction,10000,'订正'),files:b.files||[],createdAt:now()};
+          const note={studentId:user.id,assignmentId:route[1],questionId:route[2],corrections:[correction]};
+          const rows=await correctionRows(user,route[1],c,[note]);
+          const row=rows.find(r=>r.assignmentId===route[1]&&r.questionId===route[2]);
+          assert(row,'该题不在你的当前错题集中',404);
+          if(row.submissionId)correction.submissionId=row.submissionId;
           const old=await db.get(key,c);
           const mutationId=boundedText(b.mutationId,120,'订正标识');
           const mutationHash=hash(JSON.stringify({correction:b.correction||'',note:b.note||'',status:b.status||'todo',files:b.files||[]}));
-          if(mutationId&&old?.lastMutationId===mutationId){assert(!old.lastMutationHash||old.lastMutationHash===mutationHash,'这次保存凭证对应另一份内容，请刷新后继续编辑',409);return old;}
+          if(mutationId&&old?.lastMutationId===mutationId){assert(!old.lastMutationHash||old.lastMutationHash===mutationHash,'这次保存凭证对应另一份内容，请刷新后继续编辑',409);return {note:old,feedback:row.correctionFeedback};}
           const draftKey='mistake-draft:'+hash(user.id+':'+route[1]+':'+route[2]),draft=await db.get(draftKey,c);
           if(b.draftRevision!==undefined)assert(Number(b.draftRevision)===(draft?.revision||0),'草稿已在另一处更新，请选择要保留的版本',409);
           assert(Number(b.revision||0)===(old?.revision||0),'订正已在另一处更新，请刷新后重试',409);
           const entry={...old,id:key,studentId:user.id,assignmentId:route[1],questionId:route[2],note:boundedText(b.note,5000,'笔记'),status:['todo','review','mastered'].includes(b.status)?b.status:'todo',revision:(old?.revision||0)+1,updatedAt:now(),corrections:old?.corrections||[]};
-          if(b.correction||b.files?.length){await files.validate(b.files||[],user.id,'submission',c);entry.corrections.push({id:id(),text:boundedText(b.correction,10000,'订正'),files:b.files||[],createdAt:now()});entry.status=b.status==='mastered'?'mastered':'review';}
-          entry.lastMutationId=mutationId||null;entry.lastMutationHash=mutationHash;await db.put('mistake-note',entry,c);if(b.draftRevision!==undefined)await db.put('mistake-draft',{id:draftKey,studentId:user.id,assignmentId:route[1],questionId:route[2],revision:(draft?.revision||0)+1,updatedAt:now(),cleared:true},c);return entry;
-        });return (json(res,{note:saved}),true);
+          if(b.correction||b.files?.length){await files.validate(b.files||[],user.id,'submission',c);entry.corrections.push(correction);entry.status=b.status==='mastered'?'mastered':'review';}
+          entry.lastMutationId=mutationId||null;entry.lastMutationHash=mutationHash;await db.put('mistake-note',entry,c);if(b.draftRevision!==undefined)await db.put('mistake-draft',{id:draftKey,studentId:user.id,assignmentId:route[1],questionId:route[2],revision:(draft?.revision||0)+1,updatedAt:now(),cleared:true},c);return {note:entry,feedback:row.correctionFeedback};
+        });return (json(res,saved),true);
       }
       if (route[0] === "files") {
         if(route[1]&&route[2]==='reading'&&['GET','PUT'].includes(method)){

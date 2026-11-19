@@ -1,7 +1,7 @@
 /* Task layout shared by teacher and student surfaces. */
 .assignment-modes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
 .assignment-mode{display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid #becbc5;border-radius:12px;background:#edf2ed;color:#203749;text-decoration:none;min-width:0}
-.assignment-mode:nth-child(2){background:#e8eef1}.assignment-mode strong{font-size:23px}.assignment-mode>span:not(.mode-number){font-size:15px;line-height:1.7}.assignment-mode b{font-size:13px;margin-top:auto;padding-top:12px}.mode-number{font:13px ui-monospace,monospace;color:#5c746d}
+.assignment-mode:nth-child(2){background:#e8eef1}.assignment-mode strong{font-size:23px}.assignment-mode>span:not(.mode-number){font-size:15px;line-height:1.7}.assignment-mode strong{display:flex;justify-content:space-between;align-items:center;gap:1em}.assignment-mode strong::after{content:"";width:.42em;height:.42em;border:solid currentColor;border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
 .mcq-review-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;font-size:13px}.mcq-review-status>span{margin-right:auto}.mcq-review-status button{font-size:13px}.mcq-review-status [aria-pressed=true]{background:#e3eae6;border-color:#6d8a7e}
 .mcq-issue-list{display:flex;gap:5px;flex-wrap:wrap}.mcq-issue-list:empty{display:none}.mcq-issue-list span{font-size:12px;border-radius:4px;background:#f3e8cf;padding:5px 8px;color:#72531e}.mcq-issue-list [data-blocking=true]{background:#f0dcd8;color:#7d3830}
 .mcq-publish-issues{display:grid;gap:5px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #bac8c2}.mcq-publish-issues button{text-align:left;background:#fff8ed}
@@ -166,3 +166,7 @@ body[data-mcq-active=true] .mcq-choice-row>span {display:block;font-weight:650}
  .strike-dot[aria-pressed=true]::after {content:"恢复"}
  body[data-mcq-active=true] .mcq-answerbar:has(.mcq-choice-row) {max-height:calc(100dvh - 75px);overflow:auto}
 }
+.correction-verdict{display:flex;flex-wrap:wrap;align-items:baseline;gap:.35rem 1.1rem;margin:.65rem 0;padding:.65rem .85rem;border-inline-start:3px solid currentColor;border-radius:4px;color:#324958;background:#eef2f4;overflow-wrap:anywhere}
+.correction-verdict[data-verdict="correct"]{color:#19553e;background:#e6f3ea}
+.correction-verdict[data-verdict="incorrect"]{color:#853724;background:#fbede6}
+.correction-verdict b{white-space:pre-wrap}

@@ -1,3 +1,4 @@
+import {splitChoiceCorrection} from '../homework/choice-correction.js';
 import {optionLabels,publicOptionText} from './self-practice-model.mjs';
 import {questionHasTopic} from '../homework/library-packs.js';
 import {now} from './store.mjs';
@@ -273,7 +274,17 @@ export function createSelfPractice({db}) {
     const attempt = await loadAttempt(user, id);
     const settled = await settle(attempt);
     if (settled.status !== 'submitted') throw new PracticeError(409, '交卷后才能查看结果');
-    return publicAttempt(settled, {includeResult: true});
+    const result = publicAttempt(settled, {includeResult: true});
+    const notes = await db.find('mistake-note', {studentId:user.id, assignmentId:id});
+    result.corrections = {...result.corrections};
+    for (const note of notes) {
+      const prior = result.corrections[note.questionId];
+      const last = note.corrections?.at(-1);
+      if (!last || (prior && prior.updatedAt >= last.createdAt)) continue;
+      const {choice,explanation} = splitChoiceCorrection(last.text);
+      result.corrections[note.questionId] = {choice,note:explanation,updatedAt:last.createdAt};
+    }
+    return result;
   }
 
   async function list(user) {
