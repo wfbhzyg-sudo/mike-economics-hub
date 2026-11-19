@@ -666,6 +666,21 @@ function placePen(dt){
   pen.position.z=moving?height:target;
   return moving;
 }
+function revealInks(now){
+  let active=false;
+  for(const card of pageCards()){
+    const ink=card.ink;
+    if(!ink||ink.amount.value===1)continue;
+    const visible=phase==='open'&&(!narrow()||Math.floor(card.slot/2)===side);
+    if(reduce.matches||(!visible&&ink.started!==null)){ink.amount.value=1;continue;}
+    if(!visible)continue;
+    ink.started??=now;
+    ink.amount.value=1-(1-clamp01((now-ink.started)/480))**2;
+    active||=ink.amount.value<1;
+  }
+  return active;
+}
+reduce.addEventListener('change',wake);
 function draw(now){
   frame=0;
   const dt=Math.min(.04,(now-(lastTime||now-16))/1000);
@@ -681,6 +696,7 @@ function draw(now){
   if(phase!=='turning')prepareStatic(dt);
   deviceCamera();
   const settlingPen=placePen(dt);
+  const drawingInk=revealInks(now);
   try{renderer.render(scene.scene,camera);}catch(error){
     console.warn('Notebook rendering was interrupted.',error);fallback();return;
   }
@@ -690,7 +706,7 @@ function draw(now){
     if(phase==='cover'&&openingOnLoad)requestAnimationFrame(()=>coverMotion(true));
   }
   const lifts=phase==='open'&&pageCards().some(card=>card.lift>0&&card.lift<1);
-  if(props||motion||lifts||settlingPen)wake();else lastTime=0;
+  if(props||motion||lifts||settlingPen||drawingInk)wake();else lastTime=0;
 }
 function resize(){
   if(!renderer||!scene)return;

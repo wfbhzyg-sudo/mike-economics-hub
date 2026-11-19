@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-notebook-paper-goods',date:'2026-11-19',title:'书桌上的四份纸件',
+  items:[{audience:'all',art:'book',title:'资料与竞赛',text:'翻到资料页，可从档案夹进入资料库，从行情单进入 NEBS 比赛。右页的供需方格纸和趋势图分别通往微观与宏观学习材料。'}]
+},{
   id:'2026-11-19-notebook-rapid-swipe',date:'2026-11-19',title:'快速滑动也能继续翻页',
   items:[
     {audience:'all',art:'book',title:'连续滑动与反向翻页',text:'翻页动画还在进行时，可以继续滑动。笔记本翻完当前页后会接着处理下一次滑动。'}

@@ -1,6 +1,7 @@
 import {font as journalFont,styles as journalStyles} from '../assets/notebook/journal-layout.js';
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {paperDesign,paintResourcePaper} from './resource-papers.js';
 import {sideName} from './catalog.js';
 import teachingBoard from '../assets/notebook/teaching-board.svg';
 
@@ -163,12 +164,21 @@ function disk(parent,mat,x,y,z,top,bottom,height,segments=48){
 function ring(parent,mat,x,y,z,r,t){
   return mesh(parent,new T.TorusGeometry(r,t,10,64),mat,x,y,z);
 }
-function noteGeometry(w=NOTE_W,h=NOTE_H) {
+function noteGeometry(w=NOTE_W,h=NOTE_H,cut='') {
   const g=new T.PlaneGeometry(w,h,32,24),p=g.attributes.position;
   // Tiny, regular nicking along the outer cut edges catches the light when the corners lift.
   for(let i=0;i<p.count;i++){
     const x=p.getX(i),y=p.getY(i);
-    if(Math.abs(x)>w/2-.01||Math.abs(y)>h/2-.01)p.setXY(i,x+Math.sin(y*47)*.0035,y+Math.cos(x*51)*.0035);
+    const u=x/w+.5,v=y/h+.5;
+    let offset=0;
+    if(cut==='resources'){
+      // A raised index tab on the folder's back flap.
+      offset=-.10*Math.min(1,Math.max(0,(u-.24)*16))*v**5;
+    }else if(cut==='nebs'){
+      offset=.024*(i%2)*(1-v)**9;
+    }
+    p.setY(i,y+offset);
+    if(Math.abs(x)>w/2-.01||Math.abs(y)>h/2-.01)p.setXY(i,x+Math.sin(y*47)*.0035,y+offset+Math.cos(x*51)*.0035);
   }
   g.morphAttributes.position=[.94,2.05].flatMap((span,index)=>corners.map(([sx,sy])=>{
     const limit=index===0?1.25:2.63,rad=span/limit;
@@ -210,6 +220,23 @@ function makeCard(parent,item,slot,map,front,back,shade,w=NOTE_W,h=NOTE_H){
   const shadow=flat(root,new T.MeshBasicMaterial({map:shade,transparent:true,depthWrite:false,opacity:.6}),.006,-.014,-.020,w*1.145,h*1.17,false);
   shadow.receiveShadow=false;
   return {root,rect,rear,shadow,flatGeo:front,item,y:slot%2===0?.88:-.81,w,h,angle:[.027,-.037,-.021,.032][slot],corner:1,lift:0};
+}
+// Composite a small, unchanging ink texture onto the paper material. Only a
+// scalar changes per frame, so a reveal never repaints or uploads a paper face.
+function bindInk(material,canvas,axis){
+  const amount={value:0},ink=texture(canvas);
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.paperInk={value:ink};
+    shader.uniforms.paperAmount=amount;
+    shader.fragmentShader='uniform sampler2D paperInk;\nuniform float paperAmount;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+      vec4 mark=texture2D(paperInk,vMapUv);
+      float distanceInMark=${axis==='right'?'(vMapUv.x-.20)/.51':'(vMapUv.y-.38)/.31'};
+      float shown=1.0-smoothstep(paperAmount-.025,paperAmount+.025,distanceInMark);
+      diffuseColor.rgb=mix(diffuseColor.rgb,mark.rgb,mark.a*shown);`);
+  };
+  material.customProgramCacheKey=()=>'paper-ink-'+axis;
+  return {amount,started:null};
 }
 export function bendPoint(x,t,out){
   const phi=Math.PI*t,curve=Math.sin(Math.PI*t)*1.08/W;
@@ -358,6 +385,16 @@ export async function studio(chapters,mobile){
         const w=2.98,h=3.60,face=noteGeometry(w,h);
         const card=makeCard(book,entry,slot,texture(await workplate(fiber,entry)),face,cardGeometryBack(face),shade,w,h);
         return {...card,slot,y:-.04,angle:.009};
+      }
+      const design=paperDesign(entry.id);
+      if(design){
+        const {face,inkCanvas}=paintResourcePaper(fiber,design);
+        const shaped=entry.id==='resources'||entry.id==='nebs';
+        const geometry=shaped?noteGeometry(NOTE_W,NOTE_H,entry.id):fronts;
+        const card=makeCard(book,entry,slot,texture(face),geometry,shaped?cardGeometryBack(geometry):backs,shade);
+        card.rear.material.color.set(design.stock);
+        if(inkCanvas)card.ink=bindInk(card.rect.material,inkCanvas,design.axis);
+        return {...card,slot};
       }
       const img=await noteSurface(fiber,entry);
       const card=makeCard(book,entry,slot,texture(img),fronts,backs,shade);
