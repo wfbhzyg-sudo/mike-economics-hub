@@ -15,11 +15,11 @@ test('only actionable work competes for the nearest deadline',async()=>{
     {...assignment('scheduled',19),opensAt:'2026-11-19T08:30Z'},assignment('closed',17),
     {...assignment('late',18),allowLate:true},assignment('independent',null)],
     [{id:'done',assignmentId:'submitted',status:'queued'},{id:'d',assignmentId:a.id,status:'draft'}]);
-  assert.deepEqual(due,{title:a.title,dueAt:a.dueAt});
+  assert.deepEqual(due,{id:a.id,title:a.title,dueAt:a.dueAt});
 });
 test('returned work can be resubmitted after its original deadline',async()=>{
   const a=assignment('returned',18);
-  assert.deepEqual(await studentTask([assignment('undated',null),a],[{id:'r',assignmentId:a.id,status:'returned'}]),{title:a.title,dueAt:a.dueAt});
+  assert.deepEqual(await studentTask([assignment('undated',null),a],[{id:'r',assignmentId:a.id,status:'returned'}]),{id:a.id,title:a.title,dueAt:a.dueAt});
 });
 test('empty paper when all work is closed or already submitted',async()=>{
   assert.equal(await studentTask([assignment('closed',15),assignment('finished',23)],[{id:'p',assignmentId:'finished',status:'published'}]),null);

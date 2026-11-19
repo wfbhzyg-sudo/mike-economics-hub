@@ -120,3 +120,11 @@ test('new student must finish the first password change before loading homework'
  const auth={session:async()=>({id:'new-student',role:'student',must_change_password:true})};
  await assert.rejects(loadUnifiedIdentity(auth,{},{}),{status:428});
 });
+
+test('desk queues and their review links skip full homework collections',()=>{
+  for(const queue of ['grading','requests']){
+    assert.deepEqual(workspaceCollections('reviews/queue/'+queue),[]);
+    assert.deepEqual(workspaceCollections('review/submission-1/from-'+queue),[]);
+  }
+  assert(workspaceCollections('reviews/assignment-1').includes('submissions'));
+});

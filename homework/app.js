@@ -659,6 +659,14 @@ function submissionRows(rows) {
     })
     .join("");
 }
+const deskQueueLabels={grading:'待批阅',requests:'待复核'};
+async function deskReviews(queue,version){
+  const {submissions}=await api('desk-task/'+queue);
+  if(version!==state.routeVersion)return;
+  const label=deskQueueLabels[queue];
+  const rows=submissions.map(s=>`<article class="assignment-row"><div><h2>${h(s.name)}</h2><div class="meta"><span>${h(s.title)}</span><span>${h(date(s.submittedAt))}</span></div></div>${link('review/'+encodeURIComponent(s.id)+'/from-'+queue,queue==='requests'?'复核成绩':'批阅作答','primary')}</article>`).join('');
+  main.innerHTML=`<section class="paper">${head('',label+'的提交','',link('reviews','全部批阅'))}${rows||empty('当前没有'+label+'的提交','')}</section>`;
+}
 function reviews(assignmentId) {
   const teacher = state.user.role === "teacher";
   let rows = state.submissions.filter((s) => s.status !== "draft");
@@ -788,17 +796,20 @@ async function resultPage(id) {
  }
 }
 
-async function reviewPage(id) {
+async function reviewPage(id,source) {
+  const deskQueue=source?.startsWith('from-')?source.slice(5):null;
+  const queueRoute=Object.hasOwn(deskQueueLabels,deskQueue)?'reviews/queue/'+deskQueue:null;
   const renderId = state.routeVersion;
-  const { submission: s } = await api("submissions/" + id);
+  const [{submission:s},pending]=await Promise.all([api('submissions/'+encodeURIComponent(id)),queueRoute?api('desk-task/'+deskQueue):null]);
+  if(renderId!==state.routeVersion)return;
   s.files ||= [];
   s.rubricSnapshot ||= s.publishedGrade?.questionsSnapshot || [];
-  const a = state.assignments.find((x) => x.id === s.assignmentId),
-    name = state.submissions.find((x) => x.id === id)?.studentName || "学生";
+  const a = state.assignments.find((x) => x.id === s.assignmentId)||s.assignment,
+    name = pending?.submissions.find(row=>row.id===id)?.name || s.studentName || state.submissions.find((x) => x.id === id)?.studentName || "学生";
   if(a?.offline||a?.format==='score'||s.publishedGrade?.scoreOnly){
     if(renderId!==state.routeVersion)return;
     const g=s.publishedGrade||{}, max=Number(g.maxPoints||a?.maxPoints||0);
-    const back=state.reviewReturn?.route||'overview/'+s.assignmentId;
+    const back=queueRoute||state.reviewReturn?.route||'overview/'+s.assignmentId;
     const valid=Number.isFinite(max)&&max>0;
     main.innerHTML=`<section class="paper result-paper">${head('',a?.title||'线下成绩',name,link(back,'返回成绩名单'))}
       <div class="result-score"><strong>${g.total??'—'}<small> / ${valid?max:'—'}</small></strong></div>
@@ -814,8 +825,8 @@ async function reviewPage(id) {
   await metadata(reviewFiles);
   const {mountReviewStudio}=await import("./review-studio.js");
   if (renderId !== state.routeVersion) return;
-  const queue=state.submissions.filter(q=>q.assignmentId===s.assignmentId&&(q.status==='needs_review'||q.id===s.id));
-  state.viewCleanup=mountReviewStudio(main,{backRoute:state.reviewReturn?.assignmentId===s.assignmentId?state.reviewReturn.route:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews',submission:s,title:a?.title||'作业复核',name,files:reviewFiles.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go,toast,reload:()=>render(false)});
+  const queue=pending?.submissions||state.submissions.filter(q=>q.assignmentId===s.assignmentId&&(q.status==='needs_review'||q.id===s.id));
+  state.viewCleanup=mountReviewStudio(main,{backRoute:queueRoute|| (state.reviewReturn?.assignmentId===s.assignmentId?state.reviewReturn.route:state.gradeReturn?.submissionId===id?state.gradeReturn.route:'reviews'),submission:s,title:a?.title||'作业复核',name,files:reviewFiles.map(id=>state.files.get(id)).filter(Boolean),userId:state.user.id,queue,api,put,post,go:route=>go(queueRoute&&route.startsWith('review/')?route+'/from-'+deskQueue:route),toast,reload:()=>render(false)});
 }
 
 async function devicePage() {
@@ -962,12 +973,12 @@ async function render(scroll = true) {
       }else await submitPage(id);
     }
     else if(route==="paper"&&id)await originalPaperPage(id,questionId);
-    else if (route === "reviews") {state.reviewReturn=null;state.gradeReturn=null;reviews(id);}
+    else if (route === "reviews") {state.reviewReturn=null;state.gradeReturn=null;if(id==='queue'&&Object.hasOwn(deskQueueLabels,questionId))await deskReviews(questionId,version);else reviews(id);}
     else if (["grades","history","gradebook"].includes(route)){state.reviewReturn=null;await learning.gradebook(id);}
     else if(route==="mistakes")await learning.mistakes(id,questionId);
     else if(route==="overview"&&id)await learning.overview(id,questionId,libraryMode);
     else if (route === "result" && id) await resultPage(id);
-    else if (route === "review" && id) await reviewPage(id);
+    else if (route === "review" && id) await reviewPage(id,questionId);
     else if (route === "device") await devicePage();
     else if (route === "account") accountPage();
     else workspace.dashboard();

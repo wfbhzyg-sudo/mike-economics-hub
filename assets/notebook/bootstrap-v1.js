@@ -86,29 +86,36 @@ function installTask(link,teacher){
   async function refresh(force=false){
     if(pending||(!force&&Date.now()-last<30000))return;
     pending=true;
-    let lines=[];
+    const tasks=[];
     try{
       const r=await fetch('/api/homework/desk-task',{cache:'no-store'});
       if(r.ok){
         const {task}=await r.json();
         if(task&&teacher){
-          if(task.grading)lines.push(task.grading+' 份提交待批阅');
-          if(task.requests)lines.push(task.requests+' 份成绩待复核');
+          if(task.grading)tasks.push({label:task.grading+' 份待批阅',href:'/teacher/#work/reviews/queue/grading'});
+          if(task.requests)tasks.push({label:task.requests+' 份待复核',href:'/teacher/#work/reviews/queue/requests'});
         }
-        if(task&&!teacher&&task.title){
+        if(task&&!teacher&&task.title&&task.id){
           const due=task.dueAt&&new Date(task.dueAt);
           const when=due?new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(due):'';
-          lines=[task.title,when?(due.getTime()<Date.now()?'可补交 · 原截止 ':'截止 ')+when:'不限截止时间'];
+          tasks.push({label:task.title,href:'/homework/#submit/'+encodeURIComponent(task.id),detail:when?(due.getTime()<Date.now()?'可补交 · 原截止 ':'截止 ')+when:'不限截止时间'});
         }
         last=Date.now();
       }
     }catch{}finally{pending=false;}
-    const detail=link.querySelector('small');
-    if(lines.length||detail){
-      const note=detail||document.createElement('small');
-      if(lines.length){note.textContent=lines.join(' · ');if(!detail)link.append(note);}else note.remove();
+    const serialized=JSON.stringify(tasks);
+    if(link.dataset.task===serialized)return;
+    link.dataset.task=serialized;
+    const row=link.parentElement;
+    row.querySelector('.flat-tasks')?.remove();
+    if(tasks.length){
+      const group=document.createElement('div');group.className='flat-tasks';
+      for(const task of tasks){
+        const action=document.createElement('a');action.href=task.href;action.textContent=task.label;group.append(action);
+        if(task.detail){const meta=document.createElement('small');meta.textContent=task.detail;group.append(meta);}
+      }
+      row.append(group);
     }
-    link.dataset.task=JSON.stringify(lines);
     document.dispatchEvent(new Event('notebook:task'));
   }
   void refresh();
@@ -156,7 +163,7 @@ if(!entries.length||(saveData&&!explicit)){
   }catch{}
   // Keep a usable destination during a stuck download without committing to it during a normal load.
   const timeout=setTimeout(flat,8500);
-  import('/assets/notebook/scene-v1.js?v=tasklamp1').then(book=>{
+  import('/assets/notebook/scene-v1.js?v=tasklink1').then(book=>{
     if(document.body.dataset.ready!=='2d')return book.start(entries,play,()=>document.body.dataset.ready!=='2d');
   }).catch(flat).finally(()=>clearTimeout(timeout));
 }

@@ -1,5 +1,9 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-notebook-task-links',date:'2026-11-19',title:'从书桌直接处理待办',
+  items:[{audience:'student',art:'book',title:'直达待交作业',text:'轻点书桌纸件上带下划线的作业名称，直接进入作答页。'},
+    {audience:'teacher',art:'book',title:'分别查看批阅与复核',text:'点纸件上的待办可打开相应的学生提交列表。点纸件其他位置，仍会进入教师工作台。'}]
+},{
   id:'2026-11-19-notebook-task-light',date:'2026-11-19',title:'书桌上的待办',
   items:[{audience:'student',art:'book',title:'下一份作业',text:'作业入口会写上最近待交的作业和截止时间。手机上的台灯已移到书页外。'},
     {audience:'teacher',art:'book',title:'待批阅与复核',text:'教师入口会显示需要你处理的提交数量。没有待办时，纸面留白。'}]

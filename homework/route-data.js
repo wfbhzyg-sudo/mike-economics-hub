@@ -2,6 +2,7 @@
 // no response cache, so returning after a publish, transfer or review reloads it.
 export function workspaceCollections(route = 'assignments') {
   const [page, detail] = route.split('/');
+  if (/^(reviews\/queue\/|review\/[^/]+\/from-)(grading|requests)$/.test(route)) return [];
   if (['library', 'mcq', 'mcq-analysis', 'device', 'trash', 'paper', 'grades',
     'history', 'gradebook', 'mistakes', 'overview', 'self-practice'].includes(page)) return [];
   if (page === 'new' && detail !== 'upload') return [];

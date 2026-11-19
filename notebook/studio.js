@@ -145,25 +145,26 @@ async function workplate(fiber,item){
 // restores the paper without decoding the illustration again.
 function taskPainter(map){
   const g=map.image.getContext('2d'),stock=g.getImageData(63,924,738,189);
-  let previous='';
-  return lines=>{
-    const next=lines.join('\n');
-    if(next===previous)return false;
-    previous=next;g.putImageData(stock,63,924);
-    const clipped=(value,size,y,color)=>{
+  return tasks=>{
+    g.putImageData(stock,63,924);
+    const bounds=[];
+    const paired=tasks.length>1;
+    for(const [i,task] of tasks.entries()){
+      const x=72+i*365,size=52,y=task.detail?992:1024;
+      const maxWidth=paired?328:704;
       g.font=`500 ${size}px ${serif}`;
-      let fit=value;
-      if(g.measureText(fit).width>722){
-        const chars=Array.from(value);
-        while(chars.length&&g.measureText(chars.join('')+'…').width>722)chars.pop();
-        fit=chars.join('')+'…';
-      }
-      text(g,fit,72,y,size,{color,weight:500});
-    };
-    if(lines[0])clipped(lines[0],49,1000,ink);
-    if(lines[1])clipped(lines[1],39,1072,'#465843');
+      let chars=Array.from(task.label),fit=task.label;
+      while(chars.length&&g.measureText(fit).width>maxWidth){chars.pop();fit=chars.join('')+'…';}
+      const width=g.measureText(fit).width;
+      text(g,fit,x,y,size,{color:'#314d43',weight:500});
+      stroke(g,[[x,y+9],[x+width,y+9]],'#556c5a',2.5);
+      if(task.detail)text(g,task.detail,x,1080,39,{color:'#465843',weight:500});
+      const center=y-size*.34;
+      const halfHeight=task.detail?68:84;
+      bounds.push([x-9,center-halfHeight,x+width+12,center+halfHeight]);
+    }
     map.needsUpdate=true;
-    return true;
+    return bounds;
   };
 }
 function material(color,map=null,params={}){

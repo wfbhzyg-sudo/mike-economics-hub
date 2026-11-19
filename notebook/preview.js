@@ -27,6 +27,7 @@ let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penDrag=null
 let mobileGesture=null,blockedUntil=0,previousFocus=null;
 let paging=false,pendingSwipe=0;
 const buttons=new Map();
+let taskLinks=[],paintedTasks;
 let bookmarkContent='';
 
 $('sketch').innerHTML=loader;
@@ -91,6 +92,7 @@ function sync(){
     button.hidden=noScene||!open||!allow.has(entry);
     button.tabIndex=button.hidden?-1:0;
   }
+  for(const {action,card} of taskLinks)action.hidden=buttons.get(card.item).hidden;
   if(noScene)$('rail').hidden=true;
   lamp.setAttribute('aria-pressed',String(lampOn));
   lamp.hidden=pen.hidden=noScene||phase==='loading';
@@ -296,7 +298,14 @@ desk.addEventListener('touchstart',e=>{
   mobileGesture=null;
   if(!renderer||(!paging&&phase!=='open')||e.touches.length!==1||e.target.closest('#masthead,.prop,.page-corner,#news-tab'))return;
   const {identifier,clientX,clientY}=e.touches[0];
-  mobileGesture={identifier,x:clientX,y:clientY};
+  if(phase==='open')blockedUntil=0;
+  mobileGesture={identifier,x:clientX,y:clientY,moved:false};
+},{passive:true});
+desk.addEventListener('touchmove',e=>{
+  if(!mobileGesture)return;
+  const t=Array.from(e.touches).find(t=>t.identifier===mobileGesture.identifier);
+  if(t&&Math.hypot(t.clientX-mobileGesture.x,t.clientY-mobileGesture.y)>12)mobileGesture.moved=true;
+
 },{passive:true});
 desk.addEventListener('touchend',e=>{
   if(!mobileGesture)return;
@@ -305,6 +314,10 @@ desk.addEventListener('touchend',e=>{
   const touch=Array.from(e.changedTouches).find(touch=>touch.identifier===gesture.identifier);
   if(!touch||e.touches.length)return;
   const dx=touch.clientX-gesture.x,dy=touch.clientY-gesture.y;
+  if(gesture.moved||Math.hypot(dx,dy)>12){
+    blockedUntil=performance.now()+470;
+    if(e.cancelable)e.preventDefault();
+  }
   const threshold=T.MathUtils.clamp(canvas.clientWidth*.145,42,64);
   if(Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.45){
     blockedUntil=performance.now()+470;
@@ -313,8 +326,8 @@ desk.addEventListener('touchend',e=>{
     if(paging)pendingSwipe=T.MathUtils.clamp(pendingSwipe+direction,-1,1);
     else go(direction);
   }
-},{passive:true});
-desk.addEventListener('touchcancel',()=>{mobileGesture=null;},{passive:true});
+},{passive:false});
+desk.addEventListener('touchcancel',()=>{mobileGesture=null;blockedUntil=performance.now()+470;},{passive:true});
 document.addEventListener('keydown',e=>{
   if(!renderer||locked||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select, [contenteditable], .portal-account')||e.target.id==='mike-companion')return;
   if(e.target===pen&&penHeld&&e.key.startsWith('Arrow')){
@@ -508,13 +521,26 @@ function syncPaperTask(){
   const card=scene?.spreads[0]?.cards.find(c=>c.paintTask);
   if(!card)return;
   const data=document.querySelector('#flat-list [data-task]')?.dataset.task;
-  const lines=data?JSON.parse(data):[];
-  if(card.paintTask(lines))wake();
+  if(data===paintedTasks)return;
+  paintedTasks=data;
+  for(const {action} of taskLinks)action.remove();
+  const tasks=data?JSON.parse(data):[];
+  const bounds=card.paintTask(tasks);
   const anchor=buttons.get(card.item);
-  if(anchor){
-    if(lines.length)anchor.setAttribute('aria-description',lines.join(' · '));
-    else anchor.removeAttribute('aria-description');
-  }
+  taskLinks=tasks.map((task,i)=>{
+    const action=document.createElement('a');
+    action.className='hot desk-task';action.href=task.href;
+    action.setAttribute('aria-label',task.label);action.title=task.label;
+    if(task.detail)action.setAttribute('aria-description',task.detail);
+    action.hidden=anchor.hidden;
+    action.onclick=e=>{
+      if(phase!=='open'||performance.now()<blockedUntil){e.preventDefault();return;}
+      if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey)rememberPage();
+    };
+    return {action,card,rect:bounds[i]};
+  });
+  anchor.after(...taskLinks.map(t=>t.action));
+  wake();
 }
 document.addEventListener('notebook:task',syncPaperTask);
 function deviceCamera(){
@@ -582,6 +608,13 @@ function controlsOnScene(){
     if(button.hidden)continue;
     const quad=[[-1,-1],[-1,1],[1,1],[1,-1]].map(([x,y])=>xy(card.root.localToWorld(new T.Vector3(x*card.w/2,y*card.h/2,0))));
     positionRect(button,quad);
+    for(const {action,rect,card:owner} of taskLinks){
+      if(owner!==card)continue;
+      const [left,top,right,bottom]=rect;
+      const points=[[left,top],[right,top],[left,bottom],[right,bottom]].map(([x,y])=>
+        xy(card.root.localToWorld(new T.Vector3((x/960-.5)*card.w,(.5-y/1160)*card.h,0))));
+      positionRect(action,points);
+    }
   }
   if(phase==='open'){
     for(const [button,direction] of [[prev,-1],[next,1]]){

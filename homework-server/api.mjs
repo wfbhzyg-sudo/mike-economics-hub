@@ -1,4 +1,4 @@
-import {deskTask} from './desk-task.mjs';
+import {deskTask,deskSubmissions} from './desk-task.mjs';
 import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
@@ -928,6 +928,10 @@ export async function createHomework({externalAuth} = {}) {
           stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy?.());stream.pipe(res);
           return true;
         }
+      }
+      if(method==='GET'&&route[0]==='desk-task'&&route.length===2){
+        teacher();assert(['grading','requests'].includes(route[1]),'未知待办',404);
+        return (json(res,{submissions:await deskSubmissions(db,user,route[1])}),true);
       }
       if(method==='GET'&&route.length===1&&route[0]==='desk-task'){
         res.setHeader('Cache-Control','private, no-store');
