@@ -169,3 +169,5 @@ body:not([data-ready="3d"]) #news-tab{visibility:hidden}
 #flat-list .flat-tasks a{display:inline-flex;min-height:44px;color:#314d43;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 #flat-list .flat-tasks small{width:100%;text-align:left}
 .desk-task:hover,.desk-task:focus-visible{background:#40644b14}
+
+body[data-desk-return] #desk-start{background:radial-gradient(ellipse at 26% 18%,#625044,#372c26 75%)}

@@ -3,7 +3,7 @@ import {bindDisclosureMenus} from './disclosure-menu.js';
 import {mountReviewGallery} from './review-gallery.js';
 import {createReviewSaver,questionReviewEvidence} from './review-save.js';
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function mountReviewStudio(root,{submission:s,title,name,files,userId,queue=[],api,put,post,go,toast,reload,backRoute='reviews'}={}) {
+export function mountReviewStudio(root,{submission:s,title,name,files,userId,queue=[],api,put,post,go,toast,reload,returnToQueue=false,backRoute='reviews'}={}) {
   const backLabel=backRoute.startsWith('overview/')?'作业名单':backRoute.startsWith('gradebook')?'成绩档案':'作业批阅';
   const grading=['queued','grading'].includes(s.status),draft=s.teacherReviewDraft?.jobId===s.jobId?s.teacherReviewDraft:null;
   const initial=(s.status==='needs_review'?s.suggestedGrade:s.publishedGrade)||s.suggestedGrade;
@@ -56,7 +56,7 @@ export function mountReviewStudio(root,{submission:s,title,name,files,userId,que
   form.onsubmit=async e=>{
     e.preventDefault();if(publishing||grading)return;const missing=rows.findIndex((q,i)=>!valid(q,i));if(missing>=0){expand(true);select(missing,true);error.textContent='请填写所有题目的有效分数';return;}
     publishing=true;update();error.textContent='';
-    try{clearTimeout(timer);await saver.flush();await post('submissions/'+s.id+'/publish',{questions:rows.map(q=>({id:q.id,score:Number(q.value),needsReview:false})),jobId:s.jobId,reviewRevision:saver.snapshot().revision});sessionStorage.removeItem(cacheKey);toast('成绩已发布');go(next?'review/'+next.id:backRoute);}
+    try{clearTimeout(timer);await saver.flush();await post('submissions/'+s.id+'/publish',{questions:rows.map(q=>({id:q.id,score:Number(q.value),needsReview:false})),jobId:s.jobId,reviewRevision:saver.snapshot().revision});sessionStorage.removeItem(cacheKey);toast('成绩已发布');go(next&&!returnToQueue?'review/'+next.id:backRoute);}
     catch(e){error.textContent=e.message;}finally{publishing=false;if(!closed)update();}
   };
   $('#regrade').onclick=async()=>{if(publishing)return;try{await saver.flush();$('#regrade').disabled=true;await post('submissions/'+s.id+'/regrade');reload();}catch(e){error.textContent=e.message;$('#regrade').disabled=false;}};

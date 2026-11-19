@@ -14,6 +14,10 @@ import {highlightText} from '../homework/search-text.js';
 import {renderStimulus,escapeHtml as h} from './graphs.js';
 import {assignmentRecords,gradeSummary} from '../homework/learning-model.js';
 import {mountLearningOverview} from '../homework/learning-overview.js';
+import {deskPage,onDeskPage} from '../assets/notebook/desk-context.js';
+const deskOrigin=deskPage(new URLSearchParams(location.search));
+const deskHref=deskOrigin===null?'/':onDeskPage('/',deskOrigin);
+document.querySelector('.tw-brand > a').href=deskHref;
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const main=$('#workspace'),surface=$('.homework-surface'),status=$('#workspace-status');
 const paths={home:'M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 4a4 4 0 0 1 0 8m6 9v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',work:'M9 4H5v17h14V4h-4M9 2h6v5H9zM8 13l3 3 5-6',book:'M12 5v16M12 5C8 2 5 2 2 3v16c4-1 6 0 10 2 4-2 6-3 10-2V3c-3-1-6-1-10 2',game:'M6 8h12l4 10a2 2 0 0 1-3 2l-4-3H9l-4 3a2 2 0 0 1-3-2L6 8ZM7 10v5m-2-2.5h4m7-1h.01m3 2h.01',chat:'M21 11a9 8 0 0 1-9 8H9l-6 3 2-6a8 8 0 1 1 16-5ZM8 11h.01M12 11h.01M16 11h.01',layers:'M12 2 2 7l10 5 10-5-10-5ZM2 12l10 5 10-5M2 17l10 5 10-5',settings:'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',more:'M5 12h.01M12 12h.01M19 12h.01',arrow:'M19 12H5m6-6-6 6 6 6',chart:'M4 21V11h4v10m4 0V6h4v15m4 0V2h2v19',bars:'M4 20h16M7 20v-7m5 7V8m5 12v-4'};
@@ -96,7 +100,7 @@ function navigation(section){
  $('#teacher-navigation').innerHTML=links+secondary;
  $('#mobile-navigation').innerHTML=mobileLinks;
  $$('[data-open-more]').forEach(button=>button.onclick=()=>{state.moreTrigger=button;button.focus({preventScroll:true});$('#more-menu').showModal();});
- $('#more-navigation').innerHTML=`<a href="#work/reviews">${icon('chart')}作业批阅</a><a href="#classes">${icon('people')}班级与学生</a><a href="#mock-stats">${icon('chart')}自主模考统计</a><a href="#games">${icon('chart')}拓展学习记录</a>`+(state.meta.capabilities.admin?`<a href="#settings">${icon('settings')}批改设置</a>`:'')+`<a href="/?account=password">${icon('settings')}修改密码</a><button type="button" data-more-logout>${icon('arrow')}退出登录</button><a href="/">${icon('arrow')}返回一页通</a>`;
+ $('#more-navigation').innerHTML=`<a href="#work/reviews">${icon('chart')}作业批阅</a><a href="#classes">${icon('people')}班级与学生</a><a href="#mock-stats">${icon('chart')}自主模考统计</a><a href="#games">${icon('chart')}拓展学习记录</a>`+(state.meta.capabilities.admin?`<a href="#settings">${icon('settings')}批改设置</a>`:'')+`<a href="/?account=password">${icon('settings')}修改密码</a><button type="button" data-more-logout>${icon('arrow')}退出登录</button><a href="${deskHref}">${icon('arrow')}返回一页通</a>`;
  $$('[data-more-logout]').forEach(b=>b.onclick=()=>{$('#more-menu')?.close();$('#teacher-logout')?.click();});
 
 }

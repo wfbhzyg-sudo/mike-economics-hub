@@ -1,14 +1,15 @@
+import {deskPage,onDeskPage} from './assets/notebook/desk-context.js';
 const $=s=>document.querySelector(s),form=$('#login-form'),params=new URLSearchParams(location.search);
 let accountRole=null,mode='login',csrf='',recovery='',signed=false;
 const messages={'Username or password is incorrect.':'用户名或密码不正确。','Username or recovery code is incorrect.':'用户名或恢复码不正确。','Too many sign-in attempts. Try again in 15 minutes.':'尝试次数较多，请 15 分钟后再试。','Use a password with 12–128 characters.':'密码需为 12–128 位。','This username is unavailable. Please choose another.':'这个用户名已被使用，请换一个。'};
-async function next(animate=false){const a=params.get('authorize');if(a?.startsWith('/sso/authorize?')&&!/[\\\r\n]/.test(a)){location.replace(a);return;}const n=params.get('next');const target=n?.startsWith('/')&&!n.startsWith('//')&&!/[\\\r\n]/.test(n)&&!n.startsWith('/api/')&&!n.startsWith('/sso/')?n:'/';
+async function next(animate=false){const a=params.get('authorize');if(a?.startsWith('/sso/authorize?')&&!/[\\\r\n]/.test(a)){location.replace(a);return;}const n=params.get('next'),page=deskPage(params);const target=n?.startsWith('/')&&!n.startsWith('//')&&!/[\\\r\n]/.test(n)&&!n.startsWith('/api/')&&!n.startsWith('/sso/')?n:page===null?'/':onDeskPage('/',page);
  if(animate&&target==='/'&&document.body.classList.contains('notebook-login')){
    try{
      const scene=document.body.dataset.ready==='3d'?await window.notebookCover:null;
      if(scene&&document.body.dataset.ready==='3d'){
        const [session,bootstrap]=await Promise.all([
          fetch('/api/portal/session',{cache:'no-store'}).then(r=>r.json()),
-         import('/assets/notebook/bootstrap-v1.js?v=tasklink1'),import('/apps.js')
+         import('/assets/notebook/bootstrap-v1.js?v=taskreturn1'),import('/apps.js')
        ]);
        if(session.user&&!session.user.mustChangePassword){
          const teacher=session.user.role==='teacher'&&session.teacherWorkspace;

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {affectsDeskTask,deskPage,onDeskPage} from '../assets/notebook/desk-context.js';
 import {deskTask} from '../homework-server/desk-task.mjs';
 
 const clock=Date.parse('2026-11-19T08:00Z');
@@ -23,4 +24,27 @@ test('returned work can be resubmitted after its original deadline',async()=>{
 });
 test('empty paper when all work is closed or already submitted',async()=>{
   assert.equal(await studentTask([assignment('closed',15),assignment('finished',23)],[{id:'p',assignmentId:'finished',status:'published'}]),null);
+});
+
+test('desk task routes keep the logical page, other parameters, and the workbench hash',()=>{
+  const entry=new URL(onDeskPage('/teacher/?view=work#work/reviews/queue/requests',3),'https://local.invalid');
+  assert.equal(deskPage(entry.searchParams),3);
+  assert.equal(entry.searchParams.get('view'),'work');
+  assert.equal(entry.hash,'#work/reviews/queue/requests');
+  assert.equal(onDeskPage('/',0),'/?deskPage=0');
+  for(const invalid of ['', '01','-1','0.5','10000','//elsewhere']){
+    assert.equal(deskPage(new URLSearchParams({deskPage:invalid})),null);
+  }
+  assert.equal(deskPage(new URLSearchParams()),null);
+});
+
+test('only completed desk work invalidates the paper, not answer autosaves or draft scores',()=>{
+  for(const route of ['mcq/attempt/a/submit','submissions/a/publish','submissions/a/review-request','submissions/a/return']){
+    assert.equal(affectsDeskTask(route,{method:'POST'}),true);
+    assert.equal(affectsDeskTask(route,{method:'GET'}),false);
+  }
+  assert.equal(affectsDeskTask('submissions',{method:'POST',body:{draft:false}}),true);
+  assert.equal(affectsDeskTask('submissions',{method:'POST',body:{draft:true}}),false);
+  assert.equal(affectsDeskTask('mcq/attempt/a',{method:'POST'}),false);
+  assert.equal(affectsDeskTask('submissions/a/review-draft',{method:'PUT'}),false);
 });

@@ -1,3 +1,4 @@
+import {onDeskPage,taskChangeKey} from './desk-context.js';
 import {journalPages,font,styles} from './journal-layout.js?v=journal3';
 
 let setupNews=false;
@@ -82,27 +83,8 @@ const fallback=document.querySelector('#fallback');
 const saveData=navigator.connection?.saveData;
 const explicit=new URLSearchParams(location.search).get('view')==='desk';
 function installTask(link,teacher){
-  let pending=false,last=0;
-  async function refresh(force=false){
-    if(pending||(!force&&Date.now()-last<30000))return;
-    pending=true;
-    const tasks=[];
-    try{
-      const r=await fetch('/api/homework/desk-task',{cache:'no-store'});
-      if(r.ok){
-        const {task}=await r.json();
-        if(task&&teacher){
-          if(task.grading)tasks.push({label:task.grading+' 份待批阅',href:'/teacher/#work/reviews/queue/grading'});
-          if(task.requests)tasks.push({label:task.requests+' 份待复核',href:'/teacher/#work/reviews/queue/requests'});
-        }
-        if(task&&!teacher&&task.title&&task.id){
-          const due=task.dueAt&&new Date(task.dueAt);
-          const when=due?new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(due):'';
-          tasks.push({label:task.title,href:'/homework/#submit/'+encodeURIComponent(task.id),detail:when?(due.getTime()<Date.now()?'可补交 · 原截止 ':'截止 ')+when:'不限截止时间'});
-        }
-        last=Date.now();
-      }
-    }catch{}finally{pending=false;}
+  let revision=0,scheduled,active;
+  function render(tasks){
     const serialized=JSON.stringify(tasks);
     if(link.dataset.task===serialized)return;
     link.dataset.task=serialized;
@@ -111,16 +93,57 @@ function installTask(link,teacher){
     if(tasks.length){
       const group=document.createElement('div');group.className='flat-tasks';
       for(const task of tasks){
-        const action=document.createElement('a');action.href=task.href;action.textContent=task.label;group.append(action);
+        const action=document.createElement('a');action.href=onDeskPage(task.href,0);action.textContent=task.label;group.append(action);
         if(task.detail){const meta=document.createElement('small');meta.textContent=task.detail;group.append(meta);}
       }
       row.append(group);
     }
     document.dispatchEvent(new Event('notebook:task'));
   }
-  void refresh();
-  window.addEventListener('pageshow',e=>{if(e.persisted)void refresh(true);});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});
+  const syncError='待办暂未同步，请联网后再试。';
+  async function refresh(version,retry=true){
+    const controller=new AbortController();
+    active=controller;
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    try{
+      const response=await fetch('/api/homework/desk-task',{cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw Error();
+      const {task}=await response.json();
+      if(version!==revision)return;
+      const tasks=[];
+      if(task&&teacher){
+        if(task.grading)tasks.push({label:task.grading+' 份待批阅',href:'/teacher/#work/reviews/queue/grading'});
+        if(task.requests)tasks.push({label:task.requests+' 份待复核',href:'/teacher/#work/reviews/queue/requests'});
+      }
+      if(task&&!teacher&&task.title&&task.id){
+        const due=task.dueAt&&new Date(task.dueAt);
+        const when=due?new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(due):'';
+        tasks.push({label:task.title,href:'/homework/#submit/'+encodeURIComponent(task.id),detail:when?(due.getTime()<Date.now()?'可补交 · 原截止 ':'截止 ')+when:'不限截止时间'});
+      }
+      render(tasks);
+      const status=document.getElementById('status');
+      if(status.textContent===syncError)status.textContent='';
+    }catch{
+      if(version===revision&&!document.hidden){
+        document.getElementById('status').textContent=syncError;
+        if(retry&&navigator.onLine)scheduled=setTimeout(()=>{if(version===revision&&!document.hidden)void refresh(version,false);},1200);
+      }
+    }finally{
+      clearTimeout(timeout);
+      if(active===controller)active=null;
+    }
+  }
+  function invalidate(){
+    const version=++revision;
+    clearTimeout(scheduled);active?.abort();
+    if(!document.hidden)scheduled=setTimeout(()=>void refresh(version),30);
+  }
+  invalidate();
+  window.addEventListener('pagehide',()=>{++revision;clearTimeout(scheduled);active?.abort();render([]);});
+  window.addEventListener('pageshow',event=>{if(event.persisted)invalidate();});
+  window.addEventListener('storage',event=>{if(event.key===taskChangeKey){render([]);invalidate();}});
+  window.addEventListener('online',invalidate);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)invalidate();});
 }
 export function configureDesk(teacher){
 installNews();
@@ -130,7 +153,9 @@ const entries=apps.flatMap(app=>{
   try{
     const target=new URL(app.url,location.href);
     if(target.protocol!=='https:'&&(target.protocol!=='http:'||target.origin!==location.origin))return [];
-    return [{id:app.id,name:app.name,description:app.description||'',href:target.origin===location.origin?target.pathname+target.search+target.hash:target.href}];
+    let href=target.origin===location.origin?target.pathname+target.search+target.hash:target.href;
+    if(app.id===(teacher?'teacher-workspace':'homework-submit')&&target.origin===location.origin)href=onDeskPage(href,0);
+    return [{id:app.id,name:app.name,description:app.description||'',href}];
   }catch{return [];}
 });
 if(entries.length){
@@ -163,7 +188,7 @@ if(!entries.length||(saveData&&!explicit)){
   }catch{}
   // Keep a usable destination during a stuck download without committing to it during a normal load.
   const timeout=setTimeout(flat,8500);
-  import('/assets/notebook/scene-v1.js?v=tasklink1').then(book=>{
+  import('/assets/notebook/scene-v1.js?v=taskreturn1').then(book=>{
     if(document.body.dataset.ready!=='2d')return book.start(entries,play,()=>document.body.dataset.ready!=='2d');
   }).catch(flat).finally(()=>clearTimeout(timeout));
 }

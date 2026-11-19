@@ -1,3 +1,4 @@
+import {deskPage,onDeskPage} from '../assets/notebook/desk-context.js';
 import * as T from 'three';
 import {portalCatalog,sideName} from './catalog.js';
 import {studio,W,H,NOTE_W,NOTE_H,corners,PAPER_Z,NOTE_Z,gutterRise,lampHome,penHome,bendLeaf,bendPoint,leafTangency,curlHeight} from './studio.js';
@@ -193,8 +194,13 @@ function leaveJournal(){
   turnTo(origin.index,fitSide(origin.index,origin.side),-1,false,0,()=>{journalOrigin=null;tab.focus({preventScroll:true});});
 }
 document.addEventListener('notebook:return',leaveJournal);
-function rememberPage(){
-  try{history.replaceState({...history.state,notebookSpread:journal()?journalOrigin?.index:spreadIndex,notebookSide:journal()?journalOrigin?.side:side},'');}catch{}
+function rememberPage(leaving=false){
+  try{
+    const url=new URL(location.href);
+    if(leaving)url.searchParams.set('deskPage',String(2*spreadIndex+side));
+    else url.searchParams.delete('deskPage');
+    history.replaceState({...history.state,notebookSpread:journal()?journalOrigin?.index:spreadIndex,notebookSide:journal()?journalOrigin?.side:side},'',url);
+  }catch{}
 }
 function completePage(direction,keyboard){
   const queuedDirection=pendingSwipe;
@@ -392,7 +398,7 @@ function navigate(entry){
       sessionStorage.setItem('mike:arrival',JSON.stringify({path:target.pathname,at:Date.now()}));
   }catch{}
   setPhase('loading','正在打开 '+entry.title);
-  rememberPage();
+  rememberPage(routeStyles.has(new URL(entry.href,location.href).pathname));
   try{sessionStorage.setItem(returnKey,JSON.stringify({spreadIndex,side,at:Date.now()}));}catch{}
   // Let the sketch reach the screen before handing the tab to the normal browser navigation.
   requestAnimationFrame(()=>setTimeout(()=>{if(phase==='loading')location.assign(entry.href);},0));
@@ -529,13 +535,15 @@ function syncPaperTask(){
   const anchor=buttons.get(card.item);
   taskLinks=tasks.map((task,i)=>{
     const action=document.createElement('a');
-    action.className='hot desk-task';action.href=task.href;
+    action.className='hot desk-task';
+    const page=scene.spreads.findIndex(spread=>spread?.cards.includes(card))*2+(card.slot>=2?1:0);
+    action.href=onDeskPage(task.href,page);
     action.setAttribute('aria-label',task.label);action.title=task.label;
     if(task.detail)action.setAttribute('aria-description',task.detail);
     action.hidden=anchor.hidden;
     action.onclick=e=>{
       if(phase!=='open'||performance.now()<blockedUntil){e.preventDefault();return;}
-      if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey)rememberPage();
+      if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey)rememberPage(true);
     };
     return {action,card,rect:bounds[i]};
   });
@@ -782,14 +790,19 @@ let openingOnLoad=false;
 export async function start(apps,animateOpening,canPresent,guest=false){
   locked=guest;
   chapters=portalCatalog(apps);catalogCount=chapters.length;
+  const originPage=guest?null:deskPage(new URLSearchParams(location.search));
   let saved=null;
-  try{
-    const recent=JSON.parse(sessionStorage.getItem(returnKey));
-    sessionStorage.removeItem(returnKey);
-    if(!animateOpening&&recent&&Date.now()-recent.at<45*60_000)saved=recent;
-  }catch{}
-  spreadIndex=Math.min(chapters.length-1,Math.max(0,Number(history.state?.notebookSpread??saved?.spreadIndex)||0));
-  side=narrow()?Math.min(finalSide(spreadIndex),Math.max(0,Number(history.state?.notebookSide??saved?.side)||0)):0;
+  if(!guest){
+    try{
+      const recent=JSON.parse(sessionStorage.getItem(returnKey));
+      sessionStorage.removeItem(returnKey);
+      if(!animateOpening&&recent&&Date.now()-recent.at<45*60_000)saved=recent;
+    }catch{}
+  }
+  const index=originPage===null?history.state?.notebookSpread??saved?.spreadIndex:Math.floor(originPage/2);
+  const half=originPage===null?history.state?.notebookSide??saved?.side:originPage%2;
+  spreadIndex=Math.min(chapters.length-1,Math.max(0,Number(index)||0));
+  side=fitSide(spreadIndex,Number(half)||0);
   viewSide=side;
   connectNotes();
   try{
@@ -804,9 +817,12 @@ export async function start(apps,animateOpening,canPresent,guest=false){
     syncPaperTask();renderer=context;camera=new T.OrthographicCamera(-6,6,4,-4,.01,40);
     canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fallback();});
     window.addEventListener('resize',resize);
-    openingOnLoad=animateOpening&&!reduce.matches;
+    openingOnLoad=originPage===null&&animateOpening&&!reduce.matches;
     openness=guest||openingOnLoad?0:1;
     setPhase(guest||openingOnLoad?'cover':'open');
+    if(originPage!==null){
+      rememberPage();
+    }
     resize();
   }catch(error){
     console.warn('Notebook view is unavailable.',error);
