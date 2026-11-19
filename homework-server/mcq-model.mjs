@@ -1,3 +1,4 @@
+import {questionLessonReference} from './lesson-reference.mjs';
 import {assert,text} from './validation.mjs';
 export function validateRegions(regions,pages){
  assert(Array.isArray(regions)&&regions.length>0&&regions.length<=5,'每题需关联 1–5 个原件区域');
@@ -19,7 +20,7 @@ export function choiceScore(questions,answers){
 }
 export function manualAssignmentScore(questions,answers={}){return combineScores(choiceScore(questions,answers),{questions:questions.filter(q=>q.type!=='choice').map(q=>({id:q.id,score:null,maxPoints:q.maxPoints,needsReview:true,evidence:'',feedback:''}))});}
 export function combineScores(a,b){const questions=[...a.questions,...b.questions];return {scoreOnly:true,questions,total:questions.some(q=>q.score===null)?null:questions.reduce((n,q)=>n+q.score,0),maxPoints:questions.reduce((n,q)=>n+q.maxPoints,0),needsReview:questions.some(q=>q.needsReview)};}
-export function studentItems(a){return (a.rubric||[]).map(q=>({id:q.id,prompt:q.prompt,type:q.type,maxPoints:q.maxPoints,options:q.options||[],questionImages:q.questionImages||[]}));}
+export function studentItems(a){return (a.rubric||[]).map(q=>({id:q.id,prompt:q.prompt,type:q.type,maxPoints:q.maxPoints,options:q.options||[],questionImages:q.questionImages||[],lessonReference:questionLessonReference(q,a)}));}
 export function attemptRules(a,studentId){return {...a,...(a.accommodations?.find(r=>r.studentId===studentId)||{})};}
 export function activeExam(t,a,at=Date.now()){if(!t||t.mode!=='exam'||t.submittedId||!a||a.deletedAt||a.version!==t.version)return false;const r=attemptRules(a,t.studentId),end=Math.min(r.timeLimitMinutes?Date.parse(t.startedAt)+r.timeLimitMinutes*60000:Infinity,r.dueAt&&!r.allowLate?Date.parse(r.dueAt):Infinity);return at<end;}
 

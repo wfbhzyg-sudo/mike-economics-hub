@@ -1,3 +1,4 @@
+import {mountLessonLinks} from './lesson-panel.js';
 import {accuracyBadge} from './score-bands.js';
 import {topicGrid,bindTopicGrid} from './topic-grid.js';
 import {resultBadge} from './result-badge.js';
@@ -45,10 +46,11 @@ function readJSON(key, fallback) {
 
 export function createSelfPracticeUI(ctx) {
   const {main, state, api, post, put, go, h, toast} = ctx;
+  const lessons=mountLessonLinks(main,api);
   let destroy = null;
   let creationVersion=0;
   const dialogs=new Set();
-  const closeDialogs=()=>{for(const dialog of dialogs){dialog.close();dialog.remove();}dialogs.clear();};
+  const closeDialogs=()=>{lessons.destroy();for(const dialog of dialogs){dialog.close();dialog.remove();}dialogs.clear();};
   const attachDialog=dialog=>{dialogs.add(dialog);dialog.addEventListener('close',()=>dialogs.delete(dialog));document.body.append(dialog);};
 
   function readCreate(course) {
@@ -400,6 +402,7 @@ export function createSelfPracticeUI(ctx) {
       answers[q.id]=choice;excluded[q.id]=(excluded[q.id]||[]).filter(x=>x!==choice);paintState();scheduleSave();
     };
     const paintQuestion=()=>{
+      lessons.destroy();
       const q=questions[index],view=views[q.id]||{};
       const screen=questionView(q,h,{number:index+1,zoom:view.zoom,textOpen:view.text,label:`第 ${index+1} / ${questions.length} 题`});
       questionHost.innerHTML=screen.tools+screen.paper;
@@ -411,6 +414,7 @@ export function createSelfPracticeUI(ctx) {
         if(JSON.stringify(next)!==JSON.stringify(views[q.id])){views[q.id]=next;persistLocal();}
       }
       paperElement.addEventListener('scroll',storeView,{passive:true});
+      lessons.mount(tools,q,{number:index+1,course:attempt.course,compact:true});
       study.mount(tools,q,false);
       answerHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
       for(const dot of answerHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
@@ -524,12 +528,15 @@ export function createSelfPracticeUI(ctx) {
       <section class="sp-card sp-wrong" aria-labelledby="sp-wrong-title">
         <div class="sp-card-head"><h2 id="sp-wrong-title">错题与订正</h2><a class="secondary" href="#mistakes">错题本</a><span class="sp-muted">${wrong.length} 道失分题${result.autoSubmitted ? ' · 到时未答按 0 分' : ''}</span></div>
         <div class="filter-tabs" role="group" aria-label="回顾模考"><button type="button" data-recap="wrong" aria-pressed="true">失分题</button><button type="button" data-recap="all" aria-pressed="false">全部题目</button></div>
-        ${result.questions.map((question,i)=>question.correct?`<details class="sp-correct-recap" data-recap-correct hidden><summary><strong>第 ${i+1} 题</strong>${resultBadge(question)}</summary><div class="result-original">${question.prompt?`<p>${h(question.prompt)}</p>`:''}${question.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${i+1} 题原题" loading="lazy">`).join('')}<p class="review-choice">我的答案　<strong>${h(question.chosen)}</strong></p></div></details>`:wrongMarkup(attempt,question,corrections)).join('')}
+        ${result.questions.map((question,i)=>question.correct?`<details class="sp-correct-recap" data-recap-correct hidden><summary><strong>第 ${i+1} 题</strong>${resultBadge(question)}</summary><div class="result-original">${question.prompt?`<p>${h(question.prompt)}</p>`:''}${question.questionImages.map(file=>`<img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${i+1} 题原题" loading="lazy">`).join('')}<p class="review-choice">我的答案　<strong>${h(question.chosen)}</strong></p></div><div data-mock-lesson></div></details>`:wrongMarkup(attempt,question,corrections)).join('')}
         ${wrong.length?'':'<p class="sp-empty" data-recap-empty>全部答对，没有需要订正的题。</p>'}
       </section>
       <footer class="sp-result-foot"><button type="button" class="secondary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">返回自主模考</a></footer>
     </section>`;
 
+    main.querySelectorAll('[data-mock-lesson]').forEach((host,i)=>lessons.mount(host,result.questions[i],{
+      number:i+1,course:attempt.course
+    }));
     bindTopicGrid(main.querySelector('.sp-topic-card'));
     for(const button of main.querySelectorAll('[data-recap]'))button.onclick=()=>{
       const all=button.dataset.recap==='all';
@@ -612,7 +619,7 @@ export function createSelfPracticeUI(ctx) {
         <div class="sp-wrong-options">${question.optionLabels.map((label) => `<div class="sp-wrong-option" data-state="${label === question.correctOption ? 'correct' : label === question.chosen ? 'chosen' : ''}"><span>${h(label)}</span>${label === question.correctOption ? '<small>正确</small>' : label === question.chosen ? '<small>我的选择</small>' : ''}</div>`).join('')}</div>
       </div>
       <p class="sp-correction-note" data-correction-note ${correction ? '' : 'hidden'}>${correction ? `已订正为 ${h(correction.choice)}（记录订正，不改分）` : ''}</p>
-      <div class="sp-wrong-actions recap-actions"><details class="recap-menu"><summary>更多操作 ⋯</summary><div class="recap-menu-content"><a class="secondary" href="#mistakes/${encodeURIComponent(attempt.id)}/${encodeURIComponent(question.id)}">在错题本订正</a>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div></details><button type="button" class="primary" data-correct>去订正</button></div>
+      <div class="sp-wrong-actions recap-actions"><div data-mock-lesson></div><details class="recap-menu"><summary>更多操作 ⋯</summary><div class="recap-menu-content"><a class="secondary" href="#mistakes/${encodeURIComponent(attempt.id)}/${encodeURIComponent(question.id)}">在错题本订正</a>${question.knowledge ? `<span class="sp-chip">${h(question.knowledge)}</span>` : ''}</div></details><button type="button" class="primary" data-correct>去订正</button></div>
     </article>`;
   }
 

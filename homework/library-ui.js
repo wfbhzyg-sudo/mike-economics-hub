@@ -4,7 +4,7 @@ import {bindDisclosureMenus} from './disclosure-menu.js';
 import {studentAssignmentAction} from './assignment-navigation.js';
 import {libraryLocation,packReference,packQuestions} from './library-navigation.js';
 import {highlightText} from './search-text.js';
-import {lessonFocus} from './lesson-focus.js';
+import {focusMarkup} from './lesson-panel.js';
 import {buildPacks,canonicalQuestions,questionHasTopic} from './library-packs.js';
 import {mountLibraryReader} from './library-reader.js';
 import {mountPDFReader} from './pdf-reader.js';
@@ -53,11 +53,17 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  const error=e=>{if(!disposed)$('.lib-error').textContent=e.message;};
  async function getQuestions(){if(!questions){questions=(await api('library/questions?unit='+unitId)).questions;}return questions;}
  async function getSources(){if(!sources)sources=(await api('library/sources?unit='+unitId)).sources;return sources;}
- function overview(){
-  const f=lessonFocus[group+':'+topic.id],termMarkup=f?.terms.map(([term,zh])=>`<div class="lib-term"><strong><u>${h(term)}</u></strong><span>${h(zh)}</span></div>`).join('')||'';
+ async function overview(){
   boardCleanup?.();boardCleanup=null;
-  content.innerHTML=`<article class="lib-focus-grid"><section class="lib-goals"><h2>Learning goals</h2><ol>${(f?.goals||['Review '+(topic.name||'this lesson')+' using the source material.']).map(g=>`<li>${h(g)}</li>`).join('')}</ol></section><section class="lib-concepts"><h2>Key concepts</h2>${termMarkup}<p>${h(f?.concept||'Read the original lesson materials for this topic.')}</p></section><section class="lib-pitfalls"><h2>Common pitfalls</h2><ul>${(f?.pitfalls||['Check definitions, assumptions, and the labels on every diagram.']).map(p=>`<li>${h(p)}</li>`).join('')}</ul></section></article>${boardMarkup()}`;
+  content.innerHTML=`<div data-topic-focus><p role="status">正在加载学习重点…</p></div>${boardMarkup()}`;
   mountBoard();
+  const host=content.querySelector('[data-topic-focus]');
+  try{
+   const {focus}=await api('library/focus?'+new URLSearchParams({unit:unitId,topic:topic.id})), anchor=new URLSearchParams(location.search).get('focus');
+   if(disposed||!host.isConnected)return;
+   host.innerHTML=focusMarkup(focus);
+   if(['goals','rule','apply','pitfall'].includes(anchor))host.querySelector('#focus-'+anchor)?.scrollIntoView({block:'start'});
+  }catch(e){if(!disposed&&host.isConnected){host.innerHTML='<p role="alert">学习重点暂时无法加载。</p><button type="button">重试</button>';host.querySelector('button').onclick=overview;}}
  }
 
  const BOARD_LABEL={discovery:'发现',key:'重点',question:'疑问',resource:'资源',teacher:'老师提示'};

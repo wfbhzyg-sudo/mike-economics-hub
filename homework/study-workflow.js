@@ -1,8 +1,9 @@
+import {coursesFor,selectedCourse,rememberCourse,courseLabel,singleClassCourse} from './course-scope.js';
+import {mistakeNavigation,bindMistakeNavigation} from './mistake-navigation.js';
 import {viewMemory} from './view-memory.js';
 import {topicGrid,bindTopicGrid} from './topic-grid.js';
 import {accuracyBadge} from './score-bands.js';
 import {createMockStudentDetail} from './mock-student-detail.js';
-import {courseLabel,singleClassCourse} from './course-scope.js';
 
 const localTime=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',dateStyle:'short',timeStyle:'short',hourCycle:'h23'});
 const nl = value => value ? String(value).slice(0,10) : '';
@@ -245,17 +246,23 @@ export function openDiscussion({api,user,assignmentId,item='',version,classes,tr
 }
 
 export async function renderBookmarks({main,api,state,link,head,toast}) {
-  const version=state.routeVersion, {items}=await api('question-bookmarks');
+  const version=state.routeVersion;
+  const [{items},{classes}]=await Promise.all([api('question-bookmarks'),
+    state.classes?.length ? Promise.resolve({classes:state.classes}) : api('classes')]);
   if(version!==state.routeVersion)return;
-  main.innerHTML=`<section class="paper study-bookmarks">${head('','我的错题集','',link('grades','成绩档案'))}
-    <nav class="study-tabs" aria-label="复习入口">${link('mistakes','错题')}${link('mistakes/bookmarks','我的书签','primary')}</nav>
-    <div class="study-filters"><label>搜索 <input type="search" placeholder="作业或知识点"></label>
-    <label>学科 <select><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
-    <button type="button" data-blocked>屏蔽管理</button></div><div data-book-list></div></section>`;
-  const filter=main.querySelector('input'), subject=main.querySelector('select'), list=main.querySelector('[data-book-list]');
+  const courses=coursesFor(items.map(x=>({course:x.course})),classes||[]);
+  const subjects=courses.length>1?['all',...courses]:courses;
+  const active=selectedCourse(state.user.id,subjects,subjects[0]||'all');
+  main.innerHTML=`<section class="paper study-bookmarks">${head('','我的错题集','',link('grades','成绩档案','text-button'))}
+    ${mistakeNavigation(link,esc,{current:'bookmarks',subjects,subject:active})}
+    <div class="study-filters"><label class="field"><span>查找书签</span><input type="search" placeholder="作业或知识点"></label>
+    <button type="button" class="text-button" data-blocked>屏蔽管理</button></div><div data-book-list></div></section>`;
+  bindMistakeNavigation(main);
+  const filter=main.querySelector('input'), subject=main.querySelector('[data-mistake-course]'), list=main.querySelector('[data-book-list]');
+  let selected=active;
   function draw(){
     const term=filter.value.trim().toLowerCase();
-    const rows=items.filter(x=>(!subject.value||x.course===subject.value)&&(!term||`${x.title} ${x.label} ${x.questionId}`.toLowerCase().includes(term)));
+    const rows=items.filter(x=>(selected==='all'||x.course===selected)&&(!term||`${x.title} ${x.label} ${x.questionId}`.toLowerCase().includes(term)));
     list.innerHTML=rows.map(r=>`<article class="study-book-row"><details><summary><strong>${esc(r.title)} · ${r.source==='mock'?'题目':'第 '+esc(r.questionId)+' 题'}</strong><small>${esc(courseLabel(r.course))} · ${esc(r.label||'原题')} · ${nl(r.at)}</small></summary><div data-book-preview></div></details><button type="button" data-remove aria-label="移除此书签">移除</button></article>`).join('')||'<p>暂无符合条件的书签。</p>';
     [...list.children].filter(e=>e.matches('article')).forEach((row,i)=>{
       const r=rows[i], details=row.querySelector('details'), preview=row.querySelector('[data-book-preview]');
@@ -292,7 +299,7 @@ export async function renderBookmarks({main,api,state,link,head,toast}) {
       }
     }catch(e){feed.textContent=e.message;}
   };
-  filter.oninput=draw;subject.onchange=draw;draw();
+  filter.oninput=draw;if(subject)subject.onchange=()=>{selected=subject.value;if(selected!=='all')rememberCourse(state.user.id,selected);draw();};draw();
 }
 
 export async function renderMockStatistics({main,api,state}){

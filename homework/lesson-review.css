@@ -1,0 +1,169 @@
+.mistake-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #dce5ee;
+  margin-bottom: 14px;
+}
+.mistake-views { display: flex; align-items: stretch; gap: clamp(8px, 3vw, 24px); }
+.mistake-views a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 2px;
+  border-bottom: 2px solid transparent;
+  color: #455c70;
+  font-size: .9rem;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.mistake-views a[aria-current] { border-color: #163653; color: #163653; font-weight: 700; }
+.mistake-course select {
+  min-height: 44px;
+  max-width: 100%;
+  width: auto;
+  border: 1px solid #d5e0ea;
+  background-color: #f4f8fc;
+  color: #163653;
+  font: inherit;
+  font-size: .85rem;
+}
+.mistake-course-name { font-size: .85rem; color: #455c70; }
+.mistake-course { min-width: 0; }
+.lesson-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: start;
+  gap: .45rem;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ccdeed;
+  border-radius: 8px;
+  background: #edf5fc;
+  color: #153a59;
+  font-size: .82rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.lesson-link:hover { background: #e0edf9; border-color: #a7c3dd; }
+.lesson-link svg { width: 1rem; height: 1rem; flex: none; }
+.lesson-link span { min-width: 0; }
+.lesson-panel {
+  position: fixed;
+  inset: 0 auto 0 0;
+  margin: 0;
+  box-sizing: border-box;
+  width: min(374px, calc(100vw - 20px));
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  border: 0;
+  border-inline-end: 1px solid #d4dfe9;
+  background: #fff;
+  color: #172f47;
+  box-shadow: 4px 0 26px #11283f26;
+  z-index: 300;
+}
+.lesson-panel[open] { display: grid; grid-template-rows: auto minmax(0,1fr); }
+.lesson-panel::backdrop { background: #11283f45; }
+.lesson-panel > header {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: max(14px, env(safe-area-inset-top)) 14px 12px max(16px, env(safe-area-inset-left));
+  color: #fff;
+  background: #11283f;
+}
+.lesson-panel > header h2 { margin: 4px 0 0; font-size: 1rem; overflow-wrap: anywhere; }
+.lesson-panel > header small { color: #d9e8f8; }
+.lesson-panel > header button {
+  min-height: 44px;
+  padding: 6px 9px;
+  border: 1px solid #94aabd;
+  border-radius: 8px;
+  background: #ffffff12;
+  color: #fff;
+  font-size: .8rem;
+}
+.lesson-panel [data-lesson-body] {
+  position: relative;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px max(16px, env(safe-area-inset-bottom));
+}
+.lesson-focus-content { color: #20374c; font-size: .95rem; line-height: 1.6; overflow-wrap: anywhere; }
+.lesson-focus-content section {
+  border-bottom: 1px solid #dce5ee;
+  padding: 12px 0;
+  scroll-margin-top: 12px;
+}
+.lesson-focus-content section h2 { margin: 0 0 5px; color: #133653; font-size: 1rem; }
+.lesson-focus-content :is(p,ul) { margin-block: 4px; }
+.lesson-focus-content ul { padding-inline-start: 1.25em; }
+.lesson-focus-terms { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; color: #143b5c; }
+.lesson-focus-source { padding-block: 9px; font-size: .8rem; color: #4c6175; }
+.lesson-panel-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.lesson-panel-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.lesson-pin,.lesson-directory button,[data-retry-lesson] {
+  min-height: 40px;
+  border: 1px solid #ccdeed;
+  color: #173957;
+  background: #ecf4fc;
+  border-radius: 7px;
+  font-size: .85rem;
+}
+.lesson-directory { display: grid; gap: 6px; }
+.lesson-directory button { text-align: start; padding: 6px 10px; }
+.lesson-pinned {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 12px;
+  background: #edf5fc;
+  color: #153a59;
+  border-inline-start: 3px solid #527da4;
+  border-radius: 6px;
+  font-size: .85rem;
+}
+.lesson-pinned[hidden] { display: none; }
+.lesson-pinned p { grid-column: 1 / -1; margin: 0; }
+.lesson-pinned button { min-width: 36px; min-height: 36px; }
+[data-topic-focus] { padding: clamp(12px, 3vw, 20px); border: 1px solid #dce5ee; border-radius: 10px; background: #fff; }
+.paper-question-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.correction-workspace .correction-heading-info {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  border-bottom: 1px solid #dce5ee;
+  padding-bottom: 8px;
+}
+.correction-score-context { display:flex; align-items:baseline; flex-wrap:wrap; gap: 5px 10px; }
+.correction-workspace :is(.correction-editor,.correction-reference) { background: #fff; border-color: #d3e0ec; }
+.correction-workspace .correction-reference-head { background: #eef5fb; color: #163653; border-radius: 7px; }
+.correction-workspace .correction-reference-tabs [aria-selected="true"] { background: #173957; border-color: #173957; color: #fff; }
+.correction-workspace .correction-save-actions { background: #fff; }
+.mistake-row.is-expanded { background: #f1f6fb; }
+.mistake-inline .correction-save-actions { background: #fff; }
+[data-mock-lesson] { max-width: 100%; }
+@media (max-width: 900px) {
+  .lesson-panel { width: min(374px, calc(100vw - 16px)); }
+  .lesson-link,.lesson-pin { min-height: 44px; }
+}
+@media (max-width: 560px) {
+  .lesson-link { font-size: .78rem; }
+  .correction-workspace .correction-heading-info { grid-template-columns: minmax(0,1fr); justify-items: start; gap: 6px; }
+  .correction-workspace .correction-save-actions { padding-inline-end: 49px; }
+  .mistake-nav-filters { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: end; }
+  .mistake-state-filter select { max-width: 108px; text-overflow: ellipsis; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lesson-panel[open] { animation: lesson-slide .18s cubic-bezier(.16,1,.3,1); }
+  @keyframes lesson-slide { from { transform: translateX(-100%); } }
+}
+
+.correction-workspace .correction-editor details > summary { background: #eef5fb; color: #163653; }

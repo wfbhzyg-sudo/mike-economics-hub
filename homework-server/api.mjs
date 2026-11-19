@@ -1,3 +1,4 @@
+import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
@@ -62,7 +63,7 @@ export const publicAssignment = (a) => ({
     id: q.id,
     prompt: q.prompt,
     maxPoints: q.maxPoints, type:q.type||"short", knowledge:q.knowledge||"",
-    options:q.options||[],questionImages:q.questionImages||[],paperLocation:questionLocation(paperOf(a),q.id),
+    options:q.options||[],questionImages:q.questionImages||[],paperLocation:questionLocation(paperOf(a),q.id),lessonReference:questionLessonReference(q,a),
   })),
   createdAt: a.createdAt,
   deletedAt: a.deletedAt || null,
@@ -248,6 +249,8 @@ export async function createHomework({externalAuth} = {}) {
     s.updatedAt = now();
     await db.put("submission", s, c);
   };
+  const containsQuestionSlice = (questions, file) =>
+    ['question','library'].includes(file.purpose) && questions?.some(q=>q.questionImages?.includes(file.id));
   const authorizeFile = async (file,user,availableClasses) => {
     if (file.owner === user.id) return true;
     if(await library.canReadFile(file,user))return true;
@@ -255,13 +258,14 @@ export async function createHomework({externalAuth} = {}) {
     if(file.purpose==='board'&&await library.canReadBoardAttachment(file,user,availableClasses))return true;
     for (const a of await db.list("assignment"))
       if (
-        (paperOf(a).questionFiles || []).includes(file.id) &&
+        ((paperOf(a).questionFiles || []).includes(file.id) || containsQuestionSlice(a.rubric,file)) &&
         (user.role === "teacher"
           ? a.teacherId === user.id
           : a.published && a.classIds.some((x) => user.classIds?.includes(x)))
       )
         return true;
-    for(const s of await db.find('submission',{studentId:user.id}))if(s.paperSnapshot?.questionFiles?.includes(file.id))return true;
+    for(const s of await db.find('submission',{studentId:user.id}))
+      if(s.paperSnapshot?.questionFiles?.includes(file.id) || containsQuestionSlice(s.rubricSnapshot,file))return true;
     if (user.role === "teacher")
       for (const s of await db.list("submission"))
         if (

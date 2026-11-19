@@ -31,7 +31,7 @@ export function mockMistakes(attempts, notes, drafts) {
       return [{
         assignmentId:a.id, questionId:q.id, questionNumber:i+1, assignmentTitle:'自主模考 · '+(a.course==='macro'?'AP 宏观':'AP 微观'),
         source:'mock', libraryQuestionId:q.id, bankVersion:snapshot.get(q.id)?.version,
-        course:a.course, libraryUnit:snapshot.get(q.id)?.unitId || null, type:'choice', prompt:q.prompt,
+        course:a.course, topic:q.topic || snapshot.get(q.id)?.topic, libraryUnit:snapshot.get(q.id)?.unitId || null, type:'choice', prompt:q.prompt,
         knowledge:q.knowledge || q.topic || '', questionImages:q.questionImages || [],
         options:optionLabels(snapshot.get(q.id) || q).map(label => ({label,text:''})),
         originalChoice:q.chosen || '', score:q.score, maxPoints:q.maxPoints, publishedAt:a.submittedAt,

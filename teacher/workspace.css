@@ -1044,7 +1044,7 @@ body[data-section="bank"] #mobile-navigation{padding-right:8px}
  .class-mobile-switch select{min-height:44px;max-width:100%;border:1px solid var(--tw-line);border-radius:6px;background:#fff;font:inherit}
 }
 @media(max-width:700px){
- .class-roster-scroll#roster-table tr{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 8px;margin:0;border:0;border-bottom:1px solid var(--tw-line);border-radius:0;padding:7px 10px}
+ .class-roster-scroll#roster-table tr{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 8px;margin:0;border:0;border-bottom:1px solid var(--tw-line);border-radius:0;padding:7px 12px}
  .class-roster-scroll#roster-table td:first-child{grid-row:1;grid-column:1}
  .class-roster-scroll#roster-table td:nth-child(2){grid-row:2;grid-column:1;color:var(--tw-muted);font-size:11px}
  .class-roster-scroll#roster-table td:nth-child(2):before{display:none}
@@ -1056,3 +1056,5 @@ body[data-section="bank"] #mobile-navigation{padding-right:8px}
  .class-roster-scroll#roster-table td[data-label]::before{display:none}
  .bank-mobile-cart:not([hidden]){padding-inline-end:60px}
 }
+
+@media (min-width: 761px) { .class-roster-scroll :is(th,td):first-child { padding-inline-start: 16px; } }

@@ -1,3 +1,5 @@
+import {lessonFocus} from '../homework/lesson-focus.js';
+import {expandedLessonFocus} from './lesson-focus-data.mjs';
 import {classKey,namedCourse} from '../homework/course-scope.js';
 import {automaticGradeReady,libraryOptions} from '../homework/library-grading.js';
 import {answerSuggestionInput,withAnswerSuggestion} from './library-answer-review.mjs';
@@ -101,6 +103,30 @@ async function handle({req,res,route,method,user,json,availableClasses,available
      .map(({id, title, questionCount, topics=[]}) => ({id, title, questionCount, topics:topics.map(({id,name,title})=>({id,name,title}))}))
      .sort((a, b) => a.id.localeCompare(b.id));
    json(res, {units});
+   return true;
+ }
+ if (route[1] === 'focus' && method === 'GET') {
+   let unitId = query.get('unit') || '';
+   let topicId = query.get('topic') || '';
+   const bankId = query.get('bank');
+   if (bankId && (!unitId || !topicId) && bankId.length <= 200) {
+     const bank = await db.get(bankId);
+     if (bank?.type === 'library-question' && (!unitId || bank.unitId === unitId)) {
+       unitId = bank.unitId;
+       topicId ||= bank.topic || '';
+     }
+   }
+   assert(unitId, '这道题还没有关联章节', 404);
+   const unit = await unitFor(user, unitId);
+   const topics = (unit.topics || []).map(t => ({id:t.id, title:t.title || t.name}));
+   const topic = topics.find(t => t.id === topicId);
+   const key = unitId.split('-')[0] + ':' + topic?.id;
+   const expanded = expandedLessonFocus[key];
+   const original = lessonFocus[key];
+   const focus = expanded && original ? {...original, ...expanded} : null;
+   const hasTextbook = Boolean(topic && unit.resources?.some(resource => resource.kind === 'textbook' &&
+     (!resource.topicId || resource.topicId === topic.id) && (user.role === 'teacher' || resource.audience !== 'teacher')));
+   json(res, {unit:{id:unit.id,title:unit.title}, topics, topic:topic || null, focus, hasTextbook});
    return true;
  }
  if (route[1] === 'unit' && method === 'GET') {
@@ -410,7 +436,7 @@ async function handle({req,res,route,method,user,json,availableClasses,available
  const courseLabel=courseIds.length===1?(courseIds[0]==='macro'?'AP 宏观经济学':'AP 微观经济学'):'AP 经济学';
  const timing=validateTiming(b),students=await availableStudents();
  const a=await db.tx(async c=>{const key='library-publish:'+hash(user.id+b.clientId),prior=await db.get(key,c);if(prior){const saved=await db.get(prior.assignmentId,c);if(saved)return saved;}
- const rubric=chosen.map((q,i)=>{const unit=unitMap.get(q.unitId),manualGradingRequired=!automaticGradeReady(q),maxPoints=manualGradingRequired?Number(pointOverrides[q.id]??q.maxPoints??1):(q.maxPoints||1);return {id:String(i+1),manualGradingRequired,libraryReviewStatus:q.status,type:q.type,prompt:q.type==='short'?(q.searchText||''):'',sliceOnly:true,options:q.type==='choice'?libraryOptions(q).map(label=>({label,text:''})):[],correctOptions:q.type==='choice'&&!manualGradingRequired?[q.answer]:[],choiceMode:'single',answer:manualGradingRequired?'':q.answer||q.criteria,maxPoints,criteria:q.criteria||(q.type==='choice'&&!manualGradingRequired?'与已确认的答案一致得分':''),scoringPoints:q.scoringPoints||[],questionImages:q.questionImages,sourcePages:q.source+' · 原题 '+q.number+' · p.'+(Array.isArray(q.sourcePages)?q.sourcePages:[q.sourcePages||1]).join(', '),knowledge:q.topic?('Topic '+q.topic+' · '+(unit?.topics||[]).find(t=>t.id===q.topic)?.title||''):q.collection==='exam'?q.source:(unit?.title||''),libraryChapter:q.chapterKey||'',libraryQuestionId:q.id,libraryVersion:q.version||1};});
+ const rubric=chosen.map((q,i)=>{const unit=unitMap.get(q.unitId),manualGradingRequired=!automaticGradeReady(q),maxPoints=manualGradingRequired?Number(pointOverrides[q.id]??q.maxPoints??1):(q.maxPoints||1);return {id:String(i+1),manualGradingRequired,libraryReviewStatus:q.status,type:q.type,prompt:q.type==='short'?(q.searchText||''):'',sliceOnly:true,options:q.type==='choice'?libraryOptions(q).map(label=>({label,text:''})):[],correctOptions:q.type==='choice'&&!manualGradingRequired?[q.answer]:[],choiceMode:'single',answer:manualGradingRequired?'':q.answer||q.criteria,maxPoints,criteria:q.criteria||(q.type==='choice'&&!manualGradingRequired?'与已确认的答案一致得分':''),scoringPoints:q.scoringPoints||[],questionImages:q.questionImages,sourcePages:q.source+' · 原题 '+q.number+' · p.'+(Array.isArray(q.sourcePages)?q.sourcePages:[q.sourcePages||1]).join(', '),knowledge:q.topic?('Topic '+q.topic+' · '+(unit?.topics||[]).find(t=>t.id===q.topic)?.title||''):q.collection==='exam'?q.source:(unit?.title||''),lessonUnit:q.unitId,lessonTopic:q.topic||'',libraryChapter:q.chapterKey||'',libraryQuestionId:q.id,libraryVersion:q.version||1};});
  const a={id:id(),type:'assignment',teacherId:user.id,title,course:courseLabel,classIds:[...new Set(b.classIds.map(x=>'bookself-class:'+plainClass(x)))],...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:true,status:'ready',version:1,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:now(),recipients:captureRecipients(b.classIds,students),libraryUnit:unitIds.length===1&&!chosen.some(q=>q.collection==='exam')?primary.id:null,librarySourceUnit:unitIds.length===1?primary.id:'mixed',libraryUnits:unitIds,libraryCollection:chosen.some(q=>q.collection==='exam')?'exam':'unit',libraryCourse:courseIds.length===1?courseIds[0]:'mixed',libraryVersion:unitIds.length===1?primary.version:null};a.publishedPaper=capturePaper(a,rubric,1);
  await db.put('assignment',a,c);await db.put('answer-version',{id:a.id+':v1',assignmentId:a.id,version:1,rubric,paper:a.publishedPaper,answerFiles:[],confirmedBy:user.id,confirmedAt:now()},c);await db.put('review-links',{id:'review-links:'+hash(a.id),assignmentId:a.id,defaults:[],questions:rubric.filter(q=>q.libraryChapter).map(q=>({id:q.id,fingerprint:questionFingerprint(q),chapters:[q.libraryChapter]})),revision:1},c);await db.put('library-publication',{id:key,assignmentId:a.id,createdAt:now()},c);await db.audit(user.id,'library_publish',a.id,c);return a;});json(res,{assignment:{id:a.id,title:a.title}},201);return true;}
  if(route[1]==='notes'){
