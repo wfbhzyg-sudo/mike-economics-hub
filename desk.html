@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#372a23">
+<title>Mike 的经济一页通</title>
+<link rel="icon" href="/assets/mike-hub-mark.svg">
+<link rel="stylesheet" href="/assets/notebook/desk-v1.css">
+<script src="/apps.js" defer></script>
+<script src="/assets/notebook/bootstrap-v1.js" type="module"></script>
+<script src="/portal-nav.js?v=20261119-notebook" type="module"></script>
+</head><body>
+<main id="desk" aria-label="Mike 的经济一页通书桌">
+ <canvas id="scene" aria-hidden="true" hidden></canvas>
+ <section id="fallback"><h1>Mike 的经济一页通</h1><ul id="flat-list">
+ <li><a data-entry="homework-submit" href="/homework/">电子作业工作台 <span aria-hidden="true">↗</span></a></li>
+ <li><a data-entry="bookself" href="/enter/bookself">Bookself <span aria-hidden="true">↗</span></a></li>
+ <li><a data-entry="econquest" href="/enter/econquest">EconQuest <span aria-hidden="true">↗</span></a></li>
+ <li><a data-entry="resources" href="https://www.wolai.com/onHKAyrYS27ZWDVfHAUna1">资料库 <span aria-hidden="true">↗</span></a></li>
+ <li><a data-entry="nebs" href="https://moni.10jqka.com.cn/mnweb/match-platform/outShare.html?competition_id=2060290&amp;competition_categories=156_001&amp;backwash_type=hexin&amp;client_userid=WUcEY&amp;back_source=wxhy&amp;share_hxapp=isc&amp;fontzoom=no">NEBS 模拟股票大赛 <span aria-hidden="true">↗</span></a></li>
+ <li><a data-entry="micro-materials" href="https://www.wolai.com/8bZk12F5qDGB5bw9EzJS26">AP 微观学习材料 <span aria-hidden="true">↗</span></a></li>
+ <li><a data-entry="macro-materials" href="https://www.wolai.com/2ePCpWjmYeWXzuCp3xS1Mn">AP 宏观学习材料 <span aria-hidden="true">↗</span></a></li>
+ </ul><div id="fallback-actions"><a href="/?view=list">经典视图</a><a href="/?view=desk" id="enable-desk" hidden>尝试打开 3D 视图</a></div></section>
+ <header id="masthead" hidden><div class="identity">Mike · 经济一页通</div><nav aria-label="书桌工具"><a class="control thin-link" href="/?view=list">经典视图</a><button class="control" id="lamp" type="button" aria-pressed="false">台灯</button><button class="control" id="pencil" type="button">推一下笔</button><button class="control" id="close" type="button" hidden>合上本子</button></nav></header>
+ <section id="desk-cover" aria-label="笔记本封面" hidden><button id="open-cover" class="primary" type="button">打开笔记本</button></section>
+ <div id="hotspots"><button class="hot" type="button" id="lampSpot" hidden aria-label="拨动台灯开关"></button><button class="hot" type="button" id="penSpot" hidden aria-label="拖动书桌上的铅笔"></button></div>
+ <nav id="rail" aria-label="笔记本翻页" hidden>
+  <button class="control" id="prev" type="button" aria-label="上一页"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12.5 4.5-5.5 5.5 5.5 5.5" stroke="currentColor" stroke-width="1.7"/></svg></button>
+  <div class="position"><span id="sectionName"></span><span id="pageNumber"></span></div>
+  <button class="control" id="next" type="button" aria-label="下一页"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4.5 5.5 5.5L7 15.5" stroke="currentColor" stroke-width="1.7"/></svg></button>
+ </nav>
+ <section id="loading" hidden><div><div id="sketch" aria-hidden="true"></div><p>正在打开</p><h1 id="destination"></h1><div class="more"><a id="continue-link">直接打开</a><button id="return" type="button" class="primary">回到这一页</button></div></div></section>
+ <div id="status" class="sr" role="status"></div>
+</main>
+<script src="/companion.js?v=20261119-send" type="module"></script></body></html>

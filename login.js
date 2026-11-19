@@ -1,9 +1,12 @@
 const $=s=>document.querySelector(s),form=$('#login-form'),params=new URLSearchParams(location.search);
 let accountRole=null,mode='login',csrf='',recovery='',signed=false;
 const messages={'Username or password is incorrect.':'用户名或密码不正确。','Username or recovery code is incorrect.':'用户名或恢复码不正确。','Too many sign-in attempts. Try again in 15 minutes.':'尝试次数较多，请 15 分钟后再试。','Use a password with 12–128 characters.':'密码需为 12–128 位。','This username is unavailable. Please choose another.':'这个用户名已被使用，请换一个。'};
-function next(){const a=params.get('authorize');if(a?.startsWith('/sso/authorize?')&&!/[\\\r\n]/.test(a)){location.replace(a);return;}const n=params.get('next');location.replace(n?.startsWith('/')&&!n.startsWith('//')&&!/[\\\r\n]/.test(n)&&!n.startsWith('/api/')&&!n.startsWith('/sso/')?n:'/');}
+function next(animate=false){const a=params.get('authorize');if(a?.startsWith('/sso/authorize?')&&!/[\\\r\n]/.test(a)){location.replace(a);return;}const n=params.get('next');const target=n?.startsWith('/')&&!n.startsWith('//')&&!/[\\\r\n]/.test(n)&&!n.startsWith('/api/')&&!n.startsWith('/sso/')?n:'/';
+ if(animate&&target==='/'&&document.body.classList.contains('notebook-login'))try{sessionStorage.setItem('mike:notebook:opening',String(Date.now()));}catch{}
+ location.replace(target);
+}
 function setMode(value){
- mode=value;$('#form-error').textContent='';form.hidden=false;$('#recovery-result').hidden=true;
+ mode=value;document.body.dataset.accountMode=value;$('#form-error').textContent='';form.hidden=false;$('#recovery-result').hidden=true;
  $('#form-title').textContent={login:'登录一页通',register:'加入你的班级',recover:'找回密码',password:'修改密码'}[mode];
  $('#form-description').textContent={login:'使用现有 Mike 通用账号',register:'注册后，三个学习平台共用此账号',recover:'使用你的 Mike 通用账号恢复码',password:'修改后，所有设备需要重新登录'}[mode];
  $('#registration-fields').hidden=mode!=='register';$('#recovery-field').hidden=mode!=='recover';const old=$('#current-field');if(mode==='password'&&!old)$('#current-password-template').after($('#current-password-template').content.cloneNode(true));else if(mode!=='password')old?.remove();$('#username-field').hidden=mode==='password';$('#login-options').hidden=mode!=='login';$('#consent-field').hidden=mode!=='register';$('#register').hidden=mode!=='login';$('#back-login').hidden=mode==='login';
@@ -28,7 +31,7 @@ form.addEventListener('submit',async e=>{
     try{const session=await fetch('/api/portal/session',{cache:'no-store'});if(session.ok){const fresh=await session.json();if(fresh.csrf)csrf=fresh.csrf;}}catch{}
     setMode('password');$('#form-description').textContent=accountRole==='teacher'?'首次登录，请设置自己的密码。':'首次登录，请先把密码改成至少 12 位。';$('#current-field').hidden=false;$('#username-field').hidden=true;$('#login-options').hidden=true;$('#register').hidden=true;$('#back-login').hidden=true;$('#password').value='';$('#password').focus();return;
   }
-  next();
+  next(mode==='login');
  }catch(e){$('#form-error').textContent=e.name==='TimeoutError'?'连接较慢，请稍后重试。':e.message==='Failed to fetch'?'网络暂时不可用，请检查连接后重试。':e.message;}
  finally{button.disabled=false;button.textContent=mode==='password'?'更新密码':label;}
 });
