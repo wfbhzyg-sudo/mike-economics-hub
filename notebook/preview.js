@@ -26,7 +26,7 @@ let motion=null,hovered=null,activeEntry=null,activeCorner=1;
 let cornerHover=0,cornerAmount=0,sideCurl=0,closeHover=false,coverLift=0,firstDraw=true;
 let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penDrag=null,penHeld=false,penMoved=false;
 let mobileGesture=null,blockedUntil=0,previousFocus=null;
-let paging=false,pendingSwipe=0,turnDirection=0;
+let paging=false,pendingSwipe=0,turnDirection=0,keyboardTurn=false;
 let hiddenAt=document.hidden?performance.now():null;
 const buttons=new Map();
 let taskLinks=[],paintedTasks;
@@ -70,7 +70,7 @@ function sync(){
   const returning=journal()&&(!journalOrigin?.cover||phase==='open');
   tab.toggleAttribute('data-return',returning);
   tab.disabled=!open&&phase!=='cover';
-  tab.setAttribute('aria-label',returning?'返回原页':'最新变化'+(tab.hasAttribute('data-unread')?'，有未读更新':''));
+  tab.setAttribute('aria-label',returning?'返回原页':tab.dataset.loadState==='error'?'更新日志未载入，重试':'最新变化'+(tab.hasAttribute('data-unread')?'，有未读更新':''));
 
   prev.hidden=!open||!renderer;
   const previous=backwardAvailable()?'上一页':journal()?'返回原页':'合上笔记本';
@@ -129,7 +129,7 @@ function go(direction,keyboard=false){
   clearHover();dropPen();closeHover=false;
   const inherited=Math.max(0,cornerAmount*direction);
   cornerHover=cornerAmount=0;
-  paging=true;turnDirection=direction;
+  paging=true;turnDirection=direction;keyboardTurn=keyboard;
   if(narrow()&&((direction>0&&side<finalSide(spreadIndex))||(direction<0&&side>firstSide(spreadIndex)))){
     const start=viewSide,newSide=side+direction;
     setPhase('shifting');
@@ -150,7 +150,7 @@ async function turnTo(nextSpread,nextSide,direction,keyboard,inherited=0,after){
   if(!scene.spreads[nextSpread]){
     setPhase('binding');
     try{[scene.spreads[nextSpread]]=await scene.addSpreads([chapters[nextSpread]],nextSpread);}
-    catch{paging=false;pendingSwipe=0;setPhase('open','日志未能打开，请重试。');return;}
+    catch{paging=false;pendingSwipe=0;setPhase('open','日志未能打开，请重试。');if(!journal())document.dispatchEvent(new Event('notebook:journal-error'));return;}
     if(!renderer)return;
   }
   const startSide=viewSide;
@@ -198,7 +198,7 @@ document.addEventListener('notebook:journal',async({detail:{pages,onRead}})=>{
   if(!journalOrigin.cover){turnTo(catalogCount,0,1,false,0,shown);return;}
   setPhase('binding');
   try{[scene.spreads[catalogCount]]=await scene.addSpreads([chapters[catalogCount]],catalogCount);}
-  catch{setPhase('cover','日志未能打开，请重试。');return;}
+  catch{setPhase('cover','日志未能打开，请重试。');document.dispatchEvent(new Event('notebook:journal-error'));return;}
   if(!renderer)return;
   spreadIndex=catalogCount;side=viewSide=0;setPhase('cover');coverMotion(true,shown);
 });
@@ -218,13 +218,14 @@ function rememberPage(leaving=false){
   }catch{}
 }
 function completePage(direction,keyboard){
+  keyboard=keyboard||keyboardTurn;keyboardTurn=false;
   const queuedDirection=pendingSwipe;
   pendingSwipe=0;paging=false;
   side=fitSide(spreadIndex,side);viewSide=side;
   setPhase('open');
   $('status').textContent=$('sectionName').textContent+'，第 '+$('pageNumber').textContent+' 页。';
   rememberPage();
-  if(queuedDirection){go(queuedDirection);return;}
+  if(queuedDirection){go(queuedDirection,keyboard);return;}
   if(keyboard){
     const control=direction>0?next:prev;
     if(!control.hidden)control.focus({preventScroll:true});else focusEntry();
@@ -350,21 +351,21 @@ desk.addEventListener('touchend',e=>{
   const threshold=T.MathUtils.clamp(canvas.clientWidth*.145,42,64);
   if(Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.45){
     blockedUntil=performance.now()+470;
-    const direction=dx<0?1:-1;
-    if(paging&&motion&&['page','side'].includes(motion.kind)){
-      const rate=direction===turnDirection?1:-1;
-      pendingSwipe=rate===1&&motion.rate===1?direction:0;
-      if(rate!==motion.rate){
-        const now=performance.now();
-        motion.origin=motionProgress(motion,now);motion.started=now;motion.rate=rate;
-        wake();
-      }
-    }
-    else if(paging)pendingSwipe=direction;
-    else go(direction);
+    requestTurn(dx<0?1:-1);
   }
 },{passive:false});
 desk.addEventListener('touchcancel',()=>{mobileGesture=null;cornerHover=0;closeHover=false;wake();blockedUntil=performance.now()+470;},{passive:true});
+// Keep one pending turn and reverse an active bend from its current position.
+function requestTurn(direction,keyboard=false){
+  if(!paging){go(direction,keyboard);return;}
+  keyboardTurn=keyboard;
+  if(!motion||!['page','side'].includes(motion.kind)){pendingSwipe=direction;return;}
+  const rate=direction===turnDirection?1:-1;
+  pendingSwipe=rate===1&&motion.rate===1?direction:0;
+  if(rate===motion.rate)return;
+  const now=performance.now();
+  motion.origin=motionProgress(motion,now);motion.started=now;motion.rate=rate;wake();
+}
 document.addEventListener('keydown',e=>{
   if(!renderer||locked||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select, [contenteditable], .portal-account')||e.target.id==='mike-companion')return;
   if(e.target===pen&&penHeld&&e.key.startsWith('Arrow')){
@@ -377,8 +378,8 @@ document.addEventListener('keydown',e=>{
     if(phase==='loading')returnToPage();
     else if(phase==='open'){if(journal())leaveJournal();else coverMotion(false);}
   }
-  if(renderer&&phase==='open'&&['ArrowLeft','ArrowRight'].includes(e.key)){
-    e.preventDefault();go(e.key==='ArrowRight'?1:-1,true);
+  if((phase==='open'||paging)&&['ArrowLeft','ArrowRight'].includes(e.key)){
+    e.preventDefault();requestTurn(e.key==='ArrowRight'?1:-1,true);
   }
 });
 
@@ -641,12 +642,12 @@ function deviceCamera(){
     const limitX=camera.position.x+camera.right-111*unit-scene.bookmark.width/2;
     ribbon.position.set(mobile?Math.min(desiredX,limitX):desiredX,H/2+mix(.21,.15,openness),-.052);
     const returning=tab.hasAttribute('data-return'),unread=!returning&&tab.hasAttribute('data-unread');
-    const label=returning?'返回原页':'最新变化',content=label+unread;
+    const label=returning?'返回原页':tab.dataset.loadState==='error'?'重试日志':'最新变化',content=label+unread;
     if(content!==bookmarkContent){paint(label,unread);bookmarkContent=content;}
   }
   scene.scene.updateMatrixWorld(true);
 }
-new MutationObserver(wake).observe(tab,{attributes:true,attributeFilter:['data-unread']});
+new MutationObserver(wake).observe(tab,{attributes:true,attributeFilter:['data-unread','data-load-state']});
 
 let viewportWidth=1,viewportHeight=1;
 function xy(v){
@@ -839,7 +840,7 @@ function draw(now){
     if(t===finish){
       motion=null;
       if(finish===1)active.end();
-      else{sideCurl=cornerAmount=0;viewSide=side;pendingSwipe=0;trimJournal();completePage(turnDirection,false);}
+      else{sideCurl=cornerAmount=0;viewSide=side;pendingSwipe=0;trimJournal();completePage(-turnDirection,keyboardTurn);}
     }
   }
   const props=objectMotion(dt);

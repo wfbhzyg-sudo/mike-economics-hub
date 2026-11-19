@@ -1,4 +1,5 @@
 const API='/api/homework/';
+let syncOpenLayer;
 const host=document.createElement('div');
 host.id='mike-companion';
 host.setAttribute('popover','manual');
@@ -18,6 +19,7 @@ function syncLayer(){
   const parent=focused || (modals.includes(host.parentElement)?host.parentElement:modals.at(-1)) || document.fullscreenElement || document.body;
   if(host.parentElement!==parent)parent.append(host);
   if(host.showPopover&&!host.matches(':popover-open'))host.showPopover();
+  syncOpenLayer?.();
 }
 syncLayer();
 new MutationObserver(syncLayer).observe(document.body,{attributes:true,attributeFilter:['open'],subtree:true,childList:true});
@@ -26,7 +28,7 @@ const syncPaperSurface=()=>host.toggleAttribute('data-paper-active',document.bod
 new MutationObserver(syncPaperSurface).observe(document.body,{attributes:true,attributeFilter:['data-mcq-active']});
 syncPaperSurface();
 
-const $=s=>ui.querySelector(s),launcher=$('.mike-launcher'),panel=$('.mike-chat'),log=$('.mike-chat-messages'),form=$('form'),input=$('textarea'),status=$('.mike-chat-status');let csrf='',user=null,controller=null,requestId=null,captured='',inertNodes=[],mode='learning',lastFocus=null,motion=null;
+const $=s=>ui.querySelector(s),launcher=$('.mike-launcher'),panel=$('.mike-chat'),log=$('.mike-chat-messages'),form=$('form'),input=$('textarea'),status=$('.mike-chat-status');let csrf='',user=null,controller=null,requestId=null,captured='',mode='learning',lastFocus=null,motion=null;
 let profile=null,section='',returnFocus=null,pendingUnlock=null;
 const drawer=document.createElement('section');
 drawer.className='mike-drawer';drawer.hidden=true;drawer.setAttribute('aria-label','伙伴面板');
@@ -274,12 +276,88 @@ function showPastMessage(m){
   else{const note=document.createElement('small');note.textContent='已随本次提问发送截图';el.append(document.createElement('br'),note);}
 }
 function message(role,content){const el=document.createElement('div');el.className='mike-message '+role;el.textContent=content;log.append(el);log.scrollTop=log.scrollHeight;return el;}
-async function api(path,options={}){const r=await fetch(API+path,{...options,headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,...options.headers}});const d=await r.json();if(!r.ok)throw Error(d.error||'暂时无法连接');return d;}
+async function api(path,options={}){
+  const response=await fetch(API+path,{...options,headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,...options.headers}});
+  if(!response.ok){
+    const detail=await response.json().catch(()=>null);
+    throw Object.assign(new Error(detail?.error||'暂时无法连接'),{status:response.status});
+  }
+  return response.json();
+}
 function setMode(value){mode=value;host.dataset.mode=value;$('.mike-mode').hidden=value!=='exam';$('.mike-mode').textContent='测验中 · 只提供操作帮助';$('#mike-context').disabled=value==='exam';$('.mike-attachments').hidden=value==='exam';$('.mike-clip').hidden=value==='exam';if(value==='exam'){captureVersion++;if(!controller)$('[type=submit]').disabled=false;setScreenshot('');captured='';$('#mike-context').checked=false;$('#mike-context-preview').hidden=true;}}
 function animate(open){motion?.cancel();if(matchMedia('(prefers-reduced-motion:reduce)').matches||$('#mike-motion').checked)return Promise.resolve();motion=panel.animate(open?[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}]:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(5px)'}],{duration:open?180:130,easing:'cubic-bezier(.2,.8,.2,1)'});return motion.finished.catch(()=>{})}
-function restoreBackground(){for(const [node,was]of inertNodes)node.inert=was;inertNodes=[];}
-async function open(showNews=false){const attachButtons=$('.mike-attachments').querySelectorAll('button');for(const b of attachButtons)b.disabled=true;status.textContent='正在连接伙伴…';lastFocus=ui.activeElement||document.activeElement;host.dataset.chatOpen="";panel.hidden=false;launcher.setAttribute('aria-expanded','true');launcher.hidden=true;const mobile=matchMedia('(max-width:600px)').matches;if(mobile){panel.setAttribute('aria-modal','true');inertNodes=[...host.parentElement.children].filter(n=>n!==host&&n.tagName!=='SCRIPT').map(n=>[n,n.inert]);for(const[n]of inertNodes)n.inert=true;}else panel.removeAttribute('aria-modal');animate(true);input.focus();try{const me=await api('me');if(user&&user.id!==me.user.id){profile=null;savedOutfit=undefined;renderOutfit();sentPictures.clear();setScreenshot('');log.replaceChildren();input.value='';captured='';}csrf=me.csrf;user=me.user;void refreshOutfit();const d=await api(modePath());applyProfile(d.profile);setMode(d.mode);for(const b of attachButtons)b.disabled=false;if(!controller){log.replaceChildren();for(const m of d.messages)showPastMessage(m);if(!d.messages.length)message('assistant',d.mode==='exam'?'测验中，我可以帮你找到题号、缩放和提交入口。':'你好，我是 Mike 的 AI 伙伴。可以问我经济学概念，或平台怎么使用。');}status.textContent='';if(showNews&&profile)await showDrawer('news',updates);}catch{user=null;setScreenshot('');log.replaceChildren();message('assistant','请先使用 Bookself 账号登录，再开始对话。');status.textContent='登录后可开始对话';}}
-async function close(){for(const d of panel.querySelectorAll('details[open]'))d.open=false;leaveDrawer();captureVersion++;if(!controller)$('[type=submit]').disabled=false;await animate(false);panel.hidden=true;delete host.dataset.chatOpen;restoreBackground();launcher.hidden=false;resize();launcher.setAttribute('aria-expanded','false');(lastFocus?.isConnected?lastFocus:launcher).focus();}
+const backgroundState=new Map();
+function restoreBackground(){
+  for(const [node,wasInert] of backgroundState)node.inert=wasInert;
+  backgroundState.clear();
+}
+function syncModal(){
+  const mobile=!panel.hidden&&matchMedia('(max-width:600px)').matches;
+  if(!mobile){restoreBackground();panel.removeAttribute('aria-modal');return;}
+  const entering=!panel.hasAttribute('aria-modal');
+  panel.setAttribute('aria-modal','true');
+  const parent=host.parentElement;
+  for(const [node,wasInert] of backgroundState){
+    if(node.parentElement!==parent||node===host){node.inert=wasInert;backgroundState.delete(node);}
+  }
+  for(const node of parent.children){
+    if(node===host||node.tagName==='SCRIPT'||backgroundState.has(node))continue;
+    backgroundState.set(node,node.inert);node.inert=true;
+  }
+  if(entering&&!panel.contains(ui.activeElement))input.focus({preventScroll:true});
+}
+syncOpenLayer=syncModal;
+let connectionId=0,connection='idle';
+const connectionAction=document.createElement('button');
+connectionAction.type='button';connectionAction.className='mike-connect-action';
+function clearIdentity(){
+  profile=null;savedOutfit=undefined;renderOutfit();sentPictures.clear();captureVersion++;
+  setScreenshot('');log.replaceChildren();input.value='';captured='';
+  $('#mike-context').checked=false;$('#mike-context-preview').hidden=true;
+}
+async function connect(showNews=false){
+  const id=++connectionId,attachButtons=$('.mike-attachments').querySelectorAll('button');
+  connection='loading';$('[type=submit]').disabled=true;for(const b of attachButtons)b.disabled=true;
+  status.textContent='正在连接伙伴…';
+  try{
+    const me=await api('me');if(id!==connectionId)return;
+    if(!me.user)throw Object.assign(new Error(),{status:401});
+    if(user&&user.id!==me.user.id)clearIdentity();
+    csrf=me.csrf;user=me.user;void refreshOutfit();
+    const d=await api(modePath());if(id!==connectionId)return;
+    applyProfile(d.profile);setMode(d.mode);
+    for(const b of attachButtons)b.disabled=false;
+    if(!controller){
+      log.replaceChildren();for(const m of d.messages)showPastMessage(m);
+      if(!d.messages.length)message('assistant',d.mode==='exam'?'测验中，我可以帮你找到题号、缩放和提交入口。':'你好，我是 Mike 的 AI 伙伴。可以问我经济学概念，或平台怎么使用。');
+    }
+    connection='ready';$('[type=submit]').disabled=Boolean(controller);status.textContent='';
+    if(showNews&&profile)await showDrawer('news',updates);
+  }catch(error){
+    if(id!==connectionId)return;
+    if(error.status===401){
+      if(user)clearIdentity();user=null;csrf='';connection='guest';
+      status.textContent='请登录 Bookself 账号后提问。';connectionAction.textContent='登录';
+      connectionAction.onclick=async()=>{
+        if(document.querySelector('#login-form')){await close();document.querySelector('#username')?.focus();return;}
+        location.assign('/?next='+encodeURIComponent(location.pathname+location.search+location.hash));
+      };
+    }else{
+      connection='retry';
+      status.textContent=input.value||screenshot?'伙伴暂时连不上，草稿已保留。':'伙伴暂时连不上。';
+      connectionAction.textContent='重试';
+      connectionAction.onclick=()=>{input.focus({preventScroll:true});void connect(showNews);};
+    }
+    status.append(connectionAction);
+  }
+}
+function open(showNews=false){
+  if(!panel.hidden)return;
+  lastFocus=ui.activeElement||document.activeElement;host.dataset.chatOpen='';
+  panel.hidden=false;launcher.setAttribute('aria-expanded','true');launcher.hidden=true;
+  syncModal();animate(true);input.focus({preventScroll:true});void connect(showNews);
+}
+async function close(){++connectionId;for(const d of panel.querySelectorAll('details[open]'))d.open=false;leaveDrawer();captureVersion++;if(!controller)$('[type=submit]').disabled=false;await animate(false);panel.hidden=true;delete host.dataset.chatOpen;restoreBackground();launcher.hidden=false;resize();launcher.setAttribute('aria-expanded','false');(lastFocus?.isConnected?lastFocus:launcher).focus();}
 let drag=null,moved=false,newsPress=false;
 launcher.title='点击提问 · 拖动可调整位置';
 launcher.addEventListener('pointerdown',e=>{if(e.button!==0)return;newsPress=e.target===launcherText;const b=launcher.getBoundingClientRect();drag={id:e.pointerId,x:e.clientX,y:e.clientY,left:b.left,top:b.top};moved=false;launcher.setPointerCapture(e.pointerId)});
@@ -289,7 +367,7 @@ launcher.addEventListener('click',e=>{if(moved){e.preventDefault();moved=false;r
 $('[data-action=new]').onclick=async()=>{if(!user||controller)return;captureVersion++;setScreenshot('');try{await api('companion',{method:'POST',body:JSON.stringify({action:'new'})});log.replaceChildren();message('assistant','已开始新对话。之前的对话可以在“历史”中查看。')}catch(e){status.textContent=e.message}};
 $('[data-action=history]').onclick=async()=>{if(!user||controller)return;try{const d=await api(modePath());const box=document.createElement('div');box.className='mike-history';box.innerHTML='<strong>最近 30 天的对话</strong><button data-current>返回当前对话</button>';for(const s of d.sessions){const b=document.createElement('button');b.textContent=s.title;b.onclick=async()=>{try{const old=await api(modePath('companion/'+encodeURIComponent(s.id)));setMode(old.mode);log.replaceChildren();for(const m of old.messages)showPastMessage(m);message('assistant','这是历史对话。发送新问题时会继续当前会话。')}catch(e){status.textContent=e.message}};box.append(b)}if(!d.sessions.length){const p=document.createElement('p');p.textContent='还没有历史对话';box.append(p)}box.querySelector('[data-current]').onclick=async()=>{log.replaceChildren();for(const m of d.messages)showPastMessage(m)};log.replaceChildren(box);}catch(e){status.textContent=e.message}};
 $('[data-action=stop]').onclick=()=>controller?.abort();$('#mike-context').onchange=e=>{requestId=null;captured=e.target.checked?(document.querySelector('main')?.innerText||'').slice(0,8000):'';$('#mike-context-preview').hidden=!e.target.checked;$('#mike-context-preview pre').textContent=captured;};
-form.onsubmit=async e=>{e.preventDefault();if(controller)return;const content=input.value.trim()||(screenshot?'请结合这张截图，引导我理解当前内容。':'');if(!content)return;if(!user){status.textContent='请先登录后提问';return;}requestId||=crypto.randomUUID();controller=new AbortController();const send=$('[type=submit]'),stop=$('[data-action=stop]');send.disabled=true;stop.hidden=false;captureVersion++;$('.mike-attachments').inert=true;preview.inert=true;host.dataset.state='responding';status.textContent='Mike 正在回答…';const question=message('user',content),answer=message('assistant','');answer.setAttribute('aria-live','off');let finished=false;
+form.onsubmit=async e=>{e.preventDefault();if(controller||connection!=='ready')return;const content=input.value.trim()||(screenshot?'请结合这张截图，引导我理解当前内容。':'');if(!content)return;if(!user){status.textContent='请先登录后提问';return;}requestId||=crypto.randomUUID();controller=new AbortController();const send=$('[type=submit]'),stop=$('[data-action=stop]');send.disabled=true;stop.hidden=false;captureVersion++;$('.mike-attachments').inert=true;preview.inert=true;host.dataset.state='responding';status.textContent='Mike 正在回答…';const question=message('user',content),answer=message('assistant','');answer.setAttribute('aria-live','off');let finished=false;
  try{const r=await fetch(API+'companion',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream','X-CSRF-Token':csrf},body:JSON.stringify({message:content,requestId,assessment:assessment(),context:captured,...(screenshot?{screenshot}:{})}),signal:controller.signal});if(!r.ok){const d=await r.json();throw Error(d.error)}
  const complete=d=>{if(d.screenshotUsed && screenshot){sentPictures.set(requestId,screenshot);if(sentPictures.size>5)sentPictures.delete(sentPictures.keys().next().value);const img=document.createElement('img');img.className='mike-sent-shot';img.alt='本次提问的截图';img.src=screenshot;question.append(img);}setScreenshot('');answer.textContent=d.reply;setMode(d.mode);finished=true;input.value='';requestId=null;status.textContent='回答完成';applyProfile(d.profile,true);if(d.contextUsed){const source=document.createElement('small');source.className='mike-source';source.textContent='参考：你本次引用的页面文字';answer.after(source)}};
  if(!r.headers.get('content-type')?.includes('event-stream'))complete(await r.json());else{const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='';for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let end;while((end=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,end);buffer=buffer.slice(end+2);const event=block.split('\n').find(x=>x.startsWith('event:'))?.slice(6).trim(),line=block.split('\n').find(x=>x.startsWith('data:'));if(!line)continue;const d=JSON.parse(line.slice(5));if(event==='delta'){answer.textContent+=d.text;log.scrollTop=log.scrollHeight}else if(event==='status')status.textContent=d.message;else if(event==='done')complete(d);else if(event==='error'){if(d.reset)answer.textContent=d.message;throw Error(d.message)}}}if(!finished)throw Error('连接中断，问题已保留，可重新发送');}
@@ -319,7 +397,7 @@ function resize(){
   }
   host.style.setProperty('--mike-height',(window.visualViewport?.height||innerHeight)+'px');
   host.style.setProperty('--mike-top',(window.visualViewport?.offsetTop||0)+'px');
-  if(!matchMedia('(max-width:600px)').matches){restoreBackground();panel.removeAttribute('aria-modal')}
+  syncModal();
 }
 function syncPreferences(){
  if(document.querySelector('#login-form'))return;

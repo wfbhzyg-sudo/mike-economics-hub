@@ -12,7 +12,7 @@ function installNews(){
     profile=next;
     for(const b of [tab,flatNews]){
       b.toggleAttribute('data-unread',next.unread);
-      if(b!==tab || !tab.hasAttribute('data-return'))b.setAttribute('aria-label',next.unread?'最新变化，有未读更新':'最新变化');
+      if(!b.dataset.loadState&&(b!==tab || !tab.hasAttribute('data-return')))b.setAttribute('aria-label',next.unread?'最新变化，有未读更新':'最新变化');
     }
   }
   document.addEventListener('mike:release-profile',e=>{if(e.detail.csrf)csrf=e.detail.csrf;update(e.detail.profile);});
@@ -55,21 +55,33 @@ function installNews(){
     close.onclick=()=>dialog.close();prev.onclick=()=>{i--;draw();};next.onclick=()=>{i++;draw();};
     dialog.onclose=()=>{dialog.remove();flatNews.focus();};document.body.append(dialog);draw();dialog.showModal();onRead();
   }
+  function journalState(state){
+    const failed=state==='error';
+    for(const b of [tab,flatNews]){
+      if(state)b.dataset.loadState=state;else delete b.dataset.loadState;
+      b.setAttribute('aria-busy',String(state==='loading'));
+      const label=failed?'更新日志未载入，重试':b.hasAttribute('data-return')?'返回原页':b.hasAttribute('data-unread')?'最新变化，有未读更新':'最新变化';
+      b.setAttribute('aria-label',label);
+      (b.querySelector('.sr')||b).textContent=failed?'重试更新日志':'最新变化';
+    }
+    if(failed)document.getElementById('status').textContent='更新日志未载入，请点书签重试。';
+  }
+  document.addEventListener('notebook:journal-error',()=>{journalState('error');tab.focus({preventScroll:true});});
   async function open(e){
     const trigger=e.currentTarget;
     if(tab.hasAttribute('data-return') && trigger===tab){
       document.dispatchEvent(new Event('notebook:return'));return;
     }
-    if(requesting)return;requesting=true;
+    if(requesting)return;requesting=true;journalState('loading');
     try{
       const data=await getProfile(),pages=journalPages(data.editions);
       if(!pages.length)throw Error();
+      journalState('');
       const onRead=()=>void markRead(data.editions.map(v=>v.id));
       if(trigger===flatNews || document.body.dataset.ready==='2d')flatReader(pages,onRead);
       else document.dispatchEvent(new CustomEvent('notebook:journal',{detail:{pages,onRead}}));
     }catch{
-      const b=e.target.closest('button');(b?.querySelector('span')||b).textContent='重试更新日志';
-      document.getElementById('status').textContent='更新日志未载入，请再试一次。';
+      journalState('error');trigger.focus({preventScroll:true});
     }finally{requesting=false;}
   }
   tab.onclick=open;flatNews.onclick=open;
@@ -188,7 +200,7 @@ if(!entries.length||(saveData&&!explicit)){
   }catch{}
   // Keep a usable destination during a stuck download without committing to it during a normal load.
   const timeout=setTimeout(flat,8500);
-  import('/assets/notebook/scene-v1.js?v=deskindex1').then(book=>{
+  import('/assets/notebook/scene-v1.js?v=deskaccess2').then(book=>{
     if(document.body.dataset.ready!=='2d')return book.start(entries,play,()=>document.body.dataset.ready!=='2d');
   }).catch(flat).finally(()=>clearTimeout(timeout));
 }
