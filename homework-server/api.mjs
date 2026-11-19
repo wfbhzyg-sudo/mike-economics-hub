@@ -3,7 +3,7 @@ import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
-import {assignmentRecords} from '../homework/learning-model.js';
+import {assignmentRecords,usesTotalOnlyEditor} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
 import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
@@ -1345,7 +1345,7 @@ export async function createHomework({externalAuth} = {}) {
             const result = await db.tx(async (c) => {
               const current = await requireSubmission(s.id, user, c);
               const g = current.publishedGrade;
-              assert(g && (g.scoreOnly || a.offline || a.format === "score"), "这份作业不是线下成绩", 400);
+              assert(g && usesTotalOnlyEditor(a,current), "这份作业不是线下成绩", 400);
               assert(Number(b.revision) === Number(g.revision || 1), "成绩已在别处更新，请刷新后再修改", 409);
               const max = Number(g.maxPoints || a.maxPoints || 0);
               assert(Number.isFinite(max) && max > 0, "这份成绩没有有效满分", 400);

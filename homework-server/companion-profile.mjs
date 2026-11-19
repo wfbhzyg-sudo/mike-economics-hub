@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-review-paper',date:'2026-11-19',title:'逐题复核线上作业',
+  items:[{audience:'teacher',art:'book',title:'从总分打开原作答',text:'从班级提交名单打开已出分的线上作业，即可查看原题、逐题分数与作答。线下录入的成绩继续使用总分编辑。'}]
+},{
   id:'2026-11-19-desk-index',date:'2026-11-19',title:'桌边目录与课堂回顾',
   items:[{audience:'all',art:'news',title:'桌边的纸签',text:'点右上角「目录」查看账户和经典视图。在手机上翻页时，反向滑动可以把正在翻动的书页拉回来。'},
     {audience:'teacher',art:'book',title:'核对后发布',text:'确认窗直接显示作业名称。逐项补齐必填内容时，错误计数同步减少。'},

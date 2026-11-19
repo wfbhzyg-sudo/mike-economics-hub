@@ -52,3 +52,11 @@ export function assignmentState(a, submissions, time=Date.now()) {
   if(closed)return {...base,key:'closed',label:'已截止'};
   return {...base,key:'todo',label:draft?'草稿待提交':a.dueAt&&Date.parse(a.dueAt)<time?'可补交':'待完成'};
 }
+
+// Numeric-only feedback is also used for online work with real per-question answers.
+export function usesTotalOnlyEditor(assignment,submission){
+  if(assignment?.offline||assignment?.format==='score')return true;
+  if(!submission?.manualScoreEntry&&!submission?.publishedGrade?.scoreOnly)return false;
+  return !submission?.choices&&!submission?.text?.trim()&&!submission?.files?.length
+    &&!submission?.rubricSnapshot?.length&&!submission?.publishedGrade?.questions?.length;
+}

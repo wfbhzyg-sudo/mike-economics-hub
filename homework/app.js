@@ -13,7 +13,7 @@ import {createMCQUI} from './mcq.js?v=study-20261118';
 import {prepareForm,validateForm} from './form-feedback.js';
 import {mountPDFReader} from "./pdf-reader.js";
 import {createWorkspaceUI} from "./workspace-ui.js";
-import {assignmentRecords,assignmentState,questionTotals} from "./learning-model.js";
+import {assignmentRecords,assignmentState,questionTotals,usesTotalOnlyEditor} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
 import {createSelfPracticeUI} from "./self-practice.js";
 // Keep the floating assistant above the on-screen keyboard on student pages.
@@ -836,7 +836,7 @@ async function reviewPage(id,source) {
   s.rubricSnapshot ||= s.publishedGrade?.questionsSnapshot || [];
   const a = state.assignments.find((x) => x.id === s.assignmentId)||s.assignment,
     name = pending?.submissions.find(row=>row.id===id)?.name || s.studentName || state.submissions.find((x) => x.id === id)?.studentName || "学生";
-  if(a?.offline||a?.format==='score'||s.publishedGrade?.scoreOnly){
+  if(usesTotalOnlyEditor(a,s)){
     if(renderId!==state.routeVersion)return;
     const g=s.publishedGrade||{}, max=Number(g.maxPoints||a?.maxPoints||0);
     const back=queueRoute||state.reviewReturn?.route||'overview/'+s.assignmentId;

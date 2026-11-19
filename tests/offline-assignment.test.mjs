@@ -23,3 +23,12 @@ test('a published offline score opens the result instead of the submit page',()=
   assert.equal(action.target,'result/s1');
   assert.equal(action.action,'查看成绩');
 });
+
+test('online score-only feedback opens per-question review while manually entered totals stay editable',async()=>{
+  const {usesTotalOnlyEditor}=await import('../homework/learning-model.js');
+  const g={total:1,scoreOnly:true,questions:[{id:'1',score:1}]};
+  assert.equal(usesTotalOnlyEditor({format:'mcq'},{choices:{'1':'A'},publishedGrade:g}),false);
+  assert.equal(usesTotalOnlyEditor({}, {rubricSnapshot:[{id:'1'}],publishedGrade:g}),false);
+  assert.equal(usesTotalOnlyEditor({}, {manualScoreEntry:true,publishedGrade:{total:0,questions:[]}}),true);
+  assert.equal(usesTotalOnlyEditor({format:'score'}, {publishedGrade:g}),true);
+});
