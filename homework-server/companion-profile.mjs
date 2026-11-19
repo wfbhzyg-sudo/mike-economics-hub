@@ -1,5 +1,12 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-classroom-workflow',date:'2026-11-20',title:'备课、作答与订正',
+  items:[
+    {audience:'teacher',art:'book',title:'选题可续，原题可查',text:'刷新后可继续上次选题。点开题目查看完整题图和共用材料，再决定是否加入。'},
+    {audience:'student',art:'book',title:'边查重点，边做题',text:'打开学习重点后，键盘只操作资料。平板可直接切到上传作答，订正保存后可留在当前题。'},
+    {audience:'all',art:'news',title:'键盘翻书也可折返',text:'翻页中按相反方向键可折返。更新日志加载失败时，可以在书签旁重试。'}
+  ]
+},{
   id:'2026-11-19-review-paper',date:'2026-11-19',title:'逐题复核线上作业',
   items:[{audience:'teacher',art:'book',title:'从总分打开原作答',text:'从班级提交名单打开已出分的线上作业，即可查看原题、逐题分数与作答。线下录入的成绩继续使用总分编辑。'}]
 },{
