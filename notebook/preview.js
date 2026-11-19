@@ -41,7 +41,7 @@ function setPhase(value,message){
   sync();wake();
 }
 function pageCards(){
-  return scene?.spreads[spreadIndex].cards||[];
+  return scene?.spreads[spreadIndex]?.cards||[];
 }
 function visibleEntries(){
   const entries=chapters[spreadIndex].entries;
