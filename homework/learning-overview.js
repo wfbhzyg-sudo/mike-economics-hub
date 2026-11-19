@@ -61,6 +61,7 @@ export function mountLearningOverview(ctx, initialData) {
   let diagOrder=memory.get('diagOrder','number');
   const originalReaders=new Map();
   let lastAiScope=null,aiGeneration=0;
+  let diagnosisReturn = null;
   let diagOpen = memory.get('diagOpen', false) === true;
   let mobileView = memory.get('mobileView', 'list') === 'grid' ? 'grid' : 'list';
   let selected = storedSelection && typeof storedSelection === 'object' ? storedSelection : null;
@@ -148,6 +149,7 @@ export function mountLearningOverview(ctx, initialData) {
       <label class="lo-field"><span>单元</span><select id="lo-filter-unit"></select></label>
       <label class="lo-field"><span>作业</span><select id="lo-filter-assignment"></select></label>
       <label class="lo-field"><span>排序</span><select id="lo-filter-sort"></select></label>
+      <label class="lo-field"><span>排序方向</span><select id="lo-filter-direction"><option value="asc">升序</option><option value="desc">降序</option></select></label>
       <label class="lo-field"><span>只看</span><select id="lo-filter-status"></select></label>
       <label class="lo-field lo-wide"><span>查找学生</span><input id="lo-filter-query" type="search" placeholder="姓名或账号" autocomplete="off"></label>
     </div>
@@ -253,7 +255,7 @@ export function mountLearningOverview(ctx, initialData) {
     renderStudents(visible);
     renderDiagnosis(diagnoses);
     renderDetail();
-    renderFilterState(units, unitScope);
+    renderFilterState();
     updateEmpty(rows, visible);
   }
 
@@ -300,14 +302,8 @@ export function mountLearningOverview(ctx, initialData) {
     $('#lo-count').textContent = visibleCount === total ? `${total} 名学生` : `显示 ${visibleCount} / ${total} 人`;
   }
 
-  function renderFilterState(units, unitScope) {
-    const source = unitScope.length ? unitScope : [];
-    fill($('#lo-filter-unit'), [['', '全部单元'], ...units.map(unit => [unit, unit])], filter.unit);
-    fill($('#lo-filter-assignment'), assignmentOptions(source), filter.assignmentId);
-    fill($('#lo-filter-sort'), SORTS.map(([id, label]) => [id, `${label}${filter.sort === id ? (filter.direction === 'desc' ? ' ↓' : ' ↑') : ''}`]), filter.sort);
-    fill($('#lo-filter-status'), STATUS_FILTERS, filter.status);
-    if ($('#lo-filter-query').value !== filter.query) $('#lo-filter-query').value = filter.query;
-    const active = [filter.unit, filter.assignmentId, filter.status !== 'all' ? 'status' : '', filter.query.trim() ? 'q' : '', filter.sort !== 'name' ? 's' : ''].filter(Boolean).length;
+  function renderFilterState() {
+    const active = [filter.unit, filter.assignmentId, filter.status !== 'all' ? 'status' : '', filter.query.trim() ? 'q' : '', filter.sort !== 'name' || filter.direction !== 'asc' ? 's' : ''].filter(Boolean).length;
     const badge = $('#lo-filter .lo-filter-count');
     badge.hidden = active === 0;
     badge.textContent = String(active);
@@ -1072,13 +1068,24 @@ function renderDetail() {
     draw();
   }
 
+  function fillDraftAssignments(unit, selected) {
+    const scope = scopedAssignments(data, {classId: filter.classId, period: 'all'});
+    const available = unit ? scope.filter(item => item.libraryUnit === unit) : scope;
+    fill($('#lo-filter-assignment'), assignmentOptions(available), available.some(a => a.id === selected) ? selected : '');
+  }
+
+  function writeFilterDraft(draft) {
+    const units = unitsOf(scopedAssignments(data, {classId: filter.classId, period: 'all'}));
+    fill($('#lo-filter-unit'), [['', '全部单元'], ...units.map(unit => [unit, unit])], draft.unit);
+    fillDraftAssignments(draft.unit, draft.assignmentId);
+    fill($('#lo-filter-sort'), SORTS, draft.sort);
+    $('#lo-filter-direction').value = draft.direction;
+    fill($('#lo-filter-status'), STATUS_FILTERS, draft.status);
+    $('#lo-filter-query').value = draft.query;
+  }
+
   function openFilterSheet() {
-    fill($('#lo-filter-unit'), [['', '全部单元'], ...unitsOf(scopedAssignments(data, {classId: filter.classId, period: 'all'})).map(unit => [unit, unit])], filter.unit);
-    const classScope = scopedAssignments(data, {classId: filter.classId, period: 'all'});
-    fill($('#lo-filter-assignment'), assignmentOptions(filter.unit ? classScope.filter(item => item.libraryUnit === filter.unit) : classScope), filter.assignmentId);
-    fill($('#lo-filter-sort'), SORTS, filter.sort);
-    fill($('#lo-filter-status'), STATUS_FILTERS, filter.status);
-    $('#lo-filter-query').value = filter.query;
+    writeFilterDraft(filter);
     if (!filterSheet.open) filterSheet.showModal();
     $('#lo-filter').setAttribute('aria-expanded', 'true');
   }
@@ -1099,13 +1106,8 @@ function renderDetail() {
     else if (id === 'lo-unit') { filter.unit = event.target.value; filter.assignmentId = ''; draw(); }
     else if (id === 'lo-period') { filter.period = event.target.value; draw(); }
     else if (id === 'lo-assignment') { filter.assignmentId = event.target.value; draw(); }
-    else if (id === 'lo-filter-sort') {
-      const key = event.target.value;
-      if (SORTS.some(([value]) => value === key)) {
-        if (filter.sort === key) filter.direction = filter.direction === 'asc' ? 'desc' : 'asc';
-        else { filter.sort = key; filter.direction = key === 'name' ? 'asc' : 'desc'; }
-      }
-    }
+    else if (id === 'lo-filter-unit') fillDraftAssignments(event.target.value, $('#lo-filter-assignment').value);
+    else if (id === 'lo-filter-sort') $('#lo-filter-direction').value = event.target.value === 'name' ? 'asc' : 'desc';
   });
 
   root.addEventListener('input', event => {
@@ -1255,6 +1257,11 @@ function renderDetail() {
     }
     const diagItem = target.closest('[data-diag]');
     if (diagItem) {
+      const positions = [];
+      for (let parent = diagList; parent; parent = parent.parentElement) {
+        if (parent.scrollHeight > parent.clientHeight) positions.push([parent, parent.scrollTop]);
+      }
+      diagnosisReturn = {id: diagItem.dataset.diag, index: [...diagList.children].indexOf(diagItem), positions};
       diagId = diagItem.dataset.diag; diagQuestion = ''; diagOpen = true;
       memory.set({diagId, diagQuestion, diagOpen});
       renderDiagnosis(context.diagnoses);
@@ -1268,7 +1275,11 @@ function renderDetail() {
       diagOpen = false; memory.set({diagOpen: false});
       renderDiagnosis(context.diagnoses);
       renderDetail();
-      diagList.querySelector('[data-diag]')?.focus({preventScroll: true});
+      const buttons = [...diagList.querySelectorAll('[data-diag]')];
+      const returning = buttons.find(row => row.dataset.diag === (diagnosisReturn?.id || diagId)) || buttons[Math.min(diagnosisReturn?.index || 0, buttons.length - 1)];
+      returning?.focus({preventScroll: true});
+      for (const [element, top] of diagnosisReturn?.positions || []) element.scrollTop = top;
+      diagnosisReturn = null;
       return;
     }
     const profileButton = target.closest('[data-profile]');
@@ -1345,8 +1356,7 @@ function renderDetail() {
     if (target.closest('[data-close-filter]')) { filterSheet.close(); return; }
     if (target.closest('[data-close-legend]')) { legendSheet.close(); return; }
     if (target.closest('[data-filter-reset]')) {
-      filter.unit = ''; filter.assignmentId = ''; filter.status = 'all'; filter.query = ''; filter.sort = 'name'; filter.direction = 'asc';
-      fill($('#lo-filter-unit'), [['', '全部单元']], ''); fill($('#lo-filter-assignment'), [['', '全部作业']], ''); fill($('#lo-filter-sort'), SORTS, 'name'); fill($('#lo-filter-status'), STATUS_FILTERS, 'all'); $('#lo-filter-query').value = '';
+      writeFilterDraft({unit:'', assignmentId:'', sort:'name', direction:'asc', status:'all', query:''});
       return;
     }
     if (target.closest('[data-filter-apply]')) {
@@ -1354,11 +1364,8 @@ function renderDetail() {
       filter.assignmentId = $('#lo-filter-assignment').value;
       filter.status = $('#lo-filter-status').value;
       filter.query = $('#lo-filter-query').value;
-      const sortValue = $('#lo-filter-sort').value;
-      if (SORTS.some(([id]) => id === sortValue) && filter.sort !== sortValue) {
-        filter.sort = sortValue;
-        filter.direction = sortValue === 'name' ? 'asc' : 'desc';
-      }
+      filter.sort = $('#lo-filter-sort').value;
+      filter.direction = $('#lo-filter-direction').value;
       filterSheet.close();
       draw();
       $('#lo-filter')?.focus({preventScroll: true});
@@ -1419,6 +1426,11 @@ function renderDetail() {
   sheet.addEventListener('close', () => {
     if (sheetTrigger && sheetTrigger.isConnected) sheetTrigger.focus({preventScroll: true});
     sheetTrigger = null;
+  });
+  filterSheet.addEventListener('click', event => {
+    if (event.target !== filterSheet) return;
+    const rect = filterSheet.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) filterSheet.close();
   });
   filterSheet.addEventListener('close', () => {
     $('#lo-filter')?.setAttribute('aria-expanded', 'false');

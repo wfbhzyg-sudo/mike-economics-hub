@@ -6,6 +6,7 @@ import {gradingFields,readGradingPoints} from '../homework/library-grading.js';
 import {canonicalQuestions,questionHasTopic} from '../homework/library-packs.js';
 import {mountCropEditor} from './crop-editor.js';
 import {loadTeacherStartup} from './startup.js';
+import {bankMatch,bankStem,draftKey,openBankPreview,readBankDraft,writeBankDraft} from './question-bank.js';
 import {submissionLabel} from '../homework/ui-labels.js';
 import {scoreBadge,scoreLegend} from '../homework/score-bands.js';
 import {viewMemory} from '../homework/view-memory.js';
@@ -216,6 +217,11 @@ async function student(id,part='',scope=''){
 }
 
 const bankState={course:'all',unit:'',topic:'',type:'',status:'all',q:'',page:1,selected:new Map(),catalog:null,activeUnitIds:new Set()};
+let bankOwner='',undoSelection=null;
+function persistBank() {
+ try { writeBankDraft(localStorage,bankOwner,bankState); }
+ catch { toast('浏览器无法保存选题，离开前请完成组卷。'); }
+}
 const bankTypeLabel={choice:'选择题',short:'简答题'};
 const bankCourses=[['all','全部学科'],['micro','AP 微观'],['macro','AP 宏观']];
 function bankUnits(){
@@ -229,17 +235,19 @@ function bankFiltered(all){
  return all.filter(q=>bankState.activeUnitIds.has(q.unitId)&&(course==='all'||q.course===course)&&(!unit||q.unitId===unit)&&
   (!topic||(topic==='unmapped'?!(q.topic||q.relatedTopics?.length):(q.unitId===topicUnit&&questionHasTopic(q,topicId))))&&
   (!type||q.type===type)&&(status==='all'||(status==='ready')===(q.status==='ready'))&&
-  (!term||[q.number,q.searchText||q.prompt||q.stem,q.topic,q.topicTitle,q.source].some(v=>String(v??'').toLowerCase().includes(term))));
+  (!term||bankMatch(q,term)));
 }
 function bankUnitLabel(t){return String(t||'').match(/Unit\s*\d+/i)?.[0]||t||'';}
 function bankQuestionRow(q){
  const selected=bankState.selected.has(q.id),img=q.questionImages?.[0];
- const stem=String(q.searchText||q.prompt||q.stem||q.title||'').replace(/\s+/g,' ').trim()||('题目 '+(q.number||''));
- return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" ${img?'':'disabled'} aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><div class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'<span>无图</span>'}</div><div class="bank-copy"><h3>${h(q.number||'')}. ${h(stem.slice(0,150))}</h3><p>${h(bankUnitLabel(q.unitTitle||q.unitId))}${q.topicTitle?' · '+h(q.topicTitle):''} · ${bankTypeLabel[q.type]||h(q.type)}${q.status!=='ready'?' · '+badge('待核对','warn'):''}</p></div><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span>${q.canEdit!==false?`<button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button>`:''}</article>`;
+ const stem=bankStem(q)||('题目 '+(q.number||'')),term=bankState.q.trim(),match=bankMatch(q,term);
+ const title=match?.field==='题面'?match.snippet:stem.slice(0,108)+(stem.length>108?'…':'');
+ const extra=match&&match.field!=='题面'?match.field+' · '+highlightText(match.snippet,term):'';
+ return `<article class="bank-row ${selected?'is-selected':''}" data-bank-q="${h(q.id)}"><button type="button" class="bank-pick" data-bank-pick="${h(q.id)}" ${img?'':'disabled'} aria-pressed="${selected}" aria-label="${selected?'移出':'加入'}：${h(stem.slice(0,40))}">${selected?'✓':'+'}</button><button type="button" class="bank-row-preview" data-bank-preview="${h(q.id)}" aria-label="查看第 ${h(q.number||'')} 题原题 · ${h(title)}"><span class="bank-thumb">${img?`<img loading="lazy" src="/api/homework/files/${encodeURIComponent(img)}" alt="">`:'无图'}</span><span class="bank-copy"><strong>${highlightText(q.number||'',term)}. ${highlightText(title,term)}</strong><small>${extra||[bankUnitLabel(q.unitTitle||q.unitId),q.topicTitle,bankTypeLabel[q.type]||q.type].filter(Boolean).map(h).join(' · ')}${q.status!=='ready'?' · '+badge('待核对','warn'):''}</small></span></button><span class="bank-answer">${q.type==='choice'?'答案 '+h(q.answer||'—'):'FRQ'}</span>${q.canEdit!==false?`<button type="button" class="bank-crop-btn" data-bank-crop="${h(q.id)}" title="手动框选图表">补图</button>`:''}</article>`;
 }
 function bankSelectedMarkup(){
  const items=[...bankState.selected.values()],unset=items.filter(q=>q.type==='short'&&!(q.maxPoints>0)).length,points=items.reduce((sum,q)=>sum+(Number(q.maxPoints)||(q.type==='choice'?1:0)),0);
- return {html:`<div class="bank-cart-head"><div><strong>已选 ${items.length} 道</strong><p>${unset?'已知 '+points+' 分 · '+unset+' 题待设满分':'共 '+points+' 分'}</p></div>${items.length?`<button type="button" class="tw-text" data-bank-clear>清空</button>`:''}</div>${items.length?`<ol class="bank-cart-list">${items.map(q=>`<li><span>${h(q.number||'')}</span><p>${h(String(q.searchText||q.prompt||'').replace(/\s+/g,' ').slice(0,54))}</p><button type="button" data-bank-remove="${h(q.id)}" aria-label="移出第 ${h(q.number||'')} 题">×</button></li>`).join('')}</ol>`:'<div class="bank-cart-empty"><strong>还没有选题</strong><p>从左侧题库加入任意题目，可跨单元组合。</p></div>'}` ,count:items.length,points,unset};
+ return {html:`<div class="bank-cart-head"><div><strong>已选 ${items.length} 道</strong><p>${unset?'已知 '+points+' 分 · '+unset+' 题待设满分':'共 '+points+' 分'}</p></div>${items.length?`<button type="button" class="tw-text" data-bank-clear>清空</button>`:undoSelection?'<button type="button" class="tw-text" data-bank-undo>撤销清空</button>':''}</div>${items.length?`<ol class="bank-cart-list">${items.map(q=>`<li><span>${h(q.number||'')}</span><p>${h(String(q.searchText||q.prompt||'').replace(/\s+/g,' ').slice(0,54))}</p><button type="button" data-bank-remove="${h(q.id)}" aria-label="移出第 ${h(q.number||'')} 题">×</button></li>`).join('')}</ol>`:'<div class="bank-cart-empty"><strong>还没有选题</strong><p>从左侧题库加入任意题目，可跨单元组合。</p></div>'}` ,count:items.length,points,unset};
 }
 function drawBankCart(){
  const root=$('#bank-cart');if(!root)return;
@@ -249,7 +257,7 @@ function drawBankCart(){
   host.innerHTML=cart.html;
   const list=host.querySelector('.bank-cart-list');if(list)list.scrollTop=scroll;
  }
- const bar=$('#bank-mobile-cart');if(bar){bar.hidden=cart.count===0;bar.querySelector('[data-bank-count]').textContent=cart.count;bar.querySelector('[data-bank-points]').textContent=cart.unset?'满分待确认':cart.points+' 分';}
+ const bar=$('#bank-mobile-cart');if(bar){bar.hidden=cart.count===0&&!undoSelection;bar.querySelector('[data-bank-count]').textContent=cart.count;bar.querySelector('[data-bank-points]').textContent=cart.unset?'满分待确认':cart.points+' 分';}
  $('#bank-publish').disabled=cart.count===0;$('#bank-publish').textContent=cart.count?'组卷 · '+cart.count+' 题':'组卷并布置';
  $('[data-bank-publish-quick]')?.toggleAttribute('disabled',cart.count===0);
 }
@@ -257,19 +265,23 @@ function drawBankList(){
  const all=bankState.questions||[],list=bankFiltered(all),pageSize=40,pages=Math.max(1,Math.ceil(list.length/pageSize));bankState.page=Math.min(bankState.page,pages);
  const page=list.slice((bankState.page-1)*pageSize,bankState.page*pageSize);
  $('#bank-count').textContent=`共 ${list.length} 道可选`;
+ const summary=$('#bank-current-filters');
+ const current=['unit','topic','type','status'].map(key=>{const el=$('#bank-'+key);return el?.selectedIndex>0?el.selectedOptions[0]?.textContent:'';}).filter(Boolean);
+ if(summary){summary.hidden=!current.length;summary.textContent=current.join(' · ');}
  const box=$('#bank-list');box.innerHTML=page.length?page.map(bankQuestionRow).join(''):empty('没有匹配的题目','调整课程、单元、题型或关键词后再试。');
  $('#bank-pager').innerHTML=`<button class="tw-button tw-small" data-bank-page="prev" ${bankState.page<=1?'disabled':''}>上一页</button><span>第 ${bankState.page} / ${pages} 页</span><button class="tw-button tw-small" data-bank-page="next" ${bankState.page>=pages?'disabled':''}>下一页</button>`;
 }
-function toggleBank(id){
+function toggleBank(id,focus=true){
  if(bankState.selected.has(id))bankState.selected.delete(id);
  else{
   const q=bankState.questions.find(x=>x.id===id);
   if(!q?.questionImages?.length)return toast('请先补全原题');
   bankState.selected.set(id,q);
  }
+ undoSelection=null;persistBank();
  const scroll=$('#bank-list').scrollTop;
  drawBankList();$('#bank-list').scrollTop=scroll;drawBankCart();
- [...$$('[data-bank-pick]')].find(x=>x.dataset.bankPick===id)?.focus({preventScroll:true});
+ if(focus)[...$$('[data-bank-pick]')].find(x=>x.dataset.bankPick===id)?.focus({preventScroll:true});
 }
 function openBankPublish(){
  const items=[...bankState.selected.values()];if(!items.length)return toast('先从题库选择题目');
@@ -279,7 +291,7 @@ function openBankPublish(){
  dlg.innerHTML=`<form class="tw-dialog-form"><h2>从题库组卷并布置</h2><p class="tw-note">已选 ${items.length} 道题，保存的是此刻的题目快照；题库后续修改不会改变这份作业。</p>${gradingFields(items,h)}<label class="tw-field"><span>作业名称</span><input name="title" required maxlength="120" value="${h(items.length>1?'题库组卷 · '+new Date().toISOString().slice(0,10):'题库练习')}"></label><fieldset class="bank-class-field"><legend>布置到班级</legend>${classes.map(c=>`<label class="tw-check"><input type="checkbox" name="classIds" value="${c.id}" ${c.id===state.classId?'checked':''}>${h(c.name)}</label>`).join('')}</fieldset><label class="tw-field"><span>截止时间（可选）</span><input name="dueAt" type="datetime-local"></label><label class="tw-check"><input type="checkbox" name="allowLate" checked><span>允许逾期提交</span></label><p class="tw-form-error" role="alert"></p><div class="tw-dialog-actions"><button type="button" class="tw-button" data-bank-cancel>取消</button><button class="tw-button tw-primary" type="submit">发布作业</button></div></form>`;
  document.body.append(dlg);dlg.showModal();dlg.querySelector('[data-bank-cancel]').onclick=()=>dlg.close();
  dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,btn=f.querySelector('[type=submit]'),err=f.querySelector('.tw-form-error');err.textContent='';const classIds=[...f.querySelectorAll('[name=classIds]:checked')].map(x=>x.value);if(!classIds.length){err.textContent='请至少选择一个班级';return;}btn.disabled=true;btn.textContent='正在发布…';
-  try{await hw('library/publish',{method:'POST',body:{clientId,maxPointsByQuestion:readGradingPoints(f),title:f.elements.title.value.trim(),classIds,dueAt:f.elements.dueAt.value?new Date(f.elements.dueAt.value).toISOString():null,allowLate:f.elements.allowLate.checked,questionIds:items.map(q=>q.id)}});dlg.close();dlg.remove();bankState.selected.clear();toast('作业已发布，学生可在作业列表看到');location.hash='work/assignments';}
+  try{await hw('library/publish',{method:'POST',body:{clientId,maxPointsByQuestion:readGradingPoints(f),title:f.elements.title.value.trim(),classIds,dueAt:f.elements.dueAt.value?new Date(f.elements.dueAt.value).toISOString():null,allowLate:f.elements.allowLate.checked,questionIds:items.map(q=>q.id)}});dlg.close();dlg.remove();bankState.selected.clear();undoSelection=null;try{localStorage.removeItem(draftKey(bankOwner));}catch{}toast('作业已发布，学生可在作业列表看到');location.hash='work/assignments';}
   catch(error){err.textContent=error.message;btn.disabled=false;btn.textContent='发布作业';}
  };
 }
@@ -307,21 +319,41 @@ async function bank(){
  bankState.catalog=catalog;
  bankState.activeUnitIds=new Set(catalog.units.filter(u=>!u.archived).map(u=>u.id));
  bankState.questions=canonicalQuestions(data.questions||[]);
+ if(bankOwner!==state.user.id){
+  bankOwner=state.user.id;undoSelection=null;
+  let storage;try{storage=localStorage;}catch{}
+  Object.assign(bankState,readBankDraft(storage,bankOwner,bankState.questions),{page:1,q:''});
+ }else{
+  const latest=new Map(bankState.questions.map(q=>[q.id,q]));
+  bankState.selected=new Map([...bankState.selected.keys()].filter(id=>latest.has(id)).map(id=>[id,latest.get(id)]));
+ }
  const hasAudit=bankState.questions.some(q=>q.canEdit!==false);
- main.innerHTML=`<div class="bank-head"><p class="tw-note">按学科、单元和 Topic 找题，跨单元组卷</p>
+ main.innerHTML=`<div class="bank-head"><div class="bank-seg">${bankCourses.map(([id,label])=>`<button type="button" data-bank-course="${id}">${label}</button>`).join('')}</div>
   <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷并布置</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#library">课程教学包</a></div></details></div></div>
-  <div class="bank-workspace-filters" role="group" aria-label="筛选题目"><div class="bank-seg">${bankCourses.map(([id,label])=>`<button type="button" data-bank-course="${id}">${label}</button>`).join('')}</div>
+  <div id="bank-filter-anchor"><div class="bank-workspace-filters" role="group" aria-label="筛选题目">
   <select id="bank-unit" aria-label="单元"></select><select id="bank-topic" aria-label="Topic"></select>
   <select id="bank-type" aria-label="题型"><option value="">全部题型</option><option value="choice">MCQ</option><option value="short">FRQ</option></select>
   <select id="bank-status" aria-label="核对状态"><option value="all">全部状态</option><option value="ready">已复核</option><option value="needs_review">待核对</option></select>
-  <button type="button" class="tw-text" data-bank-reset>清除筛选</button></div>
+  <button type="button" class="tw-text" data-bank-reset>清除筛选</button></div></div>
+  <dialog id="bank-filter-dialog" class="tw-dialog bank-filter-dialog" aria-label="筛选题库"><div data-bank-filter-fields></div><button type="button" class="tw-button tw-primary" data-bank-filter-done>查看结果</button></dialog>
   <div class="bank-layout bank-workspace-layout"><section class="bank-results" aria-labelledby="bank-result-title">
-  <div class="bank-search"><strong id="bank-result-title">匹配题目</strong><input type="search" id="bank-search" aria-label="搜索题库" placeholder="搜索题干、知识点或题号" value="${h(bankState.q)}"><span id="bank-count" role="status"></span></div>
-  <div id="bank-list" class="bank-list" tabindex="0" aria-label="题目列表"></div><div id="bank-pager" class="bank-pager"></div></section><aside class="bank-cart" id="bank-cart" aria-label="作业选题"></aside></div>
+  <div class="bank-search"><strong id="bank-result-title">匹配题目</strong><button type="button" class="tw-button" data-bank-filters aria-haspopup="dialog">筛选</button><input type="search" id="bank-search" aria-label="搜索题库" placeholder="搜索题干、知识点或题号" value="${h(bankState.q)}"><span id="bank-count" role="status"></span></div>
+  <p id="bank-current-filters" hidden></p><div id="bank-list" class="bank-list" tabindex="0" aria-label="题目列表"></div><div id="bank-pager" class="bank-pager"></div></section><aside class="bank-cart" id="bank-cart" aria-label="作业选题"></aside></div>
   <div class="bank-mobile-cart" id="bank-mobile-cart" hidden><button type="button" class="tw-button" data-bank-show-cart>已选 <strong data-bank-count>0</strong> 道 ›</button><span data-bank-points>0 分</span><button type="button" class="tw-button tw-primary" data-bank-publish-quick>组卷并布置</button></div>
   <dialog id="bank-cart-dialog" class="tw-dialog bank-cart-dialog" aria-label="作业选题"><header><strong>作业选题</strong><button type="button" class="tw-button" data-bank-close-cart>关闭</button></header><div data-bank-cart-body></div></dialog>`;
+ $('#bank-type').value=bankState.type;$('#bank-status').value=bankState.status;
  drawBankFacets();drawBankList();drawBankCart();
- const update=()=>{bankState.page=1;$('#bank-list').scrollTop=0;drawBankList();};
+ const filterDialog=$('#bank-filter-dialog'),filterHost=$('#bank-filter-anchor'),fields=filterHost.firstElementChild;
+ const filterButton=$('[data-bank-filters]');
+ let filterChanged=false;
+ function revealFirstQuestion() {
+  const results=$('.bank-results');
+  if(matchMedia('(max-width:900px)').matches&&results?.getBoundingClientRect().top<0)results.scrollIntoView({block:'start',behavior:'instant'});
+ }
+ filterButton.onclick=()=>{filterChanged=false;filterDialog.querySelector('[data-bank-filter-fields]').append(fields);filterDialog.showModal();};
+ filterDialog.querySelector('[data-bank-filter-done]').onclick=()=>filterDialog.close();
+ filterDialog.onclose=()=>{filterHost.append(fields);filterButton.focus({preventScroll:true});if(filterChanged)revealFirstQuestion();};
+ const update=({save=true}={})=>{bankState.page=1;$('#bank-list').scrollTop=0;if(save)persistBank();drawBankList();if(filterDialog.open)filterChanged=true;else revealFirstQuestion();};
  $$('[data-bank-course]').forEach(b=>b.onclick=()=>{
   bankState.course=b.dataset.bankCourse;
   if(bankState.unit&&!bankUnits().some(u=>u.id===bankState.unit))bankState.unit='';
@@ -333,29 +365,41 @@ async function bank(){
   const select=$('#bank-'+key);select.value=bankState[key];
   select.onchange=()=>{bankState[key]=select.value;update();};
  }
- $('#bank-search').oninput=e=>{bankState.q=e.target.value;update();};
+ $('#bank-search').oninput=e=>{bankState.q=e.target.value;update({save:false});};
  $('[data-bank-reset]').onclick=()=>{
   Object.assign(bankState,{unit:'',topic:'',type:'',status:'all',q:''});
   $('#bank-type').value='';$('#bank-status').value='all';$('#bank-search').value='';drawBankFacets();update();
  };
- $('#bank-list').onclick=e=>{const crop=e.target.closest('[data-bank-crop]');if(crop){location.hash='bank/crop/'+encodeURIComponent(crop.dataset.bankCrop);return;}const pick=e.target.closest('[data-bank-pick]');if(pick)toggleBank(pick.dataset.bankPick);};
- $('#bank-pager').onclick=e=>{const b=e.target.closest('[data-bank-page]');if(!b)return;bankState.page+=b.dataset.bankPage==='next'?1:-1;drawBankList();$('#bank-list').scrollTop=0;$('#bank-list').focus({preventScroll:true});};
+ let preview;
+ $('#bank-list').onclick=e=>{
+  const from=e.target.closest('[data-bank-preview]');
+  if(from){
+   const id=from.dataset.bankPreview,question=bankState.questions.find(q=>q.id===id);
+   if(question)preview=openBankPreview({question,from,query:bankState.q,isSelected:()=>bankState.selected.has(id),
+    toggle:()=>toggleBank(id,false),restore:()=>[...$$('[data-bank-preview]')].find(b=>b.dataset.bankPreview===id),
+    sourcePage:page=>hw('library/questions/'+encodeURIComponent(id)+'/source-page?page='+page)});
+   return;
+  }
+  const crop=e.target.closest('[data-bank-crop]');if(crop){location.hash='bank/crop/'+encodeURIComponent(crop.dataset.bankCrop);return;}const pick=e.target.closest('[data-bank-pick]');if(pick)toggleBank(pick.dataset.bankPick);};
+ $('#bank-pager').onclick=e=>{const b=e.target.closest('[data-bank-page]');if(!b)return;bankState.page+=b.dataset.bankPage==='next'?1:-1;drawBankList();$('#bank-list').scrollTop=0;$('#bank-list').focus({preventScroll:true});revealFirstQuestion();};
  const dialog=$('#bank-cart-dialog');
  const updateCart=e=>{
   const rm=e.target.closest('[data-bank-remove]');
-  if(rm)bankState.selected.delete(rm.dataset.bankRemove);
-  else if(e.target.closest('[data-bank-clear]'))bankState.selected.clear();
+  if(rm){bankState.selected.delete(rm.dataset.bankRemove);undoSelection=null;}
+  else if(e.target.closest('[data-bank-clear]')){undoSelection=new Map(bankState.selected);bankState.selected.clear();}
+  else if(e.target.closest('[data-bank-undo]')&&undoSelection){bankState.selected=undoSelection;undoSelection=null;}
   else return;
-  const host=e.currentTarget;
+  const host=e.currentTarget;persistBank();
   drawBankList();drawBankCart();
-  (host.querySelector('[data-bank-remove]')||host.querySelector('[data-bank-close-cart]')||$('#bank-search')).focus({preventScroll:true});
+  (host.querySelector('[data-bank-undo]')||host.querySelector('[data-bank-remove]')||host.querySelector('[data-bank-close-cart]')||$('#bank-search')).focus({preventScroll:true});
  };
  $('#bank-cart').onclick=updateCart;dialog.onclick=updateCart;
  $('[data-bank-show-cart]').onclick=()=>dialog.showModal();
  $('[data-bank-close-cart]').onclick=()=>dialog.close();
  $('#bank-publish').onclick=openBankPublish;
  $('[data-bank-publish-quick]').onclick=openBankPublish;
- state.viewCleanup=bindDisclosureMenus(main,'.bank-more');
+ const cleanup=bindDisclosureMenus(main,'.bank-more');
+ state.viewCleanup=()=>{cleanup();if(preview?.open)preview.close();if(filterDialog.open)filterDialog.close();};
  $('.bank-more').addEventListener('click',e=>{if(e.target.closest('a'))$('.bank-more').open=false;});
 }
 

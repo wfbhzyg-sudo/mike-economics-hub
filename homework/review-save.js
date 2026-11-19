@@ -25,7 +25,15 @@ export function createReviewSaver({revision=0, save, onChange=()=>{}}) {
 
 // Keep original questions separate from explicitly linked student evidence.
 export function questionReviewEvidence(submission,questionId,source='auto'){
- const q=submission.rubricSnapshot?.find(q=>q.id===questionId),r=submission.responses?.[questionId],kind=source==='auto'?(q?.type==='choice'?'question':'answer'):source;
- if(kind==='question')return {source:kind,files:q?.questionImages||[],text:q?.questionImages?.length?'':q?.prompt||'未关联题面'};
- return {source:kind,files:r?.files?.length?r.files:r?[]:submission.files||[],text:r?.text||(!r?submission.text||'':!r.files?.length?'本题没有单独保存的文字或附件。':'')};
+ const question=submission.rubricSnapshot?.find(q=>q.id===questionId);
+ const response=submission.responses?.[questionId];
+ const choice=submission.choices?.[questionId];
+ const original={source:'question',files:question?.questionImages||[],text:question?.questionImages?.length?'':question?.prompt||''};
+ const legacy=!Object.keys(submission.responses||{}).length&&!Object.keys(submission.choices||{}).length;
+ const answer={source:'answer',files:response?.files||(legacy?submission.files||[]:[]),text:response?.text||(choice?'学生选择 '+choice:legacy?submission.text||'':'')};
+ const requested=source==='auto'?(question?.type==='choice'?'question':'answer'):source;
+ const preferred=requested==='answer'?answer:original, alternative=requested==='answer'?original:answer;
+ if(preferred.files.length||preferred.text) return preferred;
+ if(alternative.files.length||alternative.text) return {...alternative,fallback:requested};
+ return {...preferred,text:'本题暂无可查看的原题或作答。'};
 }
