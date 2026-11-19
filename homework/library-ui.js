@@ -62,6 +62,11 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
    const {focus}=await api('library/focus?'+new URLSearchParams({unit:unitId,topic:topic.id})), anchor=new URLSearchParams(location.search).get('focus');
    if(disposed||!host.isConnected)return;
    host.innerHTML=focusMarkup(focus);
+   if(unitId==='micro-unit-2'&&['2.1','2.6'].includes(topic.id)){
+     const {mountDemandLab}=await import('./demand-lab.js');
+     if(disposed||!host.isConnected)return;
+     const lab=document.createElement('div');host.prepend(lab);mountDemandLab(lab,{teacher});
+   }
    if(['goals','rule','apply','pitfall'].includes(anchor))host.querySelector('#focus-'+anchor)?.scrollIntoView({block:'start'});
   }catch(e){if(!disposed&&host.isConnected){host.innerHTML='<p role="alert">学习重点暂时无法加载。</p><button type="button">重试</button>';host.querySelector('button').onclick=overview;}}
  }

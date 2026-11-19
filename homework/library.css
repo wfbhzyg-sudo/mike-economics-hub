@@ -245,3 +245,12 @@ dialog.lib-board-detail:not([open]),dialog.lib-board-dialog:not([open]){display:
 .lib-bank-actions .lib-selection-more>div{left:0;right:auto}
 .lib-bank-actions [data-selected-view]{margin-left:0}
 @media(max-width:900px){.lib-bank-actions>button,.lib-bank-actions>details>summary{min-height:44px}.lib-bank-top .lib-search{flex-basis:100%}}
+
+.demand-lab{box-sizing:border-box;padding:clamp(10px,2vw,18px);border:1px solid #c6cfc6;border-radius:9px;background:#fbfcf8;color:#1c303a;margin-bottom:1rem}
+.demand-lab header,.demand-controls{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.demand-lab h3{font:600 clamp(15px,2vw,22px)/1.2 Georgia,serif;margin:0}
+.demand-lab p{margin:8px 0;line-height:1.45}.demand-lab svg{display:block;margin:auto;max-width:680px;width:100%}
+.demand-lab [data-shift-handle]{touch-action:none;cursor:ew-resize}.demand-lab [data-shift-handle]:focus-visible{stroke:#e19131;stroke-width:4}
+.demand-controls{justify-content:flex-start}.demand-controls output{font-variant-numeric:tabular-nums;font-weight:650;margin-right:auto}
+.demand-lab button{min-height:42px;min-width:42px;border:1px solid #a9b8b2;border-radius:6px;color:#163649;background:white}
+.demand-projection{width:min(95vw,1300px);max-height:95dvh;padding:0;border:0}.demand-projection::backdrop{background:#172d3de8}.demand-projection .demand-lab{margin:0}.demand-projection svg{max-width:100%;max-height:70dvh}
