@@ -1,6 +1,6 @@
 import * as T from 'three';
 import {portalCatalog,sideName} from './catalog.js';
-import {studio,W,H,NOTE_W,NOTE_H,corners,lampHome,penHome,bendLeaf,bendPoint,leafTangency,curlHeight} from './studio.js';
+import {studio,W,H,NOTE_W,NOTE_H,corners,PAPER_Z,NOTE_Z,gutterRise,lampHome,penHome,bendLeaf,bendPoint,leafTangency,curlHeight} from './studio.js';
 import loader from '../assets/notebook/loader.svg';
 
 const $=id=>document.getElementById(id);
@@ -8,7 +8,7 @@ const desk=$('desk'),canvas=$('scene'),cover=$('desk-cover'),flat=$('fallback'),
 const pen=$('penSpot'),close=$('close'),prev=$('prev'),next=$('next'),lamp=$('lampSpot');
 const returnKey='mike:notebook:return';
 let chapters=[],locked=false;
-const titles=$('paper-titles');
+
 const reduce=matchMedia('(prefers-reduced-motion: reduce)');
 const hover=matchMedia('(hover:hover) and (pointer:fine)');
 const narrow=()=>innerWidth<=720&&innerHeight>innerWidth;
@@ -63,12 +63,6 @@ function sync(){
   $('pageNumber').textContent=narrow()?String(from+side).padStart(2,'0'):`${String(from).padStart(2,'0')}–${String(from+1).padStart(2,'0')}`;
   document.body.dataset.spread=String(spreadIndex);
   document.body.dataset.side=String(side);
-  titles.hidden=!showRail||!renderer||locked;
-  const mobile=narrow();
-  for(const [i,label] of [...titles.children].entries()){
-    label.hidden=mobile&&i===1;
-    label.textContent=sideName(chapters[spreadIndex],mobile?side:i,spreadIndex);
-  }
   cover.hidden=locked||phase!=='cover'||!renderer;
   const noScene=!scene||!renderer;
   flat.hidden=!noScene;
@@ -205,14 +199,14 @@ lamp.onclick=()=>{
 };
 function holdPen(){
   penHeld=true;pen.setAttribute('aria-pressed','true');
-  penGoal.z=.41;wake();
+  wake();
 }
 function dropPen(){
   if(!penHeld&&!penDrag)return;
   const id=penDrag?.id;
   penDrag=null;penHeld=false;pen.setAttribute('aria-pressed','false');
   if(id!==undefined&&pen.hasPointerCapture(id))pen.releasePointerCapture(id);
-  penGoal.z=penHome.z;wake();
+  wake();
 }
 function unitsPerPixel(){return (camera.top-camera.bottom)/canvas.clientHeight;}
 function movePen(x,y){
@@ -340,7 +334,7 @@ function resetCard(card,index,hinged=false){
   const left=index<2;
   card.rect.geometry=card.flatGeo;card.rect.frustumCulled=true;
   card.rear.visible=true;card.shadow.visible=true;card.root.scale.setScalar(1);
-  seat(card.root,hinged&&left?scene.hinge:scene.book,left?-W/2:W/2,card.y,left?(hinged?.063:.203):.070,card.angle);
+  seat(card.root,hinged&&left?scene.hinge:scene.book,left?-W/2:W/2,card.y,NOTE_Z,card.angle);
 }
 function prepareStatic(dt){
   const hinged=phase==='opening'||phase==='closing'||phase==='cover';
@@ -349,7 +343,7 @@ function prepareStatic(dt){
     for(const [paperSide,surface] of spread.sides.entries()){
       surface.visible=current;
       if(current){
-        seat(surface,hinged&&paperSide===0?scene.hinge:scene.book,paperSide===0?-W/2:W/2,0,paperSide===0?(hinged?.028:.168):.035);
+        seat(surface,hinged&&paperSide===0?scene.hinge:scene.book,paperSide===0?-W/2:W/2,0,PAPER_Z);
         const corner=phase==='shifting'?sideCurl:cornerAmount;
         const direction=narrow()&&corner&&paperSide===side?Math.sign(corner):paperSide===0?-1:1;
         curlSurface(surface,direction,narrow()&&paperSide!==side?0:corner);
@@ -404,32 +398,34 @@ function pressToLeaf(card,t,z,rear){
     const a=leafTangency(x,t);
     bendPoint(x,t,bending);
     const freeCorner=(.5-v/card.h)**2*(.6+.4*u/card.w);
-    const offset=sign*(.035+flutter*freeCorner);
+    const offset=sign*(NOTE_Z-PAPER_Z+flutter*freeCorner);
     out.setXYZ(i,bending.x-Math.sin(a)*offset,y,bending.z+z+Math.cos(a)*offset);
   }
   out.needsUpdate=true;
   card.curvedGeo.computeVertexNormals();
+  card.curvedGeo.computeBoundingSphere();
 }
 function curlSurface(face,direction,amount){
   const strength=Math.max(0,amount*direction);
-  if(face.userData.curl===strength)return;
+  if(face.userData.curl===strength&&face.userData.direction===direction)return;
+  face.userData.direction=direction;
   face.userData.curl=strength;
   const pos=face.geometry.attributes.position;
-  for(let i=0;i<pos.count;i++)pos.setZ(i,curlHeight(pos.getX(i),pos.getY(i),direction,strength));
+  for(let i=0;i<pos.count;i++)pos.setZ(i,gutterRise(pos.getX(i)+face.position.x)+curlHeight(pos.getX(i),pos.getY(i),direction,strength));
   pos.needsUpdate=true;
   face.geometry.computeVertexNormals();
 }
 function poseTurn(low,high,t,corner){
   bendLeaf(scene.leaf,t,corner);
-  const z=mix(.035,.168,t);
+  const z=PAPER_Z;
   scene.leaf.faces.forEach(face=>{face.position.z=z;});
   // Bury the stack under the moving paper while it is still covering that stack.
   for(const [spread,side,depth] of [[low,0,-.075*smooth(clamp01((t-.53)/.47))],[high,1,-.075*smooth(clamp01((.47-t)/.47))]]){
     const surface=scene.spreads[spread].sides[side];
     curlSurface(surface,side===0?-1:1,0);
-    surface.position.z=(side===0?.168:.035)+depth;
+    surface.position.z=PAPER_Z+depth;
     for(const card of scene.spreads[spread].cards){
-      if(Math.floor(card.slot/2)===side)card.root.position.z=(side===0?.203:.070)+depth;
+      if(Math.floor(card.slot/2)===side)card.root.position.z=NOTE_Z+depth;
     }
   }
   scene.spreads[low].cards.filter(card=>card.slot>=2).forEach(card=>pressToLeaf(card,t,z,false));
@@ -444,11 +440,13 @@ function deviceCamera(){
   camera.top=heightUnits/2;camera.bottom=-heightUnits/2;camera.left=-heightUnits*aspect/2;camera.right=-camera.left;
   camera.position.set(mix(mobile?W/2:.13,openX,openness),mobile?-.04:0,15);
   camera.updateProjectionMatrix();camera.updateMatrixWorld();
+  scene.hinge.position.z=.14*(1-openness);
   scene.hinge.rotation.y=(1-openness)*Math.PI-coverLift*.025;
   const propX=mobile?camera.position.x-W*.20:lampHome.x;
   scene.lamp.root.position.set(propX,mobile?2.85:lampHome.y,0);
   scene.lamp.root.scale.setScalar(mobile?.55:1);
-  scene.lamp.bulb.position.set(mobile?propX+.34:-3.28,mobile?2.74:1.22,2.23);
+  scene.lamp.bulb.position.set(mobile?propX+.34:-2.89,mobile?2.50:1.04,2.18);
+  scene.pool.position.set(mobile?propX+.36:-2.89,mobile?2.25:1.04,-.195);
   scene.pencil.scale.setScalar(mobile?.67:1);
   const helperX=mobile?camera.position.x+W*.18:penHome.x;
   const helperY=mobile?-2.64:penHome.y;
@@ -472,14 +470,6 @@ function controlsOnScene(){
   if(phase==='cover'){
     const [x,y]=xy(project.set(W/2,-.33,.318));
     cover.style.left=x+'px';cover.style.top=y+'px';
-  }
-  if(!titles.hidden){
-    const mobile=narrow(),unit=1/unitsPerPixel();
-    for(const [i,label] of [...titles.children].entries()){
-      const left=mobile?camera.position.x-W/2:i===0?-W:0;
-      const [x,y]=xy(project.set(left+W*.082,H*.452,0));
-      Object.assign(label.style,{left:x+'px',top:y+'px',fontSize:(W*.056*unit)+'px'});
-    }
   }
   if(phase==='open')for(const card of pageCards()){
     const button=buttons.get(card.item);
@@ -507,17 +497,82 @@ function objectMotion(dt){
   // The lamp adds a reflected pool to the walnut and a warm local fill to the paper.
   const pose=lampAmount*.032+.045;
   scene.lamp.button.scale.y=1+pose;
-  scene.lamp.bulb.intensity=lampAmount*9.5;
+  scene.lamp.bulb.intensity=lampAmount*17;
   scene.lamp.shadeUnder.material.emissiveIntensity=lampAmount*.79;
   scene.pool.material.opacity=lampAmount;
-  scene.pencil.position.lerp(penGoal,ratio);
+  scene.pencil.position.x=mix(scene.pencil.position.x,penGoal.x,ratio);
+  scene.pencil.position.y=mix(scene.pencil.position.y,penGoal.y,ratio);
   scene.pencil.rotation.z=mix(scene.pencil.rotation.z,penAngle,ratio);
   const wanted=reduce.matches?0:cornerHover;
   cornerAmount=mix(cornerAmount,wanted,1-Math.exp(-24*dt));
   if(Math.abs(cornerAmount-wanted)<.004)cornerAmount=wanted;
   const liftedCover=closeHover&&!reduce.matches?1:0;
   if(phase==='open')coverLift=mix(coverLift,liftedCover,1-Math.exp(-24*dt));
-  return Math.abs(coverLift-liftedCover)>.004&&phase==='open'||cornerAmount!==wanted||movingLamp||scene.pencil.position.distanceToSquared(penGoal)>.00003||Math.abs(scene.pencil.rotation.z-penAngle)>.003;
+  return Math.abs(coverLift-liftedCover)>.004&&phase==='open'||cornerAmount!==wanted||movingLamp||Math.hypot(scene.pencil.position.x-penGoal.x,scene.pencil.position.y-penGoal.y)>.003||Math.abs(scene.pencil.rotation.z-penAngle)>.003;
+}
+// Probe the whole pencil against the rendered surfaces, including a moving leaf and sticky corners.
+const probe=new T.Raycaster();
+probe.ray.direction.set(0,0,-1);
+const hits=[];
+// Picking the dense, fully shaded leaves costs more than drawing them on some phones.
+// Sample their actual deformed vertices into small contact meshes; keep rendering geometry intact.
+const contactMeshes=new WeakMap(),contactPoint=new T.Vector3();
+const contactMaterial=new T.MeshBasicMaterial({side:T.DoubleSide});
+function contactMesh(source){
+  const geo=source.geometry;
+  let shapes=contactMeshes.get(source);
+  if(!shapes){shapes=new WeakMap();contactMeshes.set(source,shapes);}
+  let entry=shapes.get(geo);
+  if(!entry){
+    const grid=geo.parameters;
+    let shape,indices=[];
+    if(geo.type==='PlaneGeometry'){
+      const cols=Math.min(grid.widthSegments,16),rows=Math.min(grid.heightSegments,6);
+      shape=new T.PlaneGeometry(1,1,cols,rows);
+      for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++)
+        indices.push(Math.round(j*grid.heightSegments/rows)*(grid.widthSegments+1)+Math.round(i*grid.widthSegments/cols));
+    }else{
+      geo.computeBoundingBox();
+      const size=geo.boundingBox.getSize(new T.Vector3());
+      shape=new T.BoxGeometry(size.x,size.y,size.z);
+    }
+    entry={mesh:new T.Mesh(shape,contactMaterial),indices};
+    shapes.set(geo,entry);
+  }
+  const mesh=entry.mesh;
+  mesh.matrixWorld.copy(source.matrixWorld);
+  const pos=mesh.geometry.attributes.position;
+  for(const [i,index] of entry.indices.entries()){
+    source.getVertexPosition(index,contactPoint);
+    pos.setXYZ(i,contactPoint.x,contactPoint.y,contactPoint.z);
+  }
+  if(entry.indices.length)mesh.geometry.computeBoundingSphere();
+  return mesh;
+}
+function placePen(dt){
+  const pen=scene.pencil,scale=pen.scale.x;
+  let support=-.21;
+  if(Math.abs(pen.position.x)<W+scale+.12&&Math.abs(pen.position.y)<H/2+scale+.12){
+    const visible=[...scene.boards,...scene.leaf.faces.filter(face=>face.visible)];
+    for(const spread of scene.spreads){
+      for(const face of spread.sides)if(face.visible)visible.push(face);
+      for(const card of spread.cards)if(card.root.visible)visible.push(card.rect);
+    }
+    const contact=visible.map(contactMesh);
+    const cs=Math.cos(pen.rotation.z),sn=Math.sin(pen.rotation.z);
+    for(let i=0;i<=12;i++){
+      const distance=(-.97+i*1.91/12)*scale;
+      probe.ray.origin.set(pen.position.x+distance*cs,pen.position.y+distance*sn,8);
+      hits.length=0;probe.intersectObjects(contact,false,hits);
+      if(hits.length)support=Math.max(support,hits[0].point.z);
+    }
+  }
+  const floor=support+.085*scale;
+  const target=floor+(penHeld?.29:0);
+  const height=Math.max(floor,mix(pen.position.z,target,reduce.matches?1:1-Math.exp(-18*dt)));
+  const moving=Math.abs(height-target)>.001;
+  pen.position.z=moving?height:target;
+  return moving;
 }
 function draw(now){
   frame=0;
@@ -533,6 +588,7 @@ function draw(now){
   const props=objectMotion(dt);
   if(phase!=='turning')prepareStatic(dt);
   deviceCamera();
+  const settlingPen=placePen(dt);
   try{renderer.render(scene.scene,camera);}catch(error){
     console.warn('Notebook rendering was interrupted.',error);fallback();return;
   }
@@ -542,7 +598,7 @@ function draw(now){
     if(phase==='cover'&&openingOnLoad)requestAnimationFrame(()=>coverMotion(true));
   }
   const lifts=phase==='open'&&pageCards().some(card=>card.lift>0&&card.lift<1);
-  if(props||motion||lifts)wake();else lastTime=0;
+  if(props||motion||lifts||settlingPen)wake();else lastTime=0;
 }
 function resize(){
   if(!renderer||!scene)return;

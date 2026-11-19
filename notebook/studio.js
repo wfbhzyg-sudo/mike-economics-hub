@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {sideName} from './catalog.js';
 import teachingBoard from '../assets/notebook/teaching-board.svg';
 
 export const W=3.32,H=4.7,NOTE_W=2.67,NOTE_H=1.48;
@@ -8,6 +9,14 @@ export const lampHome=new T.Vector3(-4.07,1.52,.38);
 export const penHome=new T.Vector3(3.98,-.86,.11);
 const ink='#263546', serif='"Songti SC","Noto Serif CJK SC","STSong",Georgia,serif';
 const stationary=new T.Vector3();
+const lettering='"Desk Hand","Kaiti SC",KaiTi,serif';
+export const PAPER_Z=.04;
+export const NOTE_Z=PAPER_Z+.049;
+// Distance from the fold. The paper sinks at the stitch and rises over the bound sections.
+export function gutterRise(distance){
+  const d=Math.abs(distance);
+  return .036*Math.exp(-((d-.23)**2)/.031)-.019*Math.exp(-d*d/.0025);
+}
 
 function canvas(w,h){return Object.assign(document.createElement('canvas'),{width:w,height:h});}
 function texture(image){
@@ -57,17 +66,27 @@ function coverSurface(image){
   stroke(g,[[-31,-22],[-31,25],[34,25]],'#282723',2);stroke(g,[[-25,17],[26,-21]],'#2a2e2c',2.8);stroke(g,[[-25,-15],[28,17]],'#50301d',2.8);
   g.restore();
 
-  text(g,'Mike 的经济一页通',357,293,56,{align:'center',color:'#3f342e',weight:700});
+  text(g,'Mike 的经济一页通',357,293,59,{align:'center',font:lettering,color:'#3f342e',weight:400});
   stroke(g,[[236,325],[478,325]],'#433227a0',1);
   return c;
 }
-function paperSurface(image,archive,side,index){
+function paperSurface(image,chapter,side,index){
   const c=stock(image,600,848),g=c.getContext('2d');
   const x=side===0?600:0,end=side===0?543:57;
   const shadow=g.createLinearGradient(x,0,end,0);shadow.addColorStop(0,'#49351948');shadow.addColorStop(.3,'#49351b21');shadow.addColorStop(1,'#49351b00');g.fillStyle=shadow;g.fillRect(0,0,600,848);
   const outer=x===0?600:0;
   const edge=g.createLinearGradient(outer,0,x===0?572:28,0);edge.addColorStop(0,'#9e846633');edge.addColorStop(1,'#9e846600');g.fillStyle=edge;g.fillRect(0,0,600,848);
-  // The heading is typeset in the stationary page header above the turning leaf.
+  // Bind lettering to the same texture on the resting and turning faces.
+  text(g,sideName(chapter,side,index),49,77,39,{font:lettering,weight:400,color:'#31433a'});
+  g.save();
+  if(side===0){g.translate(600,0);g.scale(-1,1);}
+  // Matching half stitches meet along the gutter of each open spread.
+  for(const y of [106,265,424,583,742]){
+    g.fillStyle='#654e39';g.beginPath();g.ellipse(8,y+3,2,4,-.24,0,2*Math.PI);g.fill();
+    g.strokeStyle='#7c674c';g.lineWidth=3.3;g.beginPath();g.moveTo(0,y);g.quadraticCurveTo(4,y-1,8,y+3);g.stroke();
+    g.strokeStyle='#e0cba4';g.lineWidth=1.6;g.stroke();
+  }
+  g.restore();
   stroke(g,[[49,102],[551,102]],'#8e816d93');
   stroke(g,[[49,752],[551,752]],'#9d8b71a8');
   text(g,String(index*2+side+1).padStart(2,'0'),300,802,22,{align:'center',font:'Georgia',color:'#5b5144'});
@@ -88,12 +107,12 @@ async function noteSurface(paper,item){
   let label=item.title;
   if(item.id==='nebs')label='NEBS 股票交易大赛';
   const metrics=()=>{
-    g.font=`700 ${size}px ${serif}`;return g.measureText(label).width;
+    g.font=`400 ${size}px ${lettering}`;return g.measureText(label).width;
   };
   if(metrics()>370){
     g.save();g.translate(272,176);g.scale(370/metrics(),1);
-    text(g,label,0,0,size,{weight:700});g.restore();
-  }else text(g,label,272,176,size,{weight:700});
+    text(g,label,0,0,size,{font:lettering,weight:400});g.restore();
+  }else text(g,label,272,176,size,{font:lettering,weight:400});
   text(g,item.description,275,223,24,{color:'#35453f',weight:500});
   stroke(g,[[37,296],[639,297]],'#26354655',1.25);
   stroke(g,[[592,326],[626,326],[615,316]],ink,2.2);stroke(g,[[626,326],[615,336]],ink,2.2);
@@ -111,7 +130,7 @@ async function workplate(fiber,item){
   inset(g,36,36,w-72,h-72,2,'#84745466',1);
   text(g,teaching?'TEACHING  /  ECONOMICS':'PRACTICE  /  ECONOMICS',76,123,29,{font:'Georgia',color:'#48594d'});
   stroke(g,[[76,157],[884,157]],'#7b705d',2);
-  text(g,item.title,76,862,teaching?91:78,{weight:700});
+  text(g,item.title,76,862,teaching?96:82,{font:lettering,weight:400});
   text(g,item.description,80,940,34,{color:'#514b3c'});
   stroke(g,[[76,1001],[884,1001]],'#7b705d',1.8);
   text(g,teaching?'进入教学工作台':'进入作业工作台',80,1073,31,{weight:600,color:'#314b42'});
@@ -197,7 +216,7 @@ export function bendPoint(x,t,out){
 }
 export const leafTangency=(x,t)=>Math.PI*t+Math.sin(Math.PI*t)*1.08*x/W;
 function leafMesh(scene){
-  const geom=new T.PlaneGeometry(W,H,40,18);
+  const geom=new T.PlaneGeometry(W,H,64,18);
   geom.translate(W/2,0,0);
   const back=geom.clone(),idx=back.index.array;
   const uv=back.attributes.uv;
@@ -218,12 +237,13 @@ export function bendLeaf(leaf,t,corner){
     for(let i=0;i<p.count;i++){
       const x=leaf.base[3*i],angle=leafTangency(x,t),sx=-Math.sin(angle),sz=Math.cos(angle);
       bendPoint(x,t,stationary);const y=leaf.base[3*i+1];
-      const curled=curlHeight(x-W/2,y,1,corner);
+      const curled=curlHeight(x-W/2,y,1,corner)+gutterRise(x)*Math.cos(Math.PI*t);
       p.setXYZ(i,stationary.x+sx*(offset+curled),y,stationary.z+sz*(offset+curled));
       n.setXYZ(i,f?-sx:sx,0,f?-sz:sz);
     }
     p.needsUpdate=true;
     n.needsUpdate=true;
+    geo.computeBoundingSphere();
     face.frustumCulled=false;
   }
 }
@@ -233,9 +253,9 @@ function shapingDesk(scene,image){
   const grain=texture(deskCanvas);
   grain.wrapS=grain.wrapT=T.MirroredRepeatWrapping;
   grain.repeat.set(5,5);
-  const top=flat(scene,material('#fff9eb',grain),0,0,-.21,72,48,false);
+  const top=flat(scene,material('#817468',grain),0,0,-.21,72,48,false);
   const glow=canvas(200,200),gradient=glow.getContext('2d'),r=gradient.createRadialGradient(100,100,15,100,100,100);
-  r.addColorStop(0,'#ffd3a576');r.addColorStop(.55,'#f4b77330');r.addColorStop(1,'#ffbd8000');
+  r.addColorStop(0,'#ffd5a599');r.addColorStop(.55,'#e6a76843');r.addColorStop(1,'#ffbd8000');
   gradient.fillStyle=r;gradient.fillRect(0,0,200,200);
   const pool=flat(scene,new T.MeshBasicMaterial({map:texture(glow),transparent:true,depthWrite:false}),-2.7,1.76,-.195,7.4,6.6,false);
   pool.receiveShadow=false;
@@ -277,14 +297,17 @@ function shapePencil(scene){
   return root;
 }
 export async function studio(chapters,mobile){
-  const [table,skin,fiber]=await Promise.all(['desk-grain','cover-cloth','folio-paper'].map(name=>image('/assets/notebook/'+name+'.svg')));
+  const [table,skin,fiber]=await Promise.all([
+    ...['desk-grain','cover-cloth','folio-paper'].map(name=>image('/assets/notebook/'+name+'.svg')),
+    document.fonts.load('400 32px "Desk Hand"','教学与班级 Mike').catch(()=>{}),
+  ]);
   const scene=new T.Scene();scene.background=new T.Color('#342720');
   const {pool}=shapingDesk(scene,table),lamp=shapeLamp(scene),pencil=shapePencil(scene);
   const book=new T.Group();book.name='Notebook';scene.add(book);
   const hinge=new T.Group();hinge.position.z=.14;book.add(hinge);
   const binding=material('#785133'),leafEdge=material('#d3bda1'),cream=material('#e9dcc2');
-  rounded(book,binding,W/2,0,-.10,W+.17,H+.18,.16,.075);
-  rounded(hinge,binding,-W/2,0,-.10,W+.17,H+.18,.15,.075);
+  const backBoard=rounded(book,binding,W/2,0,-.10,W+.17,H+.18,.16,.075);
+  const frontBoard=rounded(hinge,binding,-W/2,0,-.10,W+.17,H+.18,.15,.075);
   const coverArt=coverSurface(skin);
   const cover=flat(hinge,material('#fffaf1',texture(coverArt)),-W/2,0,-.178,W+.115,H+.13,false);
   cover.rotation.y=Math.PI;
@@ -299,7 +322,7 @@ export async function studio(chapters,mobile){
   const addSpreads=sections=>Promise.all(sections.map(async(chapter,i)=>{
     const surfaces=[0,1].map(j=>texture(paperSurface(fiber,chapter,j,i)));
     const sides=surfaces.map((map,j)=>{
-      const face=mesh(book,new T.PlaneGeometry(W,H,16,12),material('#fffdf9',map),j===0?-W/2:W/2,0,j===0?.168:.035,false);
+      const face=mesh(book,new T.PlaneGeometry(W,H,64,12),material('#fffdf9',map),j===0?-W/2:W/2,0,PAPER_Z,false);
       face.frustumCulled=false;
       return face;
     });
@@ -317,15 +340,15 @@ export async function studio(chapters,mobile){
     const available=cards.filter(Boolean);
     for(const c of available){
       const left=c.slot<2;
-      c.root.position.set(left?-W/2:W/2,c.y,left?.203:.070);
+      c.root.position.set(left?-W/2:W/2,c.y,NOTE_Z);
       c.root.rotation.z=c.angle;
     }
     return {sides,surfaces,cards:available};
   }));
   const spreads=await addSpreads(chapters);
   const leaf=leafMesh(book);
-  const key=new T.DirectionalLight('#fff5da',1.45);key.position.set(-3.7,4.7,10.3);
+  const key=new T.DirectionalLight('#efe5d2',.93);key.position.set(-3.7,4.7,10.3);
   key.castShadow=true;key.shadow.mapSize.setScalar(mobile?1024:2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=4;key.shadow.blurSamples=7;
-  const room=new T.HemisphereLight('#fff9e8','#b7a491',2.3);scene.add(key,room);
-  return {scene,book,hinge,spreads,addSpreads,leaf,lamp,pencil,pool,key,room,coverArt};
+  const room=new T.HemisphereLight('#d0dbeb','#a5907d',1.22);scene.add(key,room);
+  return {scene,book,hinge,boards:[backBoard,frontBoard,cover],spreads,addSpreads,leaf,lamp,pencil,pool,key,room,coverArt};
 }
