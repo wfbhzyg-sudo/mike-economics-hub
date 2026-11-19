@@ -137,9 +137,9 @@ button:disabled{cursor:default}
 #loading{background:#f5efdf url('/assets/notebook/folio-paper.svg') center/cover;color:#39493e}
 #destination-progress{width:min(220px,52vw);height:5px;accent-color:#68866f}
 body[data-phase="loading"] :is(#masthead,.portal-account,#mike-companion){visibility:hidden}
-#desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-wide.webp?v=folio4')}
+#desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-wide.webp?v=tasklamp1')}
 @media(max-width:720px) and (orientation:portrait){
-  #desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-portrait.webp?v=folio4')}
+  #desk-start{background-size:cover;background-image:url('/assets/notebook/desk-still-portrait.webp?v=tasklamp1')}
 }
 
 #masthead .identity,#desk-cover .primary{font-family:"Desk Hand",var(--serif);font-weight:400}
@@ -160,3 +160,7 @@ body:not([data-ready="3d"]) #news-tab{visibility:hidden}
 .news-reader article{margin:1em 0;overflow-wrap:anywhere;white-space:pre-wrap}
 
 .news-reader article svg{display:block;width:100%;height:min(55dvh,32rem)}
+
+#flat-list li{min-width:0}
+#flat-list a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;text-align:left}
+#flat-list a small{grid-column:1/-1;overflow-wrap:anywhere;color:#465843}

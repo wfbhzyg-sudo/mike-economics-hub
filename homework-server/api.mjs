@@ -1,3 +1,4 @@
+import {deskTask} from './desk-task.mjs';
 import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
@@ -927,6 +928,10 @@ export async function createHomework({externalAuth} = {}) {
           stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy?.());stream.pipe(res);
           return true;
         }
+      }
+      if(method==='GET'&&route.length===1&&route[0]==='desk-task'){
+        res.setHeader('Cache-Control','private, no-store');
+        return (json(res,{task:await deskTask(db,user)}),true);
       }
       if (route[0] === "assignments") {
         if(method==='GET'&&route[1]==='roster-summary'){

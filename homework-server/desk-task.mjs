@@ -1,0 +1,46 @@
+import {assignmentState} from '../homework/learning-model.js';
+import {assignmentOpensLater} from '../homework/assignment-navigation.js';
+
+// Fetch only fields used to select a task. In particular, never load papers,
+// rubrics, attachment bodies or full grading histories for the notebook.
+export async function deskTask(db,user,now=Date.now()){
+  const table=db.table;
+  if(user.role==='teacher'){
+    const {rows}=await db.query(`WITH latest AS (
+      SELECT DISTINCT ON (a.id,s.data->>'studentId') s.id
+      FROM ${table} a JOIN ${table} s ON s.kind='submission' AND s.data->>'assignmentId'=a.id
+      WHERE a.kind='assignment' AND a.data->>'teacherId'=$1 AND a.data->>'deletedAt' IS NULL
+        AND a.data->>'published'='true' AND s.data->>'status'<>'draft'
+        AND s.data->>'manualScoreEntry' IS DISTINCT FROM 'true'
+      ORDER BY a.id,s.data->>'studentId',coalesce(s.data->>'submittedAt',s.data->>'createdAt','') DESC,s.id DESC
+    ), pending AS (
+      SELECT s.data->>'status' AS status,
+        coalesce(s.data->'reviewRequests' @> '[{"status":"open"}]'::jsonb,false) AS requested
+      FROM latest JOIN ${table} s USING(id) WHERE s.data->>'status'<>'returned'
+    ) SELECT count(*) FILTER(WHERE status='needs_review' AND NOT requested)::int AS grading,
+        count(*) FILTER(WHERE requested)::int AS requests FROM pending`,[user.id]);
+    const task=rows[0];
+    return task.grading||task.requests?task:null;
+  }
+  if(user.role!=='student'||!user.classIds?.length)return null;
+  const [assignments,submissions]=await Promise.all([
+    db.query(`SELECT id,data->>'title' AS title,data->>'dueAt' AS "dueAt",
+      data->>'opensAt' AS "opensAt",data->>'allowLate'='true' AS "allowLate",
+      (data->>'allowResubmit') IS DISTINCT FROM 'false' AS "allowResubmit"
+      FROM ${table} WHERE kind='assignment' AND data->>'published'='true'
+        AND data->>'deletedAt' IS NULL AND data->>'offline' IS DISTINCT FROM 'true'
+        AND data->>'format' IS DISTINCT FROM 'score' AND (data->'classIds') ?| $1::text[]
+      ORDER BY created DESC,id`,[user.classIds]),
+    db.query(`SELECT id,data->>'assignmentId' AS "assignmentId",data->>'status' AS status,
+      data->>'submittedAt' AS "submittedAt",data->>'updatedAt' AS "updatedAt",data->>'createdAt' AS "createdAt"
+      FROM ${table} WHERE kind='submission' AND data->>'studentId'=$1
+        AND data->>'manualScoreEntry' IS DISTINCT FROM 'true'`,[user.id]),
+  ]);
+  const byWork=Map.groupBy(submissions.rows,s=>s.assignmentId);
+  const pending=assignments.rows.filter(a=>!assignmentOpensLater(a,now)&&assignmentState(a,byWork.get(a.id)||[],now).key==='todo');
+  // Upcoming deadlines, then the most recent eligible late work, then undated work.
+  const rank=a=>!a.dueAt?2:Date.parse(a.dueAt)<now?1:0;
+  pending.sort((a,b)=>rank(a)-rank(b)||(rank(a)===1?-1:1)*((Date.parse(a.dueAt)||0)-(Date.parse(b.dueAt)||0)));
+  const a=pending[0];
+  return a?{title:a.title,dueAt:a.dueAt}:null;
+}

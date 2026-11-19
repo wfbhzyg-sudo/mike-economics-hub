@@ -81,6 +81,40 @@ const cover=document.querySelector('#desk-start');
 const fallback=document.querySelector('#fallback');
 const saveData=navigator.connection?.saveData;
 const explicit=new URLSearchParams(location.search).get('view')==='desk';
+function installTask(link,teacher){
+  let pending=false,last=0;
+  async function refresh(force=false){
+    if(pending||(!force&&Date.now()-last<30000))return;
+    pending=true;
+    let lines=[];
+    try{
+      const r=await fetch('/api/homework/desk-task',{cache:'no-store'});
+      if(r.ok){
+        const {task}=await r.json();
+        if(task&&teacher){
+          if(task.grading)lines.push(task.grading+' 份提交待批阅');
+          if(task.requests)lines.push(task.requests+' 份成绩待复核');
+        }
+        if(task&&!teacher&&task.title){
+          const due=task.dueAt&&new Date(task.dueAt);
+          const when=due?new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(due):'';
+          lines=[task.title,when?(due.getTime()<Date.now()?'可补交 · 原截止 ':'截止 ')+when:'不限截止时间'];
+        }
+        last=Date.now();
+      }
+    }catch{}finally{pending=false;}
+    const detail=link.querySelector('small');
+    if(lines.length||detail){
+      const note=detail||document.createElement('small');
+      if(lines.length){note.textContent=lines.join(' · ');if(!detail)link.append(note);}else note.remove();
+    }
+    link.dataset.task=JSON.stringify(lines);
+    document.dispatchEvent(new Event('notebook:task'));
+  }
+  void refresh();
+  window.addEventListener('pageshow',e=>{if(e.persisted)void refresh(true);});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});
+}
 export function configureDesk(teacher){
 installNews();
 const apps=(window.HUB_APPS||[]).filter(app=>!teacher||app.id!=='homework-submit');
@@ -100,6 +134,8 @@ if(entries.length){
     return row;
   }));
 }
+const primary=list.querySelector(teacher?'[data-entry="teacher-workspace"]':'[data-entry="homework-submit"]');
+if(primary)installTask(primary,teacher);
 return entries;
 }
 async function boot(){
@@ -120,7 +156,7 @@ if(!entries.length||(saveData&&!explicit)){
   }catch{}
   // Keep a usable destination during a stuck download without committing to it during a normal load.
   const timeout=setTimeout(flat,8500);
-  import('/assets/notebook/scene-v1.js?v=paper2').then(book=>{
+  import('/assets/notebook/scene-v1.js?v=tasklamp1').then(book=>{
     if(document.body.dataset.ready!=='2d')return book.start(entries,play,()=>document.body.dataset.ready!=='2d');
   }).catch(flat).finally(()=>clearTimeout(timeout));
 }

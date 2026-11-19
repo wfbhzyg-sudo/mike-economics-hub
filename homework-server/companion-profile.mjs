@@ -1,5 +1,9 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-notebook-task-light',date:'2026-11-19',title:'书桌上的待办',
+  items:[{audience:'student',art:'book',title:'下一份作业',text:'作业入口会写上最近待交的作业和截止时间。手机上的台灯已移到书页外。'},
+    {audience:'teacher',art:'book',title:'待批阅与复核',text:'教师入口会显示需要你处理的提交数量。没有待办时，纸面留白。'}]
+},{
   id:'2026-11-19-notebook-paper-goods',date:'2026-11-19',title:'书桌上的四份纸件',
   items:[{audience:'all',art:'book',title:'资料与竞赛',text:'翻到资料页，可从档案夹进入资料库，从行情单进入 NEBS 比赛。右页的供需方格纸和趋势图分别通往微观与宏观学习材料。'}]
 },{

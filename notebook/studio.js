@@ -132,14 +132,39 @@ async function workplate(fiber,item){
   const art=await image('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(teaching?teachingBoard:item.svg));
   g.fillStyle=teaching?'#e7ebd7':'#f8e9c5';g.fillRect(0,0,w,h);
   g.globalCompositeOperation='multiply';g.globalAlpha=.35;g.drawImage(fiber,0,0,w,h);g.globalAlpha=1;
-  g.drawImage(art,90,185,780,780*art.height/art.width);g.globalCompositeOperation='source-over';
+  g.drawImage(art,110,113,740,740*art.height/art.width);g.globalCompositeOperation='source-over';
   inset(g,25,25,w-50,h-50,3,'#796a4988',3);
   inset(g,36,36,w-72,h-72,2,'#84745466',1);
-  text(g,item.title,76,939,teaching?96:82,{font:lettering,weight:400});
-  stroke(g,[[76,1001],[884,1001]],'#7b705d',1.8);
+  text(g,item.title,70,863,teaching?96:82,{font:lettering,weight:400});
+  stroke(g,[[72,918],[884,918]],'#7b705d',1.8);
   stroke(g,[[811,1060],[871,1060],[854,1045]],'#314b42',3);
   stroke(g,[[871,1060],[854,1075]],'#314b42',3);
   return c;
+}
+// Keep a clean strip of the original stock so a changed or cleared task
+// restores the paper without decoding the illustration again.
+function taskPainter(map){
+  const g=map.image.getContext('2d'),stock=g.getImageData(63,924,738,189);
+  let previous='';
+  return lines=>{
+    const next=lines.join('\n');
+    if(next===previous)return false;
+    previous=next;g.putImageData(stock,63,924);
+    const clipped=(value,size,y,color)=>{
+      g.font=`500 ${size}px ${serif}`;
+      let fit=value;
+      if(g.measureText(fit).width>722){
+        const chars=Array.from(value);
+        while(chars.length&&g.measureText(chars.join('')+'…').width>722)chars.pop();
+        fit=chars.join('')+'…';
+      }
+      text(g,fit,72,y,size,{color,weight:500});
+    };
+    if(lines[0])clipped(lines[0],49,1000,ink);
+    if(lines[1])clipped(lines[1],39,1072,'#465843');
+    map.needsUpdate=true;
+    return true;
+  };
 }
 function material(color,map=null,params={}){
   return new T.MeshStandardMaterial({color,map,roughness:.9,...params});
@@ -208,8 +233,8 @@ function cardGeometryBack(geo) {
 }
 function edgeShadow(){
   const c=canvas(160,100),g=c.getContext('2d');
-  g.shadowColor='#332819b8';g.shadowBlur=7;g.shadowOffsetX=1;g.shadowOffsetY=3;
-  g.fillStyle='#49382363';g.beginPath();g.roundRect(9,10,142,77,3);g.fill();
+  g.shadowColor='#4937229c';g.shadowBlur=9;g.shadowOffsetX=2;g.shadowOffsetY=3;
+  g.fillStyle='#49382348';g.beginPath();g.roundRect(9,10,142,77,3);g.fill();
   return texture(c);
 }
 function makeCard(parent,item,slot,map,front,back,shade,w=NOTE_W,h=NOTE_H){
@@ -284,7 +309,7 @@ function shapingDesk(scene,image){
   grain.repeat.set(5,5);
   const top=flat(scene,material('#817468',grain),0,0,-.21,72,48,false);
   const glow=canvas(200,200),gradient=glow.getContext('2d'),r=gradient.createRadialGradient(100,100,15,100,100,100);
-  r.addColorStop(0,'#ffd5a599');r.addColorStop(.55,'#e6a76843');r.addColorStop(1,'#ffbd8000');
+  r.addColorStop(0,'#ffe1aa80');r.addColorStop(.32,'#f7ca965c');r.addColorStop(.65,'#dbad762a');r.addColorStop(1,'#ae886500');
   gradient.fillStyle=r;gradient.fillRect(0,0,200,200);
   const pool=flat(scene,new T.MeshBasicMaterial({map:texture(glow),transparent:true,depthWrite:false}),-2.7,1.76,-.195,7.4,6.6,false);
   pool.receiveShadow=false;
@@ -384,7 +409,7 @@ export async function studio(chapters,mobile){
       if(i===0&&slot===0){
         const w=2.98,h=3.60,face=noteGeometry(w,h);
         const card=makeCard(book,entry,slot,texture(await workplate(fiber,entry)),face,cardGeometryBack(face),shade,w,h);
-        return {...card,slot,y:-.04,angle:.009};
+        return {...card,paintTask:taskPainter(card.rect.material.map),slot,y:-.04,angle:.009};
       }
       const design=paperDesign(entry.id);
       if(design){
@@ -410,8 +435,8 @@ export async function studio(chapters,mobile){
   }));
   const spreads=await addSpreads(chapters);
   const leaf=leafMesh(book),bookmark=shapeBookmark(book);
-  const key=new T.DirectionalLight('#efe5d2',.93);key.position.set(-3.7,4.7,10.3);
-  key.castShadow=true;key.shadow.mapSize.setScalar(mobile?1024:2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=4;key.shadow.blurSamples=7;
-  const room=new T.HemisphereLight('#d0dbeb','#a5907d',1.22);scene.add(key,room);
+  const key=new T.DirectionalLight('#efe5d2',.93);key.position.set(-4.2,4.3,8.2);
+  key.castShadow=true;key.shadow.mapSize.setScalar(mobile?1024:2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=6;key.shadow.blurSamples=7;
+  const room=new T.HemisphereLight('#e1e3e4','#a18b75',1.10);scene.add(key,room);
   return {scene,book,hinge,boards:[backBoard,frontBoard,cover],spreads,addSpreads,leaf,bookmark,lamp,pencil,pool,key,room,coverArt};
 }

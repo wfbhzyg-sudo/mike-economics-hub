@@ -504,6 +504,19 @@ function poseTurn(low,high,t,corner){
   scene.spreads[low].cards.filter(card=>card.slot>=2).forEach(card=>pressToLeaf(card,t,z,false));
   scene.spreads[high].cards.filter(card=>card.slot<2).forEach(card=>pressToLeaf(card,t,z,true));
 }
+function syncPaperTask(){
+  const card=scene?.spreads[0]?.cards.find(c=>c.paintTask);
+  if(!card)return;
+  const data=document.querySelector('#flat-list [data-task]')?.dataset.task;
+  const lines=data?JSON.parse(data):[];
+  if(card.paintTask(lines))wake();
+  const anchor=buttons.get(card.item);
+  if(anchor){
+    if(lines.length)anchor.setAttribute('aria-description',lines.join(' · '));
+    else anchor.removeAttribute('aria-description');
+  }
+}
+document.addEventListener('notebook:task',syncPaperTask);
 function deviceCamera(){
   const width=canvas.clientWidth,height=canvas.clientHeight,aspect=width/height,mobile=narrow();
   const closedH=mobile?Math.max(5.86,3.86/aspect):Math.max(5.78,10.24/aspect);
@@ -515,11 +528,17 @@ function deviceCamera(){
   camera.updateProjectionMatrix();camera.updateMatrixWorld();
   scene.hinge.position.z=.14*(1-openness);
   scene.hinge.rotation.y=(1-openness)*Math.PI-coverLift*.025;
-  const propX=mobile?camera.position.x-W*.20:lampHome.x;
-  scene.lamp.root.position.set(propX,mobile?2.85:lampHome.y,0);
-  scene.lamp.root.scale.setScalar(mobile?.55:1);
-  scene.lamp.bulb.position.set(mobile?propX+.34:-2.89,mobile?2.50:1.04,2.18);
-  scene.pool.position.set(mobile?propX+.36:-2.89,mobile?2.25:1.04,-.195);
+  // Place the lamp in the exposed desk margin. Keep the 44px touch target
+  // inside the screen and left of the bookmark, even while the camera pans.
+  const unit=heightUnits/height;
+  const propX=mobile?camera.position.x+camera.left+37*unit:lampHome.x-.23;
+  const propY=mobile?H/2+.14+30*unit:lampHome.y;
+  const lampScale=mobile?Math.min(.48,42*unit):1;
+  scene.lamp.root.position.set(propX,propY,0);
+  scene.lamp.root.scale.setScalar(lampScale);
+  scene.lamp.bulb.position.set(propX+lampScale*.82,propY-lampScale*.75,2.60);
+  scene.pool.position.set(propX+lampScale*1.16,propY-lampScale*.87,-.195);
+  scene.pool.rotation.z=-.39;
   scene.pencil.scale.setScalar(mobile?.67:1);
   const helperX=mobile?camera.position.x+W*.18:penHome.x;
   const helperY=mobile?-2.64:penHome.y;
@@ -576,7 +595,7 @@ function controlsOnScene(){
     const corners=[[-width/2,0],[width/2,height/2]].map(([x,y])=>xy(ribbon.localToWorld(project.set(x,y,0))));
     positionRect(tab,corners,44);
   }
-  positionRect(lamp,[xy(scene.lamp.button.getWorldPosition(project))],44);
+  positionRect(lamp,[xy(narrow()?scene.lamp.root.localToWorld(project.set(.12,-.08,.5)):scene.lamp.button.getWorldPosition(project))],44);
   const pencilPoints=[[-1,-.10],[-1,.10],[1,.10],[1,-.10]].map(([x,y])=>xy(scene.pencil.localToWorld(new T.Vector3(x,y,0))));
   positionRect(pen,pencilPoints,44);
 }
@@ -588,7 +607,8 @@ function objectMotion(dt){
   // The lamp adds a reflected pool to the walnut and a warm local fill to the paper.
   const pose=lampAmount*.032+.045;
   scene.lamp.button.scale.y=1+pose;
-  scene.lamp.bulb.intensity=lampAmount*17;
+  scene.lamp.bulb.intensity=lampAmount*14;
+  scene.key.intensity=.59+.35*lampAmount;
   scene.lamp.shadeUnder.material.emissiveIntensity=lampAmount*.79;
   scene.pool.material.opacity=lampAmount;
   scene.pencil.position.x=mix(scene.pencil.position.x,penGoal.x,ratio);
@@ -748,7 +768,7 @@ export async function start(apps,animateOpening,canPresent,guest=false){
     context.toneMapping=T.ACESFilmicToneMapping;context.toneMappingExposure=1.12;
     scene=await studio(guest?[]:chapters,narrow());
     if(!canPresent()){context.dispose();return;}
-    renderer=context;camera=new T.OrthographicCamera(-6,6,4,-4,.01,40);
+    syncPaperTask();renderer=context;camera=new T.OrthographicCamera(-6,6,4,-4,.01,40);
     canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fallback();});
     window.addEventListener('resize',resize);
     openingOnLoad=animateOpening&&!reduce.matches;
@@ -767,6 +787,6 @@ export async function unlock(apps,showDesk){
   const spreads=await scene.addSpreads(sections);
   if(!renderer)throw Error('Cover lost its graphics context');
   chapters=sections;catalogCount=chapters.length;scene.spreads=spreads;spreadIndex=side=viewSide=0;
-  connectNotes();dropPen();locked=false;
+  connectNotes();syncPaperTask();dropPen();locked=false;
   showDesk();sync();coverMotion(true);
 }
