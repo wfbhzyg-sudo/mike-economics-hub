@@ -167,3 +167,10 @@
 }
 
 .correction-workspace .correction-editor details > summary { background: #eef5fb; color: #163653; }
+
+@media (max-width:900px), (max-height:500px) and (pointer:coarse) {
+  .correction-editor h2 {justify-content:flex-start;flex-wrap:wrap}
+  .correction-editor .correction-back-reference {
+    order:-1;flex:0 0 auto;min-height:44px;padding-inline:8px;
+  }
+}

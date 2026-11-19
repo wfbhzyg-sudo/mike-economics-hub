@@ -1,3 +1,4 @@
+import {readingPositions} from './reading-positions.js';
 import {feedbackMarkup} from './choice-correction.js';
 import {mountLessonLinks} from './lesson-panel.js';
 import {accuracyBadge} from './score-bands.js';
@@ -105,13 +106,17 @@ export function createSelfPracticeUI(ctx) {
       <div class="sp-units" data-units>${units.length ? units.map((unit) => unitMarkup(unit, settings)).join('') : '<p class="sp-empty">老师尚未向你所在班级开放可自主练习的章节。</p>'}</div>
     </section>
     <section class="sp-card sp-setup" aria-labelledby="sp-setup-title">
+      <div class="sp-configuration">
       <h2 id="sp-setup-title">考试设置</h2>
       <div class="sp-field"><span class="sp-label">题目数量</span><div class="sp-seg" data-counts>${[10, 20, 30].map((count) => `<button type="button" data-count="${count}" aria-pressed="${settings.count === count}">${count} 道</button>`).join('')}</div><p class="sp-warn" data-count-warn role="status"></p></div>
       <div class="sp-field"><span class="sp-label">计时方式</span><div class="sp-seg" data-timers data-mode="timer"><button type="button" data-timer="countup" aria-pressed="${settings.timer === 'countup'}">正计时</button><button type="button" data-timer="countdown" aria-pressed="${settings.timer === 'countdown'}">倒计时</button></div></div>
       <div class="sp-field" data-minutes-row ${settings.timer === 'countdown' ? '' : 'hidden'}><label class="sp-label" for="sp-minutes">考试时长</label><div class="sp-inline"><input id="sp-minutes" type="number" min="1" max="240" step="1" value="${settings.minutes}" inputmode="numeric"><span>分钟</span></div><p class="sp-warn" data-minutes-warn role="status"></p></div>
       <div class="sp-summary" data-summary aria-live="polite"></div>
-      <button type="button" class="primary sp-start" data-start>一键开始</button>
-      <p class="sp-note">进入试卷后开始计时。</p>
+      </div>
+      <div class="sp-create-actions">
+        <button type="button" class="sp-settings-trigger" data-open-settings aria-haspopup="dialog" title="调整题量与计时"><strong data-quick-summary></strong><span data-quick-timer></span></button>
+        <button type="button" class="primary sp-start" data-start>一键开始</button>
+      </div>
     </section>
   </div>
   <section class="sp-recent" aria-labelledby="sp-recent-title">
@@ -131,6 +136,29 @@ export function createSelfPracticeUI(ctx) {
     const recent = page.querySelector('[data-recent]');
     let creating=false;
 
+    const setup=page.querySelector('.sp-setup');
+    const configuration=setup.querySelector('.sp-configuration');
+    const openSettings=page.querySelector('[data-open-settings]');
+    const quickSummary=openSettings.querySelector('[data-quick-summary]');
+    const quickTimer=openSettings.querySelector('[data-quick-timer]');
+    openSettings.onclick=()=>{
+      const dialog=document.createElement('dialog');
+      dialog.className='sp-dialog sp-settings-sheet';
+      dialog.setAttribute('aria-labelledby','sp-setup-title');
+      const done=document.createElement('button');
+      done.type='button';done.className='primary';done.textContent='完成';
+      dialog.append(configuration,done);attachDialog(dialog);
+      const compact=matchMedia('(max-width:900px)');
+      const resize=()=>{if(!compact.matches)dialog.close();};
+      compact.addEventListener('change',resize);
+      dialog.addEventListener('close',()=>{
+        compact.removeEventListener('change',resize);
+        setup.prepend(configuration);dialog.remove();
+        if(compact.matches&&openSettings.isConnected)openSettings.focus({preventScroll:true});
+      },{once:true});
+      done.onclick=()=>dialog.close();
+      dialog.showModal();
+    };
     const paint = () => {
       saveCreate(settings);
       const availableCount = availableQuestionCount(catalog, settings.topics);
@@ -141,14 +169,16 @@ export function createSelfPracticeUI(ctx) {
         button.disabled = availableCount > 0 && value > availableCount;
         button.title = button.disabled ? `当前仅 ${availableCount} 题` : '';
       }
-      const warn = page.querySelector('[data-count-warn]');
+      const warn = configuration.querySelector('[data-count-warn]');
       warn.textContent = availableCount === 0 ? '请至少选择一个章节' : settings.count > availableCount ? `当前仅 ${availableCount} 题，无法组成 ${settings.count} 道` : '';
       for (const button of timerHost.querySelectorAll('[data-timer]')) button.setAttribute('aria-pressed', String(settings.timer === button.dataset.timer));
       minutesRow.hidden = settings.timer !== 'countdown';
       summary.innerHTML = summaryMarkup(settings, availableCount, h);
       const validMinutes=Number.isInteger(settings.minutes)&&settings.minutes>=1&&settings.minutes<=240;
       minutesInput.setAttribute('aria-invalid', String(settings.timer==='countdown'&&!validMinutes));
-      page.querySelector('[data-minutes-warn]').textContent=settings.timer==='countdown'&&!validMinutes?'倒计时需为 1–240 之间的整数分钟':'';
+      configuration.querySelector('[data-minutes-warn]').textContent=settings.timer==='countdown'&&!validMinutes?'倒计时需为 1–240 之间的整数分钟':'';
+      quickSummary.textContent=`已选 ${settings.topics.length} 章 · ${settings.count} 题`;
+      quickTimer.textContent=availableCount<settings.count&&settings.topics.length?`仅可练 ${availableCount} 题 · 调整设置`:settings.timer==='countdown'?`倒计时 ${settings.minutes} 分钟 · 调整`:'正计时 · 调整';
       start.disabled = creating || !settings.topics.length || settings.count > availableCount || (settings.timer==='countdown'&&!validMinutes);
       if (!units.length) start.disabled = true;
     };
@@ -201,7 +231,7 @@ export function createSelfPracticeUI(ctx) {
     minutesInput.addEventListener('input', () => {
       const value = Number(minutesInput.value);
       settings.minutes = value;
-      page.querySelector('[data-minutes-warn]').textContent = value >= 1 && value <= 240 ? '' : '倒计时需在 1–240 分钟之间';
+      configuration.querySelector('[data-minutes-warn]').textContent = value >= 1 && value <= 240 ? '' : '倒计时需在 1–240 分钟之间';
       paint();
     });
     page.querySelector('[data-history]').onclick = () => showHistory(attempts);
@@ -212,7 +242,7 @@ export function createSelfPracticeUI(ctx) {
     start.onclick = async () => {
       if (start.disabled || creating) return;
       if (settings.timer === 'countdown' && !(settings.minutes >= 1 && settings.minutes <= 240)) {
-        page.querySelector('[data-minutes-warn]').textContent = '倒计时需在 1–240 分钟之间';
+        configuration.querySelector('[data-minutes-warn]').textContent = '倒计时需在 1–240 分钟之间';
         minutesInput.focus();
         return;
       }
@@ -336,7 +366,7 @@ export function createSelfPracticeUI(ctx) {
     const serverOffset=Date.parse(paper.serverNow||new Date().toISOString())-Date.now();
     const seconds=()=>paper.timerMode==='countdown'?Math.max(0,Math.ceil((Date.parse(paper.deadlineAt)-Date.now()-serverOffset)/1000)):Math.max(0,Math.floor((Date.now()+serverOffset-Date.parse(paper.startedAt))/1000));
     const expired=()=>paper.timerMode==='countdown'&&seconds()<=0;
-    const views={...local?.views};
+    const views=readingPositions(LOCAL_KEY+state.user.id+':'+id+':reading',local?.views);
     document.body.classList.add('sp-immersive');
     document.body.dataset.mcqActive='true';
     document.body.dataset.mcqQuestionType='choice';
@@ -346,7 +376,7 @@ export function createSelfPracticeUI(ctx) {
     </section>`;
     const study=studyControls({api,toast,user:state.user,source:'mock',assignmentId:id});
     const page=main.firstElementChild,questionHost=page.querySelector('[data-question]'),answerHost=page.querySelector('[data-answers]'),saveState=page.querySelector('[data-save]'),timerHost=page.querySelector('[data-timer]'),retrySave=page.querySelector('[data-retry-save]'),retrySubmit=page.querySelector('[data-retry-submit]');
-    const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,excluded,flags:[...flags],views,index,revision,dirty,savedAt:Date.now()});
+    const persistLocal=()=>writeJSON(LOCAL_KEY+id,{answers,excluded,flags:[...flags],index,revision,dirty,savedAt:Date.now()});
     const setSave=text=>{if(current())saveState.textContent=text;};
     const paintState=()=>{
       const q=questions[index],selected=answers[q.id];
@@ -384,7 +414,7 @@ export function createSelfPracticeUI(ctx) {
             dirty=true;if(current())persistLocal();
             if(error.status===409){
               // The server may have auto-submitted while the last save was in flight.
-              try{const latest=await api(`self-practice/attempts/${encodeURIComponent(id)}`);if(latest.attempt.status==='submitted'){if(current()){removeLocal(LOCAL_KEY+id);go('self-practice/result/'+encodeURIComponent(id));}return false;}}catch{}
+              try{const latest=await api(`self-practice/attempts/${encodeURIComponent(id)}`);if(latest.attempt.status==='submitted'){if(current()){views.clear();removeLocal(LOCAL_KEY+id);go('self-practice/result/'+encodeURIComponent(id));}return false;}}catch{}
               savedRevConflict=true;setSave('答案版本已更新');showConflict();
             }else{setSave('尚未保存到账号，请保持本页并重试');if(current())retrySave.hidden=false;}
             return false;
@@ -404,7 +434,7 @@ export function createSelfPracticeUI(ctx) {
     };
     const paintQuestion=()=>{
       lessons.destroy();
-      const q=questions[index],view=views[q.id]||{};
+      const q=questions[index],view=views.get(q.id)||{};
       const screen=questionView(q,h,{number:index+1,zoom:view.zoom,textOpen:view.text,label:`第 ${index+1} / ${questions.length} 题`});
       questionHost.innerHTML=screen.tools+screen.paper;
       answerHost.innerHTML=screen.choices+answerNavigation({choice:true,first:index===0,last:index===questions.length-1});
@@ -412,7 +442,7 @@ export function createSelfPracticeUI(ctx) {
       const paperElement=bindQuestionPaper(page,marker,{view,changed:storeView,firstTextKey:'prompt'});
       function storeView(){
         const next={zoom:paperElement.classList.contains('zoom'),text:!questionHost.querySelector('#mcq-accessible').hidden,x:paperElement.scrollLeft,y:paperElement.scrollTop};
-        if(JSON.stringify(next)!==JSON.stringify(views[q.id])){views[q.id]=next;persistLocal();}
+        views.set(q.id,next);
       }
       paperElement.addEventListener('scroll',storeView,{passive:true});
       lessons.mount(tools,q,{number:index+1,course:paper.course,compact:true});
@@ -454,7 +484,7 @@ export function createSelfPracticeUI(ctx) {
       try{
         await sync();if(!current()||savedRevConflict)return;
         await post(`self-practice/attempts/${encodeURIComponent(id)}/submit`,{revision,answers:{...answers},flags:[...flags]});
-        if(!current())return;removeLocal(LOCAL_KEY+id);clearInterval(timer);go('self-practice/result/'+encodeURIComponent(id));
+        if(!current())return;views.clear();removeLocal(LOCAL_KEY+id);clearInterval(timer);go('self-practice/result/'+encodeURIComponent(id));
       }catch(error){
         if(!current())return;frozen=expired();retrySubmit.hidden=false;setSave(frozen?'时间已到，交卷未确认，请重试':'交卷失败，答案已保留，请重试');toast(error.message);
       }finally{if(current()){submitting=false;paintState();}}
@@ -467,7 +497,9 @@ export function createSelfPracticeUI(ctx) {
       go('self-practice');
     };
     const keyHandler=event=>{
-      if(!current()||dialogs.size||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('input,textarea,select,[contenteditable=true]'))return;
+      if(!current()||event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;
+      if(document.querySelector('dialog[open]')||!(event.target===document.body||page.contains(event.target)))return;
+      if(event.target.closest?.('input,textarea,select,[contenteditable=true]'))return;
       const q=questions[index],letter=event.key.toUpperCase();
       if(q.optionLabels.includes(letter)){event.preventDefault();choose(letter);}
       else if(event.target.closest('[role=radio]')&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
@@ -476,8 +508,8 @@ export function createSelfPracticeUI(ctx) {
     };
     const online=()=>{if(expired())submitPaper(true);else if(dirty)sync();};
     const unload=event=>{if(dirty){event.preventDefault();event.returnValue='';}};
-    document.addEventListener('keydown',keyHandler);window.addEventListener('online',online);window.addEventListener('beforeunload',unload);
-    destroy=()=>{study.destroy();disposed=true;++creationVersion;document.removeEventListener('keydown',keyHandler);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);document.body.classList.remove('sp-immersive');delete document.body.dataset.mcqActive;delete document.body.dataset.mcqQuestionType;clearInterval(timer);clearTimeout(saveTimer);closeDialogs();};
+    window.addEventListener('pagehide',views.flush);document.addEventListener('keydown',keyHandler);window.addEventListener('online',online);window.addEventListener('beforeunload',unload);
+    destroy=()=>{views.flush();window.removeEventListener('pagehide',views.flush);study.destroy();disposed=true;++creationVersion;document.removeEventListener('keydown',keyHandler);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload);document.body.classList.remove('sp-immersive');delete document.body.dataset.mcqActive;delete document.body.dataset.mcqQuestionType;clearInterval(timer);clearTimeout(saveTimer);closeDialogs();};
     paintQuestion();setSave(dirty?'有未同步答案':'已保存到账号');if(savedRevConflict)showConflict();else if(dirty)sync();timer=setInterval(tick,1000);tick();
   }
 

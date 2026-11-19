@@ -145,7 +145,14 @@ export function mountLessonLinks(root, api) {
         <div data-lesson-body></div>`;
       dialog.querySelector('[data-lesson-close]').onclick = () => close(true);
       dialog.addEventListener('cancel', cancel);
-      dialog.addEventListener('keydown', event => { if (event.key === 'Escape') cancel(event); });
+      dialog.addEventListener('keydown', event => {
+        if(event.key==='Escape'){cancel(event);return;}
+        if(event.key!=='Tab')return;
+        const controls=[...dialog.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(el=>el.getClientRects().length);
+        const first=controls[0],last=controls.at(-1);
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+      });
       dialog.addEventListener('click', event => { if (event.target === dialog && event.clientX > dialog.getBoundingClientRect().right) close(true); });
       document.body.append(dialog);
       media = matchMedia('(max-width: 900px)');

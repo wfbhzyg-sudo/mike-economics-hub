@@ -3868,14 +3868,14 @@
 /* Reading is the default task. Open composition deliberately; keep its card content-sized. */
 .homework-surface .pdf-submission .paper-view-switch{display:flex;gap:6px;justify-content:flex-end;margin:0 0 12px;border:0;background:transparent;padding:0}
 .homework-surface .pdf-submission .paper-view-switch button{min-height:40px;border:1px solid var(--line);border-radius:7px;background:#f9faf7;color:var(--ink);padding:8px 16px;font-size:13px}
-.homework-surface .pdf-submission .paper-view-switch button[data-paper-pane=answer]{background:var(--navy);border-color:var(--navy);color:white}
+.homework-surface .pdf-submission .paper-view-switch button[aria-pressed=true]{font-weight:700;background:var(--navy);border-color:var(--navy);color:white}
 .homework-surface .pdf-submission[data-mobile-pane=reading] .submission-layout{grid-template-columns:minmax(0,1fr)}
 .homework-surface .pdf-submission[data-mobile-pane=reading] .submission-compose,.homework-surface .pdf-submission[data-mobile-pane=reading] .reader-divider{display:none}
 .homework-surface .pdf-submission .submission-compose{align-self:start}
 .homework-surface .paper-reader-surface .assignment-brief>summary{font:500 14px/1.5 var(--sans);min-height:44px;display:flex;align-items:center;gap:6px}
 .homework-surface .paper-reader-surface .assignment-brief>summary::before{content:'▸'}.homework-surface .paper-reader-surface .assignment-brief[open]>summary::before{content:'▾'}
-@media(max-width:1000px){.homework-surface .pdf-submission[data-mobile-pane=answer] .assignment-reading{display:none}.homework-surface .pdf-submission[data-mobile-pane=answer] .submission-compose{display:block}.homework-surface .pdf-submission .reader-divider{display:none}}
-@media(max-width:700px){.homework-surface .pdf-submission .paper-view-switch{justify-content:stretch;margin-bottom:8px}.homework-surface .pdf-submission .paper-view-switch button{flex:1;min-height:44px}.homework-surface .pdf-submission[data-mobile-pane=reading] .paper-view-switch [data-paper-pane=answer]{background:#f9faf7;color:var(--ink);border-color:var(--line)}}
+@media(max-width:1100px){.homework-surface .pdf-submission[data-mobile-pane=answer] .assignment-reading{display:none}.homework-surface .pdf-submission[data-mobile-pane=answer] .submission-compose{display:block}.homework-surface .pdf-submission .reader-divider{display:none}}
+@media(max-width:700px){.homework-surface .pdf-submission .paper-view-switch{justify-content:stretch;margin-bottom:8px}.homework-surface .pdf-submission .paper-view-switch button{flex:1;min-height:44px}}
 .homework-surface .roster-score small{display:block;font-size:11px;color:var(--muted)}
 .homework-surface .compact-editor .file>.icon-btn{padding:0;width:36px;min-width:36px;height:40px;min-height:40px}
 .homework-surface .compact-editor .file .file-thumb{width:32px;height:40px;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:10px;margin:0}

@@ -38,7 +38,11 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
  const buttons=[...root.querySelectorAll('[role=tab]')];function select(id){buttons.forEach(b=>{const active=b.dataset.reference===id;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;$('#correction-panel-'+b.dataset.reference).hidden=!active;});load(id);}
  buttons.forEach((b,i)=>{b.onclick=()=>select(b.dataset.reference);b.onkeydown=e=>{let n;if(e.key==='ArrowRight')n=(i+1)%buttons.length;if(e.key==='ArrowLeft')n=(i+buttons.length-1)%buttons.length;if(e.key==='Home')n=0;if(e.key==='End')n=buttons.length-1;if(n!==undefined){e.preventDefault();buttons[n].focus();}};});
  $('[data-collapse-reference]').onclick=e=>{const body=$('.correction-reference-body'),open=body.hidden;body.hidden=!open;e.currentTarget.setAttribute('aria-expanded',String(open));e.currentTarget.textContent=open?'收起参考区':'展开原题与原作答';};
- if(onEdit)$('[data-write-correction]').onclick=()=>onEdit?.();load('question');return {destroy(){destroyed=true;reader?.destroy();gallery?.destroy();questionGallery?.destroy();}};
+ if(onEdit)$('[data-write-correction]').onclick=()=>onEdit?.();load('question');return {refreshHistory(){
+  const tab=$('[data-reference=history]'),panel=$('#correction-panel-history');
+  tab.textContent='订正记录 · '+m.corrections.length;
+  delete panel.dataset.ready;if(!panel.hidden)load('history');
+ },destroy(){destroyed=true;reader?.destroy();gallery?.destroy();questionGallery?.destroy();}};
 }
 
 // Read-only paper view shared by a grade card's direct original-question entry.

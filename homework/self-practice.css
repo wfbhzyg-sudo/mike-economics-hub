@@ -636,3 +636,24 @@ body.sp-immersive #main {
 .sp-run .sp-question-images .mark-image{width:100%}
 .sp-run .sp-question-images .mark-image img{width:100%;height:auto;max-height:none}
 .sp-run .sp-question-images[data-zoom=true] .mark-image{width:180%}
+
+.sp-configuration {display:grid;gap:16px;min-width:0}
+.sp-create-actions {display:flex;align-items:center}
+.sp-settings-trigger {display:none}
+@media(max-width:900px) {
+  .sp-create {padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .sp-setup {display:contents}
+  .sp-setup > .sp-configuration {display:none}
+  .sp-create-actions {
+    position:fixed;z-index:19;left:max(8px,env(safe-area-inset-left));right:calc(74px + env(safe-area-inset-right));
+    bottom:calc(68px + env(safe-area-inset-bottom));padding:5px;gap:5px;
+    background:white;border:1px solid var(--sp-line);border-radius:12px;box-shadow:0 2px 10px #11283f19;
+  }
+  .sp-settings-trigger {min-width:0;flex:1;display:grid;gap:2px;align-content:center;text-align:left;min-height:44px;background:none;border:0;color:var(--sp-ink);padding:3px 5px;line-height:1.25}
+  .sp-settings-trigger strong {font-size:13px}
+  .sp-settings-trigger span {font-size:12px;color:var(--sp-muted)}
+  .sp-create-actions .sp-start {flex:0 0 auto;min-height:44px;font-size:14px;padding-inline:12px}
+  .sp-settings-sheet {width:min(420px,calc(100% - 20px));max-height:80dvh;overflow:auto;padding:18px;border-radius:14px}
+  .sp-settings-sheet .sp-configuration {margin-bottom:12px}
+  .sp-settings-sheet > .primary {width:100%;min-height:44px}
+}

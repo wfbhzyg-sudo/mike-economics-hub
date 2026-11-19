@@ -40,7 +40,7 @@ const pages = new Set([
   "artwork.css",
   "使用说明.txt",
 ]);
-for(const f of ['homework/workspace-colors.css','companion.js','companion.css','homework/lesson-panel.js','homework/mistake-navigation.js','homework/lesson-review.css','homework/mcq.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
+for(const f of ['homework/workspace-colors.css','companion.js','companion.css','homework/lesson-panel.js','homework/mistake-navigation.js','homework/lesson-review.css','homework/mcq.js','homework/reading-positions.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
 const compressed = new Map();
 const server = createServer(async (request, response) => {
   response.setHeader("X-Content-Type-Options", "nosniff");

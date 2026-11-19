@@ -12,7 +12,6 @@ import {mountCorrectionReference,mountAssignmentPaper} from './correction-worksp
 import {showAssignmentRoster} from './assignment-roster.js';
 import {highlightText} from './search-text.js';
 import {assignmentRecords,gradeSummary,questionTotals} from './learning-model.js';
-let savedCorrectionEndpoint=null;
 export function createLearningUI(ctx){
  const {state,main,api,post,put,h,head,link,badge,date,formHandler,area,field,toast,go,uploadWidget,metadata,fileMarkup,bindPreviews}=ctx;
  const $=(s,r=main)=>r.querySelector(s), $$=(s,r=main)=>[...r.querySelectorAll(s)];
@@ -27,20 +26,20 @@ export function createLearningUI(ctx){
   if(!student){main.innerHTML=`<section class="paper">${head('','未找到该学生','',link('gradebook','返回班级成绩'))}</section>`;return;}
   const view=mountGradeJourney(ctx,data,student,{teacher,back:teacher?'gradebook':'',mountPaper:(host,assignmentId,submissionId,onClose)=>mountAssignmentPaper(host,{assignmentId,submissionId,state,api,metadata,h,onClose}),mountCorrection:async(host,assignmentId,questionId,onClose)=>{
    const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};let closed=false;
-   const open=async(route)=>{if(closed)return;local.viewCleanup?.();local.viewCleanup=null;local.correctionNavigation=null;const version=++local.routeVersion;const [,a,q]=route.split('/').map(decodeURIComponent);const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(mode==='next'&&next)await open(next);else await open(route);}});await child.mistakes(a,q);if(closed||version!==local.routeVersion)return;focusCorrection(host);const b=host.querySelector('[data-inline-close]');if(b)b.onclick=async()=>{try{await onClose();}catch(e){toast(e.message);}};};
+   const open=async(route)=>{if(closed)return;local.viewCleanup?.();local.viewCleanup=null;local.correctionNavigation=null;const version=++local.routeVersion;const [,a,q]=route.split('/').map(decodeURIComponent);const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(mode==='next'&&next)await open(next);}});await child.mistakes(a,q);if(closed||version!==local.routeVersion)return;focusCorrection(host);const b=host.querySelector('[data-inline-close]');if(b)b.onclick=async()=>{try{await onClose();}catch(e){toast(e.message);}};};
    try{await open('mistakes/'+encodeURIComponent(assignmentId)+'/'+encodeURIComponent(questionId));}catch(error){closed=true;local.routeVersion++;local.viewCleanup?.();throw error;}return {flush:()=>local.correctionNavigation?.(),destroy(){closed=true;local.routeVersion++;local.viewCleanup?.();local.viewCleanup=null;}};
   }});state.viewCleanup=()=>view.destroy();
  }
  async function overview(id,filter,classId){return showAssignmentRoster(ctx,id,filter,classId);}
- function correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute){
+ function correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute,onStay){
   const status=$('#correction-draft-status'),conflictBox=$('#correction-conflict');
   const key=`hw-correction:${state.user.id}:${m.assignmentId}:${m.questionId}`;
   let revision=remote?.revision||0,dirty=Boolean(cached),change=0,timer,writing=Promise.resolve(),done=false,conflict=false,mutationId=cached?.mutationId||crypto.randomUUID();
-  let finalId=crypto.randomUUID();
+  let finalId=crypto.randomUUID(),lastCommitted=null;
   const snapshot=()=>({correction:form.elements.correctionChoice?joinChoiceCorrection(form.elements.correctionChoice.value,form.elements.correction.value):form.elements.correction.value,note:form.elements.note.value,status:form.elements.status.value,files:[...up.ids()],mutationId});
   function cache(){try{if(!dirty){sessionStorage.removeItem(key);return true;}sessionStorage.setItem(key,JSON.stringify({...snapshot(),revision,noteRevision:m.revision,updatedAt:Date.now()}));return true;}catch{return false;}}
   function setStatus(message){status.textContent=message;}
-  function changed(){dirty=true;change++;finalId=crypto.randomUUID();mutationId=crypto.randomUUID();cache();clearTimeout(timer);setStatus(up.busy()?'正在添加订正附件…':'有更改，正在保存订正草稿…');if(!up.busy()&&!conflict)timer=setTimeout(()=>save().catch(handleError),900);}
+  function changed(){done=false;dirty=true;change++;finalId=crypto.randomUUID();mutationId=crypto.randomUUID();cache();clearTimeout(timer);setStatus(up.busy()?'正在添加订正附件…':'有更改，正在保存订正草稿…');if(!up.busy()&&!conflict)timer=setTimeout(()=>save().catch(handleError),900);}
   async function showConflict(){
     conflict=true;clearTimeout(timer);setStatus('草稿在另一处有更新，本页内容已保留。');
     let current,currentNote;try{current=(await api(endpoint+'/draft')).draft;currentNote=(await api('learning?mistakeBook=1')).mistakes.flatMap(m=>[m,...(m.occurrences||[])]).find(row=>row.assignmentId===m.assignmentId&&row.questionId===m.questionId);}catch(e){setStatus(e.message+' 本页内容已保留，请暂时不要关闭页面。');return;}
@@ -59,7 +58,37 @@ export function createLearningUI(ctx){
   window.addEventListener('online',online);window.addEventListener('beforeunload',beforeUnload);
   state.viewCleanup=()=>{clearTimeout(timer);window.removeEventListener('online',online);window.removeEventListener('beforeunload',beforeUnload);if(!done){cache();if(dirty&&!conflict&&!up.busy())void save().catch(()=>{});}};
   form.addEventListener('input',changed);form.elements.status.addEventListener('change',changed);
-  formHandler(form,async()=>{if(up.busy())throw Error('请等待附件上传完成');if(up.pending())throw Error('还有文件未添加，请重试或选择不添加后再保存订正。');if(conflict)throw Error('请先选择要继续编辑的草稿版本。');clearTimeout(timer);const controls=[...form.elements].map(el=>({el,disabled:el.disabled}));controls.forEach(({el})=>el.disabled=true);try{await writing.catch(()=>{});if(dirty)await save();const saved=await put(endpoint,{...snapshot(),revision:m.revision,draftRevision:revision,mutationId:finalId});savedCorrectionEndpoint=form.dataset.afterSave==='next'?null:endpoint;done=true;sessionStorage.removeItem(key);toast(saved.feedback ? [feedbackTitle(saved.feedback),saved.feedback.choice&&'正确答案 '+saved.feedback.answer].filter(Boolean).join(' · ') : '已保存');if(form.isConnected){if(ctx.onCorrectionSaved)await ctx.onCorrectionSaved(nextRoute,form.dataset.afterSave);else go(form.dataset.afterSave==='next'&&nextRoute?nextRoute:'mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId));}}catch(e){if(e.status===409)await showConflict();throw e;}finally{controls.forEach(({el,disabled})=>el.disabled=disabled);}});
+  formHandler(form,async()=>{
+    if(up.busy())throw Error('请等待附件上传完成');
+    if(up.pending())throw Error('还有文件未添加，请重试或选择不添加后再保存订正。');
+    if(conflict)throw Error('请先选择要继续编辑的草稿版本。');
+    const next=form.dataset.afterSave==='next'&&nextRoute;
+    const navigate=async()=>{if(ctx.onCorrectionSaved)await ctx.onCorrectionSaved(nextRoute,next?'next':'stay');else if(next)go(nextRoute);};
+    if(done){await navigate();return;}
+    clearTimeout(timer);
+    const controls=[...form.elements].map(el=>({el,disabled:el.disabled}));
+    controls.forEach(({el})=>el.disabled=true);
+    try{
+      await writing.catch(()=>{});if(dirty)await save();
+      const entry=snapshot();
+      // A subsequent note or self-assessment does not add the displayed answer again.
+      const signature=JSON.stringify([entry.correction,entry.files]);
+      if(signature===lastCommitted){entry.correction='';entry.files=[];}
+      const saved=await put(endpoint,{...entry,revision:m.revision,draftRevision:revision,mutationId:finalId});
+      revision++;done=true;lastCommitted=signature;sessionStorage.removeItem(key);
+      if(!form.isConnected)return;
+      if(next)toast(saved.feedback?feedbackTitle(saved.feedback):'已保存');
+      else {
+        const note=saved.note;
+        m.revision=note.revision;m.note=note.note;m.status=note.status;m.corrections=note.corrections;
+        if(saved.feedback&&(entry.correction||entry.files.length))m.correctionFeedback=saved.feedback;
+        form.elements.status.value=note.status;
+        onStay(m.correctionFeedback);
+      }
+      await navigate();
+    }catch(e){if(e.status===409)await showConflict();throw e;}
+    finally{controls.forEach(({el,disabled})=>el.disabled=disabled);}
+  });
   if(cached&&(cached.noteRevision!==m.revision||(cached.revision!==revision&&cached.mutationId!==remote?.mutationId)))void showConflict();
   else if(dirty)online();
   return {changed,async flush(){if(up.busy())throw Error('附件仍在上传，请稍等。');if(up.pending())throw Error('还有附件未添加，请重试或选择不添加后再切换题目。');clearTimeout(timer);await writing.catch(()=>{});if(dirty)await save();}};
@@ -76,8 +105,7 @@ export function createLearningUI(ctx){
     const latestCorrection=m.corrections.at(-1);const ids=[...m.corrections.flatMap(c=>c.files||[]),...(initial.files||[])];await metadata(ids);if(v!==state.routeVersion)return;
     const inAssignment=data.mistakes.flatMap(x=>[x,...(x.occurrences||[])]).filter(x=>x.assignmentId===m.assignmentId),index=inAssignment.findIndex(x=>x.questionId===m.questionId),next=inAssignment[index+1];
     const route=x=>'mistakes/'+x.assignmentId+'/'+encodeURIComponent(x.questionId),nextRoute=next?route(next):null;
-    main.innerHTML=`<section class="paper correction-workspace">${head('',`第 ${m.questionNumber || m.questionId} 题 · 订正`,m.assignmentTitle,link('mistakes','返回错题集'))}<div class="correction-heading-info"><div class="correction-score-context"><strong>原得分 ${m.score} / ${m.maxPoints}</strong>${m.type==='choice'?`<span>原作答 ${h(m.originalChoice||'未作答')}</span>`:''}</div><div data-correction-lesson></div>${latestCorrection?`<button type="button" class="text-button" data-show-saved>已保存 ${m.corrections.length} 次订正 · 查看</button>`:''}</div>${feedbackMarkup(m.correctionFeedback,h,savedCorrectionEndpoint===endpoint)}<div class="correction-layout"><section class="correction-reference" aria-label="原题与作答参考"></section><section class="correction-editor"><h2>${latestCorrection?'继续补充订正':'写下新的解题思路'}</h2>${m.feedback?`<details><summary>老师反馈</summary><p class="instructions">${h(m.feedback)}</p></details>`:''}${latestCorrection?`<details class="correction-saved" ${!initial.correction?'open':''}><summary>已保存订正 · ${date(latestCorrection.createdAt)}</summary><p class="instructions">${h(latestCorrection.text||'订正见附件')}</p><div class="file-list">${fileMarkup(latestCorrection.files||[])}</div></details>`:''}<form id="correction-form" class="stack"><aside class="lesson-pinned" data-lesson-pinned hidden></aside>${area('我的订正答案','correction',initial.correction,'placeholder="对照原题，按题号写下修改后的答案…" maxlength="10000"')}<details class="lib-handwriting" data-correction-ink><summary>手写订正</summary><div data-ink-host></div></details><details class="correction-attachments" ${(initial.files||[]).length?'open':''}><summary>拍照或添加订正附件</summary><div id="correction-upload"></div></details><details ${initial.note?'open':''}><summary>复习笔记（可选）</summary>${area('下次要记住什么','note',initial.note,'maxlength="5000"')}</details><label class="field"><span>复习状态</span><select name="status">${[['todo','待订正'],['review','待复习'],['mastered','我已掌握（自评）']].map(([v,t])=>`<option value="${v}" ${initial.status===v?'selected':''}>${t}</option>`).join('')}</select></label><p class="draft-feedback" id="correction-draft-status" role="status">${cached?'已恢复此设备的订正草稿。':remote&&!remote.cleared?'已恢复账户订正草稿。':'输入后自动保存草稿。'}</p><div id="correction-conflict" class="draft-conflict" hidden></div><p class="form-error" role="alert"></p><div class="correction-save-actions"><button class="primary" type="submit" data-correction-save="stay">保存订正</button>${next?'<button class="secondary" type="submit" data-correction-save="next">保存并下一题</button>':''}</div></form><nav class="correction-question-nav" aria-label="同一作业的错题"><button type="button" class="text-button" data-correction-nav="prev" ${index===0?'disabled':''}>上一题</button><span>本次作业 ${index+1} / ${inAssignment.length} 道失分题</span><button type="button" class="text-button" data-correction-nav="next" ${next?'':'disabled'}>下一题</button></nav></section></div></section>`;
-    if(savedCorrectionEndpoint===endpoint)savedCorrectionEndpoint=null;
+    main.innerHTML=`<section class="paper correction-workspace">${head('',`第 ${m.questionNumber || m.questionId} 题 · 订正`,m.assignmentTitle,link('mistakes','返回错题集'))}<div class="correction-heading-info"><div class="correction-score-context"><strong>原得分 ${m.score} / ${m.maxPoints}</strong>${m.type==='choice'?`<span>原作答 ${h(m.originalChoice||'未作答')}</span>`:''}</div><div data-correction-lesson></div>${latestCorrection?`<button type="button" class="text-button" data-show-saved>已保存 ${m.corrections.length} 次订正 · 查看</button>`:''}</div><div class="correction-layout"><section class="correction-reference" aria-label="原题与作答参考"></section><section class="correction-editor"><h2>${latestCorrection?'继续补充订正':'写下新的解题思路'}</h2>${m.feedback?`<details><summary>老师反馈</summary><p class="instructions">${h(m.feedback)}</p></details>`:''}${latestCorrection?`<details class="correction-saved" ${!initial.correction?'open':''}><summary>已保存订正 · ${date(latestCorrection.createdAt)}</summary><p class="instructions">${h(latestCorrection.text||'订正见附件')}</p><div class="file-list">${fileMarkup(latestCorrection.files||[])}</div></details>`:''}<form id="correction-form" class="stack"><aside class="lesson-pinned" data-lesson-pinned hidden></aside>${area('我的订正答案','correction',initial.correction,'placeholder="对照原题，按题号写下修改后的答案…" maxlength="10000"')}<details class="lib-handwriting" data-correction-ink><summary>手写订正</summary><div data-ink-host></div></details><details class="correction-attachments" ${(initial.files||[]).length?'open':''}><summary>拍照或添加订正附件</summary><div id="correction-upload"></div></details><details ${initial.note?'open':''}><summary>复习笔记（可选）</summary>${area('下次要记住什么','note',initial.note,'maxlength="5000"')}</details><label class="field"><span>复习状态</span><select name="status">${[['todo','待订正'],['review','待复习'],['mastered','我已掌握（自评）']].map(([v,t])=>`<option value="${v}" ${initial.status===v?'selected':''}>${t}</option>`).join('')}</select></label><p class="draft-feedback" id="correction-draft-status" role="status">${cached?'已恢复此设备的订正草稿。':remote&&!remote.cleared?'已恢复账户订正草稿。':'输入后自动保存草稿。'}</p><div id="correction-conflict" class="draft-conflict" hidden></div><p class="form-error" role="alert"></p><div class="correction-save-actions"><button class="primary" type="submit" data-correction-save="stay">保存订正</button>${next?'<button class="secondary" type="submit" data-correction-save="next">保存并下一题</button>':''}</div><div data-saved-verdict>${feedbackMarkup(m.correctionFeedback,h)}</div></form><nav class="correction-question-nav" aria-label="同一作业的错题"><button type="button" class="text-button" data-correction-nav="prev" ${index===0?'disabled':''}>上一题</button><span>本次作业 ${index+1} / ${inAssignment.length} 道失分题</span><button type="button" class="text-button" data-correction-nav="next" ${next?'':'disabled'}>下一题</button></nav></section></div></section>`;
     const lessons=mountLessonLinks(main,api);
     lessons.mount($('[data-correction-lesson]'),m,{number:m.questionNumber||m.questionId,
       pinHost:$('[data-lesson-pinned]'),libraryUnit:m.libraryUnit,course:m.course,review:m.review});
@@ -92,7 +120,25 @@ export function createLearningUI(ctx){
     if(latestCorrection)$('[data-show-saved]').onclick=()=>{const saved=$('.correction-saved');saved.open=true;saved.scrollIntoView({block:'center',behavior:'instant'});saved.querySelector('summary').focus({preventScroll:true})};
     const form=$('#correction-form');form.addEventListener('submit',e=>{form.dataset.afterSave=e.submitter?.dataset.correctionSave||'stay';},true);
     let autosave,correctionInk;const up=uploadWidget($('#correction-upload'),'submission',initial.files||[],()=>autosave?.changed());bindPreviews();
-    autosave=correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute);const inkDetails=$('[data-correction-ink]');inkDetails.ontoggle=async()=>{if(!inkDetails.open||inkDetails.dataset.loaded)return;inkDetails.dataset.loaded='true';try{const host=$('[data-ink-host]');const mounted=await mountInk(host,{api,post,put,userId:state.user.id,scope:{assignmentId:m.assignmentId,questionId:m.questionId,correctionId:m.submissionId},exportLabel:'保存为 PDF 并加入订正',exportHint:'添加后请点击保存订正。原成绩保持不变。',onExport:async file=>{up.append(file);$('.correction-attachments').open=true;autosave.changed();toast('手写 PDF 已加入订正附件')}});if(!host.isConnected)mounted.destroy();else correctionInk=mounted}catch(e){inkDetails.dataset.loaded='';toast(e.message)}};state.correctionNavigation=()=>autosave.flush();
+    autosave=correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute,feedback=>{
+      const status=$('#correction-draft-status'),receipt=$('[data-saved-verdict]');
+      status.textContent='订正已保存';receipt.innerHTML=feedbackMarkup(feedback,h,true);
+      const latest=m.corrections.at(-1),details=$('.correction-saved');
+      if(details&&latest){
+        details.querySelector('summary').textContent='已保存订正 · '+date(latest.createdAt);
+        details.querySelector('.instructions').textContent=latest.text||'订正见附件';
+        details.querySelector('.file-list').innerHTML=fileMarkup(latest.files||[]);bindPreviews(details);
+        $('[data-show-saved]').textContent='已保存 '+m.corrections.length+' 次订正 · 查看';
+      }
+      reference.refreshHistory();
+      // Return keyboard focus to the original action after formHandler unlocks it.
+      requestAnimationFrame(()=>{
+        const button=form.querySelector('[data-correction-save=stay]');
+        if(!button.isConnected)return;
+        if(document.activeElement?.matches('html,body,main')||document.activeElement===button)button.focus({preventScroll:true});
+        if(receipt.firstElementChild)receipt.scrollIntoView({block:'nearest',behavior:'instant'});
+      });
+    });const inkDetails=$('[data-correction-ink]');inkDetails.ontoggle=async()=>{if(!inkDetails.open||inkDetails.dataset.loaded)return;inkDetails.dataset.loaded='true';try{const host=$('[data-ink-host]');const mounted=await mountInk(host,{api,post,put,userId:state.user.id,scope:{assignmentId:m.assignmentId,questionId:m.questionId,correctionId:m.submissionId},exportLabel:'保存为 PDF 并加入订正',exportHint:'添加后请点击保存订正。原成绩保持不变。',onExport:async file=>{up.append(file);$('.correction-attachments').open=true;autosave.changed();toast('手写 PDF 已加入订正附件')}});if(!host.isConnected)mounted.destroy();else correctionInk=mounted}catch(e){inkDetails.dataset.loaded='';toast(e.message)}};state.correctionNavigation=()=>autosave.flush();
     const reference=mountCorrectionReference($('.correction-reference'),{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact:Boolean(ctx.onCorrectionSaved),onEdit:()=>{const editor=$('.correction-editor');editor.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});editor.querySelector('[data-correct-choice][tabindex="0"], [name=correction]').focus({preventScroll:true});}});
     {const heading=$('.correction-editor h2'),back=document.createElement('button');back.type='button';back.className='text-button correction-back-reference';back.textContent='查看原题';heading.append(back);back.onclick=()=>{if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();$('.correction-reference').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[data-reference=question]').click();$('[data-reference=question]').focus({preventScroll:true});};}
     const cleanup=state.viewCleanup;state.viewCleanup=()=>{correctionInk?.destroy();reference.destroy();cleanup?.();};
@@ -151,11 +197,10 @@ export function createLearningUI(ctx){
       const host=document.createElement('div');host.className='mistake-inline';host.setAttribute('aria-label','原题与订正');host.innerHTML='<p role="status">正在打开原题与订正…</p>';row.append(host);row.classList.add('is-expanded');trigger.setAttribute('aria-expanded','true');
       const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};active={host,row,trigger,local};
       const open=async(route)=>{if(closed||active?.host!==host)return;local.viewCleanup?.();const version=++local.routeVersion;local.viewCleanup=null;local.correctionNavigation=null;const [,a,q]=route.split('/').map(decodeURIComponent);
-        const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{active.saved=true;if(mode==='next'&&next)await open(next);else await open(route);}});
+        const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{active.saved=true;if(mode==='next'&&next)await open(next);}});
         await child.mistakes(a,q);if(closed||active?.host!==host||version!==local.routeVersion)return;focusCorrection(host);const close=host.querySelector('[data-inline-close]');if(close)close.onclick=async()=>{try{await closeInline();}catch(e){toast(e.message);}};
       };
       await open(trigger.getAttribute('href').slice(1));
-      host.scrollIntoView({block:'start',behavior:'instant'});host.querySelector('[data-inline-close]')?.focus({preventScroll:true});
     }catch(e){toast(e.message);if(active&&!active.local.correctionNavigation){active.local.viewCleanup?.();active.host.remove();active.row.classList.remove('is-expanded');active.trigger.setAttribute('aria-expanded','false');active=null;}}
     finally{busy=false;filters.forEach(f=>f.disabled=false);}
   });
