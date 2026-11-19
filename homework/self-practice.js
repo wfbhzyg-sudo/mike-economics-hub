@@ -414,7 +414,7 @@ export function createSelfPracticeUI(ctx) {
         if(JSON.stringify(next)!==JSON.stringify(views[q.id])){views[q.id]=next;persistLocal();}
       }
       paperElement.addEventListener('scroll',storeView,{passive:true});
-      lessons.mount(tools,q,{number:index+1,course:attempt.course,compact:true});
+      lessons.mount(tools,q,{number:index+1,course:paper.course,compact:true});
       study.mount(tools,q,false);
       answerHost.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>choose(button.dataset.choice));
       for(const dot of answerHost.querySelectorAll('[data-strike]'))dot.onclick=()=>{
