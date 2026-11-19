@@ -1,5 +1,11 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-notebook-motion',date:'2026-11-19',title:'换页时，书签留在纸页之间',
+  items:[
+    {audience:'all',art:'book',title:'手机翻页与合书',text:'横向滑动书页可翻页。在第一页向右滑动即可合上笔记本。'},
+    {audience:'all',art:'news',title:'阅读更新后回到原页',text:'从书签打开更新日志，点「返回原页」回到阅读位置。发布新的更新时，便签上的红点会重新亮起。'}
+  ]
+},{
   id:'2026-11-19-notebook-journal',date:'2026-11-19',title:'夹在笔记本里的更新日志',
   items:[
     {audience:'all',art:'book',title:'从页角翻开与合上',text:'点封面右下角的箭头打开笔记本。在第一页再往前翻，就会合上封面。'},

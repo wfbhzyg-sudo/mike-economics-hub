@@ -298,6 +298,29 @@ function shapePencil(scene){
   for(const x of [.69,.74,.79])rod(metal,x,.072,.072,.018,18);
   return root;
 }
+function shapeBookmark(book){
+  const art=canvas(384,200),g=art.getContext('2d');
+  const map=texture(art);
+  const width=1.02,height=.53;
+  const ribbon=mesh(book,new T.PlaneGeometry(width,height),material('#fff8eb',map,{alphaTest:.5}),0,0,-.052,false);
+  ribbon.name='Notebook journal bookmark';
+  ribbon.rotation.z=.025;
+  ribbon.visible=false;
+  const color=g.createLinearGradient(0,0,0,art.height);
+  color.addColorStop(0,'#ead39b');color.addColorStop(.63,'#d9b375');color.addColorStop(1,'#a98753');
+  function paint(label,unread){
+    g.clearRect(0,0,art.width,art.height);
+    g.beginPath();g.moveTo(12,13);g.lineTo(336,3);g.lineTo(377,38);
+    g.lineTo(374,200);g.lineTo(7,200);g.closePath();
+    g.fillStyle=color;g.fill();
+    g.strokeStyle='#83653e';g.lineWidth=5;g.stroke();
+    g.beginPath();g.moveTo(336,3);g.lineTo(340,41);g.lineTo(377,38);g.fillStyle='#bc9b60';g.fill();
+    text(g,label,unread?171:192,86,47,{align:'center',color:'#443019'});
+    if(unread){g.beginPath();g.arc(306,57,12,0,2*Math.PI);g.fillStyle='#ab3327';g.fill();}
+    map.needsUpdate=true;
+  }
+  return {ribbon,paint,width,height};
+}
 export async function studio(chapters,mobile){
   const [table,skin,fiber]=await Promise.all([
     ...['desk-grain','cover-cloth','folio-paper'].map(name=>image('/assets/notebook/'+name+'.svg')),
@@ -349,9 +372,9 @@ export async function studio(chapters,mobile){
     return {sides,surfaces,cards:available};
   }));
   const spreads=await addSpreads(chapters);
-  const leaf=leafMesh(book);
+  const leaf=leafMesh(book),bookmark=shapeBookmark(book);
   const key=new T.DirectionalLight('#efe5d2',.93);key.position.set(-3.7,4.7,10.3);
   key.castShadow=true;key.shadow.mapSize.setScalar(mobile?1024:2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-.0004;key.shadow.normalBias=.024;key.shadow.radius=4;key.shadow.blurSamples=7;
   const room=new T.HemisphereLight('#d0dbeb','#a5907d',1.22);scene.add(key,room);
-  return {scene,book,hinge,boards:[backBoard,frontBoard,cover],spreads,addSpreads,leaf,lamp,pencil,pool,key,room,coverArt};
+  return {scene,book,hinge,boards:[backBoard,frontBoard,cover],spreads,addSpreads,leaf,bookmark,lamp,pencil,pool,key,room,coverArt};
 }

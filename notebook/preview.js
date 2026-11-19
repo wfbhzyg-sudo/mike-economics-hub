@@ -26,6 +26,7 @@ let cornerHover=0,cornerAmount=0,sideCurl=0,closeHover=false,coverLift=0,firstDr
 let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penDrag=null,penHeld=false,penMoved=false;
 let mobileGesture=null,blockedUntil=0,previousFocus=null;
 const buttons=new Map();
+let bookmarkContent='';
 
 $('sketch').innerHTML=loader;
 $('sketch').querySelectorAll('path').forEach(p=>p.setAttribute('pathLength','1'));
@@ -50,6 +51,9 @@ function finalSide(index){
   if(chapters[index].kind==='journal')return chapters[index].pages[1]?1:0;
   return chapters[index].entries.slice(2).some(Boolean)?1:0;
 }
+function fitSide(index,value){
+  return narrow()?Math.max(firstSide(index),Math.min(finalSide(index),value)):0;
+}
 function forwardAvailable(){
   return (narrow()&&side<finalSide(spreadIndex))||spreadIndex<(journal()?chapters.length:catalogCount)-1;
 }
@@ -58,11 +62,12 @@ function backwardAvailable(){
 }
 function sync(){
   const open=phase==='open'&&!locked,showRail=['open','turning','shifting'].includes(phase);
-  tab.hidden=locked||!renderer||(!open && phase!=='cover');
-  tab.toggleAttribute('data-return',journal());
-  const tabTitle=journal()?'返回原页':'最新变化';
-  tab.firstElementChild.textContent=tabTitle;
-  tab.setAttribute('aria-label',journal()?tabTitle:tabTitle+(tab.hasAttribute('data-unread')?'，有未读更新':''));
+  tab.hidden=locked||!renderer||phase==='loading';
+  const returning=journal()&&(!journalOrigin?.cover||phase==='open');
+  tab.toggleAttribute('data-return',returning);
+  tab.disabled=!open&&phase!=='cover';
+  tab.setAttribute('aria-label',returning?'返回原页':'最新变化'+(tab.hasAttribute('data-unread')?'，有未读更新':''));
+
   prev.hidden=!open||!renderer;
   const previous=backwardAvailable()?'上一页':journal()?'返回原页':'合上笔记本';
   prev.setAttribute('aria-label',previous);prev.title=previous;
@@ -181,14 +186,14 @@ function leaveJournal(){
   if(phase!=='open'||!journalOrigin||!journal())return;
   if(journalOrigin.cover){coverMotion(false);return;}
   const origin=journalOrigin;
-  turnTo(origin.index,narrow()?origin.side:0,-1,false,0,()=>{journalOrigin=null;tab.focus({preventScroll:true});});
+  turnTo(origin.index,fitSide(origin.index,origin.side),-1,false,0,()=>{journalOrigin=null;tab.focus({preventScroll:true});});
 }
 document.addEventListener('notebook:return',leaveJournal);
 function rememberPage(){
   try{history.replaceState({...history.state,notebookSpread:journal()?journalOrigin?.index:spreadIndex,notebookSide:journal()?journalOrigin?.side:side},'');}catch{}
 }
 function completePage(direction,keyboard){
-  side=narrow()?Math.max(firstSide(spreadIndex),Math.min(finalSide(spreadIndex),side)):0;viewSide=side;
+  side=fitSide(spreadIndex,side);viewSide=side;
   setPhase('open');
   $('status').textContent=$('sectionName').textContent+'，第 '+$('pageNumber').textContent+' 页。';
   rememberPage();
@@ -283,14 +288,20 @@ pen.onclick=e=>{if(e.detail===0&&!penDrag){if(penHeld)dropPen();else holdPen();}
 pen.onblur=()=>{if(!penDrag)dropPen();};
 
 desk.addEventListener('touchstart',e=>{
-  if(!renderer||phase!=='open'||e.touches.length!==1||e.target.closest('#masthead,.prop,.page-corner'))return;
-  mobileGesture={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  mobileGesture=null;
+  if(!renderer||phase!=='open'||e.touches.length!==1||e.target.closest('#masthead,.prop,.page-corner,#news-tab'))return;
+  const {identifier,clientX,clientY}=e.touches[0];
+  mobileGesture={identifier,x:clientX,y:clientY};
 },{passive:true});
 desk.addEventListener('touchend',e=>{
   if(!mobileGesture)return;
-  const {clientX,clientY}=e.changedTouches[0],dx=clientX-mobileGesture.x,dy=clientY-mobileGesture.y;
+  const gesture=mobileGesture;
   mobileGesture=null;
-  if(Math.abs(dx)>59&&Math.abs(dx)>Math.abs(dy)*1.45){
+  const touch=Array.from(e.changedTouches).find(touch=>touch.identifier===gesture.identifier);
+  if(!touch||e.touches.length)return;
+  const dx=touch.clientX-gesture.x,dy=touch.clientY-gesture.y;
+  const threshold=T.MathUtils.clamp(canvas.clientWidth*.145,42,64);
+  if(Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.45){
     blockedUntil=performance.now()+470;go(dx<0?1:-1);
   }
 },{passive:true});
@@ -507,8 +518,22 @@ function deviceCamera(){
     penGoal.x=helperX;penGoal.y=helperY;penAngle=mobile?-.16:-1.10;penMoved=false;
     if(mobile||firstDraw){scene.pencil.position.x=helperX;scene.pencil.position.y=helperY;}
   }
+  const {ribbon,paint}=scene.bookmark;
+  ribbon.visible=!tab.hidden;
+  if(ribbon.visible){
+    // The visible paper edge is tracked continuously along with the camera.
+    // The rest of the strip is occluded by the leaves and hardcover.
+    const closedAnchor=W/2+.46;
+    const openAnchor=mobile?openX+.46:.55;
+    ribbon.position.set(mix(closedAnchor,openAnchor,openness),H/2+mix(.21,.15,openness),-.052);
+    const returning=tab.hasAttribute('data-return'),unread=!returning&&tab.hasAttribute('data-unread');
+    const label=returning?'返回原页':'最新变化',content=label+unread;
+    if(content!==bookmarkContent){paint(label,unread);bookmarkContent=content;}
+  }
   scene.scene.updateMatrixWorld(true);
 }
+new MutationObserver(wake).observe(tab,{attributes:true,attributeFilter:['data-unread']});
+
 function xy(v){
   v.project(camera);
   return [(v.x+1)*canvas.clientWidth/2,(1-v.y)*canvas.clientHeight/2];
@@ -537,11 +562,10 @@ function controlsOnScene(){
     }
 
   }
-  if(!tab.hidden){
-    const edge=phase==='cover'||!narrow()||side===1?W:0;
-    const [x,y]=xy(project.set(edge-.56,H/2+.035,.32));
-    tab.style.left=Math.min(canvas.clientWidth-tab.offsetWidth/2-6,Math.max(tab.offsetWidth/2+6,x))+'px';
-    tab.style.top=y+'px';
+  const {ribbon,width,height}=scene.bookmark;
+  if(ribbon.visible){
+    const corners=[[-width/2,0],[width/2,height/2]].map(([x,y])=>xy(ribbon.localToWorld(project.set(x,y,0))));
+    positionRect(tab,corners,44);
   }
   positionRect(lamp,[xy(scene.lamp.button.getWorldPosition(project))],44);
   const pencilPoints=[[-1,-.10],[-1,.10],[1,.10],[1,-.10]].map(([x,y])=>xy(scene.pencil.localToWorld(new T.Vector3(x,y,0))));
@@ -663,7 +687,7 @@ function resize(){
   if(!renderer||!scene)return;
   renderer.setPixelRatio(Math.min(devicePixelRatio,narrow()?1.35:1.65));
   renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
-  if(!motion){side=narrow()?Math.max(firstSide(spreadIndex),Math.min(finalSide(spreadIndex),side)):0;viewSide=side;}
+  if(!motion){side=fitSide(spreadIndex,side);viewSide=side;}
   sync();wake();
 }
 
