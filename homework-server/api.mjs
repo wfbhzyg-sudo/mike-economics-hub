@@ -985,6 +985,7 @@ export async function createHomework({externalAuth} = {}) {
           );
           assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),"截止时间格式不正确");
           await files.validate(b.questionFiles||[],user.id,"question");
+          if(b.draftToken!==undefined)assert(typeof b.draftToken==='string'&&/^[a-zA-Z0-9-]{8,80}$/.test(b.draftToken),'草稿标识无效');
           const a = {
             id: id(),
             type: "assignment",
@@ -1005,6 +1006,20 @@ export async function createHomework({externalAuth} = {}) {
             status: "draft",
             createdAt: now(),
           };
+          if(b.draftToken){
+            const digest=hash(user.id+':assignment:'+b.draftToken);
+            a.id=[digest.slice(0,8),digest.slice(8,12),'8'+digest.slice(13,16),'a'+digest.slice(17,20),digest.slice(20,32)].join('-');
+            const signature=hash(JSON.stringify({...a,createdAt:undefined}));
+            const draft=await db.tx(async c=>{
+              const prior=await db.get(a.id,c);
+              if(prior){
+                assert(!prior.deletedAt&&prior.createFingerprint===signature,'这个草稿已保存，请从作业列表打开后修改',409);
+                return prior;
+              }
+              a.createFingerprint=signature;await db.put('assignment',a,c);return a;
+            },a.id);
+            return (json(res,{assignment:draft},201),true);
+          }
           await db.put("assignment", a);
           return (json(res, { assignment: a }, 201), true);
         }
@@ -1171,6 +1186,7 @@ export async function createHomework({externalAuth} = {}) {
             return (json(res, { assignment: await db.get(a.id) }), true);
           }
           if (route[2] === "confirm" && method === "POST") {
+            if(b.publishToken!==undefined)assert(typeof b.publishToken==='string'&&/^[a-zA-Z0-9-]{8,80}$/.test(b.publishToken),'发布请求无效');
             const questions = rubric(b.questions.map(q=>{const old=(a.rubric||a.draftRubric)?.find(x=>x.id===q.id);return {...q,...(old?.questionImages?.length?{questionImages:old.questionImages,options:old.options}:{})}}));
             if(['mcq','mixed'].includes(a.format))for(const q of questions){
               assert(q.questionImages?.length,'导入作业中的新题需要先关联学生题面，请通过 PDF 导入创建题目');
@@ -1180,6 +1196,8 @@ export async function createHomework({externalAuth} = {}) {
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);
               assert(!current.deletedAt,"请先恢复作业再修改",409);
+              if(b.publishToken&&current.lastPublishToken===b.publishToken)return;
+              if(b.expectedVersion!==undefined)assert(b.expectedVersion===current.version,'作业版本已更新，请刷新后核对',409);
               assert(
                 Number(b.sourceRevision || 0) ===
                   Number(current.sourceRevision || 0),
@@ -1205,6 +1223,7 @@ export async function createHomework({externalAuth} = {}) {
                 },
                 c,
               );
+              if(b.publishToken)current.lastPublishToken=b.publishToken;
               current.publishedPaper=paper;
               current.version = version;
               current.rubric = questions;

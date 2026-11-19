@@ -21,7 +21,7 @@ export function correctionAnswerEvidence(submission, question) {
 export function feedbackTitle(feedback) {
  return ({correct:'订正正确',incorrect:'仍需订正',compare:'对照参考答案',pending:'本题答案待核对'})[feedback?.state] || '';
 }
-export function feedbackMarkup(feedback, h) {
+export function feedbackMarkup(feedback, h, justSaved=false) {
  if (!feedback) return '';
- return `<div class="correction-verdict" data-verdict="${h(feedback.state)}" role="status"><strong>${feedbackTitle(feedback)}</strong>${feedback.choice ? `<span>你的订正 <b>${h(feedback.choice)}</b></span>` : ''}${feedback.answer ? `<span>${feedback.state==='compare'?'参考答案':'正确答案'} <b>${h(feedback.answer)}</b></span>` : ''}</div>`;
+ return `<div class="correction-verdict" data-verdict="${h(feedback.state)}" role="status"><small class="correction-receipt"><svg class="${justSaved?'freshly-saved':''}" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="m2 8 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2"/></svg> 订正已保存</small><strong>${feedbackTitle(feedback)}</strong>${feedback.choice ? `<span>你的订正 <b>${h(feedback.choice)}</b></span>` : ''}${feedback.answer ? `<span>${feedback.state==='compare'?'参考答案':'正确答案'} <b>${h(feedback.answer)}</b></span>` : ''}</div>`;
 }

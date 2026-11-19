@@ -170,3 +170,13 @@ body[data-mcq-active=true] .mcq-choice-row>span {display:block;font-weight:650}
 .correction-verdict[data-verdict="correct"]{color:#19553e;background:#e6f3ea}
 .correction-verdict[data-verdict="incorrect"]{color:#853724;background:#fbede6}
 .correction-verdict b{white-space:pre-wrap}
+
+.editor-steps{display:flex;align-items:baseline;gap:clamp(4px,1vw,14px);flex-wrap:nowrap}
+.editor-steps>button,.editor-steps>span{font:inherit;white-space:nowrap}
+.editor-steps>button{min-height:36px;background:none;border:0;color:#20496b;text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+.editor-steps>[aria-current=step]{font-weight:700;color:#172f46}
+.correction-receipt{display:block;color:#415647;font-size:.76rem}
+@media(max-width:480px){.editor-steps>button,.editor-steps>span{padding-inline:3px;font-size:12px}}
+@media(prefers-reduced-motion:no-preference){.receipt-check.freshly-saved svg path,.receipt-check.freshly-saved svg polyline{stroke-dasharray:48;animation:receipt-ink .28s ease-out both}@keyframes receipt-ink{from{stroke-dashoffset:48}to{stroke-dashoffset:0}}}
+.correction-receipt svg{vertical-align:middle}
+@media(prefers-reduced-motion:no-preference){.correction-receipt .freshly-saved path{stroke-dasharray:48;animation:receipt-ink .28s ease-out both}}

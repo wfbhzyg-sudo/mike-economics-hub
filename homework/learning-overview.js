@@ -363,7 +363,7 @@ export function mountLearningOverview(ctx, initialData) {
     const detail = cell.rate === null ? cell.label : `${formatPercent(cell.rate)}${cell.pendingUpdate ? '，新版本待更新' : ''}`;
     const offline = Boolean(cell.required || cell.record?.grade);
     const aria = `${cell.student.name}，${cell.assignment.title || assignmentLabel(cell.assignment)}，${detail}${offline ? '，双击可修改成绩，留空不计均分' : ''}`;
-    return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${offline ? 'data-offline="true"' : ''} ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" title="${h(aria)}" tabindex="-1">${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
+    return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${offline ? 'data-offline="true"' : ''} ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" data-tip-title="${h(cell.assignment.title || assignmentLabel(cell.assignment))}" data-tip-score="${h(cell.record?.grade ? cell.record.grade.total+' / '+cell.record.grade.maxPoints : cell.label)}" data-tip-date="${h(longDate(workDate(cell.assignment)))}" data-tip-state="${h(cell.label)}" tabindex="-1">${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
   }
 
   function averageMarkup(row) {
@@ -1090,7 +1090,10 @@ function renderDetail() {
   root.addEventListener('change', event => {
     const id = event.target.id;
     if(id==='lo-diag-order'){
-      diagOrder=event.target.value;memory.set({diagOrder});renderDiagnosis(context.diagnoses);$('#lo-diag-order').focus();return;
+      diagOrder=event.target.value;memory.set({diagOrder});renderDiagnosis(context.diagnoses);
+      const row=[...root.querySelectorAll('.lo-qrow')].find(el=>el.dataset.diagQuestion===diagQuestion);
+      if(row){row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});row.classList.add('lo-reordered');}
+      else $('#lo-diag-order').focus({preventScroll:true});return;
     }
     if (id === 'lo-class') { filter.classId = event.target.value; filter.unit = ''; filter.assignmentId = ''; profileId = ''; selected = null; draw(); }
     else if (id === 'lo-unit') { filter.unit = event.target.value; filter.assignmentId = ''; draw(); }
@@ -1430,6 +1433,37 @@ function renderDetail() {
   };
   wide.addEventListener('change', onMedia);
 
+  const tip=document.createElement('div');
+  tip.id='lo-matrix-tip';tip.className='lo-matrix-tooltip';tip.setAttribute('role','tooltip');tip.hidden=true;root.append(tip);
+  let tipTimer,tipCell,warmUntil=0;
+  function hideTip(){
+    clearTimeout(tipTimer);
+    if(!tip.hidden)warmUntil=performance.now()+450;
+    tipCell?.removeAttribute('aria-describedby');tipCell=null;tip.hidden=true;
+  }
+  function showTip(cell,immediate){
+    if(!cell||tipCell===cell)return;
+    hideTip();tipCell=cell;
+    const paint=()=>{
+      if(!cell.isConnected||tipCell!==cell||sheet.open)return;
+      tip.replaceChildren();
+      const name=document.createElement('strong'),info=document.createElement('span');
+      name.textContent=cell.dataset.tipTitle;
+      info.textContent=[...new Set([cell.dataset.tipScore,cell.dataset.tipState,cell.dataset.tipDate].filter(Boolean))].join(' · ');
+      tip.append(name,info);tip.hidden=false;cell.setAttribute('aria-describedby',tip.id);
+      const box=cell.getBoundingClientRect(),size=tip.getBoundingClientRect();
+      tip.style.left=Math.max(6,Math.min(innerWidth-size.width-6,box.left+(box.width-size.width)/2))+'px';
+      tip.style.top=(box.top>size.height+10?box.top-size.height-6:box.bottom+6)+'px';
+    };
+    if(immediate||performance.now()<warmUntil)paint();else tipTimer=setTimeout(paint,300);
+  }
+  matrixHost.addEventListener('pointerover',e=>{if(e.pointerType==='mouse')showTip(e.target.closest('[data-cell]'),false);});
+  matrixHost.addEventListener('pointerout',e=>{if(tipCell&&!tipCell.contains(e.relatedTarget))hideTip();});
+  matrixHost.addEventListener('focusin',e=>{if(e.target.matches(':focus-visible'))showTip(e.target.closest('[data-cell]'),true);});
+  matrixHost.addEventListener('focusout',hideTip);
+  root.addEventListener('pointerdown',hideTip,true);
+  root.addEventListener('keydown',e=>{if(e.key==='Escape')hideTip();});
+  scrollHost.addEventListener('scroll',hideTip,{passive:true});
   // ---------- go ----------
   draw();
   setTab(tab, false);
@@ -1439,7 +1473,7 @@ function renderDetail() {
   return {
     destroy() {
       if (destroyed) return;
-      destroyed = true;disposeOriginals();
+      destroyed = true;hideTip();disposeOriginals();
       wide.removeEventListener('change', onMedia);
       clearTimeout(filter.timer);
       if (scrollFrame) cancelAnimationFrame(scrollFrame);

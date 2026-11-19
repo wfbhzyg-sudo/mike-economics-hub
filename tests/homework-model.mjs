@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { processJob } from "../local-worker/worker.mjs";
-import { grade, rubric } from "../homework-server/validation.mjs";
+import { automaticGrade, rubric } from "../homework-server/validation.mjs";
 const settings = {
   provider: "ollama",
   baseUrl: "http://127.0.0.1:11434",
@@ -15,6 +15,11 @@ const questions = [
       "Increased consumption shifts AD right, raising the price level and real GDP in the short run.",
     criteria:
       "1 point: AD shifts right because consumption rises. 1 point: both price level and real GDP rise. Award equivalent correct wording. Total 2 points.",
+    type: "short",
+    scoringPoints: [
+      {id:"1",criterion:"Aggregate demand shifts right as consumption increases.",maxPoints:1},
+      {id:"2",criterion:"The price level and real GDP both increase in the short run.",maxPoints:1},
+    ],
     maxPoints: 2,
     sourcePages: "教师确认的测试答案",
   },
@@ -49,7 +54,7 @@ for (const format of ["text", "png", "pdf"]) {
     settings,
     download,
   );
-  const validated = grade(result, questions);
+  const validated = automaticGrade(result, questions);
   assert.equal(validated.total, 2, JSON.stringify(result));
   assert.equal(validated.questions[0].needsReview, false);
   output.results.push({

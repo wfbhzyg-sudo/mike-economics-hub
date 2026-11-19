@@ -1546,3 +1546,8 @@ body[data-section="analytics"] #workspace {
 .lo-matrix th.lo-col span{white-space:normal;overflow-wrap:anywhere}
 .lo-tab-note{min-width:0}
 @media(max-width:767px){.lo-tabs{flex-wrap:wrap}.lo-tabs [role=tab]{min-height:44px}.lo-tab-note{margin-inline-start:auto}}
+
+.lo-matrix-tooltip{position:fixed;z-index:35;max-width:min(300px,90vw);pointer-events:none;display:grid;gap:3px;border-radius:6px;background:#182f43;color:white;padding:8px 12px;box-shadow:0 3px 12px #13213224;font-size:12px}
+.lo-matrix-tooltip[hidden]{display:none}
+.lo-matrix-tooltip span{color:#dce6e9}
+@media(prefers-reduced-motion:no-preference){.lo-qrow.lo-reordered{animation:lo-find-row .65s ease-out}@keyframes lo-find-row{from{box-shadow:inset 4px 0 #466f87;background:#e1eced}}}

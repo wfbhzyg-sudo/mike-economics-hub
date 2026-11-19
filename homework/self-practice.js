@@ -598,7 +598,7 @@ export function createSelfPracticeUI(ctx) {
             if(version!==creationVersion)return;
             box.remove();
             item.querySelector('[data-correct]').hidden = false;
-            item.querySelector('[data-correction-note]').innerHTML = mockFeedback(result.questions.find(q=>q.id===question.id),picked);
+            item.querySelector('[data-correction-note]').innerHTML = mockFeedback(result.questions.find(q=>q.id===question.id),picked,true);
             item.querySelector('[data-correction-note]').hidden = false;
             toast('订正已保存');
           } catch (error) { box.querySelector('.sp-warn').textContent = error.message;box.querySelector('[data-save-correct]').disabled=false; }
@@ -611,9 +611,9 @@ export function createSelfPracticeUI(ctx) {
 
   }
 
-  function mockFeedback(question,choice) {
+  function mockFeedback(question,choice,justSaved=false) {
     const answer=question?.correctOption;
-    return feedbackMarkup(answer?{state:!choice?'compare':choice===answer?'correct':'incorrect',choice,answer}:{state:'pending'},h);
+    return feedbackMarkup(answer?{state:!choice?'compare':choice===answer?'correct':'incorrect',choice,answer}:{state:'pending'},h,justSaved);
   }
   function wrongMarkup(attempt, question, corrections) {
     const correction = corrections[question.id];
