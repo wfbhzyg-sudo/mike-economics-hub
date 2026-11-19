@@ -1,5 +1,10 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-19-notebook-rapid-swipe',date:'2026-11-19',title:'快速滑动也能继续翻页',
+  items:[
+    {audience:'all',art:'book',title:'连续滑动与反向翻页',text:'翻页动画还在进行时，可以继续滑动。笔记本翻完当前页后会接着处理下一次滑动。'}
+  ]
+},{
   id:'2026-11-19-notebook-motion',date:'2026-11-19',title:'换页时，书签留在纸页之间',
   items:[
     {audience:'all',art:'book',title:'手机翻页与合书',text:'横向滑动书页可翻页。在第一页向右滑动即可合上笔记本。'},

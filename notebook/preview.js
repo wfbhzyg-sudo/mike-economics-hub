@@ -25,6 +25,7 @@ let motion=null,hovered=null,activeEntry=null,activeCorner=1;
 let cornerHover=0,cornerAmount=0,sideCurl=0,closeHover=false,coverLift=0,firstDraw=true;
 let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penDrag=null,penHeld=false,penMoved=false;
 let mobileGesture=null,blockedUntil=0,previousFocus=null;
+let paging=false,pendingSwipe=0;
 const buttons=new Map();
 let bookmarkContent='';
 
@@ -124,6 +125,7 @@ function go(direction,keyboard=false){
   clearHover();dropPen();closeHover=false;
   const inherited=Math.max(0,cornerAmount*direction);
   cornerHover=cornerAmount=0;
+  paging=true;
   if(narrow()&&((direction>0&&side<finalSide(spreadIndex))||(direction<0&&side>firstSide(spreadIndex)))){
     const start=viewSide,newSide=side+direction;
     setPhase('shifting');
@@ -144,7 +146,7 @@ async function turnTo(nextSpread,nextSide,direction,keyboard,inherited=0,after){
   if(!scene.spreads[nextSpread]){
     setPhase('binding');
     try{[scene.spreads[nextSpread]]=await scene.addSpreads([chapters[nextSpread]],nextSpread);}
-    catch{setPhase('open','日志未能打开，请重试。');return;}
+    catch{paging=false;pendingSwipe=0;setPhase('open','日志未能打开，请重试。');return;}
     if(!renderer)return;
   }
   const startSide=viewSide;
@@ -193,10 +195,13 @@ function rememberPage(){
   try{history.replaceState({...history.state,notebookSpread:journal()?journalOrigin?.index:spreadIndex,notebookSide:journal()?journalOrigin?.side:side},'');}catch{}
 }
 function completePage(direction,keyboard){
+  const queuedDirection=pendingSwipe;
+  pendingSwipe=0;paging=false;
   side=fitSide(spreadIndex,side);viewSide=side;
   setPhase('open');
   $('status').textContent=$('sectionName').textContent+'，第 '+$('pageNumber').textContent+' 页。';
   rememberPage();
+  if(queuedDirection){go(queuedDirection);return;}
   if(keyboard){
     const control=direction>0?next:prev;
     if(!control.hidden)control.focus({preventScroll:true});else focusEntry();
@@ -289,7 +294,7 @@ pen.onblur=()=>{if(!penDrag)dropPen();};
 
 desk.addEventListener('touchstart',e=>{
   mobileGesture=null;
-  if(!renderer||phase!=='open'||e.touches.length!==1||e.target.closest('#masthead,.prop,.page-corner,#news-tab'))return;
+  if(!renderer||(!paging&&phase!=='open')||e.touches.length!==1||e.target.closest('#masthead,.prop,.page-corner,#news-tab'))return;
   const {identifier,clientX,clientY}=e.touches[0];
   mobileGesture={identifier,x:clientX,y:clientY};
 },{passive:true});
@@ -302,7 +307,11 @@ desk.addEventListener('touchend',e=>{
   const dx=touch.clientX-gesture.x,dy=touch.clientY-gesture.y;
   const threshold=T.MathUtils.clamp(canvas.clientWidth*.145,42,64);
   if(Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.45){
-    blockedUntil=performance.now()+470;go(dx<0?1:-1);
+    blockedUntil=performance.now()+470;
+    const direction=dx<0?1:-1;
+    // Keep at most one follow-up turn. Opposite gestures cancel the queued turn.
+    if(paging)pendingSwipe=T.MathUtils.clamp(pendingSwipe+direction,-1,1);
+    else go(direction);
   }
 },{passive:true});
 desk.addEventListener('touchcancel',()=>{mobileGesture=null;},{passive:true});
@@ -693,7 +702,7 @@ function resize(){
 
 function fallback(){
   if(frame)cancelAnimationFrame(frame);
-  frame=0;renderer=null;motion=null;
+  frame=0;renderer=null;motion=null;paging=false;pendingSwipe=0;
   still.hidden=true;document.body.dataset.ready='2d';
   phase='open';
   $('masthead').hidden=true;$('rail').hidden=true;$('loading').hidden=true;
