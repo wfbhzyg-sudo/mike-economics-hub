@@ -26,7 +26,8 @@ let motion=null,hovered=null,activeEntry=null,activeCorner=1;
 let cornerHover=0,cornerAmount=0,sideCurl=0,closeHover=false,coverLift=0,firstDraw=true;
 let lampOn=true,lampAmount=1,penGoal=penHome.clone(),penAngle=-1.10,penDrag=null,penHeld=false,penMoved=false;
 let mobileGesture=null,blockedUntil=0,previousFocus=null;
-let paging=false,pendingSwipe=0;
+let paging=false,pendingSwipe=0,turnDirection=0;
+let hiddenAt=document.hidden?performance.now():null;
 const buttons=new Map();
 let taskLinks=[],paintedTasks;
 let bookmarkContent='';
@@ -35,7 +36,7 @@ $('sketch').innerHTML=loader;
 $('sketch').querySelectorAll('path').forEach(p=>p.setAttribute('pathLength','1'));
 
 function wake(){
-  if(!frame&&scene&&renderer)frame=requestAnimationFrame(draw);
+  if(!document.hidden&&!frame&&scene&&renderer)frame=requestAnimationFrame(draw);
 }
 function setPhase(value,message){
   phase=value;document.body.dataset.phase=value;
@@ -100,7 +101,7 @@ function sync(){
 }
 
 function begin(kind,seconds,step,end){
-  motion={kind,seconds,step,end,time:0};
+  motion={kind,seconds,step,end,started:performance.now(),origin:0,rate:1};
   if(!renderer||!scene||reduce.matches){
     motion=null;step(1);end();wake();
   } else wake();
@@ -128,7 +129,7 @@ function go(direction,keyboard=false){
   clearHover();dropPen();closeHover=false;
   const inherited=Math.max(0,cornerAmount*direction);
   cornerHover=cornerAmount=0;
-  paging=true;
+  paging=true;turnDirection=direction;
   if(narrow()&&((direction>0&&side<finalSide(spreadIndex))||(direction<0&&side>firstSide(spreadIndex)))){
     const start=viewSide,newSide=side+direction;
     setPhase('shifting');
@@ -324,13 +325,21 @@ desk.addEventListener('touchstart',e=>{
 desk.addEventListener('touchmove',e=>{
   if(!mobileGesture)return;
   const t=Array.from(e.touches).find(t=>t.identifier===mobileGesture.identifier);
-  if(t&&Math.hypot(t.clientX-mobileGesture.x,t.clientY-mobileGesture.y)>12)mobileGesture.moved=true;
+  if(!t||e.touches.length!==1){mobileGesture=null;cornerHover=0;closeHover=false;wake();return;}
+  const dx=t.clientX-mobileGesture.x,dy=t.clientY-mobileGesture.y;
+  if(Math.hypot(dx,dy)>12)mobileGesture.moved=true;
+  if(phase==='open'&&!reduce.matches){
+    const horizontal=Math.abs(dx)>Math.abs(dy)*1.45;
+    const dir=dx<0?1:-1;
+    cornerHover=horizontal&&mobileGesture.moved&&(dir<0||forwardAvailable())?dir*Math.min(.94,Math.abs(dx)/105):0;
+    closeHover=cornerHover<0&&!backwardAvailable()&&!journal();wake();
+  }
 
 },{passive:true});
 desk.addEventListener('touchend',e=>{
   if(!mobileGesture)return;
   const gesture=mobileGesture;
-  mobileGesture=null;
+  mobileGesture=null;cornerHover=0;closeHover=false;wake();
   const touch=Array.from(e.changedTouches).find(touch=>touch.identifier===gesture.identifier);
   if(!touch||e.touches.length)return;
   const dx=touch.clientX-gesture.x,dy=touch.clientY-gesture.y;
@@ -342,12 +351,20 @@ desk.addEventListener('touchend',e=>{
   if(Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.45){
     blockedUntil=performance.now()+470;
     const direction=dx<0?1:-1;
-    // Keep at most one follow-up turn. Opposite gestures cancel the queued turn.
-    if(paging)pendingSwipe=T.MathUtils.clamp(pendingSwipe+direction,-1,1);
+    if(paging&&motion&&['page','side'].includes(motion.kind)){
+      const rate=direction===turnDirection?1:-1;
+      pendingSwipe=rate===1&&motion.rate===1?direction:0;
+      if(rate!==motion.rate){
+        const now=performance.now();
+        motion.origin=motionProgress(motion,now);motion.started=now;motion.rate=rate;
+        wake();
+      }
+    }
+    else if(paging)pendingSwipe=direction;
     else go(direction);
   }
 },{passive:false});
-desk.addEventListener('touchcancel',()=>{mobileGesture=null;blockedUntil=performance.now()+470;},{passive:true});
+desk.addEventListener('touchcancel',()=>{mobileGesture=null;cornerHover=0;closeHover=false;wake();blockedUntil=performance.now()+470;},{passive:true});
 document.addEventListener('keydown',e=>{
   if(!renderer||locked||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select, [contenteditable], .portal-account')||e.target.id==='mike-companion')return;
   if(e.target===pen&&penHeld&&e.key.startsWith('Arrow')){
@@ -413,7 +430,9 @@ function peel(entry,corner,origin){
       card.rear.visible=false;return;
     }
     weights(card,activeCorner,inherited*(1-u),u);
-    card.shadow.visible=false;
+    card.shadow.visible=u<.99;
+    card.shadow.material.opacity=.6*(1-u)*(1-u);
+    card.shadow.position.set(.006+sx*.29*u,-.014+sy*.3*u,-.020-.98*u);
     card.root.position.add(new T.Vector3(-sx*.29*u,-sy*.3*u,.98*u));
     card.root.rotation.z+=sx*.17*u;
   },leave);
@@ -453,7 +472,7 @@ function resetCard(card,index,hinged=false){
   if(card.stub){card.stub.visible=card.ticketBody.visible=false;card.rect.visible=true;}
   const left=index<2;
   card.rect.geometry=card.flatGeo;card.rect.frustumCulled=true;
-  card.rear.visible=true;card.shadow.visible=true;card.root.scale.setScalar(1);
+  card.rear.visible=true;card.shadow.visible=true;card.shadow.material.opacity=.6;card.shadow.position.set(.006,-.014,-.02);card.root.scale.setScalar(1);
   seat(card.root,hinged&&left?scene.hinge:scene.book,left?-W/2:W/2,card.y,NOTE_Z,card.angle);
 }
 function prepareStatic(dt){
@@ -582,7 +601,7 @@ function syncPaperTask(){
 }
 document.addEventListener('notebook:task',syncPaperTask);
 function deviceCamera(){
-  const width=canvas.clientWidth,height=canvas.clientHeight,aspect=width/height,mobile=narrow();
+  const width=viewportWidth=canvas.clientWidth,height=viewportHeight=canvas.clientHeight,aspect=width/height,mobile=narrow();
   const closedH=mobile?Math.max(5.86,3.86/aspect):Math.max(5.78,10.24/aspect);
   const openH=mobile?Math.max(6.1,3.82/aspect):Math.max(6.0,10.68/aspect);
   const heightUnits=mix(closedH,openH,openness);
@@ -617,7 +636,10 @@ function deviceCamera(){
     // The rest of the strip is occluded by the leaves and hardcover.
     const closedAnchor=W/2+.46;
     const openAnchor=mobile?openX+.46:.55;
-    ribbon.position.set(mix(closedAnchor,openAnchor,openness),H/2+mix(.21,.15,openness),-.052);
+    const desiredX=mix(closedAnchor,openAnchor,openness);
+    // Reserve the right-edge paper index and an 8px gap, including on a 320px phone.
+    const limitX=camera.position.x+camera.right-111*unit-scene.bookmark.width/2;
+    ribbon.position.set(mobile?Math.min(desiredX,limitX):desiredX,H/2+mix(.21,.15,openness),-.052);
     const returning=tab.hasAttribute('data-return'),unread=!returning&&tab.hasAttribute('data-unread');
     const label=returning?'返回原页':'最新变化',content=label+unread;
     if(content!==bookmarkContent){paint(label,unread);bookmarkContent=content;}
@@ -626,9 +648,10 @@ function deviceCamera(){
 }
 new MutationObserver(wake).observe(tab,{attributes:true,attributeFilter:['data-unread']});
 
+let viewportWidth=1,viewportHeight=1;
 function xy(v){
   v.project(camera);
-  return [(v.x+1)*canvas.clientWidth/2,(1-v.y)*canvas.clientHeight/2];
+  return [(v.x+1)*viewportWidth/2,(1-v.y)*viewportHeight/2];
 }
 function positionRect(button,pts,min=0){
   const xs=pts.map(([x])=>x),ys=pts.map(([,y])=>y);
@@ -685,6 +708,10 @@ function objectMotion(dt){
   scene.pencil.position.x=mix(scene.pencil.position.x,penGoal.x,ratio);
   scene.pencil.position.y=mix(scene.pencil.position.y,penGoal.y,ratio);
   scene.pencil.rotation.z=mix(scene.pencil.rotation.z,penAngle,ratio);
+  if(Math.hypot(scene.pencil.position.x-penGoal.x,scene.pencil.position.y-penGoal.y)<.003){
+    scene.pencil.position.x=penGoal.x;scene.pencil.position.y=penGoal.y;
+  }
+  if(Math.abs(scene.pencil.rotation.z-penAngle)<.003)scene.pencil.rotation.z=penAngle;
   const wanted=reduce.matches?0:cornerHover;
   cornerAmount=mix(cornerAmount,wanted,1-Math.exp(-24*dt));
   if(Math.abs(cornerAmount-wanted)<.004)cornerAmount=wanted;
@@ -731,10 +758,17 @@ function contactMesh(source){
   if(entry.indices.length)mesh.geometry.computeBoundingSphere();
   return mesh;
 }
+let restingContact=null;
 function placePen(dt){
   const pen=scene.pencil,scale=pen.scale.x;
   let support=-.21;
-  if(Math.abs(pen.position.x)<W+scale+.12&&Math.abs(pen.position.y)<H/2+scale+.12){
+  // The contact surface changes continuously during a turn, curl or lifted note.
+  const stationary=phase==='open'&&!cornerAmount&&!coverLift&&!sideCurl&&pageCards().every(c=>!c.lift);
+  const {x,y}=pen.position,angle=pen.rotation.z;
+  const cached=stationary&&restingContact?.spread===spreadIndex&&restingContact.side===side
+    &&restingContact.x===x&&restingContact.y===y&&restingContact.angle===angle&&restingContact.scale===scale;
+  if(cached)support=restingContact.height;
+  else if(Math.abs(x)<W+scale+.12&&Math.abs(y)<H/2+scale+.12){
     const visible=[...scene.boards,...scene.leaf.faces.filter(face=>face.visible)];
     for(const spread of scene.spreads){
       if(!spread)continue;
@@ -750,13 +784,17 @@ function placePen(dt){
       if(hits.length)support=Math.max(support,hits[0].point.z);
     }
   }
+  if(!stationary)restingContact=null;
+  else if(!cached)restingContact={spread:spreadIndex,side,x,y,angle,scale,height:support};
   const floor=support+.085*scale;
   const target=floor+(penHeld?.29:0);
   const height=Math.max(floor,mix(pen.position.z,target,reduce.matches?1:1-Math.exp(-18*dt)));
   const moving=Math.abs(height-target)>.001;
   pen.position.z=moving?height:target;
   const shade=pen.userData.shade,spread=Math.min(1,Math.max(0,(pen.position.z-floor)/.29));
-  shade.position.set(pen.position.x+.025+spread*.09,pen.position.y-.012-spread*.065,support+.004);
+  const dx=pen.position.x-scene.lamp.bulb.position.x,dy=pen.position.y-scene.lamp.bulb.position.y;
+  const distance=Math.max(.5,Math.hypot(dx,dy)),offset=.025+.11*spread;
+  shade.position.set(pen.position.x+offset*dx/distance,pen.position.y+offset*dy/distance,support+.004);
   shade.rotation.z=pen.rotation.z;shade.scale.set(scale*(1+.09*spread),scale*(.72+spread*1.6),1);
   shade.material.opacity=.48-.29*spread;
   return moving;
@@ -776,16 +814,33 @@ function revealInks(now){
   return active;
 }
 reduce.addEventListener('change',wake);
+function motionProgress(active,now){
+  return clamp01(active.origin+active.rate*(now-active.started)/(1000*active.seconds));
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    hiddenAt=performance.now();
+    if(frame)cancelAnimationFrame(frame);
+    frame=0;mobileGesture=null;cornerHover=0;closeHover=false;
+    return;
+  }
+  if(hiddenAt!==null&&motion)motion.started+=performance.now()-Math.max(hiddenAt,motion.started);
+  hiddenAt=null;lastTime=0;wake();
+});
 function draw(now){
   frame=0;
   const dt=Math.min(.04,(now-(lastTime||now-16))/1000);
   lastTime=now;
   if(motion){
     const active=motion;
-    active.time+=dt;
-    const t=reduce.matches?1:clamp01(active.time/active.seconds);
+    const finish=active.rate>0?1:0;
+    const t=reduce.matches?finish:motionProgress(active,now);
     active.step(t);
-    if(t===1){motion=null;active.end();}
+    if(t===finish){
+      motion=null;
+      if(finish===1)active.end();
+      else{sideCurl=cornerAmount=0;viewSide=side;pendingSwipe=0;trimJournal();completePage(turnDirection,false);}
+    }
   }
   const props=objectMotion(dt);
   if(phase!=='turning')prepareStatic(dt);
