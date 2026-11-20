@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-profile-evidence',date:'2026-11-20',title:'学生档案中的学习表现',
+  items:[{audience:'teacher',art:'book',title:'在学生档案看四项技能',text:'从班级名单或成绩与学情打开学生档案，按学科查看五档表现、技能分布和题目依据。'},{audience:'student',art:'book',title:'筛选成绩保留展开位置',text:'查看某一技能的依据后，筛选作业记录时可继续阅读，已展开的内容不会收起。'}]
+},{
   id:'2026-11-20-workspace-tools',date:'2026-11-20',title:'作业工具重新排版',
   items:[{audience:'student',art:'book',title:'看题、做题与下载',text:'打开作业后，从下载图标导出整卷 PDF。在交卷回执中，题纸和自己的作答分开放置。'},{audience:'teacher',art:'book',title:'在学生提交中处理订正',text:'打开作业详情的「学生提交」，展开「订正验收」查看补分设置、原题与处理记录。'}]
 },{

@@ -29,31 +29,74 @@ function radar(axes){
     <g class="evidence-grid">${levels.map(level=>`<polygon points="${polygon(level)}" />`).join('')}<path d="M14 74H134M74 14V134" /></g>
     ${points.every(Boolean)?`<polygon class="evidence-radar-fill" points="${points.map(p=>p.join(',')).join(' ')}" />`:''}
     <g class="evidence-radar-lines">${segments}</g>
-    ${axes.map((axis,i)=>{const [x,y]=points[i]||point(i,60);return `<circle cx="${x}" cy="${y}" r="4" ${axis.band===null?'class="evidence-radar-empty"':`fill="${colors[axis.band-1]}"`} />`;}).join('')}
+    ${axes.map((axis,i)=>{const [x,y]=points[i]||point(i,60);return `<text x="${[74,143,74,5][i]}" y="${[10,78,146,78][i]}" text-anchor="middle" class="evidence-axis-index">${i+1}</text><circle cx="${x}" cy="${y}" r="4" ${axis.band===null?'class="evidence-radar-empty"':`fill="${colors[axis.band-1]}"`} />`;}).join('')}
   </svg>`;
 }
 
-export function performanceMarkup(value,h,link){
+export function performanceMarkup(value,h,link,{teacher=false}={}){
   if(!value)return '';
   const {index,axes,corrections}=value;
   const axis=value.focus?axes[value.focus-1]:null;
   const advice=axis?`${index?.level===5?'巩固':'先练'}${skills[axis.skill-1][0]}`:'';
   return `<section class="evidence-performance" aria-label="${courseLabel(value.course)}学习表现">
-    <div class="evidence-progress"><h2>学习表现</h2>
+    <div class="evidence-progress"><h2>学习表现${teacher?' <small>'+courseLabel(value.course)+'</small>':''}</h2>
       <div class="evidence-index">${index?`<strong>${index.value}</strong><span>第 ${index.level} 档 · 课堂参考</span>`:'<strong>积累样本中</strong>'}</div>
       <div class="evidence-track" data-ready="${Boolean(index)}" role="img" aria-label="${index?`五档表现。${index.value} 分，第 ${index.level} 档`:'样本不足，尚未分档'}">
         ${colors.map((color,i)=>`<span style="--band:${color};--fill:${index?Math.max(0,Math.min(100,(index.value-i*20)*5)):0}%"></span>`).join('')}
         ${index?`<i style="--position:${index.value}%"></i>`:''}
       </div>
       <p>${index?value.next!==null?`距第 ${index.level+1} 档 ${value.next} 分`:'已达第 5 档':`已出分 ${value.works} 份 · 需至少 2 份且合计满分 10 分`}</p>
-      ${advice?`<p class="evidence-next"><strong>${advice}</strong><button type="button" class="text-button" data-performance-advice="${value.course}">生成练习建议</button></p><p data-advice-output role="status"></p>`:''}
+      ${advice?`<p class="evidence-next"><strong>${advice}</strong>${teacher?'':`<button type="button" class="text-button" data-performance-advice="${value.course}">生成练习建议</button>`}</p><p data-advice-output role="status"></p>`:''}
+      ${teacher?'<small class="evidence-scope">本教师可见作业 · 全时段</small>':''}
       <details><summary>查看计算依据</summary><p>独立首答 ${value.first??'待积累'} · 订正后迁移 ${value.transfer??'待积累'}<br>通过订正 ${corrections.done} / ${corrections.total} 道</p></details>
     </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${radar(axes)}<div>
       ${axes.map((item,i)=>`<details ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i][0]} <small>${skills[i][1]}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
         <p>${item.count} 道独立题${item.value!==null?` · 得分率 ${item.value}%`:''}</p>
-        ${item.references.slice(0,4).map(r=>`<div class="evidence-item">${r.score<r.max?link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.title)):h(r.title)}<span>第 ${h(r.questionId)} 题 · ${r.score}/${r.max}</span></div>`).join('')}</details>`).join('')}
+        ${item.references.slice(0,4).map(r=>`<div class="evidence-item">${teacher?h(r.title):r.score<r.max?link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.title)):h(r.title)}<span>第 ${h(r.questionId)} 题 · ${r.score}/${r.max}</span></div>`).join('')}</details>`).join('')}
     </div></div></div>
   </section>`;
+}
+
+// Page-lifetime loader; failed requests can be retried, no student data in browser storage.
+export function teacherEvidenceReader(api){
+  const pending=new Map();
+  return (student,scope='')=>{
+    const q=new URLSearchParams({student});if(scope)q.set('class',scope);
+    const key=String(q);
+    if(!pending.has(key)){
+      if(pending.size>=16)pending.delete(pending.keys().next().value);
+      const req=api('learning/student-performance?'+key).then(body=>body.performance)
+        .catch(error=>{if(pending.get(key)===req)pending.delete(key);throw error;});
+      pending.set(key,req);
+    }
+    return pending.get(key);
+  };
+}
+
+export function showTeacherEvidence(host,{read,student,scope='',subject='',h}){
+  const stamp=Symbol();host.evidenceStamp=stamp;
+  const active=()=>host.isConnected&&host.evidenceStamp===stamp;
+  host.innerHTML='<div class="profile-evidence-wait" role="status">正在读取学习表现…</div>';
+  const load=async()=>{
+    try{
+      const values=await read(student,scope);if(!active())return;
+      const valid=subject?values.filter(v=>v.course===subject):values;
+      if(!valid.length){host.replaceChildren();return;}
+      const nav=valid.length>1?'<div class="evidence-course-pick" role="group" aria-label="学习表现学科">'+valid.map(v=>'<button type="button" data-evidence-course="'+v.course+'">'+courseLabel(v.course)+'</button>').join('')+'</div>':'';
+      host.innerHTML=nav+'<div data-evidence-body></div>';
+      const render=value=>{
+        for(const b of host.querySelectorAll('[data-evidence-course]'))b.setAttribute('aria-pressed',String(b.dataset.evidenceCourse===value.course));
+        host.querySelector('[data-evidence-body]').innerHTML=performanceMarkup(value,h,null,{teacher:true});
+      };
+      render(valid.find(v=>v.index)||valid.find(v=>v.works)||valid[0]);
+      for(const b of host.querySelectorAll('[data-evidence-course]'))b.onclick=()=>render(valid.find(v=>v.course===b.dataset.evidenceCourse));
+    }catch{
+      if(!active())return;
+      host.innerHTML='<div class="profile-evidence-wait" role="status">学习表现暂未载入 <button type="button">重试</button></div>';
+      const retry=host.querySelector('button');retry.onclick=()=>{retry.disabled=true;void load();};
+    }
+  };
+  void load();
 }
 
 export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPreviews,toast},assignment,students){

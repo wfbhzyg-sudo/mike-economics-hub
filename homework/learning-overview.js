@@ -1,4 +1,4 @@
-import {scoreSources} from './learning-evidence.js';
+import {scoreSources,showTeacherEvidence} from './learning-evidence.js';
 import {courseLabel,singleClassCourse} from './course-scope.js';
 import {studyReportMarkup} from './study-workflow.js';
 import {scoreMaximum} from './score-entry.js';
@@ -438,7 +438,7 @@ export function mountLearningOverview(ctx, initialData) {
     layout.dataset.mobileDetail = row ? 'true' : 'false';
     if (!row) {
       const attention = [...rows].filter(item => item.missing || item.needsReview || item.openCorrections).sort((a, b) => (b.missing + b.needsReview + b.openCorrections) - (a.missing + a.needsReview + a.openCorrections)).slice(0, 5);
-      host.innerHTML = `<div class="lo-detail-empty"><h2>选择一名学生</h2><p>查看逐次成绩、失分题与订正状态。学生档案只汇总已发布成绩，不合成综合能力分。</p>${attention.length ? `<h3>需要关注</h3><ul class="lo-attention-list">${attention.map(item => `<li><button type="button" class="lo-attention" data-profile="${h(item.student.id)}"><span>${h(item.student.name)}</span><small>${item.missing ? `待交 ${item.missing}` : ''}${item.missing && item.needsReview ? ' · ' : ''}${item.needsReview ? `待复核 ${item.needsReview}` : ''}${!item.missing && !item.needsReview ? `待订正 ${item.openCorrections}` : ''}</small></button></li>`).join('')}</ul>` : ''}</div>`;
+      host.innerHTML = `<div class="lo-detail-empty"><h2>选择一名学生</h2><p>查看学习表现、技能分布和逐次成绩。</p>${attention.length ? `<h3>需要关注</h3><ul class="lo-attention-list">${attention.map(item => `<li><button type="button" class="lo-attention" data-profile="${h(item.student.id)}"><span>${h(item.student.name)}</span><small>${item.missing ? `待交 ${item.missing}` : ''}${item.missing && item.needsReview ? ' · ' : ''}${item.needsReview ? `待复核 ${item.needsReview}` : ''}${!item.missing && !item.needsReview ? `待订正 ${item.openCorrections}` : ''}</small></button></li>`).join('')}</ul>` : ''}</div>`;
       return;
     }
     const profile = studentProfile(data, row.student, context.assignments);
@@ -453,6 +453,7 @@ export function mountLearningOverview(ctx, initialData) {
       items: observations,
       caption: `${profile.row.published}/${profile.row.total} 次已发布 · ${scopeCaption(context.stats)}`,
     });
+    const prior=host.querySelector('[data-profile-evidence]');
     host.innerHTML = `<div class="lo-profile-head">
       <button type="button" class="lo-back lo-mobile-only" data-profile-back>← 返回学生列表</button>
       <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><div class="lo-profile-head-actions">${ai ? `<button type="button" class="lo-btn lo-primary" data-ai-profile="${h(row.student.id)}">生成学习建议</button>` : ''}<a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div></div>
@@ -464,6 +465,7 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
       <p class="lo-profile-chip"><span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>${profile.openCorrections ? `<span class="lo-chip" data-tone="warn">待订正 ${profile.openCorrections}</span>` : ''}</p>
     </div>
+    <div data-profile-evidence></div>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>最近成绩</h3><small>${recent.length ? `最近 ${recent.length} 次已发布` : ''}</small></div>${recent.length ? `<ul class="lo-recent">${recent.map(cell => `<li><a href="#work/review/${encodeURIComponent(cell.record?.latest?.id || '')}"><span class="lo-recent-name">${h((cell.assignment.title || assignmentLabel(cell.assignment)))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span><span class="lo-recent-score">${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : '—'}</span><span class="lo-band-pill" data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></a></li>`).join('')}</ul>` : '<p class="lo-note">还没有已发布成绩。待复核的提交不会显示为 0 分。</p>'}</section>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>优先复习的题</h3><small>${profile.weak.length ? `按得分率排序 · ${profile.mistakes} 道失分题` : ''}</small></div>${profile.weak.length ? `<ul class="lo-weak">${profile.weak.map(item => `<li><button type="button" data-open-question data-s="${h(row.student.id)}" data-a="${h(item.assignmentId)}" data-q="${h(item.questionId)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 58))}</span><span class="lo-weak-meta">${h(item.assignmentTitle || '')} · ${item.score}/${item.maxPoints}</span></button></li>`).join('')}</ul>` : '<p class="lo-note">这个范围内没有失分题记录。</p>'}</section>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>成绩构成</h3><small>只统计已发布成绩</small></div>
@@ -489,6 +491,11 @@ export function mountLearningOverview(ctx, initialData) {
       ${observationsMarkup(observations)}
       <p class="lo-note">规则摘要 · 基于已发布成绩 · 非 AI 结论</p>
     </section>`;
+    if(tab==='students'&&ctx.readEvidence){
+      const slot=host.querySelector('[data-profile-evidence]'),key=JSON.stringify([row.student.id,filter.classId]);
+      if(prior?.dataset.key===key){slot.replaceWith(prior);}
+      else {slot.dataset.key=key;showTeacherEvidence(slot,{read:ctx.readEvidence,student:row.student.id,scope:filter.classId,h});}
+    }
   }
 
   function classLabel() {
@@ -1029,7 +1036,7 @@ function renderDetail() {
       button.tabIndex = active ? 0 : -1;
       $(`#lo-panel-${name}`).hidden = !active;
     }
-    if (redraw) { renderDetail(); }
+    if (redraw) { if(tab==='students')renderStudents(context.visible);renderDetail(); }
   }
 
   async function refresh() {
@@ -1041,6 +1048,8 @@ function renderDetail() {
       const fresh = await ctx.load();
       if (destroyed) return;
       data = fresh;
+      ctx.resetEvidence?.();
+      $('#lo-profile [data-profile-evidence]')?.removeAttribute('data-key');
       draw();
       toast('学情数据已刷新');
     } catch (error) {

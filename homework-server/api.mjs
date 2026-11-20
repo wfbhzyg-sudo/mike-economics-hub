@@ -2,7 +2,7 @@ import {createCorrectionReview,applyRecovery,attachReview,reviewView} from './co
 import {studentPerformance,performanceAdvice} from './student-performance.mjs';
 import {deskTask,deskSubmissions} from './desk-task.mjs';
 import {questionLessonReference} from './lesson-reference.mjs';
-import {assignmentCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
+import {assignmentCourse,classKey,singleClassCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
 import {assignmentRecords,usesTotalOnlyEditor} from '../homework/learning-model.js';
@@ -864,6 +864,31 @@ export async function createHomework({externalAuth} = {}) {
       async function performanceOf(work,classes,mistakes){
         const refs=work.submissions.flatMap(s=>(s.rubricSnapshot||[]).map(q=>q.libraryQuestionId).filter(Boolean));
         return studentPerformance(work.submissions,work.assignments,mistakes,classes,await db.getMany(refs));
+      }
+      // One selected student only: never calculate a whole roster on the matrix request.
+      if(route.join('/')==='learning/student-performance'&&method==='GET'){
+        teacher();
+        const studentId=url.searchParams.get('student'),scope=classKey(url.searchParams.get('class'));
+        assert(studentId&&studentId.length<=200,'请选择学生',400);
+        const classes=await availableClasses();
+        if(scope)assert(classes.some(c=>classKey(c.id)===scope),'找不到此档案',404);
+        const [roster,visible]=await Promise.all([availableStudents(),db.submissionsForTeacherStudent(user.id,studentId)]);
+        const member=roster.find(person=>person.id===studentId);
+        const owned=(await db.getMany(visible.map(s=>s.assignmentId))).filter(a=>a.type==='assignment'&&a.teacherId===user.id&&a.published&&!a.deletedAt);
+        const inScope=a=>!scope||a.classIds?.some(id=>classKey(id)===scope);
+        const assignments=owned.filter(inScope);
+        const inClass=member&&(!scope||member.classIds?.some(id=>classKey(id)===scope));
+        const historical=assignments.some(a=>!scope||a.recipients?.students?.some(s=>s.id===studentId&&s.classIds?.some(id=>classKey(id)===scope))||visible.some(s=>s.assignmentId===a.id&&s.classIds?.some(id=>classKey(id)===scope)));
+        assert(inClass||historical,'找不到此档案',404);
+        const ids=new Set(assignments.map(a=>a.id)),submissions=visible.filter(s=>ids.has(s.assignmentId));
+        const reviews=await correctionReview.reviews({teacherId:user.id,studentId});
+        const verified=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
+        const mistakes=mistakeRows(submissions,assignments).map(m=>attachReview(m,verified.get(JSON.stringify([m.submissionId,m.questionId]))));
+        const values=await performanceOf({submissions,assignments},classes,mistakes);
+        const subjects=new Set(assignments.map(a=>assignmentCourse(a,classes)));
+        for(const c of classes)if(scope?classKey(c.id)===scope:member?.classIds?.some(id=>classKey(id)===classKey(c.id)))subjects.add(singleClassCourse(c));
+        const known=values.filter(v=>subjects.has(v.course));
+        return (json(res,{performance:known.length?known:values}),true);
       }
       if(route[0]==='learning'&&route[1]==='performance-advice'&&method==='POST'){
         assert(user.role==='student','请使用学生账号',403);

@@ -1,5 +1,5 @@
-import {scoreSources,performanceMarkup} from './learning-evidence.js';
-import {assignmentCourse,courseLabel,coursesFor,courseTabs,selectedCourse,rememberCourse} from './course-scope.js';
+import {scoreSources,performanceMarkup,teacherEvidenceReader,showTeacherEvidence} from './learning-evidence.js';
+import {assignmentCourse,classKey,courseLabel,coursesFor,courseTabs,selectedCourse,rememberCourse} from './course-scope.js';
 import {scoreBand,scoreBadge,scoreLegend} from './score-bands.js';
 import {viewMemory} from './view-memory.js';
 import {highlightText} from './search-text.js';
@@ -9,8 +9,10 @@ export const statusMarkup=(c,h)=>c.rate!==null?gradeBadge(c.rate):`<span class="
 export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountCorrection,mountPaper}={}){
  const {main,state,h,head,link,date,toast}=ctx,memory=viewMemory(state.user.id+':journey:'+student.id),$=s=>main.querySelector(s),small=matchMedia('(max-width:767px)');
  let destroyed=false,child=null,opening=null,searchTimer,visible=[],selected=null,mode=memory.get('view','timeline'),focused=null,sequence=0;
- const subjects=coursesFor(data.assignments,data.classes||[]);let subject=selectedCourse(state.user.id,subjects);
- const all=cellsFor(data,student).filter(c=>c.status!=='unassigned'),filter={query:memory.get('query',''),period:memory.get('period','all'),from:memory.get('from',''),to:memory.get('to','')};
+ const all=cellsFor(data,student).filter(c=>c.status!=='unassigned');
+ const classes=teacher?(data.classes||[]).filter(c=>student.classIds?.some(id=>classKey(id)===classKey(c.id))):data.classes||[];
+ const subjects=coursesFor(teacher?all.map(c=>c.assignment):data.assignments,classes);let subject=selectedCourse(state.user.id,subjects);
+ const filter={query:memory.get('query',''),period:memory.get('period','all'),from:memory.get('from',''),to:memory.get('to','')};
  main.innerHTML=`<section class="paper gj-page gj-journey">${head('',teacher?student.name+'的成绩档案':'我的成绩','',back?link(back,'返回班级成绩'):link('assignments','查看作业'))}${courseTabs(subjects,subject)}<div data-performance></div><div class="gj-summary"></div><details class="gj-filters"><summary>筛选与视图<span class="gj-filter-state"></span></summary><div class="gj-tools"><label>查找作业<input type="search" id="journey-search" placeholder="作业名称或题目关键词" autocomplete="off"></label><label>时间范围<select id="journey-period"><option value="all">全部时间</option><option value="term">本学期</option><option value="month">最近30天</option><option value="custom">自定义日期</option></select></label><div class="gj-view-switch" aria-label="成绩视图"><button type="button" data-view="timeline">时间轴</button><button type="button" data-view="list">列表</button></div><button type="button" id="journey-refresh">刷新成绩</button><button type="button" class="text-button" id="journey-reset">清除筛选</button></div><div class="gj-dates" hidden><label>开始日期<input type="date" id="journey-from"></label><label>结束日期<input type="date" id="journey-to"></label></div><p class="error" id="journey-error" role="alert"></p></details><div class="gj-range-hint"></div><div class="gj-focus-layout"><div class="gj-chart-wrap"><div class="gj-chart-actions"><span id="journey-count" role="status"></span><div><button type="button" id="journey-first">查看最早</button><button type="button" id="journey-last">回到最新</button></div></div><div class="gj-timeline" tabindex="0" role="region" aria-label="横向作业时间轴"><div class="gj-fish"></div></div><div class="gj-chart-footer"><span>左右滑动查看 · 点击作业展开详情</span><div><button type="button" id="journey-left" aria-label="向左浏览作业">←</button><button type="button" id="journey-right" aria-label="向右浏览作业">→</button></div></div></div><div class="gj-list" hidden></div><section class="gj-detail" aria-label="选中作业详情" tabindex="-1"></section></div><div class="gj-inline-correction" hidden></div>${scoreLegend()}</section>`;
  $('#journey-search').value=filter.query;$('#journey-period').value=filter.period;$('#journey-from').value=filter.from;$('#journey-to').value=filter.to;
  const scroll=$('.gj-timeline'),filters=$('.gj-filters');const setFilters=()=>{filters.open=!small.matches||memory.get('filtersOpen',false);};setFilters();filters.addEventListener('toggle',()=>{if(small.matches)memory.set({filtersOpen:filters.open});});small.addEventListener('change',setFilters);const smooth=()=>matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth';
@@ -20,8 +22,13 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
  function selection(){for(const b of main.querySelectorAll('[data-assignment]')){const active=b.dataset.assignment===selected?.assignment.id;b.setAttribute('aria-pressed',String(active));b.classList.toggle('selected',active);if(b.closest('.gj-fish'))b.tabIndex=active?0:-1;}$('#journey-count').textContent=visible.length?(visible.findIndex(c=>c===selected)+1)+' / '+visible.length+' 次作业':'0 次作业';}
  function center(instant=false){const b=[...main.querySelectorAll('.gj-fish [data-assignment]')].find(b=>b.dataset.assignment===selected?.assignment.id);if(b)scroll.scrollTo({left:b.getBoundingClientRect().left-scroll.getBoundingClientRect().left+scroll.scrollLeft+b.offsetWidth/2-scroll.clientWidth/2,behavior:instant?'instant':smooth()});}
  function boundaries(){const overflow=visible.length>1&&scroll.scrollWidth>scroll.clientWidth+2;$('.gj-chart-footer').hidden=!overflow;$('.gj-chart-actions>div').hidden=!overflow||visible.length<=3;$('#journey-left').disabled=scroll.scrollLeft<2;$('#journey-right').disabled=scroll.scrollLeft>=scroll.scrollWidth-scroll.clientWidth-2;}const resizeObserver=new ResizeObserver(boundaries);resizeObserver.observe(scroll);
+ let drawnSubject=null;
+ const readEvidence=teacher?teacherEvidenceReader(ctx.api):null;
  function draw(){
-  $('[data-performance]').innerHTML=teacher?'':performanceMarkup(data.performance?.find(p=>p.course===subject),h,link);
+  if(drawnSubject!==subject){
+  drawnSubject=subject;
+  if(teacher)showTeacherEvidence($('[data-performance]'),{read:readEvidence,student:student.id,subject,h});
+  else $('[data-performance]').innerHTML=performanceMarkup(data.performance?.find(p=>p.course===subject),h,link);
   const advice=$('[data-performance-advice]');
   if(advice)advice.onclick=async()=>{
     const output=$('[data-advice-output]');
@@ -32,6 +39,7 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
     }catch{if(output.isConnected)output.textContent='可展开技能分布，先做一题对应知识点的新题。';}
     finally{if(advice.isConnected)advice.disabled=false;}
   };
+  }
   const range=timeRange(filter.period,filter.from,filter.to);$('.gj-dates').hidden=filter.period!=='custom';const term=filter.query.trim().toLocaleLowerCase();visible=all.filter(c=>assignmentCourse(c.assignment,data.classes||[])===subject&&inRange(c.assignment,range)&&[c.assignment.title,...(c.assignment.questions||[]).map(q=>q.prompt)].some(v=>(v||'').toLocaleLowerCase().includes(term)));
   selected=visible.find(c=>c.assignment.id===(selected?.assignment.id||memory.get('selected','')))||[...visible].reverse().find(c=>c.rate!==null)||visible.at(-1);const summary=cellSummary(visible),change=progressChange(visible);
   $('.gj-summary').innerHTML=`<span>${courseLabel(subject)}平均 ${scoreBadge(summary.average)}</span><span>已出分 <strong>${summary.count} / ${visible.length}</strong> 次</span>${change===null?'':`<span>近3次较前3次 <strong>${change>0?'+':''}${change}</strong> 个百分点</span>`}`;

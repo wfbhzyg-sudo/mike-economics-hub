@@ -1106,3 +1106,7 @@ body[data-section="bank"] #mobile-navigation{padding-right:8px}
  .bank-row-preview .bank-thumb{width:44px;height:44px}
  .bank-mobile-cart:not([hidden]){z-index:30}
 }
+.tw-profile-records>.tw-section-head{justify-content:flex-start;flex-wrap:wrap;gap:8px 14px}
+.student-kpis>div>.score-band{display:inline-flex;align-items:baseline;gap:5px;max-width:100%;padding:3px 7px;margin-block:3px}
+.student-kpis>div>.score-band strong{font-size:1rem;margin:0}
+.student-kpis>div>small{display:block}

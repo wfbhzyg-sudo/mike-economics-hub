@@ -60,6 +60,15 @@ export function createStore(connectionString, schema = "homework") {
       return (await client.query(`SELECT data FROM ${table} WHERE id=ANY($1::text[])`, [[...new Set(keys)]]))
         .rows.map((row) => row.data);
     },
+    async submissionsForTeacherStudent(teacherId, studentId, client = pool) {
+      const result=await client.query(`SELECT s.data FROM ${table} s
+        JOIN ${table} a ON a.id=s.data->>'assignmentId' AND a.kind='assignment'
+        WHERE s.kind='submission' AND s.data->>'studentId'=$1
+        AND a.data->>'teacherId'=$2 AND a.data->>'published'='true'
+        AND a.data->>'deletedAt' IS NULL AND s.data->>'status' IS DISTINCT FROM 'draft'
+        ORDER BY s.created DESC`,[studentId,teacherId]);
+      return result.rows.map(row=>row.data);
+    },
     async list(kind, client = pool, unitId) {
       return (
         await client.query(

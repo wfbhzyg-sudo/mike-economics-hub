@@ -59,3 +59,20 @@ test('model evidence matches normalized student quotes and validates attachment 
  assert(evidenceChecked(point,check('作答第 2 页，供给曲线左移'),'',2));
  assert(!evidenceChecked(point,check('作答第 3 页，供给曲线左移'),'',2));
 });
+
+import {performanceMarkup,teacherEvidenceReader} from '../homework/learning-evidence.js';
+test('teacher and student cards share bands; only students get personal actions',()=>{
+ const s=make('sa','a','08'),t=make('sb','b','12',2);t.rubricSnapshot=rubric.map(q=>({...q,prompt:q.prompt+' (new)'}));
+ const [v]=studentPerformance([s,t],[assignment('a'),assignment('b')],[],[],[],Date.parse('2026-11-20'));
+ const h=x=>String(x);const own=performanceMarkup(v,h,()=>'<a>错题</a>');
+ const teacher=performanceMarkup(v,h,null,{teacher:true});
+ assert.match(own,/data-performance-advice=/);assert.match(own,/错题/);
+ assert.doesNotMatch(teacher,/data-performance-advice=|href=/);assert.match(teacher,/本教师可见作业/);
+ for(const card of [own,teacher]){assert.match(card,/第 3 档/);assert.equal((card.match(/class="evidence-axis-index"/g)||[]).length,4);assert.match(card,/待积累/);}
+});
+test('profile evidence deduplicates in-flight requests per student and class, and retries after failure',async()=>{
+ const calls=[];let fail=true;
+ const read=teacherEvidenceReader(async url=>{calls.push(url);if(fail){fail=false;throw Error('temporary');}return {performance:['ok']};});
+ await assert.rejects(read('one'));assert.deepEqual(await Promise.all([read('one'),read('one')]),[['ok'],['ok']]);
+ await read('two');await read('one','class-2');assert.equal(calls.length,4);assert.equal(new URLSearchParams(calls.at(-1).split('?')[1]).get('class'),'class-2');
+});
