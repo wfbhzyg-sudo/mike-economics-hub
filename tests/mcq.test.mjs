@@ -277,6 +277,17 @@ test('short answer-choice confirmation stays on the current exercise even when s
  assert.match((await ask('帮我买电影票。','b')).value.reply,/主要帮你使用经济一页通/);
 });
 
+test('a choice of possible subjects is answered from the actual stem, separate from choices suggested by the student',async()=>{
+ const image=await (await import('sharp')).default({create:{width:20,height:20,channels:3,background:'white'}}).jpeg().toBuffer();
+ const handler=createCompanion({db:store(),callModel:async(_d,_k,m)=>{
+  if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true,visibleLabels:['税收','政府购买'],lessonRequest:'边际消费倾向的含义'};
+  if(m[0].content.startsWith('Check the draft'))return {safe:true};
+  assert(m[0].content.includes('题干明确写的是哪一种'));assert.equal(m.at(-1).content[1].type,'image_url');
+  return '题干写的是 tax rates，讨论税收。边际消费倾向衡量新增可支配收入中用于消费的比例。';
+ }});
+ const r=await call(handler,{id:'source',role:'student'},'companion','POST',{message:'请读出这道题讨论的是税收还是政府购买，再解释边际消费倾向。',requestId:'contrast',assessment:'work:x',screenshot:'data:image/jpeg;base64,'+image.toString('base64')});
+ assert.match(r.value.reply,/tax rates/);assert(!r.value.reply.includes('政府购买'));
+});
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};

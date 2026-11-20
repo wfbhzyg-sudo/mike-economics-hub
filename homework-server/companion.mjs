@@ -178,23 +178,27 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
        labels=labels.filter(label=>pointIds([label]).length===0);
        labels.unshift(...points.map(v=>'标记点 '+v));
      }
+     // An either/or question about the premise needs the actual stem. A list of
+     // labels may simply echo both alternatives from the student's wording.
+     const contrastInStem=guarded&&image&&/(?:题|材料|文章|题干).{0,15}(?:讨论|提到|写的|讲的|说的).{0,30}还是|(?:stem|passage|question).{0,30}(?:about|mention).{0,30}\bor\b/i.test(message);
+     const readStem=contrastInStem?'\n学生给了两种可能，请直接说明原题题干明确写的是哪一种，并引用一小段可见的原文作依据。区分提问里的词、选项里的词与题干里的词。如果看不清就明确说明。若区别本身就是原题考问的答案，只讲一般方法。定义题问到哪里答到哪里，不举数值例子。':'';
      // A follow-up often contains no image. Reuse the same checked unit definition
      // when this conversation has already established a demand-curve graph.
      const revisitingGraph=guarded&&!image&&history.messages.slice(-10).some(m=>m.role==='assistant'&&/需求曲线|需求价格弹性|demand curve|elasticity of demand/i.test(m.content));
      const reference=lesson?graphMeasurement(lesson,message):(revisitingGraph?graphMeasurement(message,'需求曲线'):'');
      if(reference&&!image){
        reply=reference+(/选项|答案|answer|option/i.test(message)?'\n\n原题的选项留给你判断。':'');
-     }else if(lesson&&(!wantsLabels||labels.length)){
+     }else if(!contrastInStem&&lesson&&(!wantsLabels||labels.length)){
        const explanation=reference||await callModel(db,decrypt,[{role:'system',content:system+'\n只讲独立知识点，不猜测未提供的原题或图上标记，不用任何编造的具体数据。直接用中英术语讲定义、单位或一般方法。'},{role:'user',content:lesson}],options);
        reply=labels.length?'题面标注了 '+labels.join('、')+'。\n\n'+explanation:explanation;
      }else{
-       reply=await callModel(db,decrypt,[{role:'system',content:system},...history.messages.slice(-12).map(m=>({role:m.role,content:m.content})),{role:'user',content:withImage(message+cited)}],options);
+       reply=await callModel(db,decrypt,[{role:'system',content:system+readStem},...history.messages.slice(-12).map(m=>({role:m.role,content:m.content})),{role:'user',content:withImage(message+cited)}],options);
      }
      if(readPoints&&points.length&&!(lesson&&(!wantsLabels||labels.length))&&!namesInCaption(reply,points)){
        reply='图上的标记点为 '+points.join('、')+'。\n\n'+reply;
      }
      if(guarded){
-       const check=draft=>callModel(db,decrypt,[{role:'system',content:reference&&points.length?CHECK_POINT_REFERENCE:CHECK_EXERCISE},{role:'user',content:withImage(JSON.stringify({studentRequest:message,citedPage:context,printedQuestionAsks:typeof scope.target==='string'?scope.target.slice(0,260):undefined,conversation:recentTurns,draft}))}],{json:true,maxTokens:420,signal:controller.signal});
+       const check=draft=>callModel(db,decrypt,[{role:'system',content:(reference&&points.length?CHECK_POINT_REFERENCE:CHECK_EXERCISE)+readStem},{role:'user',content:withImage(JSON.stringify({studentRequest:message,citedPage:context,printedQuestionAsks:typeof scope.target==='string'?scope.target.slice(0,260):undefined,conversation:recentTurns,draft}))}],{json:true,maxTokens:420,signal:controller.signal});
        const review=await check(reply);
        if(review.safe!==true){
          const excerpt=approvedExcerpt(review,reply);
