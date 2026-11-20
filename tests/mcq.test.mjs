@@ -72,7 +72,7 @@ test('students get concept explanations but answer-only exercise requests bypass
  const handler=createCompanion({db,callModel:async(_db,_key,m,o)=>{
    const message=m.at(-1).content;
    requests.push({system:m[0].content,message});
-   if(m[0].content.startsWith('Review a proposed'))return {safe:true};
+   if(m[0].content.startsWith('Check the draft'))return {safe:true};
    if(o.json)return {allowed:true,topic:'economics',answerOnly:message.startsWith('那我选 B 对吗')};
    return '价格上限（price ceiling）是法律允许的最高价格。';
  }});
@@ -110,7 +110,7 @@ test('key changes preserve active attempt identity, timer and receipt through ac
 test('page screenshot reaches the vision model without being stored in chat history including in self-practice',async()=>{
  const db=store(), user={id:'s',role:'student'}, seen=[];
  const handler=createCompanion({db,callModel:async (_db,_key,m,options)=>{
-   seen.push(m.at(-1).content);if(m[0].content.startsWith('Review a proposed'))return {safe:true};return options.json?{allowed:true}:'横轴是什么？';
+   seen.push(m.at(-1).content);if(m[0].content.startsWith('Check the draft'))return {safe:true};return options.json?{allowed:true}:'横轴是什么？';
  }});
  const sharp=(await import('sharp')).default;
  const image=await sharp({create:{width:50,height:50,channels:3,background:'green'}}).jpeg().toBuffer();
@@ -132,7 +132,7 @@ test('a rejected exercise draft cannot leak through deltas, history or retry; a 
   const sensitive='原题数量减少 20%，选 D。',safe='需求价格弹性（price elasticity of demand）衡量需求量对价格变化的敏感程度。';
   const handler=createCompanion({db,callModel:async(_db,_key,m,o)=>{
     if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',answerOnly:false,exercise:true};
-    if(m[0].content.startsWith('Review a proposed')){
+    if(m[0].content.startsWith('Check the draft')){
       const {draft}=JSON.parse(m.at(-1).content);checks.push(draft);
       return draft===sensitive?{safe:false,revision:safe}:{safe:approveRevision};
     }
