@@ -268,6 +268,15 @@ test('a graph follow-up uses the signed slope with the same units after the imag
  assert.equal(generations,1);assert.match(r.value.reply,/ΔP\/ΔQ/);assert.match(r.value.reply,/价格单位／数量单位/);assert.match(r.value.reply,/留给你/);
 });
 
+test('short answer-choice confirmation stays on the current exercise even when scope is misclassified',async()=>{
+ const handler=createCompanion({db:store(),callModel:async(_d,_k,m)=>{
+  assert(m[0].content.startsWith('Classify'));return {allowed:false,topic:'other',answerOnly:false};
+ }});
+ const ask=async(message,id)=>call(handler,{id:'scope-regression',role:'student'},'companion','POST',{requestId:id,assessment:'work:x',message});
+ assert.match((await ask('所以第 1 题我留 D，对吗？只回答对或不对。','a')).value.reply,/最终答案留给你/);
+ assert.match((await ask('帮我买电影票。','b')).value.reply,/主要帮你使用经济一页通/);
+});
+
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};

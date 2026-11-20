@@ -44,6 +44,15 @@ function pointIds(labels){
  }))];
 }
 const CHECK_POINT_REFERENCE=`Check the draft against the attached printed economics graph before release. The draft consists of a transcription and a vetted general lesson on units or signed slopes. Return {"safe":true} if the transcribed labels are visible, the unit/sign explanation is applicable, and the COMBINED text does not identify the correct option, final value, or the movement/comparison asked by the exam. Listing all named points without distinguishing them is allowed if the printed question asks for a relationship. Do not remove point names just to make the lesson shorter. If there is a real discrepancy or disclosure, use the standard unsafe response. `+CHECK_EXERCISE;
+function namesInCaption(text,names){
+ // Ignore x/y inside equations or prose about axes when checking for a point list.
+ const captions=text.split(/[。！？，\n]/).filter(line=>/标记|标注|点名|点为|两个点|points?|markers?/i.test(line));
+ return names.every(v=>captions.some(line=>new RegExp('(?:^|[^A-Za-z0-9Δ])'+v+'(?=$|[^A-Za-z0-9])').test(line)));
+}
+function shortChoiceConfirmation(text){
+ if(text.length>80)return false;
+ return /^(?:(?:所以|那么|那|这次|刚才|第\s*\d+\s*题|我|应该|是不是|直接|选项|答案|是|就|该|留|选|选了|选的是|保留|最后|\s)*[A-E][，,、：:\s]*(?:对(?:吗|不对)?|是吗|正确吗|可以吗|吗)?[?？。.!！\s]*(?:只(?:说|回答)(?:对错|对或不对|对或错|是或否)[?？。.!！\s]*)?|(?:so\s+)?(?:is (?:it|the answer)|should I (?:choose|keep)|I (?:choose|picked))\s+[A-E][ ,]*(?:right|correct)?[?.!]*)$/i.test(text.trim());
+}
 function approvedExcerpt(review,draft){
  const excerpt=typeof review.safeExcerpt==='string'?review.safeExcerpt.trim():'';
  const problem=typeof review.problem==='string'?review.problem.trim():'';
@@ -142,7 +151,8 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
    // Route explicit requests for explanations through the checked tutoring path.
    const wantsExplanation=/解释|讲清|讲解|说明|含义|定义|原理|公式|为什么|为何|区别|怎么理解|\b(?:explain|define|why|meaning|concept|difference)\b/i.test(message);
    const explainPart=scope.answerOnly===true&&wantsExplanation&&scope.topic==='economics';
-   if(user.role==='student'&&scope.answerOnly===true&&!explainPart&&(scope.allowed===true||onExercise)){economic=scope.topic==='economics';reply=ANSWER_REQUEST_REPLY;}
+   if(user.role==='student'&&onExercise&&shortChoiceConfirmation(message)){economic=scope.topic==='economics';reply=ANSWER_REQUEST_REPLY;}
+   else if(user.role==='student'&&scope.answerOnly===true&&!explainPart&&(scope.allowed===true||onExercise)){economic=scope.topic==='economics';reply=ANSWER_REQUEST_REPLY;}
    else if(scope.allowed!==true&&!explainPart)reply='我主要帮你使用经济一页通，或讨论经济学。你可以问我经济概念、图表，或作业平台怎么操作。';
    else{
      economic=scope.topic==='economics';
@@ -180,7 +190,7 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
      }else{
        reply=await callModel(db,decrypt,[{role:'system',content:system},...history.messages.slice(-12).map(m=>({role:m.role,content:m.content})),{role:'user',content:withImage(message+cited)}],options);
      }
-     if(readPoints&&points.length&&!(lesson&&(!wantsLabels||labels.length))){
+     if(readPoints&&points.length&&!(lesson&&(!wantsLabels||labels.length))&&!namesInCaption(reply,points)){
        reply='图上的标记点为 '+points.join('、')+'。\n\n'+reply;
      }
      if(guarded){
@@ -192,8 +202,8 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
          const candidate=excerpt||revision;
          // A safe edit can omit the requested observations. Check the recombined
          // answer as a whole, even if the excerpt alone already passed.
-         const missing=points.filter(v=>!new RegExp('(?:^|[^A-Za-z0-9])'+v+'(?=$|[^A-Za-z0-9])').test(candidate));
-         if(candidate&&missing.length){
+         const missing=points.length&&!namesInCaption(candidate,points);
+         if(candidate&&missing){
            const combined='图上的标记点为 '+points.join('、')+'。\n\n'+candidate;
            const second=await check(combined);
            reply=second.safe===true?combined:(excerpt||approvedExcerpt(second,combined)||ANSWER_REQUEST_REPLY);
