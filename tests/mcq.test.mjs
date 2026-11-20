@@ -196,6 +196,18 @@ test('an independently approved passage is shown verbatim without the revealing 
  }
 });
 
+test('a label-only excerpt cannot replace the separately requested concept explanation',async()=>{
+ const labels='题面标注了 横轴 Quantity（数量）、纵轴 Price（价格）。',error='斜率永远是正数。';
+ const revision=labels+'\n\n斜率是带符号的比值 ΔP/ΔQ。';
+ const handler=createCompanion({db:store(),callModel:async(_db,_key,m)=>{
+  if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true};
+  if(m[0].content.startsWith('Check the draft'))return JSON.parse(m.at(-1).content).draft===revision?{safe:true}:{safe:false,problem:error,safeExcerpt:labels,revision};
+  return labels+'\n\n'+error;
+ }});
+ const result=await call(handler,{id:'labels',role:'student'},'companion','POST',{requestId:'both',assessment:'mock:test',message:'说明图上的坐标轴和斜率符号。'});
+ assert.equal(result.value.reply,revision);
+});
+
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};

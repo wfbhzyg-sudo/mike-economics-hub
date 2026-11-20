@@ -23,6 +23,9 @@ Reject drafts which restate the exercise operands together with the operation/ta
 function approvedExcerpt(review,draft){
  const excerpt=typeof review.safeExcerpt==='string'?review.safeExcerpt.trim():'';
  const problem=typeof review.problem==='string'?review.problem.trim():'';
+ // Transcribed labels alone cannot answer the accompanying concept question.
+ const labelLine=draft.startsWith('题面标注了 ')?draft.split('\n\n',1)[0]:'';
+ if(labelLine&&labelLine.includes(excerpt))return '';
  if(review.safe!==false||excerpt.length<24||!problem||!draft.includes(problem)||!draft.includes(excerpt)||excerpt.includes(problem))return '';
  return excerpt;
 }
