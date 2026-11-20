@@ -196,6 +196,21 @@ test('an independently approved passage is shown verbatim without the revealing 
  }
 });
 
+test('check the signed vertical-over-horizontal graph reference without asking a generator to recalculate it',async()=>{
+ const jpg=await (await import('sharp')).default({create:{width:32,height:32,channels:3,background:'white'}}).jpeg().toBuffer();
+ let calls=0;
+ const handler=createCompanion({db:store(),callModel:async(_db,_key,m)=>{
+  ++calls;
+  if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true,lessonRequest:'比较需求曲线斜率及价格弹性的单位',visibleLabels:['标记点 X','标记点 Y']};
+  assert(m[0].content.startsWith('Check the draft'));
+  const d=JSON.parse(m.at(-1).content[0].text).draft;
+  assert.match(d,/ΔP\/ΔQ/);assert.match(d,/单位为价格单位／数量单位/);assert.match(d,/没有单位/);assert.match(d,/标记点 X/);
+  return {safe:true};
+ }});
+ const result=await call(handler,{id:'axis-units',role:'student'},'companion','POST',{requestId:'graph',assessment:'mock:test',message:'图上点名是什么？两种量的单位有什么区别？',screenshot:'data:image/jpeg;base64,'+jpg.toString('base64')});
+ assert.equal(calls,2);assert.match(result.value.reply,/向右下降为负/);
+});
+
 test('a label-only excerpt cannot replace the separately requested concept explanation',async()=>{
  const labels='题面标注了 横轴 Quantity（数量）、纵轴 Price（价格）。',error='斜率永远是正数。';
  const revision=labels+'\n\n斜率是带符号的比值 ΔP/ΔQ。';
