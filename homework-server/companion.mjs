@@ -43,7 +43,15 @@ function pointIds(labels){
    return match?[match[1]]:POINT_ID.test(value)?[value]:[];
  }))];
 }
-const CHECK_POINT_REFERENCE=`Check the draft against the attached printed economics graph before release. The draft consists of a transcription and a vetted general lesson on units or signed slopes. Return {"safe":true} if the transcribed labels are visible, the unit/sign explanation is applicable, and the COMBINED text does not identify the correct option, final value, or the movement/comparison asked by the exam. Listing all named points without distinguishing them is allowed if the printed question asks for a relationship. Do not remove point names just to make the lesson shorter. If there is a real discrepancy or disclosure, use the standard unsafe response. `+CHECK_EXERCISE;
+// This is verification of a complete, fixed educational card, not a request
+// for a shorter answer. On failure the regular reviewer still handles revisions.
+const CHECK_VISUAL_CARD='Check the draft against the attached printed AP exercise. Verify that the requested premise labels in the caption really appear in the source, and that the caption plus the general economics definition together do not disclose a correct option, final number or the specific comparison tested. The student may ask a separate reading question. Giving the names of both marked points without distinguishing them, or the name of the item a shop sells, is safe unless that is the test target. Do not rewrite the draft. Return JSON {"safe":true} if the entire draft passes, otherwise {"safe":false}.';
+const READ_PRODUCT='Read just the product, good, or service explicitly named in the PRINTED STEM of the attached exercise. Ignore suggested nouns in the learner message and ignore answer choices. Only if the name is clear and revealing it is not what the printed test asks, return JSON {"name":"short exact source name, optionally with a Chinese translation"}. Otherwise return {"name":""}.';
+function demandElasticityDefinition(request,topic){
+ if(!/弹性|elasticit/i.test(request)||!/绝对值|含义|定义|是什么|意思|为何|why|absolute value|defin|meaning/i.test(request))return '';
+ if(!/需求|需求量|demand|own.price/i.test(topic)||/供给|交叉|收入弹性|supply|cross.price|income elasticity/i.test(request))return '';
+ return '需求价格弹性（price elasticity of demand）是需求量变动百分比与自身价格变动百分比的比值，衡量需求量对价格变化的敏感程度。对向下倾斜的需求曲线，两者方向相反，比值为负；比较敏感程度时通常报告绝对值，因此不受负号影响。';
+}
 function namesInCaption(text,names){
  // Ignore x/y inside equations or prose about axes when checking for a point list.
  const captions=text.split(/[。！？，\n]/).filter(line=>/标记|标注|点名|点为|两个点|points?|markers?/i.test(line));
@@ -178,6 +186,12 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
        labels=labels.filter(label=>pointIds([label]).length===0);
        labels.unshift(...points.map(v=>'标记点 '+v));
      }
+     const readProduct=guarded&&image&&/(?:读出|认出|说出).{0,9}商品|商品(?:名|是什么)|卖的是|卖什么|\b(?:sells?|product|good being sold)\b/i.test(message);
+     if(readProduct){
+       const fact=await callModel(db,decrypt,[{role:'system',content:READ_PRODUCT},{role:'user',content:withImage(message)}],{json:true,maxTokens:100,signal:controller.signal});
+       const name=typeof fact.name==='string'?fact.name.trim():'';
+       labels=name&&name.length<=80&&!/[\n0-9]/.test(name)?[name]:[];
+     }
      // An either/or question about the premise needs the actual stem. A list of
      // labels may simply echo both alternatives from the student's wording.
      const contrastInStem=guarded&&image&&/(?:题|材料|文章|题干).{0,15}(?:讨论|提到|写的|讲的|说的).{0,30}还是|(?:stem|passage|question).{0,30}(?:about|mention).{0,30}\bor\b/i.test(message);
@@ -185,8 +199,12 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
      // A follow-up often contains no image. Reuse the same checked unit definition
      // when this conversation has already established a demand-curve graph.
      const revisitingGraph=guarded&&!image&&history.messages.slice(-10).some(m=>m.role==='assistant'&&/需求曲线|需求价格弹性|demand curve|elasticity of demand/i.test(m.content));
-     const reference=lesson?graphMeasurement(lesson,message):(revisitingGraph?graphMeasurement(message,'需求曲线'):'');
-     if(reference&&!image){
+     const graphTopic=typeof scope.target==='string'?scope.target:'';
+     const reference=guarded&&image?(graphMeasurement(lesson||message,message+' '+graphTopic)||demandElasticityDefinition(message,lesson+' '+graphTopic+' '+message)):(revisitingGraph?graphMeasurement(message,'需求曲线'):'');
+     const verifiedCard=Boolean(reference&&image&&!contrastInStem&&((readPoints&&points.length)||(readProduct&&labels.length)));
+     if(verifiedCard){
+       reply='题面标注了 '+labels.join('、')+'。\n\n'+reference;
+     }else if(reference&&!image){
        reply=reference+(/选项|答案|answer|option/i.test(message)?'\n\n原题的选项留给你判断。':'');
      }else if(!contrastInStem&&lesson&&(!wantsLabels||labels.length)){
        const explanation=reference||await callModel(db,decrypt,[{role:'system',content:system+'\n只讲独立知识点，不猜测未提供的原题或图上标记，不用任何编造的具体数据。直接用中英术语讲定义、单位或一般方法。'},{role:'user',content:lesson}],options);
@@ -194,21 +212,24 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
      }else{
        reply=await callModel(db,decrypt,[{role:'system',content:system+readStem},...history.messages.slice(-12).map(m=>({role:m.role,content:m.content})),{role:'user',content:withImage(message+cited)}],options);
      }
-     if(readPoints&&points.length&&!(lesson&&(!wantsLabels||labels.length))&&!namesInCaption(reply,points)){
+     if(!verifiedCard&&readPoints&&points.length&&!(lesson&&(!wantsLabels||labels.length))&&!namesInCaption(reply,points)){
        reply='图上的标记点为 '+points.join('、')+'。\n\n'+reply;
      }
      if(guarded){
-       const check=draft=>callModel(db,decrypt,[{role:'system',content:(reference&&points.length?CHECK_POINT_REFERENCE:CHECK_EXERCISE)+readStem},{role:'user',content:withImage(JSON.stringify({studentRequest:message,citedPage:context,printedQuestionAsks:typeof scope.target==='string'?scope.target.slice(0,260):undefined,conversation:recentTurns,draft}))}],{json:true,maxTokens:420,signal:controller.signal});
-       const review=await check(reply);
+       const check=(draft,policy=CHECK_EXERCISE)=>callModel(db,decrypt,[{role:'system',content:policy+readStem},{role:'user',content:withImage(JSON.stringify({studentRequest:message,citedPage:context,printedQuestionAsks:typeof scope.target==='string'?scope.target.slice(0,260):undefined,conversation:recentTurns,draft}))}],{json:true,maxTokens:420,signal:controller.signal});
+       let review=await check(reply,verifiedCard?CHECK_VISUAL_CARD:CHECK_EXERCISE);
+       if(verifiedCard&&review.safe!==true)review=await check(reply);
        if(review.safe!==true){
          const excerpt=approvedExcerpt(review,reply);
          const revision=typeof review.revision==='string'?review.revision.trim():'';
          const candidate=excerpt||revision;
          // A safe edit can omit the requested observations. Check the recombined
          // answer as a whole, even if the excerpt alone already passed.
-         const missing=points.length&&!namesInCaption(candidate,points);
-         if(candidate&&missing){
-           const combined='图上的标记点为 '+points.join('、')+'。\n\n'+candidate;
+         const missingPoints=points.length&&!namesInCaption(candidate,points);
+         const missingProduct=readProduct&&labels.length&&!candidate.includes(labels[0]);
+         if(candidate&&(missingPoints||missingProduct)){
+           const caption=missingPoints?'图上的标记点为 '+points.join('、'):'题面写的是 '+labels[0];
+           const combined=caption+'。\n\n'+candidate;
            const second=await check(combined);
            reply=second.safe===true?combined:(excerpt||approvedExcerpt(second,combined)||ANSWER_REQUEST_REPLY);
          }else if(excerpt)reply=excerpt;

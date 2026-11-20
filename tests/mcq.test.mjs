@@ -170,12 +170,13 @@ test('explain a separate concept without handing the generator the source operan
  const handler=createCompanion({db:store(),callModel:async(_db,_key,m)=>{
   const data=m.at(-1).content;seen.push(data);
   if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true,lessonRequest:'需求价格弹性的含义',visibleLabels:['sandwich（三明治）','D','75%']};
+  if(m[0].content.startsWith('Read just the product'))return {name:'sandwich（三明治）'};
   if(m[0].content.startsWith('Check the draft')){assert.equal(JSON.parse(data[0].text).draft,reply);return {safe:true};}
   assert.equal(typeof data,'string');assert.equal(data,'需求价格弹性的含义');
   assert(!data.includes('75'));assert(!m.some(entry=>Array.isArray(entry.content)));return explanation;
  }});
  const answer=(await call(handler,user,'companion','POST',{requestId:'visible',assessment:'work:test',message:'说出商品名并解释弹性，不代入75%。',screenshot:'data:image/jpeg;base64,'+jpg.toString('base64')})).value;
- assert.equal(answer.reply,reply);assert.equal(seen.length,3);assert.equal(seen[0][1].type,'image_url');assert.equal(seen[2][1].type,'image_url');
+ assert.equal(answer.reply,reply);assert.equal(seen.length,4);assert.equal(seen[0][1].type,'image_url');assert.equal(seen[3][1].type,'image_url');
 });
 
 test('an independently approved passage is shown verbatim without the revealing clause',async()=>{
@@ -232,6 +233,7 @@ test('a cited graph keeps its printed point names when review edits the lesson; 
    const system=m[0].content;
    if(system.startsWith('Classify'))return {allowed:true,topic:'economics',lessonRequest:'需求曲线斜率与弹性单位',visibleLabels:['标记点 K']};
    if(system.startsWith('Read printed point'))return {permitted:true,points:['K','M']};
+   if(system.includes('Verify that the requested premise labels'))return {safe:false};
    const draft=JSON.parse(m.at(-1).content[0].text).draft;checked.push(draft);
    if(checked.length===1)return {safe:false,revision:concept};
    return {safe:allow};
@@ -288,6 +290,21 @@ test('a choice of possible subjects is answered from the actual stem, separate f
  const r=await call(handler,{id:'source',role:'student'},'companion','POST',{message:'请读出这道题讨论的是税收还是政府购买，再解释边际消费倾向。',requestId:'contrast',assessment:'work:x',screenshot:'data:image/jpeg;base64,'+image.toString('base64')});
  assert.match(r.value.reply,/tax rates/);assert(!r.value.reply.includes('政府购买'));
 });
+test('a vetted lesson and its requested product survive a reviewer rewrite as one verified response',async()=>{
+ const jpg=await (await import('sharp')).default({create:{width:28,height:28,channels:3,background:'white'}}).jpeg().toBuffer();
+ const approved=[];const handler=createCompanion({db:store(),callModel:async(_d,_k,m)=>{
+  const sys=m[0].content;
+  if(sys.startsWith('Classify'))return {allowed:true,topic:'economics',target:'own-price demand response'};
+  if(sys.startsWith('Read just the product'))return {name:'tea（茶）'};
+  if(sys.includes('Verify that the requested premise labels'))return {safe:false};
+  assert(sys.startsWith('Check the draft'));
+  const {draft}=JSON.parse(m.at(-1).content[0].text);approved.push(draft);
+  return approved.length===1?{safe:false,revision:'需求价格弹性是两个百分比之比，取绝对值方便比较大小。'}:{safe:true};
+ }});
+ const r=await call(handler,{id:'product',role:'student'},'companion','POST',{message:'请从截图认出商品，再解释需求价格弹性为何常取绝对值。',requestId:'tea',assessment:'work:x',screenshot:'data:image/jpeg;base64,'+jpg.toString('base64')});
+ assert.equal(approved.length,2);assert.match(approved[1],/tea.*茶/s);assert.match(approved[1],/绝对值/);assert.equal(r.value.reply,approved[1]);
+});
+
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};
