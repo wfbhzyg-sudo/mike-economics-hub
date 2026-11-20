@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-companion-question-reference',date:'2026-11-20',title:'把当前题面带给 Mike',
+  items:[{audience:'student',art:'book',title:'引用原题图',text:'在作业或自主模考中，打开「附件与引用」并勾选「引用当前题面」，可以预览题图再发问。Mike 可解释图表和公式，最终答案留给你。'}]
+},{
   id:'2026-11-20-companion-direct-explanations',date:'2026-11-20',title:'问 Mike，直接听讲解',
   items:[{audience:'all',art:'news',title:'经济问题可以直接问',text:'问定义、公式或政策影响时，Mike 会直接解释。遇到具体练习，可以问解题方法，或让 Mike 用另一道例题演示。'}]
 },{

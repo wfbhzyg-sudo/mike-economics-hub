@@ -8,7 +8,7 @@ if(document.querySelector('#desk,.notebook-login'))host.dataset.notebook='';
 const ui=host.attachShadow({mode:'open'});
 const style=document.createElement('link');
 style.rel='stylesheet';style.href='/companion.css?v=deskindex1';
-ui.innerHTML=`<button class="mike-launcher" aria-label="打开 Mike 经济学伙伴" aria-expanded="false"><img src="/assets/mike-pixel.png" alt="" width="56" height="56"><span class="mike-launcher-label">问问 Mike</span></button><section class="mike-chat" role="dialog" aria-label="Mike 经济学伙伴" hidden><div class="mike-sheet-handle" aria-hidden="true"><span></span></div><header><img src="/assets/mike-pixel.png" alt="" width="40" height="40"><div><strong>Mike 经济学伙伴</strong><small>经济学与平台使用</small></div><details class="mike-menu"><summary aria-label="对话菜单" title="对话菜单">•••</summary><div class="mike-menu-list"><button data-action="history" title="查看历史对话">历史</button><button data-action="new">新对话</button><footer class="mike-chat-options"><button data-action="hide">本页隐藏伙伴</button><label><input type="checkbox" id="mike-motion">减少动效</label></footer></div></details><button data-action="close" aria-label="关闭对话">×</button></header><div class="mike-mode" hidden></div><div class="mike-chat-messages" role="log" aria-live="polite"></div><form class="mike-composer"><label for="mike-message">向 Mike 提问</label><textarea id="mike-message" rows="2" maxlength="3000" placeholder="输入经济学或平台使用问题…"></textarea><figure class="mike-preview" hidden><button type="button" data-action="zoom-shot" aria-label="放大或缩小截图" aria-expanded="false"><img alt="待发送的截图"></button><figcaption>随本次提问发送给 DeepSeek</figcaption><button type="button" data-action="remove-shot">移除</button></figure><details id="mike-context-preview" hidden><summary>将发送的引用内容</summary><pre></pre></details><p class="mike-chat-status" role="status"></p><div class="mike-send-row"><details class="mike-clip"><summary>＋ 附件与引用</summary><div><label class="mike-context"><input type="checkbox" id="mike-context">引用当前页面文字（发送前可检查）</label><div class="mike-attachments"><button type="button" data-action="capture">截取当前屏幕</button><button type="button" data-action="upload-shot">选择截图</button><button type="button" data-action="browser-shot" hidden>用浏览器截取标签页</button><input id="mike-shot-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></div></details><button type="button" data-action="stop" hidden>停止</button><button type="submit" aria-label="发送消息" title="发送消息">发送 <span aria-hidden="true">↑</span></button></div></form></section>`;ui.prepend(style);
+ui.innerHTML=`<button class="mike-launcher" aria-label="打开 Mike 经济学伙伴" aria-expanded="false"><img src="/assets/mike-pixel.png" alt="" width="56" height="56"><span class="mike-launcher-label">问问 Mike</span></button><section class="mike-chat" role="dialog" aria-label="Mike 经济学伙伴" hidden><div class="mike-sheet-handle" aria-hidden="true"><span></span></div><header><img src="/assets/mike-pixel.png" alt="" width="40" height="40"><div><strong>Mike 经济学伙伴</strong><small>经济学与平台使用</small></div><details class="mike-menu"><summary aria-label="对话菜单" title="对话菜单">•••</summary><div class="mike-menu-list"><button data-action="history" title="查看历史对话">历史</button><button data-action="new">新对话</button><footer class="mike-chat-options"><button data-action="hide">本页隐藏伙伴</button><label><input type="checkbox" id="mike-motion">减少动效</label></footer></div></details><button data-action="close" aria-label="关闭对话">×</button></header><div class="mike-mode" hidden></div><div class="mike-chat-messages" role="log" aria-live="polite"></div><form class="mike-composer"><label for="mike-message">向 Mike 提问</label><textarea id="mike-message" rows="2" maxlength="3000" placeholder="输入经济学或平台使用问题…"></textarea><figure class="mike-preview" hidden><button type="button" data-action="zoom-shot" aria-label="放大或缩小截图" aria-expanded="false"><img alt="待发送的截图"></button><figcaption>随本次提问发送给 DeepSeek</figcaption><button type="button" data-action="remove-shot">移除</button></figure><details id="mike-context-preview" hidden><summary>将发送的引用内容</summary><pre></pre></details><p class="mike-chat-status" role="status"></p><div class="mike-send-row"><details class="mike-clip"><summary>＋ 附件与引用</summary><div><label class="mike-context"><input type="checkbox" id="mike-context"><span class="mike-context-label">引用当前页面文字</span></label><div class="mike-attachments"><button type="button" data-action="capture">截取当前屏幕</button><button type="button" data-action="upload-shot">选择截图</button><button type="button" data-action="browser-shot" hidden>用浏览器截取标签页</button><input id="mike-shot-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></div></details><button type="button" data-action="stop" hidden>停止</button><button type="submit" aria-label="发送消息" title="发送消息">发送 <span aria-hidden="true">↑</span></button></div></form></section>`;ui.prepend(style);
 host.style.cssText='position:fixed!important;inset:0!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;overflow:visible!important;pointer-events:none!important;z-index:2147483647!important;color-scheme:light;visibility:hidden!important';
 function syncLayer(){
   if(host.hidden)return;
@@ -204,7 +204,28 @@ async function refreshMode(){
 }
 window.addEventListener('hashchange',refreshMode);
 window.addEventListener('focus',refreshMode);
-let screenshot='', captureLib=null, captureVersion=0;
+let screenshot='', captureLib=null, captureVersion=0, citedPaper=null;
+function questionPaper(){return assessment()?document.querySelector('.mcq-question .question-paper'):null;}
+function clearCitation(){
+  captured='';citedPaper=null;$('#mike-context').checked=false;$('#mike-context-preview').hidden=true;$('#mike-context-preview pre').textContent='';
+}
+function updateCitationLabel(){
+  const paper=questionPaper();
+  if(citedPaper&&citedPaper!==paper){++captureVersion;setScreenshot('');clearCitation();if(!controller&&connection==='ready')$('[type=submit]').disabled=false;}
+  $('.mike-context-label').textContent=paper?'引用当前题面':'引用当前页面文字';
+}
+async function readQuestionImage(images){
+  await Promise.all(images.map(img=>img.decode()));
+  const fullWidth=Math.max(...images.map(img=>img.naturalWidth));
+  const heights=images.map(img=>img.naturalHeight*fullWidth/img.naturalWidth);
+  const fullHeight=heights.reduce((sum,height)=>sum+height,0);
+  const scale=Math.min(1,1680/fullWidth,1680/fullHeight);
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(fullWidth*scale));canvas.height=Math.max(1,Math.round(fullHeight*scale));
+  const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);
+  let top=0;images.forEach((img,i)=>{const h=heights[i]*scale;ctx.drawImage(img,0,top,canvas.width,h);top+=h;});
+  return encodeShot(canvas,canvas.width,canvas.height);
+}
 const preview=$('.mike-preview'),fileInput=$('#mike-shot-file');
 function setScreenshot(url){
   screenshot=url;requestId=null;preview.hidden=!url;preview.classList.remove('expanded');$('[data-action=zoom-shot]').setAttribute('aria-expanded','false');
@@ -228,11 +249,11 @@ function encodeShot(source,w,h){
   }
   throw Error('图片过大，请裁剪后重试');
 }
-async function attachShot(make){
+async function attachShot(make,fromCitation=false){
   if(mode==='exam'||!user||controller)return;
   const version=++captureVersion;$('[type=submit]').disabled=true;status.textContent='正在准备截图…';
-  try{const url=await make();if(version!==captureVersion||panel.hidden||mode==='exam')return;setScreenshot(url);status.textContent='截图已就绪，点击发送后才会交给 DeepSeek。';}
-  catch(error){if(version===captureVersion){status.textContent=error.name==='NotAllowedError'?'已取消截屏。':'截屏未完成，可选择已有截图或重试。';$('[data-action=browser-shot]').hidden=!navigator.mediaDevices?.getDisplayMedia;}}
+  try{const url=await make();if(version!==captureVersion||panel.hidden||mode==='exam')return;if(!fromCitation&&citedPaper)clearCitation();setScreenshot(url);status.textContent='截图已就绪，点击发送后才会交给 DeepSeek。';}
+  catch(error){if(version===captureVersion){if(fromCitation)clearCitation();status.textContent=error.name==='NotAllowedError'?'已取消截屏。':'截屏未完成，可选择已有截图或重试。';$('[data-action=browser-shot]').hidden=!navigator.mediaDevices?.getDisplayMedia;}}
   finally{if(version===captureVersion&&!controller)$('[type=submit]').disabled=false;}
 }
 $('[data-action=capture]').onclick=()=>attachShot(async()=>{
@@ -265,7 +286,7 @@ fileInput.onchange=()=>{const file=fileInput.files[0];fileInput.value='';if(!fil
   const image=await createImageBitmap(file);try{return encodeShot(image,image.width,image.height);}finally{image.close();}
 });};
 $('[data-action=zoom-shot]').onclick=e=>{const expanded=preview.classList.toggle('expanded');e.currentTarget.setAttribute('aria-expanded',String(expanded));};
-$('[data-action=remove-shot]').onclick=()=>{captureVersion++;setScreenshot('');$('[type=submit]').disabled=false;status.textContent='已移除截图';};
+$('[data-action=remove-shot]').onclick=()=>{captureVersion++;setScreenshot('');if(citedPaper)clearCitation();$('[type=submit]').disabled=false;status.textContent='已移除截图';};
 
 const sentPictures=new Map();
 function showPastMessage(m){
@@ -284,7 +305,7 @@ async function api(path,options={}){
   }
   return response.json();
 }
-function setMode(value){mode=value;host.dataset.mode=value;$('.mike-mode').hidden=value!=='exam';$('.mike-mode').textContent='测验中 · 只提供操作帮助';$('#mike-context').disabled=value==='exam';$('.mike-attachments').hidden=value==='exam';$('.mike-clip').hidden=value==='exam';if(value==='exam'){captureVersion++;if(!controller)$('[type=submit]').disabled=false;setScreenshot('');captured='';$('#mike-context').checked=false;$('#mike-context-preview').hidden=true;}}
+function setMode(value){mode=value;host.dataset.mode=value;$('.mike-mode').hidden=value!=='exam';$('.mike-mode').textContent='测验中 · 只提供操作帮助';$('#mike-context').disabled=value==='exam';$('.mike-attachments').hidden=value==='exam';$('.mike-clip').hidden=value==='exam';if(value==='exam'){captureVersion++;if(!controller)$('[type=submit]').disabled=false;setScreenshot('');clearCitation();}}
 function animate(open){motion?.cancel();if(matchMedia('(prefers-reduced-motion:reduce)').matches||$('#mike-motion').checked)return Promise.resolve();motion=panel.animate(open?[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}]:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(5px)'}],{duration:open?180:130,easing:'cubic-bezier(.2,.8,.2,1)'});return motion.finished.catch(()=>{})}
 const backgroundState=new Map();
 function restoreBackground(){
@@ -312,7 +333,7 @@ const connectionAction=document.createElement('button');
 connectionAction.type='button';connectionAction.className='mike-connect-action';
 function clearIdentity(){
   profile=null;savedOutfit=undefined;renderOutfit();sentPictures.clear();captureVersion++;
-  setScreenshot('');log.replaceChildren();input.value='';captured='';
+  setScreenshot('');clearCitation();log.replaceChildren();input.value='';
   $('#mike-context').checked=false;$('#mike-context-preview').hidden=true;
 }
 async function connect(showNews=false){
@@ -355,21 +376,31 @@ function open(showNews=false){
   if(!panel.hidden)return;
   lastFocus=ui.activeElement||document.activeElement;host.dataset.chatOpen='';
   panel.hidden=false;launcher.setAttribute('aria-expanded','true');launcher.hidden=true;
-  syncModal();animate(true);input.focus({preventScroll:true});void connect(showNews);
+  updateCitationLabel();syncModal();animate(true);input.focus({preventScroll:true});void connect(showNews);
 }
-async function close(){++connectionId;for(const d of panel.querySelectorAll('details[open]'))d.open=false;leaveDrawer();captureVersion++;if(!controller)$('[type=submit]').disabled=false;await animate(false);panel.hidden=true;delete host.dataset.chatOpen;restoreBackground();launcher.hidden=false;resize();launcher.setAttribute('aria-expanded','false');(lastFocus?.isConnected?lastFocus:launcher).focus();}
+async function close(){if(citedPaper&&!screenshot&&citedPaper.querySelector('.question-slice img'))clearCitation();++connectionId;for(const d of panel.querySelectorAll('details[open]'))d.open=false;leaveDrawer();captureVersion++;if(!controller)$('[type=submit]').disabled=false;await animate(false);panel.hidden=true;delete host.dataset.chatOpen;restoreBackground();launcher.hidden=false;resize();launcher.setAttribute('aria-expanded','false');(lastFocus?.isConnected?lastFocus:launcher).focus();}
 let drag=null,moved=false,newsPress=false;
 launcher.title='点击提问 · 拖动可调整位置';
 launcher.addEventListener('pointerdown',e=>{if(e.button!==0)return;newsPress=e.target===launcherText;const b=launcher.getBoundingClientRect();drag={id:e.pointerId,x:e.clientX,y:e.clientY,left:b.left,top:b.top};moved=false;launcher.setPointerCapture(e.pointerId)});
 launcher.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!moved&&Math.hypot(dx,dy)<8)return;moved=true;launcher.style.right='auto';launcher.style.bottom='auto';launcher.style.left=Math.max(4,Math.min(innerWidth-launcher.offsetWidth-4,drag.left+dx))+'px';launcher.style.top=Math.max(4,Math.min(innerHeight-launcher.offsetHeight-4,drag.top+dy))+'px';});
 launcher.addEventListener('pointerup',()=>{if(drag&&moved)rememberPosition();drag=null});launcher.addEventListener('pointercancel',()=>{drag=null;moved=true});
 launcher.addEventListener('click',e=>{if(moved){e.preventDefault();moved=false;return;}open((newsPress||e.target===launcherText)&&profile?.unread);newsPress=false});$('[data-action=close]').onclick=close;$('[data-action=hide]').onclick=async()=>{await close();host.hidePopover?.();host.hidden=true};
-$('[data-action=new]').onclick=async()=>{if(!user||controller)return;captureVersion++;setScreenshot('');try{await api('companion',{method:'POST',body:JSON.stringify({action:'new'})});log.replaceChildren();message('assistant','已开始新对话。之前的对话可以在“历史”中查看。')}catch(e){status.textContent=e.message}};
+$('[data-action=new]').onclick=async()=>{if(!user||controller)return;captureVersion++;setScreenshot('');clearCitation();try{await api('companion',{method:'POST',body:JSON.stringify({action:'new'})});log.replaceChildren();message('assistant','已开始新对话。之前的对话可以在“历史”中查看。')}catch(e){status.textContent=e.message}};
 $('[data-action=history]').onclick=async()=>{if(!user||controller)return;try{const d=await api(modePath());const box=document.createElement('div');box.className='mike-history';box.innerHTML='<strong>最近 30 天的对话</strong><button data-current>返回当前对话</button>';for(const s of d.sessions){const b=document.createElement('button');b.textContent=s.title;b.onclick=async()=>{try{const old=await api(modePath('companion/'+encodeURIComponent(s.id)));setMode(old.mode);log.replaceChildren();for(const m of old.messages)showPastMessage(m);message('assistant','这是历史对话。发送新问题时会继续当前会话。')}catch(e){status.textContent=e.message}};box.append(b)}if(!d.sessions.length){const p=document.createElement('p');p.textContent='还没有历史对话';box.append(p)}box.querySelector('[data-current]').onclick=async()=>{log.replaceChildren();for(const m of d.messages)showPastMessage(m)};log.replaceChildren(box);}catch(e){status.textContent=e.message}};
-$('[data-action=stop]').onclick=()=>controller?.abort();$('#mike-context').onchange=e=>{requestId=null;captured=e.target.checked?(document.querySelector('main')?.innerText||'').slice(0,8000):'';$('#mike-context-preview').hidden=!e.target.checked;$('#mike-context-preview pre').textContent=captured;};
-form.onsubmit=async e=>{e.preventDefault();if(controller||connection!=='ready')return;const content=input.value.trim()||(screenshot?'请解释截图中的经济概念或页面操作。':'');if(!content)return;if(!user){status.textContent='请先登录后提问';return;}requestId||=crypto.randomUUID();controller=new AbortController();const send=$('[type=submit]'),stop=$('[data-action=stop]');send.disabled=true;stop.hidden=false;captureVersion++;$('.mike-attachments').inert=true;preview.inert=true;host.dataset.state='responding';status.textContent='Mike 正在回答…';const question=message('user',content),answer=message('assistant','');answer.setAttribute('aria-live','off');let finished=false;
+$('[data-action=stop]').onclick=()=>controller?.abort();
+$('.mike-clip').addEventListener('toggle',updateCitationLabel);
+$('#mike-context').onchange=async e=>{
+  requestId=null;
+  if(!e.target.checked){if(citedPaper){++captureVersion;setScreenshot('');$('[type=submit]').disabled=!!controller;}clearCitation();return;}
+  citedPaper=questionPaper();
+  const images=citedPaper?[...citedPaper.querySelectorAll('.question-slice img')]:[];
+  captured=citedPaper?[document.querySelector('#mcq-question-heading')?.textContent,document.querySelector('#mcq-accessible')?.textContent,images.length?('原题图 · '+images.length+' 个片段'):''].filter(Boolean).join('\n').slice(0,8000):(document.querySelector('main')?.innerText||'').slice(0,8000);
+  $('#mike-context-preview').hidden=false;$('#mike-context-preview pre').textContent=captured;
+  if(images.length){setScreenshot('');await attachShot(()=>readQuestionImage(images),true);}
+};
+form.onsubmit=async e=>{e.preventDefault();if(controller||connection!=='ready'||$('[type=submit]').disabled)return;if(citedPaper&&citedPaper!==questionPaper()){updateCitationLabel();status.textContent='题目已切换，请重新选择引用。';return;}const content=input.value.trim()||(screenshot?'请解释截图中的经济概念或页面操作。':'');if(!content)return;if(!user){status.textContent='请先登录后提问';return;}requestId||=crypto.randomUUID();controller=new AbortController();const send=$('[type=submit]'),stop=$('[data-action=stop]');send.disabled=true;stop.hidden=false;captureVersion++;$('.mike-attachments').inert=true;preview.inert=true;host.dataset.state='responding';status.textContent='Mike 正在回答…';const question=message('user',content),answer=message('assistant','');answer.setAttribute('aria-live','off');let finished=false;
  try{const r=await fetch(API+'companion',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream','X-CSRF-Token':csrf},body:JSON.stringify({message:content,requestId,assessment:assessment(),context:captured,...(screenshot?{screenshot}:{})}),signal:controller.signal});if(!r.ok){const d=await r.json();throw Error(d.error)}
- const complete=d=>{if(d.screenshotUsed && screenshot){sentPictures.set(requestId,screenshot);if(sentPictures.size>5)sentPictures.delete(sentPictures.keys().next().value);const img=document.createElement('img');img.className='mike-sent-shot';img.alt='本次提问的截图';img.src=screenshot;question.append(img);}setScreenshot('');answer.textContent=d.reply;setMode(d.mode);finished=true;input.value='';requestId=null;status.textContent='回答完成';applyProfile(d.profile,true);if(d.contextUsed){const source=document.createElement('small');source.className='mike-source';source.textContent='参考：你本次引用的页面文字';answer.after(source)}};
+ const complete=d=>{if(d.screenshotUsed && screenshot){sentPictures.set(requestId,screenshot);if(sentPictures.size>5)sentPictures.delete(sentPictures.keys().next().value);const img=document.createElement('img');img.className='mike-sent-shot';img.alt='本次提问的截图';img.src=screenshot;question.append(img);}setScreenshot('');if(citedPaper)clearCitation();answer.textContent=d.reply;setMode(d.mode);finished=true;input.value='';requestId=null;status.textContent='回答完成';applyProfile(d.profile,true);if(d.contextUsed){const source=document.createElement('small');source.className='mike-source';source.textContent='参考：本次引用的内容';answer.after(source)}};
  if(!r.headers.get('content-type')?.includes('event-stream'))complete(await r.json());else{const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='';for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let end;while((end=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,end);buffer=buffer.slice(end+2);const event=block.split('\n').find(x=>x.startsWith('event:'))?.slice(6).trim(),line=block.split('\n').find(x=>x.startsWith('data:'));if(!line)continue;const d=JSON.parse(line.slice(5));if(event==='delta'){answer.textContent+=d.text;log.scrollTop=log.scrollHeight}else if(event==='status')status.textContent=d.message;else if(event==='done')complete(d);else if(event==='error'){if(d.reset)answer.textContent=d.message;throw Error(d.message)}}}if(!finished)throw Error('连接中断，问题已保留，可重新发送');}
  host.dataset.state='done';
  }catch(e){if(!answer.textContent){question.remove();answer.remove()}status.textContent=e.name==='AbortError'?'已停止回答，输入内容保留。':e.message;host.dataset.state=navigator.onLine?'idle':'offline';}finally{controller=null;$('.mike-attachments').inert=false;preview.inert=false;send.disabled=false;stop.hidden=true;answer.setAttribute('aria-live','polite');if(!panel.hidden)input.focus()}};

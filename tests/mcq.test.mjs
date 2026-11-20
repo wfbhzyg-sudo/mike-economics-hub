@@ -72,6 +72,7 @@ test('students get concept explanations but answer-only exercise requests bypass
  const handler=createCompanion({db,callModel:async(_db,_key,m,o)=>{
    const message=m.at(-1).content;
    requests.push({system:m[0].content,message});
+   if(m[0].content.startsWith('Review a proposed'))return {safe:true};
    if(o.json)return {allowed:true,topic:'economics',answerOnly:message.startsWith('那我选 B 对吗')};
    return '价格上限（price ceiling）是法律允许的最高价格。';
  }});
@@ -80,13 +81,13 @@ test('students get concept explanations but answer-only exercise requests bypass
  const result=await ask('那我选 B 对吗？','answer');
  assert.match(result.value.reply,/解题方法|读图方法/);
  assert.doesNotMatch(result.value.reply,/[A-E]/);
- assert.equal(requests.length,3);
- assert.match(requests[2].message,/五个选项/);
- assert.match(requests[2].message,/价格上限是什么/);
+ assert.equal(requests.length,4);
+ assert.match(requests[3].message,/五个选项/);
+ assert.match(requests[3].message,/价格上限是什么/);
  await ask('那我选 B 对吗？','answer');
- assert.equal(requests.length,3);
+ assert.equal(requests.length,4);
  await ask('那我选 B 对吗？','teacher',{role:'teacher',id:'verified-teacher'});
- assert.equal(requests.length,5);
+ assert.equal(requests.length,6);
  assert.match(requests.at(-1).system,/服务器验证为教师/);
 });
 
@@ -109,20 +110,42 @@ test('key changes preserve active attempt identity, timer and receipt through ac
 test('page screenshot reaches the vision model without being stored in chat history including in self-practice',async()=>{
  const db=store(), user={id:'s',role:'student'}, seen=[];
  const handler=createCompanion({db,callModel:async (_db,_key,m,options)=>{
-   seen.push(m.at(-1).content);return options.json?{allowed:true}:'横轴是什么？';
+   seen.push(m.at(-1).content);if(m[0].content.startsWith('Review a proposed'))return {safe:true};return options.json?{allowed:true}:'横轴是什么？';
  }});
  const sharp=(await import('sharp')).default;
  const image=await sharp({create:{width:50,height:50,channels:3,background:'green'}}).jpeg().toBuffer();
  const body={requestId:'screenshot',message:'如何读图？',screenshot:'data:image/jpeg;base64,'+image.toString('base64')};
  const result=(await call(handler,user,'companion','POST',body)).value;
  assert.equal(result.screenshotUsed,true);
- assert.equal(seen.length,2);
+ assert.equal(seen.length,3);
  assert.ok(seen.every(m=>m[1].type==='image_url'&&m[1].image_url.url.startsWith('data:image/jpeg;base64,')));
  assert.ok(!JSON.stringify([...db.rows.values()]).includes('data:image'));
  await assert.rejects(call(handler,user,'companion','POST',{...body,requestId:'bad',screenshot:'data:image/jpeg;base64,AAAA'}),/截图无法读取/);
  await db.put('self-practice-attempt',{id:'p',studentId:user.id,status:'active'});
  const mock=(await call(handler,user,'companion','POST',{...body,requestId:'mock-screenshot',assessment:'mock:p'})).value;
- assert.equal(mock.mode,'learning');assert.equal(mock.screenshotUsed,true);assert.equal(seen.length,4);
+ assert.equal(mock.mode,'learning');assert.equal(mock.screenshotUsed,true);assert.equal(seen.length,6);
+});
+
+test('a rejected exercise draft cannot leak through deltas, history or retry; a rewrite must pass the same check',async()=>{
+ for(const approveRevision of [true,false]){
+  const db=store(),user={id:'tester',role:'student'},events=[],checks=[];
+  const sensitive='原题数量减少 20%，选 D。',safe='需求价格弹性（price elasticity of demand）衡量需求量对价格变化的敏感程度。';
+  const handler=createCompanion({db,callModel:async(_db,_key,m,o)=>{
+    if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',answerOnly:false,exercise:true};
+    if(m[0].content.startsWith('Review a proposed')){
+      const {draft}=JSON.parse(m.at(-1).content);checks.push(draft);
+      return draft===sensitive?{safe:false,revision:safe}:{safe:approveRevision};
+    }
+    assert.equal(o.onToken,undefined);return sensitive;
+  }});
+  const res=new EventEmitter();res.writeHead=()=>{};res.write=chunk=>events.push(chunk);res.end=()=>{};
+  const data={message:'解释本题的弹性，不代入原题。',requestId:'sse-review',assessment:'work:test'};
+  await handler({user,req:{headers:{accept:'text/event-stream'},url:'/companion'},res,route:['companion'],method:'POST',body:async()=>data,json:()=>assert.fail()});
+  const saved=(await call(handler,user,'companion')).value.messages.at(-1).content;
+  assert.deepEqual(checks,[sensitive,safe]);assert.equal(saved,approveRevision?safe:'这道题的最终答案留给你作答。我可以直接讲清相关概念、公式或读图方法，也可以用另一道例题演示。');
+  assert(!events.join('').includes(sensitive));assert(!events.join('').includes('event: delta'));assert(events.join('').includes(saved));
+  assert.equal((await call(handler,user,'companion','POST',data)).value.reply,saved);
+ }
 });
 
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
