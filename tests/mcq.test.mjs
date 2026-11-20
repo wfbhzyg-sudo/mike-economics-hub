@@ -223,6 +223,39 @@ test('a label-only excerpt cannot replace the separately requested concept expla
  assert.equal(result.value.reply,revision);
 });
 
+test('a cited graph keeps its printed point names when review edits the lesson; the combined reply is checked again',async()=>{
+ const jpg=await (await import('sharp')).default({create:{width:32,height:32,channels:3,background:'white'}}).jpeg().toBuffer();
+ for(const allow of [true,false]){
+  const db=store(),user={id:'graph-learner',role:'student'},checked=[];
+  const concept='斜率是纵坐标变化除以横坐标变化，需求价格弹性是两个百分比变化的比值。';
+  const handler=createCompanion({db,callModel:async(_d,_k,m)=>{
+   const system=m[0].content;
+   if(system.startsWith('Classify'))return {allowed:true,topic:'economics',lessonRequest:'需求曲线斜率与弹性单位',visibleLabels:['标记点 K']};
+   if(system.startsWith('Read printed point'))return {permitted:true,points:['K','M']};
+   const draft=JSON.parse(m.at(-1).content[0].text).draft;checked.push(draft);
+   if(checked.length===1)return {safe:false,revision:concept};
+   return {safe:allow};
+  }});
+  const r=await call(handler,user,'companion','POST',{requestId:'names',message:'两个点叫什么名字？解释需求曲线的斜率单位。',assessment:'mock:example',screenshot:'data:image/jpeg;base64,'+jpg.toString('base64')});
+  assert.equal(checked.length,2);assert.match(checked[1],/标记点为 K、M/);assert(checked[1].includes(concept));
+  if(allow)assert.equal(r.value.reply,checked[1]);else assert.match(r.value.reply,/最终答案留给你/);
+ }
+});
+test('only the sender can recover the same reviewed answer and citation, with no second model call',async()=>{
+ const db=store(),user={role:'student',id:'receipt-student'};let calls=0;
+ const handler=createCompanion({db,callModel:async(_d,_k,m)=>{
+  calls++;if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics'};
+  if(m[0].content.startsWith('Check the draft'))return {safe:true};
+  return '机会成本（opportunity cost）是最佳替代方案的价值。';
+ }});
+ const data={message:'请解释机会成本',requestId:'one-request',context:'学生引用的题面',assessment:'work:test'};
+ const initial=(await call(handler,user,'companion','POST',data)).value;
+ const receipt=(await call(handler,user,'companion/receipt/one-request')).value;
+ assert(receipt.ready&&receipt.contextUsed);assert.equal(receipt.reply,initial.reply);
+ assert.equal((await call(handler,{id:'different',role:'student'},'companion/receipt/one-request')).value.ready,false);
+ assert.equal((await call(handler,user,'companion','POST',data)).value.reply,initial.reply);
+ assert.equal(calls,3);assert.equal((await db.list('chat-history'))[0].messages.length,2);
+});
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};

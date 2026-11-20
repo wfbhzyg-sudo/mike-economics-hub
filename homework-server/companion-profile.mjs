@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-companion-graph-and-delivery',date:'2026-11-20',title:'读图提问与回复找回',
+  items:[{audience:'student',art:'book',title:'让 Mike 读出图上的点',text:'做作业或模考时，可以引用题面、发截图，问图上标了哪些点以及坐标轴怎样读。如果网络中断，伙伴会尝试取回已经写好的回复。'}]
+},{
   id:'2026-11-20-companion-question-reference',date:'2026-11-20',title:'把当前题面带给 Mike',
   items:[{audience:'student',art:'book',title:'引用原题图',text:'在作业或自主模考中，打开「附件与引用」并勾选「引用当前题面」，可以预览题图再发问。Mike 可解释图表和公式，最终答案留给你。'}]
 },{

@@ -398,12 +398,39 @@ $('#mike-context').onchange=async e=>{
   $('#mike-context-preview').hidden=false;$('#mike-context-preview pre').textContent=captured;
   if(images.length){setScreenshot('');await attachShot(()=>readQuestionImage(images),true);}
 };
-form.onsubmit=async e=>{e.preventDefault();if(controller||connection!=='ready'||$('[type=submit]').disabled)return;if(citedPaper&&citedPaper!==questionPaper()){updateCitationLabel();status.textContent='题目已切换，请重新选择引用。';return;}const content=input.value.trim()||(screenshot?'请解释截图中的经济概念或页面操作。':'');if(!content)return;if(!user){status.textContent='请先登录后提问';return;}requestId||=crypto.randomUUID();controller=new AbortController();const send=$('[type=submit]'),stop=$('[data-action=stop]');send.disabled=true;stop.hidden=false;captureVersion++;$('.mike-attachments').inert=true;preview.inert=true;host.dataset.state='responding';status.textContent='Mike 正在回答…';const question=message('user',content),answer=message('assistant','');answer.setAttribute('aria-live','off');let finished=false;
- try{const r=await fetch(API+'companion',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream','X-CSRF-Token':csrf},body:JSON.stringify({message:content,requestId,assessment:assessment(),context:captured,...(screenshot?{screenshot}:{})}),signal:controller.signal});if(!r.ok){const d=await r.json();throw Error(d.error)}
+// Exercise answers are withheld until reviewed; there are no partial tokens to display.
+// One read-only receipt lookup can recover the committed answer if delivery stalls.
+async function exerciseReply(payload,signal){
+  const delivery=new AbortController();
+  const cancel=()=>delivery.abort();
+  signal.addEventListener('abort',cancel,{once:true});
+  const receiptPath='companion/receipt/'+encodeURIComponent(payload.requestId)+'?assessment='+encodeURIComponent(payload.assessment);
+  const lookup=()=>api(receiptPath,{cache:'no-store',signal:AbortSignal.any([signal,AbortSignal.timeout(6000)])});
+  let timer,deadline;
+  try{
+    const post=api('companion',{method:'POST',body:JSON.stringify(payload),signal:delivery.signal,headers:{Accept:'application/json'}});
+    const recovered=new Promise(resolve=>{timer=setTimeout(async()=>{
+      try{const r=await lookup();if(r.ready)resolve(r);}catch{/* Let the original delivery continue. */}
+    },12000);});
+    deadline=setTimeout(cancel,95000);
+    return await Promise.race([post,recovered]);
+  }catch(error){
+    if(signal.aborted||error.status)throw error;
+    try{const r=await lookup();if(r.ready)return r;}catch{/* Keep the same request ID for retry. */}
+    throw Error('未收到完整回复，问题已保留。可以再次点击发送。');
+  }finally{clearTimeout(timer);clearTimeout(deadline);signal.removeEventListener('abort',cancel);delivery.abort();}
+}
+form.onsubmit=async e=>{e.preventDefault();if(controller||connection!=='ready'||$('[type=submit]').disabled)return;if(citedPaper&&citedPaper!==questionPaper()){updateCitationLabel();status.textContent='题目已切换，请重新选择引用。';return;}const content=input.value.trim()||(screenshot?'请解释截图中的经济概念或页面操作。':'');if(!content)return;if(!user){status.textContent='请先登录后提问';return;}requestId||=crypto.randomUUID();controller=new AbortController();const send=$('[type=submit]'),stop=$('[data-action=stop]');send.disabled=true;input.readOnly=true;stop.hidden=false;captureVersion++;$('.mike-attachments').inert=true;preview.inert=true;host.dataset.state='responding';status.textContent='Mike 正在回答…';const question=message('user',content),answer=message('assistant','');answer.setAttribute('aria-live','off');let finished=false;
  const complete=d=>{if(d.screenshotUsed && screenshot){sentPictures.set(requestId,screenshot);if(sentPictures.size>5)sentPictures.delete(sentPictures.keys().next().value);const img=document.createElement('img');img.className='mike-sent-shot';img.alt='本次提问的截图';img.src=screenshot;question.append(img);}setScreenshot('');if(citedPaper)clearCitation();answer.textContent=d.reply;setMode(d.mode);finished=true;input.value='';requestId=null;status.textContent='回答完成';applyProfile(d.profile,true);if(d.contextUsed){const source=document.createElement('small');source.className='mike-source';source.textContent='参考：本次引用的内容';answer.after(source)}};
+ const payload={message:content,requestId,assessment:assessment(),context:captured,...(screenshot?{screenshot}:{})};
+ try{
+ if(user.role==='student'&&(payload.assessment||payload.screenshot))complete(await exerciseReply(payload,controller.signal));
+ else{
+ const r=await fetch(API+'companion',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream','X-CSRF-Token':csrf},body:JSON.stringify(payload),signal:controller.signal});if(!r.ok){const d=await r.json();throw Error(d.error)}
  if(!r.headers.get('content-type')?.includes('event-stream'))complete(await r.json());else{const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='';for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let end;while((end=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,end);buffer=buffer.slice(end+2);const event=block.split('\n').find(x=>x.startsWith('event:'))?.slice(6).trim(),line=block.split('\n').find(x=>x.startsWith('data:'));if(!line)continue;const d=JSON.parse(line.slice(5));if(event==='delta'){answer.textContent+=d.text;log.scrollTop=log.scrollHeight}else if(event==='status')status.textContent=d.message;else if(event==='done')complete(d);else if(event==='error'){if(d.reset)answer.textContent=d.message;throw Error(d.message)}}}if(!finished)throw Error('连接中断，问题已保留，可重新发送');}
+ }
  host.dataset.state='done';
- }catch(e){if(!answer.textContent){question.remove();answer.remove()}status.textContent=e.name==='AbortError'?'已停止回答，输入内容保留。':e.message;host.dataset.state=navigator.onLine?'idle':'offline';}finally{controller=null;$('.mike-attachments').inert=false;preview.inert=false;send.disabled=false;stop.hidden=true;answer.setAttribute('aria-live','polite');if(!panel.hidden)input.focus()}};
+ }catch(e){if(!answer.textContent){question.remove();answer.remove()}status.textContent=e.name==='AbortError'?'已停止回答，输入内容保留。':e.message;host.dataset.state=navigator.onLine?'idle':'offline';}finally{controller=null;$('.mike-attachments').inert=false;preview.inert=false;send.disabled=false;input.readOnly=false;stop.hidden=true;answer.setAttribute('aria-live','polite');if(!panel.hidden)input.focus()}};
 // Keep composed keyboard events in the companion while preserving native input,
 // IME, button activation and the companion's own focus handling.
 for(const type of ['keydown','keypress'])host.addEventListener(type,event=>event.stopPropagation());
