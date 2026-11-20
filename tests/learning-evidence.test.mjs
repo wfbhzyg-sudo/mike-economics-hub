@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {applyRecovery,attachReview} from '../homework-server/correction-review.mjs';
+import {applyRecovery,attachReview,evidenceChecked} from '../homework-server/correction-review.mjs';
 import {studentPerformance} from '../homework-server/student-performance.mjs';
 import {hash} from '../homework-server/store.mjs';
 import {questionStats} from '../homework/learning-analytics-model.js';
@@ -49,4 +49,13 @@ test('correction alone neither raises class-independent skill evidence nor suppl
  assert.equal(after[1].index,null);
  assert.equal(after[0].axes[0].band,null); // Identical content across these two papers is one independent question.
  assert.equal(after[0].corrections.done,1);
+});
+
+test('model evidence matches normalized student quotes and validates attachment page bounds',()=>{
+ const point={id:'reasoning'};
+ const check=evidence=>[{id:'reasoning',met:true,evidence}];
+ assert(evidenceChecked(point,check('“the good’s own price does not shift demand”'),"The good's own price does not shift demand",0));
+ assert(!evidenceChecked(point,check('The supply curve shifts instead'),"The good's own price does not shift demand",0));
+ assert(evidenceChecked(point,check('作答第 2 页，供给曲线左移'),'',2));
+ assert(!evidenceChecked(point,check('作答第 3 页，供给曲线左移'),'',2));
 });
