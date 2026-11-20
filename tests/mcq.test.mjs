@@ -256,6 +256,18 @@ test('only the sender can recover the same reviewed answer and citation, with no
  assert.equal((await call(handler,user,'companion','POST',data)).value.reply,initial.reply);
  assert.equal(calls,3);assert.equal((await db.list('chat-history'))[0].messages.length,2);
 });
+test('a graph follow-up uses the signed slope with the same units after the image is gone',async()=>{
+ const db=store(),user={id:'follow-axes',role:'student'};let generations=0;
+ const handler=createCompanion({db,callModel:async(_d,_k,m)=>{
+  if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true};
+  if(m[0].content.startsWith('Check the draft'))return {safe:true};
+  generations++;return '需求曲线（demand curve）的横轴为数量，纵轴为价格。';
+ }});
+ await call(handler,user,'companion','POST',{requestId:'first',message:'解释需求曲线。',assessment:'mock:x'});
+ const r=await call(handler,user,'companion','POST',{requestId:'next',message:'斜率的单位是什么？顺便确认正确选项。',assessment:'mock:x'});
+ assert.equal(generations,1);assert.match(r.value.reply,/ΔP\/ΔQ/);assert.match(r.value.reply,/价格单位／数量单位/);assert.match(r.value.reply,/留给你/);
+});
+
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};

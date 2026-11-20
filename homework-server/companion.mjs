@@ -168,8 +168,13 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
        labels=labels.filter(label=>pointIds([label]).length===0);
        labels.unshift(...points.map(v=>'标记点 '+v));
      }
-     const reference=lesson&&graphMeasurement(lesson,message);
-     if(lesson&&(!wantsLabels||labels.length)){
+     // A follow-up often contains no image. Reuse the same checked unit definition
+     // when this conversation has already established a demand-curve graph.
+     const revisitingGraph=guarded&&!image&&history.messages.slice(-10).some(m=>m.role==='assistant'&&/需求曲线|需求价格弹性|demand curve|elasticity of demand/i.test(m.content));
+     const reference=lesson?graphMeasurement(lesson,message):(revisitingGraph?graphMeasurement(message,'需求曲线'):'');
+     if(reference&&!image){
+       reply=reference+(/选项|答案|answer|option/i.test(message)?'\n\n原题的选项留给你判断。':'');
+     }else if(lesson&&(!wantsLabels||labels.length)){
        const explanation=reference||await callModel(db,decrypt,[{role:'system',content:system+'\n只讲独立知识点，不猜测未提供的原题或图上标记，不用任何编造的具体数据。直接用中英术语讲定义、单位或一般方法。'},{role:'user',content:lesson}],options);
        reply=labels.length?'题面标注了 '+labels.join('、')+'。\n\n'+explanation:explanation;
      }else{
