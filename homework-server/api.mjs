@@ -1,3 +1,5 @@
+import {createCorrectionReview,applyRecovery,attachReview,reviewView} from './correction-review.mjs';
+import {studentPerformance,performanceAdvice} from './student-performance.mjs';
 import {deskTask,deskSubmissions} from './desk-task.mjs';
 import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
@@ -47,6 +49,7 @@ const safeUser = (u) => ({
   canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
 export const publicAssignment = (a) => ({
+  correctionCredit:a.correctionCredit===true, performanceTransfer:a.performanceTransfer===true,
   offline: Boolean(a.offline), maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
@@ -283,6 +286,8 @@ export async function createHomework({externalAuth} = {}) {
   const selfPractice=createSelfPractice({db});
   const studyWorkflow=createStudyWorkflow({db,requireAssignment,decrypt});
   startSelfPracticeSweeper(selfPractice);
+  const correctionReview=createCorrectionReview({db,files,decrypt});
+  const recover=async (rows,scope,assignments)=>applyRecovery(rows,await correctionReview.reviews(scope),assignments);
   return async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (!url.pathname.startsWith("/api/homework/")) return false;
@@ -680,6 +685,32 @@ export async function createHomework({externalAuth} = {}) {
         if(method==='GET'){const binding=await db.get(key)||{defaults:[],questions:[],revision:0};return (json(res,{catalog:BOOKSELF_CHAPTERS,revision:binding.revision,defaults:binding.defaults,questions:(a.rubric||[]).map(q=>{const saved=binding.questions.find(r=>r.id===q.id&&r.fingerprint===questionFingerprint(q));return {id:q.id,prompt:q.prompt||'',knowledge:q.knowledge||'',fingerprint:questionFingerprint(q),chapters:saved?.chapters??null,...reviewLinksFor(q,a,binding)};})}),true);}
         assert(method==='PUT','不支持的操作',405);const b=await body(req);const saved=await db.tx(async c=>{const currentAssignment=await requireAssignment(route[1],user,c),current=await db.get(key,c),value={id:key,assignmentId:a.id,...validateReviewBinding(b,currentAssignment,current),updatedAt:now(),updatedBy:user.id};await db.put('review-links',value,c);await db.audit(user.id,'review_links_update',a.id,c);return value;});return (json(res,{revision:saved.revision}),true);
       }
+      if(route[0]==='correction-reviews'){
+        teacher();
+        if(method==='GET'&&route[1]){
+          const a=await requireAssignment(route[1],user);
+          const reviews=await correctionReview.reviews({assignmentId:a.id,teacherId:user.id});
+          const notes=await db.getMany(reviews.map(r=>r.noteKey));
+          const noteMap=new Map(notes.map(n=>[n.id,n]));
+          const items=reviews.map(r=>{
+            const entry=noteMap.get(r.noteKey)?.corrections?.find(item=>item.id===r.correctionId);
+            return {...reviewView(r),studentId:r.studentId,submissionId:r.submissionId,questionId:r.questionId,text:entry?.text||'',files:entry?.files||[]};
+          });
+          return (json(res,{items,enabled:a.correctionCredit===true}),true);
+        }
+        if(method==='PUT'&&route[1]&&route[2]==='settings'){
+          const b=await body(req);
+          await db.tx(async c=>{
+            const a=await requireAssignment(route[1],user,c);
+            assert(!a.offline&&a.format!=='score','线下成绩不支持自动订正补分');
+            await db.put('assignment',{...a,correctionCredit:b.enabled===true,...(typeof b.transfer==='boolean'?{performanceTransfer:b.transfer}:{})},c);
+            await db.audit(user.id,'correction_credit_setting',a.id,c);
+          });
+          return (json(res,{enabled:b.enabled===true}),true);
+        }
+        if(method==='PUT'&&route[1]&&!route[2])return (json(res,{review:await correctionReview.teacherDecision(route[1],user.id,await body(req))}),true);
+        return (json(res,{error:'未知的订正操作'},404),true);
+      }
       if (route[0] === 'analytics' && route[1] === 'reports') {
         teacher();
         const creating=method==='POST'&&!route[2];
@@ -688,9 +719,13 @@ export async function createHomework({externalAuth} = {}) {
         const work = requestedId
           ? {assignments:[await requireAssignment(requestedId,user)], submissions:await db.find('submission',{assignmentId:requestedId})}
           : await accessibleWork();
+        const reviews=await correctionReview.reviews(requestedId?{teacherId:user.id,assignmentId:requestedId}:{teacherId:user.id});
+        const firstSubmissions=work.submissions;
+        work.submissions=applyRecovery(firstSubmissions,reviews,work.assignments);
+        const reviewMap=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
         const roster = externalAuth ? await externalAuth.students(auth.signed) : (await db.list('user')).filter(u => u.role === 'student' && u.classIds?.some(x => work.assignments.some(a => a.classIds.includes(x))));
         const students = roster.map(u => ({id: u.id, name: u.name, username: u.username || '', classIds: u.classIds || []}));
-        const mistakes = mistakeRows(work.submissions, work.assignments, await db.find('mistake-note', {assignmentId: work.assignments.map(a => a.id)}), await db.find('review-links', {assignmentId: work.assignments.map(a => a.id)}));
+        const mistakes = mistakeRows(firstSubmissions, work.assignments, await db.find('mistake-note', {assignmentId: work.assignments.map(a => a.id)}), await db.find('review-links', {assignmentId: work.assignments.map(a => a.id)})).map(m=>attachReview(m,reviewMap.get(JSON.stringify([m.submissionId,m.questionId]))));
         if (creating) {
           const classId = boundedText(b.classId, 80, '班级');
           const assignmentId = requestedId;
@@ -793,8 +828,33 @@ export async function createHomework({externalAuth} = {}) {
         }
         return (json(res, {error: '未知的报告操作'}, 404), true);
       }
+      async function performanceOf(work,classes,mistakes){
+        const refs=work.submissions.flatMap(s=>(s.rubricSnapshot||[]).map(q=>q.libraryQuestionId).filter(Boolean));
+        return studentPerformance(work.submissions,work.assignments,mistakes,classes,await db.getMany(refs));
+      }
+      if(route[0]==='learning'&&route[1]==='performance-advice'&&method==='POST'){
+        assert(user.role==='student','请使用学生账号',403);
+        const {course}=await body(req);
+        assert(['micro','macro'].includes(course),'学科无效');
+        const work=await accessibleWork();
+        const reviews=await correctionReview.reviews({studentId:user.id});
+        const byQuestion=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
+        const mistakes=mistakeRows(work.submissions,work.assignments).map(m=>attachReview(m,byQuestion.get(JSON.stringify([m.submissionId,m.questionId]))));
+        const value=(await performanceOf(work,await availableClasses(),mistakes)).find(x=>x.course===course);
+        rate(req,'performance-advice',8,user.id);
+        return (json(res,await performanceAdvice({db,decrypt,studentId:user.id,value})),true);
+      }
       if(route[0]==='learning'&&method==='GET'){
-        const work=await accessibleWork(),classes=await availableClasses(),submissions=work.submissions;
+        const work=await accessibleWork(),classes=await availableClasses();
+        const reviews=await correctionReview.reviews(user.role==='teacher'?{teacherId:user.id}:{studentId:user.id});
+        const submissions=applyRecovery(work.submissions,reviews,work.assignments);
+        const grades=new Map(submissions.map(s=>[s.id,s.publishedGrade]));
+        const reviewMap=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
+        const verified=m=>{
+          const item=reviewMap.get(JSON.stringify([m.submissionId||m.assignmentId,m.questionId]));
+          const row=attachReview(m,item,grades.get(m.submissionId));
+          return item&&item.status!=='passed'?{...row,correctionFeedback:null}:row;
+        };
         const assignments=work.assignments.map(a=>{const course=assignmentCourse(a,classes);return !namedCourse(a.course)&&['micro','macro'].includes(course)?{...a,course:courseLabel(course)}:a;});
         const roster=user.role==='teacher'?(externalAuth?await externalAuth.students(auth.signed):(await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(x=>assignments.some(a=>a.classIds.includes(x))))):[];
         const users=user.role==='teacher'?await db.list('user'):[];
@@ -803,14 +863,16 @@ export async function createHomework({externalAuth} = {}) {
         for(const x of submissions)if(user.role==='teacher'&&!students.some(u=>u.id===x.studentId))students.push({id:x.studentId,name:users.find(u=>u.id===x.studentId)?.name||'学生',classIds:x.classIds||[],historical:true});
         const privateDrafts=user.role==='student'?await db.find('mistake-draft',{studentId:user.id}):[];
         const notes=await db.find('mistake-note',user.role==='student'?{studentId:user.id}:{assignmentId:assignments.map(a=>a.id)});
-        let mistakes=mistakeRows(submissions,assignments,notes,await db.find('review-links',{assignmentId:assignments.map(a=>a.id)}))
+        let mistakes=mistakeRows(work.submissions,assignments,notes,await db.find('review-links',{assignmentId:assignments.map(a=>a.id)}))
           .map(m=>({...m,draftUpdatedAt:privateDrafts.find(d=>d.assignmentId===m.assignmentId&&d.questionId===m.questionId&&!d.cleared)?.updatedAt||null}));
+        mistakes=mistakes.map(verified);
         if(user.role==='student'&&url.searchParams.get('mistakeBook')==='1'){
           const attempts=await db.find('self-practice-attempt',{studentId:user.id,status:'submitted'});
-          mistakes=groupMistakes([...mistakes,...mockMistakes(attempts,notes,privateDrafts)]);
+          mistakes=groupMistakes([...mistakes,...mockMistakes(attempts,notes,privateDrafts).map(verified)]);
         }
         const insights=user.role==='student'?(await db.find('insight-report',{studentId:user.id})).filter(r=>r.status==='published'&&r.audience?.kind==='student').map(r=>({id:r.id,scope:r.scope,dataVersion:r.dataVersion,templateVersion:r.templateVersion,headline:r.headline,stats:r.stats,metrics:r.metrics,evidence:r.evidence,status:r.status,source:r.source,observations:r.observations,nextSteps:r.nextSteps,limitations:r.limitations,publishedAt:r.publishedAt})).slice(0,3):[];
-        return (json(res,{classes,insights,students,assignments:assignments.map(a=>{const publicData=publicAssignment(a);
+        const performance=user.role==='student'&&url.searchParams.get('performance')==='1'?await performanceOf(work,classes,mistakes):undefined;
+        return (json(res,{classes,insights,students,performance,assignments:assignments.map(a=>{const publicData=publicAssignment(a);
           if(user.role==='teacher')publicData.questions?.forEach((q,i)=>{const ref=a.rubric[i];q.sourcePages=ref.sourcePages||'';q.correctOptions=ref.manualGradingRequired?[]:ref.correctOptions||[];});
           return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes}),true);
       }
@@ -820,8 +882,18 @@ export async function createHomework({externalAuth} = {}) {
           assert(attempt.studentId===user.id,'找不到错题',404);
           return mockMistakes([attempt],notes,[]);
         }
-        const work=await accessibleWork(c);
-        return mistakeRows(work.submissions,work.assignments,notes);
+        return attempt?.type==='assignment'?mistakeRows(await db.find('submission',{assignmentId,studentId:user.id},c),[attempt],notes):[];
+      }
+      if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='verification'&&method==='GET'){
+        assert(user.role==='student','请使用学生账号',403);
+        const note=await db.get('mistake:'+hash(user.id+':'+route[1]+':'+route[2]));
+        const row=(await correctionRows(user,route[1],undefined,note?[note]:[])).find(r=>r.assignmentId===route[1]&&r.questionId===route[2]);
+        assert(row,'该题不在你的当前错题集中',404);
+        const review=await correctionReview.get(row.submissionId||row.assignmentId,row.questionId);
+        assert(!review||review.studentId===user.id,'找不到订正记录',404);
+        const a=await db.get(row.assignmentId);
+        const current=row.submissionId?await recover(await db.find('submission',{studentId:user.id,assignmentId:row.assignmentId}),{studentId:user.id,assignmentId:row.assignmentId},[a]):[];
+        return (json(res,{enabled:row.source==='mock'||a?.correctionCredit===true,review:reviewView(review,current.find(s=>s.id===row.submissionId)?.publishedGrade),feedback:review?.status==='passed'?row.correctionFeedback:null}),true);
       }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='draft'&&['GET','PUT'].includes(method)){
         assert(user.role==='student','请使用学生账号',403);
@@ -853,13 +925,14 @@ export async function createHomework({externalAuth} = {}) {
           const old=await db.get(key,c);
           const mutationId=boundedText(b.mutationId,120,'订正标识');
           const mutationHash=hash(JSON.stringify({correction:b.correction||'',note:b.note||'',status:b.status||'todo',files:b.files||[]}));
-          if(mutationId&&old?.lastMutationId===mutationId){assert(!old.lastMutationHash||old.lastMutationHash===mutationHash,'这次保存凭证对应另一份内容，请刷新后继续编辑',409);return {note:old,feedback:row.correctionFeedback};}
+          if(mutationId&&old?.lastMutationId===mutationId){assert(!old.lastMutationHash||old.lastMutationHash===mutationHash,'这次保存凭证对应另一份内容，请刷新后继续编辑',409);return {note:old,feedback:row.correctionFeedback,verification:reviewView(await correctionReview.get(row.submissionId||row.assignmentId,row.questionId,c))};}
           const draftKey='mistake-draft:'+hash(user.id+':'+route[1]+':'+route[2]),draft=await db.get(draftKey,c);
           if(b.draftRevision!==undefined)assert(Number(b.draftRevision)===(draft?.revision||0),'草稿已在另一处更新，请选择要保留的版本',409);
           assert(Number(b.revision||0)===(old?.revision||0),'订正已在另一处更新，请刷新后重试',409);
           const entry={...old,id:key,studentId:user.id,assignmentId:route[1],questionId:route[2],note:boundedText(b.note,5000,'笔记'),status:['todo','review','mastered'].includes(b.status)?b.status:'todo',revision:(old?.revision||0)+1,updatedAt:now(),corrections:old?.corrections||[]};
           if(b.correction||b.files?.length){await files.validate(b.files||[],user.id,'submission',c);entry.corrections.push(correction);entry.status=b.status==='mastered'?'mastered':'review';}
-          entry.lastMutationId=mutationId||null;entry.lastMutationHash=mutationHash;await db.put('mistake-note',entry,c);if(b.draftRevision!==undefined)await db.put('mistake-draft',{id:draftKey,studentId:user.id,assignmentId:route[1],questionId:route[2],revision:(draft?.revision||0)+1,updatedAt:now(),cleared:true},c);return {note:entry,feedback:row.correctionFeedback};
+          const verification=(b.correction||b.files?.length)?await correctionReview.queue(row,correction,c,row.source==='mock'?null:await db.get(row.assignmentId,c)):null;
+          entry.lastMutationId=mutationId||null;entry.lastMutationHash=mutationHash;await db.put('mistake-note',entry,c);if(b.draftRevision!==undefined)await db.put('mistake-draft',{id:draftKey,studentId:user.id,assignmentId:route[1],questionId:route[2],revision:(draft?.revision||0)+1,updatedAt:now(),cleared:true},c);return {note:entry,feedback:verification?null:row.correctionFeedback,verification};
         });return (json(res,saved),true);
       }
       if (route[0] === "files") {
@@ -1030,7 +1103,7 @@ export async function createHomework({externalAuth} = {}) {
             const [students,submissions,classes]=await Promise.all([availableStudents(),db.find('submission',{assignmentId:a.id}),availableClasses()]);
             const key=id=>String(id).replace(/^bookself-class:/,'');
             const assigned=a.classIds.map(id=>({id,name:classes.find(c=>key(c.id)===key(id))?.name||'历史班级'}));
-            return (json(res,{...assignmentRoster(a,students,submissions),classes:assigned}),true);
+            return (json(res,{...assignmentRoster(a,students,await recover(submissions,{assignmentId:a.id},[a])),classes:assigned}),true);
           }
           const classEntry = route[2]==='class-scores' && !route[3];
           if(method==='PATCH' && (classEntry || (route[2]==='students' && route[3] && route[4]==='score' && !route[5]))){
@@ -1254,7 +1327,9 @@ export async function createHomework({externalAuth} = {}) {
         if (method === "GET" && !route[1]) {
           const assignments = user.role === 'teacher' ? (await db.find('assignment',{teacherId:user.id})).map(a=>a.id) : [];
           const users = user.role === 'teacher' ? await db.list('user') : [];
-          const rows = await db.find('submission', user.role==='teacher' ? {assignmentId:assignments} : {studentId:user.id});
+          const scope=user.role==='teacher'?{assignmentId:assignments}:{studentId:user.id};
+          const raw=await db.find('submission',scope);
+          const rows=await recover(raw,scope,await db.getMany([...new Set(raw.map(s=>s.assignmentId))]));
           return (
             json(res, {
               submissions: rows.map((s) =>
@@ -1319,7 +1394,12 @@ export async function createHomework({externalAuth} = {}) {
           );
         }
         if (route[1]) {
-          const s = await requireSubmission(route[1], user);
+          let s = await requireSubmission(route[1], user);
+          if(method==='GET'&&(!route[2]||route[2]==='pdf')){
+            const scope={assignmentId:s.assignmentId,studentId:s.studentId};
+            const all=await recover(await db.find('submission',scope),scope,[await db.get(s.assignmentId)]);
+            s=all.find(item=>item.id===s.id)||s;
+          }
           if(method==='GET'&&route[2]==='paper-pdf'){
             rate(req,'pdf',40,user.id);const a=await db.get(s.assignmentId),paper=s.paperSnapshot||paperOf(a);
             const bytes=await exportWork({assignment:{...a,...paper,rubric:s.rubricSnapshot||a.rubric},readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});

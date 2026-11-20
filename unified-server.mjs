@@ -21,6 +21,8 @@ const publicAssets=new Set(['assets/notebook/paper-index.css','assets/notebook/p
 for(const f of ['homework/study-workflow.js','homework/study-workflow.css','homework/mock-student-detail.js','homework/library-ui.js','homework/demand-lab.js','homework/library-grading.js','homework/lesson-panel.js','homework/lesson-review.css','homework/mistake-navigation.js','homework/library-packs.js','homework/disclosure-menu.js','homework/assignment-navigation.js','homework/library-navigation.js','homework/library-reader.js','homework/library.css','homework/ink.js','companion.js','companion.css','homework/task-flow.css','homework/import-review-model.js','homework/review-links.js','homework/choice-correction.js','homework/mcq-session.js','homework/mcq.js','homework/reading-positions.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
 for(const f of ['companion.js','companion.css','assets/mike-pixel.png','assets/companion/html2canvas-1.4.1.min.js'])publicAssets.add(f);
 for(let stage=0;stage<5;stage++)publicAssets.add('assets/companion/quest-mike-'+stage+'.webp');
+pages.add('homework/learning-evidence.js');
+pages.add('homework/learning-evidence.css');
 const compressed=new Map();
 const deskShell=(await readFile(resolve(root,'desk.html'),'utf8')).match(/<main id="desk"[\s\S]*?<\/main>/)[0];
 const notebookEnabled=process.env.NOTEBOOK_HOME_ENABLED!=='0';
@@ -48,6 +50,14 @@ const server=http.createServer(async(req,res)=>{
   if(await homework(req,res))return;
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
   if(path.includes('\\')||path.includes('\0')||path.split('/').some(p=>p.startsWith('.'))){res.writeHead(404).end();return;}
+  const demoFiles={'/demo':'index.html','/demo/':'index.html','/demo/demo.css':'demo.css','/demo/demo.js':'demo.js'};
+  if(Object.hasOwn(demoFiles,path)){
+   // Demo state lives in the current browser tab and uses authored sample data.
+   const file=resolve(root,'demo',demoFiles[path]),bytes=await readFile(file);
+   res.writeHead(200,{'Content-Type':types[extname(file)],'Content-Length':bytes.length,
+    'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"});
+   res.end(req.method==='HEAD'?undefined:bytes);return;
+  }
   const signed=await auth.session(req);
   if(signed?.role==='student' && signed.must_change_password && ['/', '/login.html', '/desk.html', '/desk-login.html', '/homework', '/homework/', '/homework/index.html', '/enter/bookself', '/enter/econquest'].includes(path) && !(path==='/' && u.searchParams.get('account')==='password')){
     auth.redirect(res,'/?account=password');return;

@@ -35,7 +35,7 @@ export function insightData({assignments, submissions, mistakes = [], students})
 
 // Rules version is part of the data version so a report generated under older
 // fact-building rules is treated as stale instead of silently re-used.
-const FACTS_RULES_VERSION = 3;
+const FACTS_RULES_VERSION = 4;
 const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
 
 function reportData(scope, data) {
@@ -101,7 +101,7 @@ export function insightVersion({scope, data}) {
         version: s.version ?? null,
         submittedAt: s.submittedAt || null,
         updatedAt: s.updatedAt || null,
-        total: grade?.total ?? null,
+        total: grade?.total ?? null, scoreSources:grade?.scoreSources||null,
         maxPoints: grade?.maxPoints ?? null,
         revision: grade?.revision ?? null,
         publishedAt: grade?.publishedAt || null,
@@ -175,6 +175,10 @@ export function buildInsightFacts({scope, data}) {
     const profile = studentProfile(data, student, assignments);
     const graded = profile.row.cells.filter(cell => cell.rate !== null);
     add('s.published', `${graded.length} 份已出分`, `已发布成绩 ${graded.length} 份，平均得分率 ${pct(profile.row.average)}。`);
+    if(graded.some(c=>c.record.grade.scoreSources)){
+      const b=overviewStats([profile.row],assignments);
+      add('s.score-sources','学生成绩来源',`首次平均 ${pct(b.firstAverage)}，订正补回 ${b.recoveryAverage} 个百分点，计入平均 ${pct(b.average)}。`);
+    }
     add('s.submitted', `完成 ${profile.row.submitted}/${profile.row.total}`, `应完成 ${profile.row.total} 次，已提交 ${profile.row.submitted} 次，未交 ${profile.row.missing} 次。`);
     add('s.corrections', `待订正 ${profile.openCorrections}`, `待订正 ${profile.openCorrections} 道，已提交待复核 ${profile.row.reviewing || 0} 道。`);
     if (graded.length >= 2) {
@@ -193,6 +197,7 @@ export function buildInsightFacts({scope, data}) {
   const stats = overviewStats(rows, assignments);
   add('c.students', `${stats.students} 名学生`, `本期范围 ${stats.students} 名学生、${stats.assignments} 次作业，已发布 ${stats.published} 份。`);
   add('c.average', `平均 ${pct(stats.average)}`, `班级平均得分率 ${pct(stats.average)}（仅计已发布成绩）。`);
+  if(stats.recoveryAverage>0)add('c.score-sources','班级成绩来源',`首次平均 ${pct(stats.firstAverage)}，订正补回 ${stats.recoveryAverage} 个百分点，计入平均 ${pct(stats.average)}。`);
   add('c.missing', `未交 ${stats.missing}`, `未交 ${stats.missing} 人次。`);
   add('c.review', `待复核 ${stats.needsReview}`, `${stats.needsReview} 份提交等待复核，暂不计入平均。`);
   const studentIds = new Set(rows.map(row => row.student.id));

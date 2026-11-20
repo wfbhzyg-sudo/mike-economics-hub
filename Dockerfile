@@ -4,6 +4,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY --chown=node:node assets ./assets
+COPY --chown=node:node demo ./demo
 COPY --chown=node:node homework ./homework
 COPY --chown=node:node homework-server ./homework-server
 COPY --chown=node:node auth ./auth

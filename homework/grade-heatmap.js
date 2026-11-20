@@ -1,3 +1,4 @@
+import {scoreSources} from './learning-evidence.js';
 import {scoreBand,scoreLegend} from './score-bands.js';
 import {viewMemory} from './view-memory.js';
 import {highlightText} from './search-text.js';
@@ -28,6 +29,7 @@ export function mountGradeHeatmap(ctx,data){
  function selection(){let active=false;for(const b of main.querySelectorAll('.gj-cell')){const match=b.dataset.student===selected?.student.id&&b.dataset.work===selected?.assignment.id;b.setAttribute('aria-pressed',String(match));b.classList.toggle('selected',match);b.tabIndex=match?0:-1;if(match)active=true;}if(!active)main.querySelector('.gj-cell')?.setAttribute('tabindex','0');}
  function detail(){const host=$('.gj-cell-detail');if(!selected){host.innerHTML=`<div class="empty"><h2>${assignments.length?'没有匹配的成绩记录':'这个范围还没有作业'}</h2><p>可调整时间或清除筛选。已有记录会继续保留。</p></div>`;return;}
   const c=selected,r=c.record,s=r?.effective||r?.latest;host.innerHTML=`<div class="gj-detail-head"><h2>${h(c.student.name)} · ${h(c.assignment.title)}</h2><span>${date(c.assignment.dueAt||c.assignment.createdAt)}</span></div><div class="gj-result">${r?.grade?`<strong>${r.grade.total}<small> / ${r.grade.maxPoints}</small></strong>`:''}${statusMarkup(c,h)}${s?`<span>${r?.grade?'成绩版本 '+(r.grade.revision||1):'已提交'}</span>`:''}${c.pendingUpdate?'<span>新版本待更新</span>':''}</div>${c.status==='unassigned'?'<p class="hint">该作业未布置给此学生。</p>':c.status==='unconfirmed'?'<p class="hint">缺少该学生的历史布置名单确认，不推断未交。</p>':''}<div class="actions">${s?link('review/'+s.id,'查看作答与复核','primary'):link('overview/'+c.assignment.id,'查看作业提交情况','primary')}${link('gradebook/'+encodeURIComponent(c.student.id),'学生作业轨迹')}</div>`;$('.gj-sheet-content').innerHTML=host.innerHTML;
+  if(r?.grade?.scoreSources)host.querySelector('.gj-result')?.insertAdjacentHTML('beforeend',scoreSources(r.grade));
  }
  function pick(b){const c=rows.find(r=>r.student.id===b.dataset.student)?.cells.find(c=>c.assignment.id===b.dataset.work);if(!c)return;selected=c;activeTrigger=b;selection();detail();save();if(small.matches){if(!sheet.open)sheet.showModal();sheet.querySelector('[data-close-sheet]').focus();}}
  const onClick=e=>{const b=e.target.closest('.gj-cell');if(b)pick(b);const a=e.target.closest('a[href]');if(a){save();const href=a.getAttribute('href');if(href.includes('review/'))state.gradeReturn={submissionId:href.split('review/')[1],route:'gradebook'};if(sheet.open)sheet.close();}};main.addEventListener('click',onClick);

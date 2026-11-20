@@ -1,3 +1,4 @@
+import {mountReviewPanel} from './learning-evidence.js';
 import {openDiscussion} from './study-workflow.js';
 import {classKey} from './course-scope.js';
 import {assignmentOpensLater} from './assignment-navigation.js';
@@ -21,13 +22,20 @@ export async function showAssignmentRoster(ctx,id,initialFilter=null,initialClas
  const detailMeta=[classes.map(c=>c.name).join(' · '),opensLater?'尚未开放，'+date(a.opensAt)+' 开始':'',a.dueAt?'截止 '+date(a.dueAt):''].filter(Boolean).join(' · ');
  main.innerHTML=`<section class="paper roster-paper">${head('',a.title,detailMeta,link('assignments','返回作业')+link('edit/'+id,'编辑作业','secondary')+(['mcq','mixed'].includes(a.format)?link('mcq-analysis/'+id,'逐题分析','secondary'):'' )+(a.published&&classes.length&&a.questions?.length?'<button type="button" class="secondary" data-discussion-admin>同伴思路记录</button>':''))}<div class="assignment-detail-tabs" role="tablist" aria-label="作业详情"><button type="button" role="tab" data-detail="submissions" aria-selected="true">${offline?"学生成绩":"学生提交"}</button><button type="button" role="tab" data-detail="paper" aria-selected="false">题纸与要求</button><button type="button" role="tab" data-detail="chapters" aria-selected="false">复习章节</button></div><section id="assignment-students" role="tabpanel">${classes.length>1?`<label class="roster-class-label">查看班级 <select id="roster-class" aria-label="筛选班级"><option value="">全部班级</option>${classes.map(c=>`<option value="${h(c.id)}">${h(c.name)}</option>`).join('')}</select></label>`:''}<div class="roster-summary" aria-live="polite"></div><div class="roster-toolbar"><div class="filter-tabs" role="group" aria-label="${offline?"录分状态":"提交状态"}">${filters.map(([v,label])=>`<button type="button" data-roster-filter="${v}" aria-pressed="${v===filter}">${label}</button>`).join('')}</div><div class="roster-search"><input id="roster-search" type="search" placeholder="搜索姓名或账号" aria-label="搜索姓名或账号"></div></div><p class="sr-only" id="roster-count" role="status"></p><div id="roster-rows"></div></section><section id="assignment-paper" role="tabpanel" hidden></section><section id="assignment-chapters" role="tabpanel" hidden></section></section>`;
  const $=s=>main.querySelector(s),scrollRoot=main.closest('#teacher-content')||main;
+ let closeReview;
+ if(!offline&&a.published){
+   const host=document.createElement('details');
+   host.className='evidence-review';host.innerHTML='<summary>订正验收</summary><div></div>';
+   $('.assignment-detail-tabs').after(host);
+   host.addEventListener('toggle',()=>{if(host.open&&!closeReview)closeReview=mountReviewPanel(host.querySelector('div'),ctx,a,data.rows);});
+ }
  const admin=$('[data-discussion-admin]');let notesDialog;
  if(admin)admin.onclick=()=>notesDialog=openDiscussion({api,user:state.user,assignmentId:id,version:a.version,classes:[...classes].sort((x,y)=>Number(y.id===classId)-Number(x.id===classId)),trigger:admin,teacher:true});
  $('#roster-search').value=term;if($('#roster-class'))$('#roster-class').value=classId;
  const save=()=>memory.set({filter,term,classId,top:scrollRoot.scrollTop});
  const onClick=e=>{const anchor=e.target.closest('.roster-action a');if(anchor){save();memory.set({selected:anchor.getAttribute('href')});state.reviewReturn={assignmentId:id,route:'overview/'+id};state.gradeReturn=null;}};
  main.addEventListener('click',onClick);
- state.viewCleanup=()=>{notesDialog?.close();save();main.removeEventListener('click',onClick);};
+ state.viewCleanup=()=>{closeReview?.();notesDialog?.close();save();main.removeEventListener('click',onClick);};
  state.restoreView=()=>{scrollRoot.scrollTo({top:memory.get('top',0),behavior:'instant'});const selected=[...main.querySelectorAll('.roster-action a')].find(a=>a.getAttribute('href')===memory.get('selected',''));selected?.focus({preventScroll:true});};
  const label=r=>({queued:'排队中',grading:'批阅中',needs_review:r.scoreReady?'待复核':'分数待确认',published:'已出分',returned:'已退回补充'})[r.status]||'—';
  const matches=r=>filter==='all'||filter==='review'&&r.needsReview||filter==='published'&&r.grade||r.state===filter;

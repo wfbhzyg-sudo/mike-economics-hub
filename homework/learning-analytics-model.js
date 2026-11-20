@@ -89,12 +89,12 @@ export function buildRows(data, students, assignments) {
 }
 
 export function overviewStats(rows, assignments) {
-  const rates = [];
+  const rates = [], firstRates=[], recoveryRates=[];
   let submitted = 0, published = 0, needsReview = 0, reviewing = 0, missing = 0, attention = 0;
   for (const row of rows) {
     for (const cell of row.cells) {
       if (cell.record && !cell.record.latest.manualScoreEntry) submitted += 1;
-      if (cell.rate !== null) { published += 1; rates.push(cell.rate); }
+      if (cell.rate !== null) { published += 1; rates.push(cell.rate); const g=cell.record.grade;firstRates.push((g.scoreSources?.first??g.total)/g.maxPoints*100);recoveryRates.push((g.scoreSources?.recovered??0)/g.maxPoints*100); }
       if (cell.record?.latest?.status === 'needs_review') needsReview += 1;
       if (['queued', 'grading'].includes(cell.record?.latest?.status)) reviewing += 1;
       if (cell.status === 'missing') missing += 1;
@@ -105,6 +105,7 @@ export function overviewStats(rows, assignments) {
     students: rows.length, assignments: assignments.length,
     due: rows.reduce((sum,row)=>sum+row.total,0),
     submitted, published, needsReview, reviewing, missing, attention,
+    firstAverage:firstRates.length?round1(mean(firstRates)):null, recoveryAverage:recoveryRates.length?round1(mean(recoveryRates)):null,
     average: rates.length ? round1(mean(rates)) : null,
     withWork: rows.filter(row => row.submitted > 0).length,
   };
@@ -123,7 +124,7 @@ export function questionStats(data, assignmentId) {
   }
   const graded = [...latest.values()].filter(submission => submission.publishedGrade && Number.isFinite(submission.publishedGrade.total));
   const questions = (assignment.questions || []).map(question => {
-    let gradedCount = 0, correct = 0, answered = 0, scoreSum = 0;
+    let gradedCount = 0, correct = 0, answered = 0, scoreSum = 0, corrected = 0, recoveredPoints = 0;
     const counts = new Map();
     for (const submission of graded) {
       const hit = (submission.publishedGrade.questions || []).find(item => item.id === question.id);
@@ -131,6 +132,8 @@ export function questionStats(data, assignmentId) {
       gradedCount += 1;
       scoreSum += Number(hit.score) || 0;
       if (hit.score >= hit.maxPoints) correct += 1;
+      const added=submission.publishedGrade.scoreSources?.byQuestion?.[question.id]||0;
+      recoveredPoints+=added;if(added&&hit.score+added>=hit.maxPoints)corrected++;
       const sameVersion = assignment.version == null || submission.version === assignment.version;
       const choice = sameVersion ? submission.choices?.[question.id] : null;
       if (choice) { counts.set(choice, (counts.get(choice) || 0) + 1); answered += 1; }
@@ -145,6 +148,7 @@ export function questionStats(data, assignmentId) {
       maxPoints: question.maxPoints, knowledge: question.knowledge || '',
       graded: gradedCount, correct, scoreSum: round1(scoreSum),
       rate: gradedCount ? round1(correct / gradedCount * 100) : null,
+      corrected,recoveredPoints,afterRate:gradedCount?round1((correct+corrected)/gradedCount*100):null,
       average: gradedCount ? round1(scoreSum / gradedCount) : null,
       scoreRate: gradedCount && question.maxPoints ? round1(scoreSum / (gradedCount * question.maxPoints) * 100) : null,
       options: question.options || [], answered,

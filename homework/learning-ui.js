@@ -1,3 +1,4 @@
+import {verificationMarkup} from './learning-evidence.js';
 import {renderBookmarks} from './study-workflow.js';
 import {assignmentCourse,courseLabel,coursesFor,selectedCourse,rememberCourse} from './course-scope.js';
 import {mountInk} from './ink.js';
@@ -20,7 +21,7 @@ export function createLearningUI(ctx){
  function focusCorrection(host){host.scrollIntoView({block:'start',behavior:'instant'});const heading=host.querySelector('.correction-workspace h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}
  async function load(path='learning'){const v=state.routeVersion;const data=await api(path);if(v!==state.routeVersion)return null;return data;}
  async function gradebook(studentId){
-  const data=await load();if(!data)return;const teacher=state.user.role==='teacher';
+  const teacher=state.user.role==='teacher';const data=await load(teacher?'learning':'learning?performance=1');if(!data)return;
   if(teacher&&!studentId){const view=mountGradeHeatmap(ctx,data);state.viewCleanup=()=>view.destroy();return;}
   const student=teacher?data.students.find(u=>u.id===studentId):state.user;
   if(!student){main.innerHTML=`<section class="paper">${head('','未找到该学生','',link('gradebook','返回班级成绩'))}</section>`;return;}
@@ -83,6 +84,7 @@ export function createLearningUI(ctx){
         m.revision=note.revision;m.note=note.note;m.status=note.status;m.corrections=note.corrections;
         if(saved.feedback&&(entry.correction||entry.files.length))m.correctionFeedback=saved.feedback;
         form.elements.status.value=note.status;
+        if(saved.verification)m.verification=saved.verification;
         onStay(m.correctionFeedback);
       }
       await navigate();
@@ -100,8 +102,9 @@ export function createLearningUI(ctx){
     const m=data.mistakes.flatMap(m=>[m,...(m.occurrences||[])]).find(m=>m.assignmentId===assignmentId&&m.questionId===questionId);
     if(!m){main.innerHTML=`<section class="paper">${head('','这道题已不在待订正列表','成绩改判或重交后，错题集会同步更新。',link('mistakes','返回错题集'))}</section>`;return;}
     const v=state.routeVersion,endpoint=`mistakes/${encodeURIComponent(assignmentId)}/${encodeURIComponent(questionId)}`,{draft:remote}=await api(endpoint+'/draft');
+    const enabled=m.source==='mock'||data.assignments.some(a=>a.id===assignmentId&&a.correctionCredit);
     const cacheKey=`hw-correction:${state.user.id}:${assignmentId}:${questionId}`;let cached;try{cached=JSON.parse(sessionStorage.getItem(cacheKey)||'null');}catch{}
-    const initial=cached||(!remote?.cleared&&remote)||{correction:'',note:m.note,status:m.status,files:[]};
+    const initial=cached||(!remote?.cleared&&remote)||{correction:'',note:m.note,status:m.status==='verified'?'review':m.status,files:[]};
     const latestCorrection=m.corrections.at(-1);const ids=[...m.corrections.flatMap(c=>c.files||[]),...(initial.files||[])];await metadata(ids);if(v!==state.routeVersion)return;
     const inAssignment=data.mistakes.flatMap(x=>[x,...(x.occurrences||[])]).filter(x=>x.assignmentId===m.assignmentId),index=inAssignment.findIndex(x=>x.questionId===m.questionId),next=inAssignment[index+1];
     const route=x=>'mistakes/'+x.assignmentId+'/'+encodeURIComponent(x.questionId),nextRoute=next?route(next):null;
@@ -111,7 +114,7 @@ export function createLearningUI(ctx){
       pinHost:$('[data-lesson-pinned]'),libraryUnit:m.libraryUnit,course:m.course,review:m.review});
     if(m.type==='choice' && m.options?.length){
       const editor=$('.correction-editor h2');editor.textContent=latestCorrection?'继续补充订正':'重新选择答案';
-      const field=$('#correction-form [name=correction]'),initialChoice=splitChoiceCorrection(initial.correction);field.value=initialChoice.explanation;field.placeholder='可选：写下订正说明';const selected=document.createElement('input');selected.type='hidden';selected.name='correctionChoice';selected.value=initialChoice.choice;field.after(selected);
+      const field=$('#correction-form [name=correction]'),initialChoice=splitChoiceCorrection(initial.correction);field.value=initialChoice.explanation;field.placeholder=enabled?'写出选择这个选项的理由':'可选：写下订正说明';const selected=document.createElement('input');selected.type='hidden';selected.name='correctionChoice';selected.value=initialChoice.choice;field.after(selected);
       const choices=document.createElement('div');choices.className='mcq-letters';const multi=m.choiceMode==='multiple',options=m.options;choices.setAttribute('role',multi?'group':'radiogroup');choices.setAttribute('aria-label','订正选项');
       choices.innerHTML=options.map(o=>`<button type="button" role="${multi?'checkbox':'radio'}" aria-checked="${initialChoice.choice.includes(o.label)}" tabindex="${multi||initialChoice.choice===o.label||(!initialChoice.choice&&o===options[0])?0:-1}" aria-label="订正选项 ${o.label}" data-correct-choice="${o.label}">${o.label}</button>`).join('');field.closest('label')?.before(choices);
       choices.querySelectorAll('button').forEach((b,i,all)=>{b.onclick=()=>{const pick=b.dataset.correctChoice;selected.value=multi?(selected.value.includes(pick)?selected.value.replace(pick,''):[...selected.value,pick].sort().join('')):pick;choices.querySelectorAll('button').forEach(x=>{x.setAttribute('aria-checked',String(selected.value.includes(x.dataset.correctChoice)));x.tabIndex=multi||x===b?0:-1});field.dispatchEvent(new Event('input',{bubbles:true}));};b.onkeydown=e=>{const step=['ArrowRight','ArrowDown'].includes(e.key)?1:['ArrowLeft','ArrowUp'].includes(e.key)?-1:0;if(step&&!multi){e.preventDefault();const next=all[(i+step+all.length)%all.length];next.focus();next.click()}};});
@@ -119,10 +122,31 @@ export function createLearningUI(ctx){
     if(m.type==='choice' && !m.options?.length)$('#correction-form [name=correction]').placeholder='填写选项字母，例如 B；多选可填写 AC。';
     if(latestCorrection)$('[data-show-saved]').onclick=()=>{const saved=$('.correction-saved');saved.open=true;saved.scrollIntoView({block:'center',behavior:'instant'});saved.querySelector('summary').focus({preventScroll:true})};
     const form=$('#correction-form');form.addEventListener('submit',e=>{form.dataset.afterSave=e.submitter?.dataset.correctionSave||'stay';},true);
+    const receipt=$('[data-saved-verdict]');
+    let reviewTimer;
+    function paintVerification(){
+      if(!receipt || !m.verification)return;
+      receipt.innerHTML=verificationMarkup(m.verification,h)+(m.verification.status==='passed'?feedbackMarkup(m.correctionFeedback,h,true):'');
+      form.querySelectorAll('[data-correction-save]').forEach(b=>b.disabled=['queued','passed'].includes(m.verification.status));
+      if(m.verification.status==='queued'){
+        clearTimeout(reviewTimer);
+        reviewTimer=setTimeout(async()=>{
+          if(!form.isConnected)return;
+          try{const {review,feedback}=await api(endpoint+'/verification');if(review)m.verification=review;if(feedback)m.correctionFeedback=feedback;}
+          catch{}
+          if(form.isConnected)paintVerification();
+        },3500);
+      }
+    }
+    if(enabled){
+      form.querySelectorAll('[data-correction-save]').forEach(b=>b.textContent=b.dataset.correctionSave==='next'?'提交并继续':'提交验收');
+      form.elements.status.closest('label').hidden=true;
+    }
     let autosave,correctionInk;const up=uploadWidget($('#correction-upload'),'submission',initial.files||[],()=>autosave?.changed());bindPreviews();
     autosave=correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute,feedback=>{
       const status=$('#correction-draft-status'),receipt=$('[data-saved-verdict]');
-      status.textContent='订正已保存';receipt.innerHTML=feedbackMarkup(feedback,h,true);
+      status.textContent='订正已保存';receipt.innerHTML=enabled&&m.verification?'':feedbackMarkup(feedback,h,true);
+      setTimeout(paintVerification,0);
       const latest=m.corrections.at(-1),details=$('.correction-saved');
       if(details&&latest){
         details.querySelector('summary').textContent='已保存订正 · '+date(latest.createdAt);
@@ -141,13 +165,14 @@ export function createLearningUI(ctx){
     });const inkDetails=$('[data-correction-ink]');inkDetails.ontoggle=async()=>{if(!inkDetails.open||inkDetails.dataset.loaded)return;inkDetails.dataset.loaded='true';try{const host=$('[data-ink-host]');const mounted=await mountInk(host,{api,post,put,userId:state.user.id,scope:{assignmentId:m.assignmentId,questionId:m.questionId,correctionId:m.submissionId},exportLabel:'保存为 PDF 并加入订正',exportHint:'添加后请点击保存订正。原成绩保持不变。',onExport:async file=>{up.append(file);$('.correction-attachments').open=true;autosave.changed();toast('手写 PDF 已加入订正附件')}});if(!host.isConnected)mounted.destroy();else correctionInk=mounted}catch(e){inkDetails.dataset.loaded='';toast(e.message)}};state.correctionNavigation=()=>autosave.flush();
     const reference=mountCorrectionReference($('.correction-reference'),{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact:Boolean(ctx.onCorrectionSaved),onEdit:()=>{const editor=$('.correction-editor');editor.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});editor.querySelector('[data-correct-choice][tabindex="0"], [name=correction]').focus({preventScroll:true});}});
     {const heading=$('.correction-editor h2'),back=document.createElement('button');back.type='button';back.className='text-button correction-back-reference';back.textContent='查看原题';heading.append(back);back.onclick=()=>{if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();$('.correction-reference').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[data-reference=question]').click();$('[data-reference=question]').focus({preventScroll:true});};}
-    const cleanup=state.viewCleanup;state.viewCleanup=()=>{correctionInk?.destroy();reference.destroy();cleanup?.();};
+    paintVerification();
+    const cleanup=state.viewCleanup;state.viewCleanup=()=>{clearTimeout(reviewTimer);correctionInk?.destroy();reference.destroy();cleanup?.();};
     for(const [direction,target]of [['prev',inAssignment[index-1]],['next',next]])$('[data-correction-nav='+direction+']').onclick=async e=>{if(!target)return;const button=e.currentTarget;button.disabled=true;try{await autosave.flush();go(route(target));}catch(error){toast(error.message);button.disabled=false;}};
     const correctionCleanup=state.viewCleanup;state.viewCleanup=()=>{lessons.destroy();correctionCleanup?.();};
     return;
   }
   const memory=viewMemory(state.user.id+':mistakes');const subjects=coursesFor([...data.assignments,...data.mistakes],data.classes||[]);let subject=selectedCourse(state.user.id,subjects);const subjectOf=m=>m.source==='mock'?m.course:assignmentCourse(data.assignments.find(a=>a.id===m.assignmentId)||m,data.classes||[]);
-  main.innerHTML=`<section class="paper">${head('','我的错题集','',link('grades','成绩档案','text-button'))}${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="review">待复习</option><option value="mastered">已掌握（自评）</option></select></label></div><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div><div id="mistakes-list"></div></section>`;
+  main.innerHTML=`<section class="paper">${head('','我的错题集','',link('grades','成绩档案','text-button'))}${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">待复习</option><option value="mastered">已掌握（自评）</option></select></label></div><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div><div id="mistakes-list"></div></section>`;
   bindMistakeNavigation(main);
   $('#mistake-search').value=memory.get('query','');$('#mistake-state').value=memory.get('status','');
   const draw=()=>{const term=$('#mistake-search').value.trim(),status=$('#mistake-state').value,rows=data.mistakes.filter(m=>subjectOf(m)===subject&&(!status||m.status===status)&&(!term||[m.assignmentTitle,m.prompt,m.knowledge,m.questionId].join(' ').toLocaleLowerCase().includes(term.toLocaleLowerCase())));

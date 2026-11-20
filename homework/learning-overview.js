@@ -1,3 +1,4 @@
+import {scoreSources} from './learning-evidence.js';
 import {courseLabel,singleClassCourse} from './course-scope.js';
 import {studyReportMarkup} from './study-workflow.js';
 import {scoreMaximum} from './score-entry.js';
@@ -359,7 +360,7 @@ export function mountLearningOverview(ctx, initialData) {
     const detail = cell.rate === null ? cell.label : `${formatPercent(cell.rate)}${cell.pendingUpdate ? '，新版本待更新' : ''}`;
     const offline = Boolean(cell.required || cell.record?.grade);
     const aria = `${cell.student.name}，${cell.assignment.title || assignmentLabel(cell.assignment)}，${detail}${offline ? '，双击可修改成绩，留空不计均分' : ''}`;
-    return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${offline ? 'data-offline="true"' : ''} ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" data-tip-title="${h(cell.assignment.title || assignmentLabel(cell.assignment))}" data-tip-score="${h(cell.record?.grade ? cell.record.grade.total+' / '+cell.record.grade.maxPoints : cell.label)}" data-tip-date="${h(longDate(workDate(cell.assignment)))}" data-tip-state="${h(cell.label)}" tabindex="-1">${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
+    return `<td class="lo-cell-td"><button type="button" class="lo-cell${isSelected ? ' selected' : ''}" data-cell data-s="${h(cell.student.id)}" data-a="${h(cell.assignment.id)}" ${offline ? 'data-offline="true"' : ''} ${band ? `data-band="${band.level}"` : ''} data-status="${cell.status}" aria-pressed="${isSelected}" aria-label="${h(aria)}" data-tip-title="${h(cell.assignment.title || assignmentLabel(cell.assignment))}" data-tip-score="${h(cell.record?.grade ? cell.record.grade.total+' / '+cell.record.grade.maxPoints : cell.label)}" data-tip-date="${h(longDate(workDate(cell.assignment)))}" data-tip-state="${h(cell.label)}" tabindex="-1">${cell.record?.grade?.scoreSources?scoreSources(cell.record.grade):''}${cell.pendingUpdate ? '<i class="lo-pending" aria-hidden="true"></i>' : ''}<span>${h(label)}</span></button></td>`;
   }
 
   function averageMarkup(row) {
@@ -660,7 +661,8 @@ export function mountLearningOverview(ctx, initialData) {
     const total = question.distribution.reduce((sum, item) => sum + item.count, 0) || 1;
     return `<div class="lo-detail-inner">
       <header class="lo-detail-head"><div><h2>第 ${diagnosis.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || '题目')}</h2><p>${h(assignmentLabel(diagnosis.assignment))}${question.knowledge ? ` · ${h(question.knowledge)}` : ''}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
-      <div class="lo-detail-score"><strong>${accuracyBadge(rate)}</strong><span class="lo-chip">${choice ? '班级正确率' : '班级得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
+      <div class="lo-detail-score"><strong>${accuracyBadge(rate)}</strong><span class="lo-chip">${choice ? '首次正确率' : '首次得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
+      ${question.recoveredPoints?`<p>订正后达标率 ${accuracyBadge(question.afterRate)} · 补回 ${question.recoveredPoints} 分</p>`:''}
       ${originalQuestion(diagnosis.assignment,question)}
       <div class="lo-qstats">
         <div><span>${choice ? '班级正确率' : '平均得分'}</span><strong>${choice ? accuracyBadge(question.rate) : `${question.average}/${question.maxPoints}`}</strong><small>${question.correct}/${question.graded} 份${choice ? '完全正确' : '达到满分'}</small></div>
