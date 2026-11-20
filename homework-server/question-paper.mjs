@@ -20,19 +20,19 @@ function publicRows(questions) {
   }));
 }
 
-function wrapped(value, size, font) {
+function wrapped(value, size, measure) {
   const lines = [];
   for (const raw of String(value).replace(/\r\n?/g,'\n').replace(/\t/g,'  ').split('\n')) {
     let line = '', width = 0;
     for (const token of raw.replace(/[\u0000-\u001f]/g,'').match(/[\x21-\x7e]+| +|[^]/gu) || []) {
-      const tw = font.widthOfTextAtSize(token, size);
+      const tw = measure(token, size);
       if (line && width + tw > WIDTH) {
         lines.push(line.trimEnd()); line = ''; width = 0;
       }
       if (!line && !token.trim()) continue;
       if (tw <= WIDTH) { line += token; width += tw; continue; }
       for (const ch of token) {
-        const cw = font.widthOfTextAtSize(ch,size);
+        const cw = measure(ch,size);
         if (line && width + cw > WIDTH) { lines.push(line); line = ''; width = 0; }
         line += ch; width += cw;
       }
@@ -60,6 +60,18 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
   if (rare) fullFont ||= readFile(new URL('./fonts/NotoSansSC-Regular.ttf', import.meta.url));
   const font = await doc.embedFont(rare ? await fullFont : compact.bytes, {subset:false, features:{liga:false,clig:false}});
   const small = await doc.embedFont(StandardFonts.Helvetica);
+  // A CJK font can substitute alternate digit glyphs in mixed-script text.
+  // Keep Latin text and numbers in a PDF-native font with searchable encoding.
+  const runs = value => String(value).match(/[ -~]+|[^ -~]+/gu) || [];
+  const face = run => /^[ -~]/.test(run) ? small : font;
+  const measure = (value,size) => runs(value).reduce((w,r)=>w+face(r).widthOfTextAtSize(r,size),0);
+  function write(value,x,y,size,color){
+    for(const run of runs(value)){
+      const use=face(run);
+      page.drawText(run,{x,y,size,font:use,color});
+      x+=use.widthOfTextAtSize(run,size);
+    }
+  }
   doc.setTitle(paper.title); doc.setAuthor('Mike 经济一页通');
   const numbered = [];
   let page, y;
@@ -68,11 +80,11 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
   function drawLines(lines, size, color = ink) {
     for (const line of lines) {
       need(size * 1.55);
-      if (line) page.drawText(line,{x:M,y:y-size,size,font,color});
+      if (line) write(line,M,y-size,size,color);
       y -= size * 1.55;
     }
   }
-  const block = (text,size,color) => { if(text){drawLines(wrapped(text,size,font),size,color); y -= 5;} };
+  const block = (text,size,color) => { if(text){drawLines(wrapped(text,size,measure),size,color); y -= 5;} };
   start();
   page.drawText('MIKE  /  ECONOMICS', {x:M,y:y-8,size:9,font:small,color:muted});
   y -= 24;
@@ -95,8 +107,8 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
   for (const q of rows) {
     const source = q.sourceNumber && q.sourceNumber !== String(q.number) ? ' · 原题 '+q.sourceNumber : '';
     const heading = '第 '+q.number+' 题'+source;
-    const body = wrapped(q.prompt,11,font);
-    const options = q.options.filter(o=>o.text).flatMap(o=>wrapped(o.label+'.  '+o.text,11,font));
+    const body = wrapped(q.prompt,11,measure);
+    const options = q.options.filter(o=>o.text).flatMap(o=>wrapped(o.label+'.  '+o.text,11,measure));
     const images = [];
     for (const id of q.images) images.push(await image(id));
     const lines = q.prompt ? body : [];
@@ -107,10 +119,10 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
     page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.7,color:rule});
     y -= 3;
     const header = continued => {
-      page.drawText(heading+(continued?'（续）':''),{x:M,y:y-14,size:12,font,color:ink});
+      write(heading+(continued?'（续）':''),M,y-14,12,ink);
       if (!continued && q.points !== null) {
         const score = q.points+' 分';
-        page.drawText(score,{x:W-M-font.widthOfTextAtSize(score,10),y:y-14,size:10,font,color:muted});
+        write(score,W-M-measure(score,10),y-14,10,muted);
       }
       y -= 23;
     };
