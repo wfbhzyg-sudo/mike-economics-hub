@@ -71,4 +71,9 @@ html,body{background:#e6e3d8;scrollbar-color:auto;overflow-x:clip;overscroll-beh
  .classic-desk-return:not([hidden]){left:max(10px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top));padding:0 9px;gap:4px;font-size:12px}
  .classic-desk-return:not([hidden])~.topbar{padding:0}
 }
-@media(max-width:359px){.classic-desk-return:not([hidden])~.topbar .hub-mark{display:none}}
+@media(max-width:389px){
+ .classic-desk-return:not([hidden]){padding-inline:6px}
+ .classic-desk-return:not([hidden])~.topbar .hub-mark{display:none}
+ .classic-desk-return:not([hidden])~.topbar .portal-name h1{font-size:15px}
+ .classic-desk-return:not([hidden])~.portal-account summary{max-width:68px}
+}
