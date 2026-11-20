@@ -20,7 +20,7 @@ async function next(animate=false){const a=params.get('authorize');if(a?.startsW
            document.body.dataset.primary=teacher?'teacher':'homework';
            document.title='Mike 的经济一页通';history.replaceState(null,'','/');
          });
-         await import('/portal-nav.js?v=deskindex1');return;
+         await import('/portal-nav.js?v=deskreturn1');return;
        }
      }
    }catch{}
@@ -61,5 +61,12 @@ form.addEventListener('submit',async e=>{
 $('#save-code').onclick=()=>{const blob=new Blob(['Mike 通用账号恢复码\n'+recovery+'\n请妥善保存，不要与他人分享。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Mike通用账号-恢复码.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('#finish-recovery').onclick=()=>signed?next():location.replace('/');
 setMode('login');
-try{const r=await fetch('/api/portal/session',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();csrf=data.csrf;if(data.user){accountRole=data.user.role;if(data.user.mustChangePassword||params.get('account')==='password'){setMode('password');if(data.user.mustChangePassword)$('#form-description').textContent=accountRole==='teacher'?'首次登录，请设置自己的密码。':'首次登录，请先把密码改成至少 12 位。';}else next();}else if(params.get('account')==='password')$('#form-description').textContent='请先登录，再修改密码';}catch{$('#form-error').textContent='账号服务暂时不可用。你可以稍后重试。';}
+try{const r=await fetch('/api/portal/session',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();csrf=data.csrf;
+ const deskReturn=document.getElementById('classic-desk-return');
+ if(deskReturn&&data.notebookEnabled&&!data.user){
+   const dest=new URL('/',location.origin);
+   for(const key of ['next','authorize','deskPage'])if(params.has(key))dest.searchParams.set(key,params.get(key));
+   dest.searchParams.set('view','desk');deskReturn.href=dest.pathname+dest.search;deskReturn.hidden=false;
+ }
+ if(data.user){accountRole=data.user.role;if(data.user.mustChangePassword||params.get('account')==='password'){setMode('password');if(data.user.mustChangePassword)$('#form-description').textContent=accountRole==='teacher'?'首次登录，请设置自己的密码。':'首次登录，请先把密码改成至少 12 位。';}else next();}else if(params.get('account')==='password')$('#form-description').textContent='请先登录，再修改密码';}catch{$('#form-error').textContent='账号服务暂时不可用。你可以稍后重试。';}
 window.addEventListener('pageshow',e=>{if(e.persisted&&document.body.classList.contains("login-page"))location.reload();});

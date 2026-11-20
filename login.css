@@ -24,3 +24,8 @@
 .cover{aspect-ratio:2/3;overflow:hidden;background:#173e35}.cover>img{width:100%;height:100%;object-fit:cover;display:block}.cover>span{position:absolute;top:6%;left:8%;right:5%;color:#fff;font:11px Hub Serif,Georgia,serif}.cover>span strong{display:block;font-size:17px;font-weight:400;line-height:1.15;margin-top:12px}@media(max-width:760px){.cover>span{font-size:4px}.cover>span strong{font-size:6px;margin-top:4px}}
 
 @media(max-width:760px){.cover>span,.folio-back>span,.folio-front>span{display:none}.folio-back strong{padding-top:8px}}
+
+.form-heading:has(#classic-desk-return:not([hidden])){display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;column-gap:8px}
+.form-heading:has(#classic-desk-return) p{grid-column:1/-1}
+.form-heading #classic-desk-return:not([hidden]){display:inline-flex;align-items:center;min-height:44px;padding:0 3px;color:#28475a;font:600 13px/1.3 system-ui,sans-serif;text-underline-offset:4px}
+.login-page:not([data-account-mode=login]) #classic-desk-return{display:none!important}

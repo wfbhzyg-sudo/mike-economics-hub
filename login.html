@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b2139"><meta name="description" content="使用 Mike 通用账号登录 Mike 的经济一页通，进入阅读、经济学探索与电子作业工作台。"><title>登录 · Mike 的经济一页通</title><link rel="icon" href="/assets/mike-hub-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/login.css"><script type="module" src="/login.js"></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b2139"><meta name="description" content="使用 Mike 通用账号登录 Mike 的经济一页通，进入阅读、经济学探索与电子作业工作台。"><title>登录 · Mike 的经济一页通</title><link rel="icon" href="/assets/mike-hub-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/login.css?v=deskreturn1"><script type="module" src="/login.js?v=deskreturn1"></script></head>
 <body class="login-page">
 <header class="portal-title"><img src="/assets/mike-hub-mark.svg" alt="" width="32" height="32"><span>Mike 的经济一页通</span></header>
 <main class="login-layout">
@@ -9,7 +9,7 @@
   <div class="preview-homework"><div class="folio-back"><span>AP ECONOMICS</span><br><strong>AI</strong></div><div class="folio-front"><span>MIKE HOMEWORK</span><strong>Review.</strong><p>Every thought<br>matters.</p><div class="folio-lines"><span>图片与 PDF 提交</span><span>文字作答</span><span>逐题反馈</span></div><img src="/assets/mike-hub-mark.svg" alt="" width="24" height="24"></div><span class="preview-label">让思考得到回应</span></div>
  </section>
  <section class="login-paper" aria-labelledby="form-title">
-  <div class="form-heading"><h1 id="form-title">登录一页通</h1><p id="form-description">使用现有 Mike 通用账号</p></div>
+  <div class="form-heading"><h1 id="form-title">登录一页通</h1><a id="classic-desk-return" href="/?view=desk" hidden>返回书桌</a><p id="form-description">使用现有 Mike 通用账号</p></div>
   <form id="login-form" name="sign-in" method="post" action="/api/portal/login" autocomplete="on" novalidate>
    <div id="registration-fields" hidden><label class="field">姓名<input name="name" autocomplete="name" maxlength="32"></label><label class="field">通用班级码<input name="classCode" autocomplete="off" autocapitalize="characters" maxlength="40"></label></div>
    <label class="field" id="username-field">用户名<input id="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Mike 通用用户名" minlength="3" maxlength="32" required></label>
