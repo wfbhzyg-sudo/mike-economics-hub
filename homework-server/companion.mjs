@@ -96,11 +96,15 @@ export function createCompanion({db,decrypt,callModel=deepseek}){
    const exerciseScreen=onExercise?'\n[Current screen: economics exercise; question before the student]':'';
    const scopeInput = message+exerciseScreen+cited.slice(0,2000)+'\n[Earlier turns, context only]\n'+JSON.stringify(recentTurns);
    const scope=await callModel(db,decrypt,[{role:'system',content:SCOPE_PROMPT},{role:'user',content:withImage(scopeInput)}],{json:true,maxTokens:100,signal:controller.signal});
-   if(user.role==='student'&&scope.answerOnly===true&&(scope.allowed===true||onExercise)){economic=scope.topic==='economics';reply=ANSWER_REQUEST_REPLY;}
-   else if(scope.allowed!==true)reply='我主要帮你使用经济一页通，或讨论经济学。你可以问我经济概念、图表，或作业平台怎么操作。';
+   // A mixed request can still be misclassified as answer-only after successive refusals.
+   // Route explicit requests for explanations through the checked tutoring path.
+   const wantsExplanation=/解释|讲清|讲解|说明|含义|定义|原理|公式|为什么|为何|区别|怎么理解|\b(?:explain|define|why|meaning|concept|difference)\b/i.test(message);
+   const explainPart=scope.answerOnly===true&&wantsExplanation&&scope.topic==='economics';
+   if(user.role==='student'&&scope.answerOnly===true&&!explainPart&&(scope.allowed===true||onExercise)){economic=scope.topic==='economics';reply=ANSWER_REQUEST_REPLY;}
+   else if(scope.allowed!==true&&!explainPart)reply='我主要帮你使用经济一页通，或讨论经济学。你可以问我经济概念、图表，或作业平台怎么操作。';
    else{
      economic=scope.topic==='economics';
-     const guarded=user.role==='student'&&(onExercise||Boolean(image)||scope.exercise===true);
+     const guarded=user.role==='student'&&(onExercise||Boolean(image)||scope.exercise===true||explainPart);
      const system=companionSystem(user)+(guarded?'\n'+EXERCISE_HELP:'');
      const options={maxTokens:user.role==='student'?450:1500,signal:controller.signal};
      if(streaming&&!guarded)options.onToken=async token=>{

@@ -91,6 +91,21 @@ test('students get concept explanations but answer-only exercise requests bypass
  assert.match(requests.at(-1).system,/服务器验证为教师/);
 });
 
+test('an explicit economics explanation survives a mixed request marked answer-only after repeated follow-ups',async()=>{
+ const db=store(),student={role:'student',id:'mixed'},calls=[];
+ const handler=createCompanion({db,callModel:async(_db,_key,m)=>{
+  const instruction=m[0].content;calls.push(instruction);
+  if(instruction.startsWith('Classify'))return {topic:'economics',allowed:true,answerOnly:true};
+  if(instruction.startsWith('Check the draft'))return {safe:true};
+  return '需求价格弹性（price elasticity of demand）是两个百分比的比值，所以没有单位。';
+ }});
+ const send=(message,requestId)=>call(handler,student,'companion','POST',{message,requestId,assessment:'work:test'});
+ await send('这个选项对吗？','a');
+ assert.equal(calls.length,1);
+ const r=await send('先解释为什么弹性没有单位，再告诉我这题最终的数字。','b');
+ assert.match(r.value.reply,/两个百分比/);assert.equal(calls.length,4);
+});
+
 test('key changes preserve active attempt identity, timer and receipt through actual student endpoints',async()=>{
  const f=await prepare();const a=(await call(f.handler,f.teacher,'mcq/imports/import/publish','POST',{items:[item()],revision:0,classIds:['class']})).value.assignment;
  const first=(await call(f.handler,f.student,'mcq/attempt/'+a.id,'POST',{revision:0,answers:{'1':'B'},flags:['1'],index:0})).value.attempt;
