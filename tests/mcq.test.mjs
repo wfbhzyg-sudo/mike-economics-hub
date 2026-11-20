@@ -163,6 +163,24 @@ test('a rejected exercise draft cannot leak through deltas, history or retry; a 
  }
 });
 
+test('an independently approved passage is shown verbatim without the revealing clause',async()=>{
+ const definition='斜率（slope）是纵坐标变化除以横坐标变化，是带符号的量。';
+ const leak='本题应选 A。',draft=definition+leak;
+ for(const [name,excerpt,expected] of [
+   ['approved',definition,definition],['invented','看我重写的新答案。',''],['whole',draft,'']
+ ]){
+  const handler=createCompanion({db:store(),callModel:async(_db,_key,m)=>{
+   if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true};
+   if(m[0].content.startsWith('Check the draft'))return {safe:false,problem:leak,safeExcerpt:excerpt};
+   return draft;
+  }});
+  const result=(await call(handler,{id:'excerpt',role:'student'},'companion','POST',{message:'能解释斜率的单位吗？',assessment:'mock:test',requestId:name})).value;
+  if(expected)assert.equal(result.reply,expected);
+  else assert.match(result.reply,/最终答案留给你/);
+  assert(!result.reply.includes(leak));
+ }
+});
+
 test('self-practice stays in learning mode; timed assigned assessments remain protected across tabs',async()=>{
  const db=store(),user={id:'learner',role:'student'},handler=createCompanion({db});
  const probe=async assessment=>{let value;await handler({req:{url:'/companion?assessment='+encodeURIComponent(assessment),headers:{}},res:{},route:['companion'],method:'GET',user,json:(_,v)=>value=v});return value.mode};
