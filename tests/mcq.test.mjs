@@ -163,6 +163,21 @@ test('a rejected exercise draft cannot leak through deltas, history or retry; a 
  }
 });
 
+test('explain a separate concept without handing the generator the source operands, but check its final reply against the image',async()=>{
+ const seen=[],sharp=(await import('sharp')).default;
+ const jpg=await sharp({create:{width:30,height:30,channels:3,background:'white'}}).jpeg().toBuffer();
+ const user={id:'image-concept',role:'student'},explanation='价格弹性是需求量对价格变化的敏感程度。',reply='题面标注了 sandwich（三明治）。\n\n'+explanation;
+ const handler=createCompanion({db:store(),callModel:async(_db,_key,m)=>{
+  const data=m.at(-1).content;seen.push(data);
+  if(m[0].content.startsWith('Classify'))return {allowed:true,topic:'economics',exercise:true,lessonRequest:'需求价格弹性的含义',visibleLabels:['sandwich（三明治）','D','75%']};
+  if(m[0].content.startsWith('Check the draft')){assert.equal(JSON.parse(data[0].text).draft,reply);return {safe:true};}
+  assert.equal(typeof data,'string');assert.equal(data,'需求价格弹性的含义');
+  assert(!data.includes('75'));assert(!m.some(entry=>Array.isArray(entry.content)));return explanation;
+ }});
+ const answer=(await call(handler,user,'companion','POST',{requestId:'visible',assessment:'work:test',message:'说出商品名并解释弹性，不代入75%。',screenshot:'data:image/jpeg;base64,'+jpg.toString('base64')})).value;
+ assert.equal(answer.reply,reply);assert.equal(seen.length,3);assert.equal(seen[0][1].type,'image_url');assert.equal(seen[2][1].type,'image_url');
+});
+
 test('an independently approved passage is shown verbatim without the revealing clause',async()=>{
  const definition='斜率（slope）是纵坐标变化除以横坐标变化，是带符号的量。';
  const leak='本题应选 A。',draft=definition+leak;
