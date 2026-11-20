@@ -6,8 +6,7 @@ host.setAttribute('popover','manual');
 host.setAttribute('data-html2canvas-ignore','');
 if(document.querySelector('#desk,.notebook-login'))host.dataset.notebook='';
 const ui=host.attachShadow({mode:'open'});
-const style=document.createElement('link');
-style.rel='stylesheet';style.href='/companion.css?v=deskindex1';
+const style=document.createElement('style');
 ui.innerHTML=`<button class="mike-launcher" aria-label="打开 Mike 经济学伙伴" aria-expanded="false"><img src="/assets/mike-pixel.png" alt="" width="56" height="56"><span class="mike-launcher-label">问问 Mike</span></button><section class="mike-chat" role="dialog" aria-label="Mike 经济学伙伴" hidden><div class="mike-sheet-handle" aria-hidden="true"><span></span></div><header><img src="/assets/mike-pixel.png" alt="" width="40" height="40"><div><strong>Mike 经济学伙伴</strong><small>经济学与平台使用</small></div><details class="mike-menu"><summary aria-label="对话菜单" title="对话菜单">•••</summary><div class="mike-menu-list"><button data-action="history" title="查看历史对话">历史</button><button data-action="new">新对话</button><footer class="mike-chat-options"><button data-action="hide">本页隐藏伙伴</button><label><input type="checkbox" id="mike-motion">减少动效</label></footer></div></details><button data-action="close" aria-label="关闭对话">×</button></header><div class="mike-mode" hidden></div><div class="mike-chat-messages" role="log" aria-live="polite"></div><form class="mike-composer"><label for="mike-message">向 Mike 提问</label><textarea id="mike-message" rows="2" maxlength="3000" placeholder="输入经济学或平台使用问题…"></textarea><figure class="mike-preview" hidden><button type="button" data-action="zoom-shot" aria-label="放大或缩小截图" aria-expanded="false"><img alt="待发送的截图"></button><figcaption>随本次提问发送给 DeepSeek</figcaption><button type="button" data-action="remove-shot">移除</button></figure><details id="mike-context-preview" hidden><summary>将发送的引用内容</summary><pre></pre></details><p class="mike-chat-status" role="status"></p><div class="mike-send-row"><details class="mike-clip"><summary>＋ 附件与引用</summary><div><label class="mike-context"><input type="checkbox" id="mike-context"><span class="mike-context-label">引用当前页面文字</span></label><div class="mike-attachments"><button type="button" data-action="capture">截取当前屏幕</button><button type="button" data-action="upload-shot">选择截图</button><button type="button" data-action="browser-shot" hidden>用浏览器截取标签页</button><input id="mike-shot-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></div></details><button type="button" data-action="stop" hidden>停止</button><button type="submit" aria-label="发送消息" title="发送消息">发送 <span aria-hidden="true">↑</span></button></div></form></section>`;ui.prepend(style);
 host.style.cssText='position:fixed!important;inset:0!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;overflow:visible!important;pointer-events:none!important;z-index:2147483647!important;color-scheme:light;visibility:hidden!important';
 function syncLayer(){
@@ -472,4 +471,32 @@ window.addEventListener('focus',()=>{if(profile)void refreshOutfit();});
 window.addEventListener('econquest:outfit-saved',()=>void refreshOutfit());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncPreferences();});
 setInterval(()=>{if(!document.hidden)syncPreferences();},300000);
-style.addEventListener('load',()=>{resize();host.style.removeProperty('visibility');},{once:true});window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
+// A shadow <link> unloads when the host moves into or out of a reading dialog.
+// Keep the loaded rules on this shadow root for the lifetime of the companion.
+let appearanceReady=false, loadingAppearance=false, retryTimer, retries=0;
+async function loadAppearance(){
+  if(appearanceReady||loadingAppearance)return;
+  clearTimeout(retryTimer);
+  loadingAppearance=true;
+  try{
+    const response=await fetch('/companion.css?v=deskindex1',{signal:AbortSignal.timeout(15000)});
+    if(!response.ok||!response.headers.get('Content-Type')?.startsWith('text/css'))throw Error('Missing companion stylesheet');
+    const css=await response.text();
+    if(!css.trim())throw Error('Empty companion stylesheet');
+    style.textContent=css;
+    resize();
+    appearanceReady=true;
+    host.style.removeProperty('visibility');
+    window.removeEventListener('online',loadAppearance);
+    window.removeEventListener('focus',loadAppearance);
+  }catch{
+    const delay=[1000,4000,15000][retries++];
+    if(delay!==undefined)retryTimer=setTimeout(loadAppearance,delay);
+  }finally{loadingAppearance=false;}
+}
+window.addEventListener('online',loadAppearance);
+window.addEventListener('focus',loadAppearance);
+window.addEventListener('resize',resize);
+window.visualViewport?.addEventListener('resize',resize);
+resize();
+void loadAppearance();
