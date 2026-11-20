@@ -14,6 +14,7 @@ async function unpack(bytes) {
       const page=await pdf.getPage(n);
       const {items}=await page.getTextContent(), ops=await page.getOperatorList();
       pages.push({text:items.map(x=>x.str).join(' '),rotation:page.rotate,
+        imageWidths:ops.fnArray.flatMap((v,i)=>v===OPS.paintImageXObject?[ops.argsArray.slice(0,i).filter((m,k)=>ops.fnArray[k]===OPS.transform && m[0]>1).at(-1)[0]]:[]),
         images:ops.fnArray.filter(x=>x===OPS.paintImageXObject).length});
     }
     return pages;
@@ -22,6 +23,7 @@ async function unpack(bytes) {
 
 test('exports ordered cross-page figures, shared material, written choices and original PDF pages; private keys never enter the paper',async()=>{
   const img=await sharp({create:{width:770,height:340,channels:3,background:'#eeeeee'}}).png().toBuffer();
+  const narrow=await sharp({create:{width:385,height:110,channels:3,background:'#eee'}}).png().toBuffer();
   const extra=await PDFDocument.create();extra.addPage([650,410]).drawText('Landscape original');
   extra.addPage([600,800]).setRotation(degrees(90));const original=await extra.save();
   const seen=[];
@@ -30,11 +32,12 @@ test('exports ordered cross-page figures, shared material, written choices and o
     {id:'b',prompt:'Use the preceding chart',questionImages:['material'],options:['A','B'],optionText:{B:'Other choice'}},
     {id:'c',type:'short',prompt:'说明价格变化',maxPoints:3,answer:'NEVER_PRINT'}];
   const bytes=await questionPaperPDF({paper:{title:'AP 宏观经济学 · 2026-11-20 00时27分',questionFiles:['material','continued','original'],answerFiles:['secret']},
-    questions,readAttachment:async id=>{seen.push(id);return id==='original'?{mime:'application/pdf',bytes:original}:{mime:'image/png',bytes:img};}});
+    questions,readAttachment:async id=>{seen.push(id);return id==='original'?{mime:'application/pdf',bytes:original}:{mime:'image/png',bytes:id==='continued'?narrow:img};}});
   assert.deepEqual(seen,['material','continued','original']);
   const pages=await unpack(bytes),text=pages.map(p=>p.text).join(' ').replace(/ +/g,' ');
   assert.match(text,/宏观经济学/);assert.ok(text.replace(/\s/g,'').includes('2026-11-2000时27分'));assert.match(text,/Coffee producers face different costs/);assert.match(text,/第 1 题.*First option.*Last option.*第 2 题.*Other choice.*第 3 题.*说明价格变化.*Landscape original/);
   assert.doesNotMatch(text,/NEVER_PRINT/);assert.equal(pages.reduce((n,p)=>n+p.images,0),3);
+  const [stem,crop]=pages.flatMap(p=>p.imageWidths);assert.ok(Math.abs(stem-2*crop)<0.01);
   assert.equal(pages.at(-1).rotation,90);assert.match(pages.at(-2).text,/Landscape original/);
 });
 

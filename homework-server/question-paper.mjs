@@ -96,12 +96,12 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
   const imageCache = new Map();
   async function image(id) {
     if (!imageCache.has(id)) {
-      imageCache.set(id,await imageFromAttachment(await readAttachment(id), TOP-BOTTOM-55));
+      imageCache.set(id,await embedAttachment(await readAttachment(id)));
     }
     return imageCache.get(id);
   }
-  function picture(p) {
-    page.drawImage(p.img,{x:M+(WIDTH-p.width)/2,y:y-p.height,width:p.width,height:p.height});
+  function picture(p,center=false) {
+    page.drawImage(p.img,{x:M+(center?(WIDTH-p.width)/2:0),y:y-p.height,width:p.width,height:p.height});
     y -= p.height + 8;
   }
   for (const q of rows) {
@@ -109,8 +109,12 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
     const heading = '第 '+q.number+' 题'+source;
     const body = wrapped(q.prompt,11,measure);
     const options = q.options.filter(o=>o.text).flatMap(o=>wrapped(o.label+'.  '+o.text,11,measure));
-    const images = [];
-    for (const id of q.images) images.push(await image(id));
+    const originals = [];
+    for (const id of q.images) originals.push(await image(id));
+    // A narrow crop of choices or a shared graph belongs at the same print
+    // scale as its adjoining stem. Stretching each crop to full width breaks this.
+    const scale=Math.min(.75,...originals.map(img=>Math.min(WIDTH/img.width,(TOP-BOTTOM-55)/img.height)));
+    const images=originals.map(img=>({img,width:img.width*scale,height:img.height*scale}));
     const lines = q.prompt ? body : [];
     const writing = q.short && !extras.length ? 2 : 0;
     const height = 26 + (lines.length+options.length)*17.05 + images.reduce((sum,p)=>sum+p.height+8,0) + 30 + writing*20;
@@ -158,15 +162,14 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
       const original = await PDFDocument.load(attachment.bytes);
       for (const p of await doc.copyPages(original,original.getPageIndices())) doc.addPage(p);
     } else {
-      const p = await imageFromAttachment(attachment);
-      start(); picture(p);
+      const img = await embedAttachment(attachment);
+      const scale = Math.min(WIDTH/img.width,(TOP-BOTTOM)/img.height);
+      start(); picture({img,width:img.width*scale,height:img.height*scale},true);
     }
   }
-  async function imageFromAttachment({mime,bytes}, maxHeight = TOP-BOTTOM) {
+  async function embedAttachment({mime,bytes}) {
     assert(['image/png','image/jpeg','image/webp'].includes(mime),'题纸附件格式异常',422);
-    const img = mime==='image/jpeg' ? await doc.embedJpg(bytes) : await doc.embedPng(mime==='image/png'?bytes:await (await import('sharp')).default(bytes).png().toBuffer());
-    const scale = Math.min(WIDTH/img.width,maxHeight/img.height);
-    return {img,width:img.width*scale,height:img.height*scale};
+    return mime==='image/jpeg' ? await doc.embedJpg(bytes) : await doc.embedPng(mime==='image/png'?bytes:await (await import('sharp')).default(bytes).png().toBuffer());
   }
   const pages = doc.getPages(), total = pages.length, generated = new Set(numbered);
   pages.forEach((p,index) => {
