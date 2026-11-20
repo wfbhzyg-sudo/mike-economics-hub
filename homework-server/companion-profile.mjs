@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-workspace-tools',date:'2026-11-20',title:'作业工具重新排版',
+  items:[{audience:'student',art:'book',title:'看题、做题与下载',text:'打开作业后，从下载图标导出整卷 PDF。在交卷回执中，题纸和自己的作答分开放置。'},{audience:'teacher',art:'book',title:'在学生提交中处理订正',text:'打开作业详情的「学生提交」，展开「订正验收」查看补分设置、原题与处理记录。'}]
+},{
   id:'2026-11-20-printable-papers',date:'2026-11-20',title:'作业与模考可以整卷导出',
   items:[{audience:'all',art:'book',title:'带走一份完整的题纸',text:'在作业题纸、答题卡或模考成绩中点「导出整卷 PDF」。题图与选项按本次题序排好，可以打印重做。'}]
 },{

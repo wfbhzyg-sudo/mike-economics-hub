@@ -38,3 +38,71 @@
  .scoring-point:has([name=pointSkill]){grid-template-columns:minmax(0,1fr) minmax(54px,70px)}
  .scoring-point:has([name=pointSkill]) .remove-point{grid-column:2}
 }
+
+/* A document tool remains secondary to starting, submitting or reviewing work. */
+.task-action-row {display:flex;align-items:center;flex-wrap:wrap;gap:var(--ui-action-gap);min-width:0}
+.task-action-row > * {margin:0}
+.mcq-card .task-action-row,.receipt-tools,.result-main>.task-action-row {margin-block-start:14px}
+.mcq-card .task-action-row {padding-block-start:12px;border-block-start:1px solid #e0e7ec}
+body .paper-download,body .document-link {
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;min-block-size:40px;
+  max-inline-size:100%;padding:6px 11px;border:1px solid transparent;border-radius:var(--ui-control-radius);color:var(--ui-tool-ink);
+  background:var(--ui-tool-wash);font:600 .84rem/1.25 system-ui,sans-serif;text-decoration:none;white-space:nowrap;vertical-align:middle;
+}
+body .document-link {background:white;border-color:var(--ui-tool-line)}
+.paper-download-mark,.paper-download-mark svg {display:block;flex:none;inline-size:17px;block-size:17px}
+.paper-download-mark {position:relative}
+.paper-download[aria-busy=true] {cursor:progress}
+.paper-download[aria-busy=true] svg {visibility:hidden}
+.paper-download[aria-busy=true] .paper-download-mark::after {content:'';position:absolute;inset:2px;border:2px solid #b9c8d3;border-top-color:currentColor;border-radius:50%}
+@media(prefers-reduced-motion:no-preference){.paper-download[aria-busy=true] .paper-download-mark::after{animation:paper-tool-spin .8s linear infinite}@keyframes paper-tool-spin{to{transform:rotate(1turn)}}}
+@media(hover:hover){body :is(.paper-download,.document-link):hover {background:#e4edf3;border-color:#bdcedb;color:#11283f}}
+body :is(.paper-download,.document-link):focus-visible {outline:2px solid var(--ui-focus);outline-offset:2px}
+.paper-download-feedback {position:fixed;z-index:1100;inset:auto auto max(18vh,80px) 50%;transform:translateX(-50%);margin:0;padding:10px 15px;max-width:min(86vw,440px);width:max-content;color:white;background:#263e51;border:0;border-radius:9px;box-shadow:0 3px 16px #132a4026;pointer-events:none;font:500 14px/1.5 system-ui}
+.paper-palette-actions {padding-top:12px;margin-top:12px;border-top:1px solid #dce5eb;justify-content:space-between}
+.paper-palette-actions>p:empty,.mcq-palette-dialog>p[role=alert]:empty {display:none}
+.paper-reader-surface .paper-brief-line {justify-content:flex-start;gap:8px 12px}
+.paper-reader-surface .paper-brief-line:has(details[open]) {display:flex}
+.paper-brief-line .paper-download {order:1;margin-inline-start:auto}
+.sp-result .sp-result-head {flex-wrap:wrap;align-items:center;gap:6px 12px}
+.mcq-top .mcq-session-status:has(#mcq-timer:empty):has(.mcq-save:empty):not(:has(button:not([hidden]))) {display:none}
+.evidence-progress .evidence-next {display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding-block-start:5px}
+.evidence-progress .evidence-next button {background:#fff;border:1px solid var(--ui-tool-line);border-radius:7px;min-height:36px;padding:5px 10px;color:var(--ui-tool-ink);font-weight:600}
+.evidence-progress [data-advice-output]:empty,.evidence-review-list p:empty {display:none}
+.evidence-skill details > summary::after,.evidence-review > summary::after {content:'';width:6px;height:6px;border:solid #567084;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);margin:-3px 4px 0 0;flex:none}
+.evidence-skill details[open] > summary::after,.evidence-review[open] > summary::after {transform:rotate(225deg);margin-top:4px}
+.evidence-skill summary b {margin-inline-start:auto}
+.roster-paper .evidence-review {border:1px solid var(--ui-tool-line);border-radius:9px;margin:12px 0;background:#f5f8fa;color:#203b50}
+.evidence-review > summary {list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;padding:5px 12px;font-weight:650}
+.evidence-review > summary::-webkit-details-marker,.evidence-skill summary::-webkit-details-marker {display:none}
+.evidence-review>div {background:#fff;padding:9px 12px;border-top:1px solid var(--ui-tool-line);border-radius:0 0 9px 9px}
+.evidence-settings {display:flex;flex-wrap:wrap;gap:6px 18px}
+.evidence-settings label {display:flex;align-items:center;gap:9px;cursor:pointer;min-height:40px;font-size:.88rem}
+.evidence-settings input[type=checkbox] {appearance:auto;accent-color:var(--ui-primary);width:17px;height:17px;min-height:0;margin:0;flex:none}
+.evidence-reference {margin-block:8px}
+.roster-toolbar .roster-search input {font:inherit;font-size:14px;line-height:1.3;border:1px solid var(--ui-tool-line);border-radius:7px;padding:7px 10px;min-height:38px;max-width:100%;color:var(--ui-ink);background:#fff}
+body .roster-paper .assignment-detail-tabs {gap:10px}
+body .roster-paper .assignment-detail-tabs button {padding-inline:8px}
+body .roster-paper .assignment-detail-tabs button[aria-selected=true] {background:transparent;color:var(--ui-primary);border-color:var(--ui-primary);box-shadow:inset 0 -2px var(--ui-primary)}
+body :is(.assignment-toolbar,.roster-toolbar,.sp-wrong,.result-main) .filter-tabs {gap:var(--ui-action-gap)}
+body .gj-view-switch,body .sp-course,body .bank-seg,body .lo-switch {gap:6px}
+body .gj-chart-actions>div,body .gj-chart-footer>div {display:flex;align-items:center;gap:8px}
+body .gj-chart-actions>div[hidden],body .gj-chart-footer[hidden] {display:none}
+@media(pointer:coarse),(max-width:700px){
+ body :is(.paper-download,.document-link),.evidence-progress .evidence-next button,.evidence-skill summary,.evidence-review>summary,.evidence-settings label {min-height:44px}
+ .correction-workspace .correction-save-actions {display:flex;flex-wrap:wrap;gap:8px}
+ .correction-workspace .correction-save-actions>button {flex:1 1 8em;min-width:0}
+ .roster-paper .roster-toolbar .filter-tabs {flex-wrap:wrap}
+}
+/* Answer and elimination are distinct hit targets within one question option. */
+body :is(.mcq-work,.sp-run) .answer-pair {gap:6px}
+body :is(.mcq-work,.sp-run) .answer-pair .strike-dot {background:#f4f7fa}
+body :is(.mcq-work,.sp-run) .answer-pair .strike-dot[aria-pressed=true] {background:#dee8ef;color:#203c54}
+@media(max-width:380px){body[data-work-route=assignments] .assignment-toolbar .filter-tabs:has(.task-more-filters){gap:5px}}
+@media(min-width:801px) and (max-width:1120px){
+ .roster-paper #roster-rows :is(.roster-table-head,.student-submission-row){grid-template-columns:minmax(95px,1.4fr) minmax(62px,.85fr) minmax(72px,1fr) minmax(36px,.5fr) minmax(72px,.85fr);gap:8px;padding-inline:10px}
+ .roster-paper .roster-action{min-width:0}
+}
+@media(max-width:600px){.roster-paper .roster-action{margin-inline-end:46px}}
+.roster-paper .paper-head .actions>a.roster-back {display:inline-flex;align-items:center;gap:6px;color:#3f5b70;text-decoration:none;padding:5px 8px;min-height:44px;font-size:14px;font-weight:600}
+.roster-back::before {content:'';width:7px;height:7px;border:solid currentColor;border-width:0 0 1.5px 1.5px;transform:rotate(45deg)}

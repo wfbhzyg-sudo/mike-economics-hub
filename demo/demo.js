@@ -17,7 +17,7 @@ function render(focus=false){
  persist();
  const t=role==='teacher',i=t?teacherStep:studentStep;const info=tasks[role][Math.min(i,3)];
  $('student').setAttribute('aria-pressed',String(!t));$('teacher').setAttribute('aria-pressed',String(t));
- $('guide').hidden=!coaching;$('workspace').classList.toggle('quiet',!coaching);$('toggle').textContent=coaching?'收起指引':'继续指引';$('toggle').setAttribute('aria-expanded',String(coaching));
+ $('guide').hidden=!coaching;$('toggle').textContent=coaching?'收起指引':'继续指引';$('toggle').setAttribute('aria-expanded',String(coaching));
  $('step').textContent=i<4?'任务 '+(i+1)+' / 4':'已完成';$('guideTitle').textContent=i<4?info[0]:'这一轮体验已完成';$('tip').textContent=i<4?info[1]:'切换身份，可以看到同一份作业的另一端。';
  $('kicker').textContent=t?'演示班 · 教师工作台':'演示学生 01 · 我的学习';
  const title='需求变化 · 随堂练习';const row=(name,value)=>'<div class="row"><b>'+name+'</b><span>'+value+'</span></div>';
@@ -32,12 +32,12 @@ function render(focus=false){
  else if(i===1){heading='第 1 题';body='<p class="sheet">咖啡和茶是替代品。其他条件不变，当茶的价格上涨，咖啡的需求曲线会怎样变化？</p><div class="opts">'+['A　向左移动','B　向右移动','C　沿原曲线移动'].map(v=>'<button data-choice="'+v[0]+'" aria-pressed="'+(choice===v[0])+'">'+v+'</button>').join('')+'</div>'+btn('交卷','advance',!!choice);}
  else if(i===2){heading='作业成绩';body='<div class="result">'+(submitted==='B'?'1':'0')+' / 1</div>'+row(title,submitted==='B'?'已答对':'待订正')+btn('展开原题','advance');}
  else if(i===3){heading='原题与知识点';body='<p class="sheet">茶和咖啡是替代品。假设咖啡自身价格不变，茶涨价后，咖啡的需求曲线怎样移动？</p>'+row('我的首次选择',submitted)
-   +(submitted==='B'?btn('完成回顾','advance'):'<label for="reason">订正理由</label><textarea id="reason" rows="3" maxlength="500"></textarea><button id="fill" type="button">填入示例推理</button> '+btn('提交验收','advance')+'<p id="receipt" role="status"></p>');}
+   +(submitted==='B'?btn('完成回顾','advance'):'<label for="reason">订正理由</label><textarea id="reason" rows="3" maxlength="500"></textarea><div class="actions">'+btn('提交验收','advance')+'<button id="fill" type="button">填入示例推理</button></div><p id="receipt" role="status"></p>');}
  else{heading=submitted==='B'?'回顾完成':'订正通过';body=row('首次得分',(submitted==='B'?'1':'0')+' / 1')+row('订正补回',fixed?'+1 分':'0 分')+row('计入成绩',score()+' / 1')+btn(published?'查看教师端记录':'进入教师演示','switch');}}
 
  $('heading').textContent=heading;$('content').innerHTML=body;
  if($('fill'))$('fill').onclick=()=>{$('reason').value=reason;$('reason').focus();};
- const next=$('advance');if(next){next.style.marginTop='15px';next.onclick=()=>{if(t){if(i===1&&!published){if(studentStep>0)priorExamples.push({submitted,choice,fixed});studentStep=0;choice='';submitted='';fixed=false;published=true;}teacherStep++;}else{if(i===1)submitted=choice;if(i===3&&submitted!=='B'){
+ const next=$('advance');if(next){next.onclick=()=>{if(t){if(i===1&&!published){if(studentStep>0)priorExamples.push({submitted,choice,fixed});studentStep=0;choice='';submitted='';fixed=false;published=true;}teacherStep++;}else{if(i===1)submitted=choice;if(i===3&&submitted!=='B'){
    const typed=$('reason').value.trim();
    if(typed!==reason){$('receipt').textContent='示例验收需要完整因果。可以点「填入示例推理」体验通过。';return;}
    fixed=true;
@@ -53,10 +53,9 @@ function alignGuide(){
  const bounds=area.getBoundingClientRect(),r=target.getBoundingClientRect();
  const y=Math.min(bounds.height-note.offsetHeight-16,Math.max(18,r.top+r.height/2-bounds.top-23));
  area.style.setProperty('--anchor',Math.max(16,y)+'px');
- area.style.setProperty('--anchor-x',Math.min(bounds.width-note.offsetWidth-16,r.right-bounds.left+18)+'px');
 }
 window.addEventListener('resize',alignGuide);
-['student','teacher'].forEach(k=>$(k).onclick=()=>{role=k;render(true);});$('toggle').onclick=()=>{coaching=!coaching;render();};render();
+['student','teacher'].forEach(k=>$(k).onclick=()=>{role=k;render(true);});$('toggle').onclick=()=>{coaching=!coaching;persist();$('guide').hidden=!coaching;$('toggle').textContent=coaching?'收起指引':'继续指引';$('toggle').setAttribute('aria-expanded',String(coaching));const active=$('advance')||$('switch');active?.classList.toggle('aim',coaching&&!active.disabled);alignGuide();};render();
 
 $('restart').onclick=()=>{role='teacher';coaching=true;teacherStep=0;studentStep=0;published=false;choice='';submitted='';fixed=false;priorExamples.length=0;render(true);};
 $('exit').onclick=e=>{

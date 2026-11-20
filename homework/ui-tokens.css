@@ -14,3 +14,10 @@
   --ui-section-title: 18px;
   --ui-hit-size: 44px;
 }
+
+:root {
+  --ui-action-gap: 8px;
+  --ui-tool-ink: #29485e;
+  --ui-tool-wash: #f1f5f8;
+  --ui-tool-line: #d2dde5;
+}

@@ -138,14 +138,14 @@ body .work-tools-menu a:hover{background:#edf3f7}
 
 /* A single tool strip stays separate from answer selection and paging. */
 body .question-tools,body[data-mcq-active=true] .mcq-question .question-tools {
-  display:flex;align-items:center;flex-wrap:nowrap;gap:1px;min-width:0;max-width:100%;
-  padding:2px;background:#edf2f6;border:1px solid #cbd7df;border-radius:9px;
+  display:flex;align-items:center;flex-wrap:nowrap;gap:var(--ui-action-gap,8px);min-width:0;max-width:100%;
+  padding:3px;background:transparent;border:0;border-radius:8px;
   overflow-x:auto;scrollbar-width:thin;box-sizing:border-box;
 }
 .question-tools .study-controls{display:contents}
 body .question-tools button,body[data-mcq-active=true] .mcq-question .question-tools button {
   flex:0 0 auto;min-height:40px;margin:0;padding:5px 9px;border:0;border-radius:6px;
-  color:#27425c;background:transparent;white-space:nowrap;font:600 13px/1.2 system-ui;
+  color:#27425c;background:#f1f5f8;white-space:nowrap;font:600 13px/1.2 system-ui;
 }
 body .question-tools button[aria-pressed=true],body[data-mcq-active=true] .mcq-question .question-tools button[aria-pressed=true]{background:#203e59;color:white}
 body .question-tools button:focus-visible{outline-offset:-3px}
@@ -177,18 +177,18 @@ body .reader-tool-group .question-pen[aria-pressed=true]{background:#fff0aa;colo
  .workspace-home .sh-summary span{font-size:12px}
 }
 body[data-mcq-active=true] .mcq-work .mcq-answerbar .answer-navigation {
-  display:flex;flex-wrap:nowrap;gap:1px;padding:3px;margin-top:8px;align-items:stretch;
-  background:#edf2f6;border:1px solid #cbd7df;border-radius:10px;min-width:0;
+  display:flex;flex-wrap:nowrap;gap:var(--ui-action-gap,8px);padding:0;margin-top:8px;align-items:stretch;
+  background:transparent;border:0;border-radius:0;min-width:0;
 }
 .mcq-work .answer-navigation button {
   flex:1 1 auto;min-width:0;min-height:44px;padding:4px;border:0;border-radius:7px;
-  background:transparent;color:#233e57;white-space:nowrap;font-size:12px;
+  background:#eff4f7;color:#233e57;white-space:nowrap;font-size:12px;
 }
 .mcq-work .answer-navigation button:disabled{cursor:default}
 .mcq-work .answer-navigation button.primary{background:#173550;color:white}
 .mcq-work .answer-navigation #mcq-palette{font-variant-numeric:tabular-nums}
 body[data-work-route=assignments] .assignment-toolbar .filter-tabs:has(.task-more-filters) {
-  display:flex;flex-wrap:nowrap;align-items:center;gap:2px;width:fit-content;max-width:100%;
+  display:flex;flex-wrap:nowrap;align-items:center;gap:var(--ui-action-gap,8px);width:fit-content;max-width:100%;
   padding:2px;border:1px solid #cad7e0;border-radius:9px;background:#edf2f6;
 }
 body[data-work-route=assignments] .assignment-toolbar .filter-tabs:has(.task-more-filters)>button,

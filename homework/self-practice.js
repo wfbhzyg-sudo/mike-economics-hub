@@ -465,7 +465,7 @@ export function createSelfPracticeUI(ctx) {
     const goTo=next=>{if(submitting||!current())return;const target=Math.max(0,Math.min(questions.length-1,next));if(target===index)return;index=target;paintQuestion();scheduleSave();main.scrollTo({top:0});questionHost.querySelector('#mcq-question-heading').focus({preventScroll:true});};
     const paletteDialog=()=>{
       if(!current())return;closeDialogs();const dialog=document.createElement('dialog');dialog.className='sp-dialog mcq-palette-dialog';
-      dialog.innerHTML=`<header><h2>答题卡</h2><button type="button" class="sp-icon" data-close aria-label="关闭">×</button></header><section class="sp-submit-body"><p>未答 ${questions.filter(q=>!answers[q.id]).length} 题 · 标记 ${flags.size} 题</p>${questionIndexMarkup}${paperDownload('mock',id)}</section><footer><button type="button" class="primary wide" data-review>检查并提交</button></footer>`;
+      dialog.innerHTML=`<header><h2>答题卡</h2><button type="button" class="sp-icon" data-close aria-label="关闭">×</button></header><section class="sp-submit-body"><p>未答 ${questions.filter(q=>!answers[q.id]).length} 题 · 标记 ${flags.size} 题</p>${questionIndexMarkup}<div class="task-action-row paper-palette-actions">${paperDownload('mock',id)}</div></section><footer><button type="button" class="primary wide" data-review>检查并提交</button></footer>`;
       attachDialog(dialog);dialog.addEventListener('close',()=>dialog.remove());dialog.querySelector('[data-close]').onclick=()=>dialog.close();
       bindQuestionIndex(dialog,{questions,index,answered:q=>Boolean(answers[q.id]),flags,jump:n=>{dialog.close();goTo(n);}});
       dialog.querySelector('[data-review]').onclick=()=>{dialog.close();review();};dialog.showModal();

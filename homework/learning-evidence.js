@@ -46,7 +46,7 @@ export function performanceMarkup(value,h,link){
         ${index?`<i style="--position:${index.value}%"></i>`:''}
       </div>
       <p>${index?value.next!==null?`距第 ${index.level+1} 档 ${value.next} 分`:'已达第 5 档':`已出分 ${value.works} 份 · 需至少 2 份且合计满分 10 分`}</p>
-      ${advice?`<p class="evidence-next"><strong>${advice}</strong> <button type="button" class="text-button" data-performance-advice="${value.course}">生成练习建议</button></p><p data-advice-output role="status"></p>`:''}
+      ${advice?`<p class="evidence-next"><strong>${advice}</strong><button type="button" class="text-button" data-performance-advice="${value.course}">生成练习建议</button></p><p data-advice-output role="status"></p>`:''}
       <details><summary>查看计算依据</summary><p>独立首答 ${value.first??'待积累'} · 订正后迁移 ${value.transfer??'待积累'}<br>通过订正 ${corrections.done} / ${corrections.total} 道</p></details>
     </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${radar(axes)}<div>
       ${axes.map((item,i)=>`<details ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i][0]} <small>${skills[i][1]}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
@@ -60,16 +60,17 @@ export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPr
   const route='correction-reviews/'+encodeURIComponent(assignment.id);
   const labels={passed:'已订正',manual:'待教师核对',revise:'需补充',queued:'验收中'};
   let closed=false;
-  async function draw(){
+  async function draw(reopen){
     const {items,enabled}=await api(route);
     if(closed||!host.isConnected)return;
-    host.innerHTML=`<label><input type="checkbox" data-enable ${enabled?'checked':''}> 通过验收后补回本题失分</label>
-      <label><input type="checkbox" data-transfer ${assignment.performanceTransfer?'checked':''}> 作为订正后独立迁移练习</label>
+    host.innerHTML=`<div class="evidence-settings"><label><input type="checkbox" data-enable ${enabled?'checked':''}> 通过验收后补回本题失分</label>
+      <label><input type="checkbox" data-transfer ${assignment.performanceTransfer?'checked':''}> 作为订正后独立迁移练习</label></div>
       <div class="evidence-review-list">${items.length?items.map(item=>`<details><summary>${h(students.find(x=>x.id===item.studentId)?.name||'学生')} · 第 ${h(item.questionId)} 题 <b>${labels[item.status]}</b></summary>
       <p class="instructions">${h(item.text||'见附件')}</p><div data-review-files="${h(item.id)}"></div>
-      <p>${h(item.feedback||'')}${link('review/'+encodeURIComponent(item.submissionId),'查看原题和首次作答','text-button')}</p>
+      <p>${h(item.feedback||'')}</p><div class="task-action-row evidence-reference">${link('review/'+encodeURIComponent(item.submissionId),'查看原题和首次作答','document-link')}</div>
       ${item.status==='queued'?'':`<form data-review-form="${h(item.id)}"><label>处理理由<textarea required maxlength="300" name="reason"></textarea></label><div class="actions">${item.status==='passed'?'':'<button class="primary" name="decision" value="passed">确认通过</button>'}<button class="secondary" name="decision" value="revise">${item.status==='passed'?'撤销补分':'退回补充'}</button></div></form>`}
       </details>`).join(''):'<p>还没有提交验收的订正。</p>'}</div>`;
+    if(reopen){const summary=[...host.querySelectorAll('[data-review-files]')].find(x=>x.dataset.reviewFiles===reopen)?.closest('details');if(summary){summary.open=true;summary.querySelector('summary').focus({preventScroll:true});}}
     const credit=host.querySelector('[data-enable]'),transfer=host.querySelector('[data-transfer]');
     for(const input of [credit,transfer])input.onchange=async()=>{
       credit.disabled=transfer.disabled=true;
@@ -87,9 +88,9 @@ export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPr
       const form=[...host.querySelectorAll('form')].find(x=>x.dataset.reviewForm===item.id);
       if(form)form.onsubmit=async event=>{
         event.preventDefault();
-        const btn=event.submitter;btn.disabled=true;
-        try{await put('correction-reviews/'+encodeURIComponent(item.id),{status:btn.value,revision:item.revision,reason:form.elements.reason.value});await draw();}
-        catch(e){toast(e.message);btn.disabled=false;}
+        const btn=event.submitter;if(!btn||form.getAttribute('aria-busy')==='true')return;form.setAttribute('aria-busy','true');for(const button of form.querySelectorAll('button'))button.disabled=true;
+        try{await put('correction-reviews/'+encodeURIComponent(item.id),{status:btn.value,revision:item.revision,reason:form.elements.reason.value});await draw(item.id);}
+        catch(e){toast(e.message);}finally{if(form.isConnected){form.removeAttribute('aria-busy');for(const button of form.querySelectorAll('button'))button.disabled=false;}}
       };
     }
   }
