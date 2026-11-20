@@ -11,7 +11,7 @@ import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
 import {courseFileETag,matchesETag} from './file-cache.mjs';
 import {BOOKSELF_CHAPTERS,reviewLinksFor,questionFingerprint,validateReviewBinding} from './review-links.mjs';
-import {choiceScore,combineScores,manualAssignmentScore} from './mcq-model.mjs';
+import {choiceScore,combineScores,manualAssignmentScore,attemptRules} from './mcq-model.mjs';
 import {createLibrary} from './library.mjs';
 import {createMCQ} from './mcq.mjs';
 import {createCompanion} from './companion.mjs';
@@ -283,7 +283,40 @@ export async function createHomework({externalAuth} = {}) {
   const library=createLibrary({db,files,requireAssignment,decrypt});
   const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
   const companion=createCompanion({db,decrypt});
-  const selfPractice=createSelfPractice({db});
+  // Only identical, authorized downloads share work. Nothing is persisted.
+  const activePapers = new Map();
+  const waitingPapers = [];
+  let renderingPapers = 0;
+  async function buildPaper(render){
+    if(renderingPapers >= 2) await new Promise(resolve=>waitingPapers.push(resolve));
+    else renderingPapers++;
+    try { return await render(); }
+    finally {
+      const next=waitingPapers.shift();
+      if(next) next(); else renderingPapers--;
+    }
+  }
+  async function sendQuestionPaper(req,res,user,key,paper,questions) {
+    rate(req,'pdf',40,user.id);
+    if (!activePapers.has(key)) {
+      assert(waitingPapers.length < 48,'同时导出的试卷较多，请稍后再试',503);
+      const pending = buildPaper(async () => {
+        const {questionPaperPDF}=await import('./question-paper.mjs');
+        return questionPaperPDF({paper,questions,readAttachment:async id => {
+          const f = await db.get(id);
+          assert(f && (f.purpose==='question' || (f.purpose==='library' && f.mime?.startsWith('image/'))),
+            '有一份原题附件暂时无法读取，请联系老师检查题纸',422);
+          return {mime:f.mime,bytes:Buffer.from(await (await files.read(f)).transformToByteArray())};
+        }});
+      }).finally(()=>activePapers.delete(key));
+      activePapers.set(key,pending);
+    }
+    const bytes = await activePapers.get(key);
+    const name=String(paper.title || '试卷').replace(/[\\/\x00-\x1f]/g,'-')+'-题目.pdf';
+    res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,
+      'Cache-Control':'private, no-store','Content-Disposition':`attachment; filename="paper.pdf"; filename*=UTF-8''${encodeURIComponent(name)}`}).end(bytes);
+  }
+  const selfPractice=createSelfPractice({db,sendQuestionPaper});
   const studyWorkflow=createStudyWorkflow({db,requireAssignment,decrypt});
   startSelfPracticeSweeper(selfPractice);
   const correctionReview=createCorrectionReview({db,files,decrypt});
@@ -1143,9 +1176,17 @@ export async function createHomework({externalAuth} = {}) {
             return(json(res,classEntry?{saved:results.length}:{submission:publicSubmission(results[0])}),true);
           }
           if(method==='GET'&&route[2]==='pdf'){
-            rate(req,'pdf',40,user.id);
-            const bytes=await exportWork({assignment:{...a,...paperOf(a)},readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
-            res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(a.title+'-题目.pdf')}`}).end(bytes);return true;
+            const rules=attemptRules(a,user.id);
+            if(user.role==='student'){
+              assert(!rules.opensAt || Date.parse(rules.opensAt)<=Date.now(),'作业尚未开放',409);
+              if(['mcq','mixed'].includes(a.format) && (rules.timeLimitMinutes || a.assessmentMode==='exam')){
+                const attempts=await db.find('mcq-attempt',{studentId:user.id,assignmentId:a.id,version:a.version});
+                assert(attempts.some(t=>t.startedAt || t.submittedId),'开始作答后可导出本次试卷',409);
+              }
+            }
+            assert(!a.offline && a.format!=='score','这份线下成绩没有在线题面',409);
+            await sendQuestionPaper(req,res,user,'assignment:'+a.id+':'+a.version,paperOf(a),a.rubric);
+            return true;
           }
           if (method === "GET")
             return (
@@ -1401,9 +1442,16 @@ export async function createHomework({externalAuth} = {}) {
             s=all.find(item=>item.id===s.id)||s;
           }
           if(method==='GET'&&route[2]==='paper-pdf'){
-            rate(req,'pdf',40,user.id);const a=await db.get(s.assignmentId),paper=s.paperSnapshot||paperOf(a);
-            const bytes=await exportWork({assignment:{...a,...paper,rubric:s.rubricSnapshot||a.rubric},readAttachment:async key=>{const f=await db.get(key);return {bytes:Buffer.from(await (await files.read(f)).transformToByteArray()),mime:f.mime};}});
-            res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(paper.title+'-原题.pdf')}`}).end(bytes);return true;
+            const a=await db.get(s.assignmentId);
+            assert(!a?.offline && a?.format!=='score','这份线下成绩没有在线题面',409);
+            const sameVersion=a && a.version===s.version;
+            const historic=(!s.paperSnapshot || !s.rubricSnapshot?.length) && !sameVersion
+              ? await db.get(s.assignmentId+':v'+s.version) : null;
+            const paper=s.paperSnapshot || historic?.paper || (sameVersion && paperOf(a));
+            const questions=s.rubricSnapshot?.length?s.rubricSnapshot:historic?.rubric || (sameVersion && a.rubric);
+            assert(paper && (Array.isArray(questions) || paper.questionFiles?.length),'暂时找不到本次提交对应的题纸版本',409);
+            await sendQuestionPaper(req,res,user,'receipt:'+s.id,paper,questions || []);
+            return true;
           }
           if(method==='GET'&&route[2]==='pdf'){
             rate(req,'pdf',40,user.id);const a=await db.get(s.assignmentId);

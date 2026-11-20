@@ -16,6 +16,7 @@ import {
   isOverdue,
   normalizeAnswers,
   publicAttempt,
+  publicQuestion,
   questionEligible,
   receiptIdFor,
   validateCreate,
@@ -30,7 +31,7 @@ function practiceError(error) {
   return error;
 }
 
-export function createSelfPractice({db}) {
+export function createSelfPractice({db,sendQuestionPaper}) {
   const byId = new Map();
 
   async function eligibleByUnit(units) {
@@ -364,6 +365,16 @@ export function createSelfPractice({db}) {
       }
       if (route[1] !== 'attempts' || !route[2]) return false;
       const id = route[2];
+      if (method === 'GET' && route[3] === 'pdf' && route.length === 4) {
+        student();
+        const attempt = await loadAttempt(user,id);
+        assert(['active','submitted'].includes(attempt.status),'开始模考后可导出本次试卷',409);
+        const created=Date.parse(attempt.createdAt);
+        const stamp=Number.isFinite(created)?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(created).replace(':','时')+'分':'';
+        const title=[(attempt.course==='macro'?'AP 宏观':'AP 微观')+'自主模考',stamp].filter(Boolean).join(' · ');
+        await sendQuestionPaper(ctx.req,res,user,'mock:'+id,{title},attempt.questions.map(publicQuestion));
+        return true;
+      }
       if (method === 'GET' && !route[3]) {
         student();
         return (json(res, {attempt: await get(user, id)}), true);

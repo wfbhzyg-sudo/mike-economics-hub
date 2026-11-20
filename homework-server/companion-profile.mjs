@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-20-printable-papers',date:'2026-11-20',title:'作业与模考可以整卷导出',
+  items:[{audience:'all',art:'book',title:'带走一份完整的题纸',text:'在作业题纸、答题卡或模考成绩中点「导出整卷 PDF」。题图与选项按本次题序排好，可以打印重做。'}]
+},{
   id:'2026-11-20-companion-graph-and-delivery',date:'2026-11-20',title:'读图提问与回复找回',
   items:[{audience:'student',art:'book',title:'让 Mike 读出图上的点',text:'做作业或模考时，可以引用题面、发截图，问图上标了哪些点以及坐标轴怎样读。如果网络中断，伙伴会尝试取回已经写好的回复。'}]
 },{
