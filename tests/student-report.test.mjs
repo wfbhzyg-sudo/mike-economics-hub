@@ -22,14 +22,33 @@ test('feedback uses verified evidence for praise, with no invented achievement f
   const skill={skill:2,band:3,value:50,count:4,references:[{title:'读图练习',questionNumber:4,score:2,max:2}]};
   assert.match(readingHighlight({graded:1,evidence:{axes:[skill]}}),/《读图练习》第 4 题/);
 });
-test('offline report carries a labelled identity, local artwork and escaped student text',async()=>{
+test('offline report carries a labelled identity, compact offline styling and escaped student text',async()=>{
   const name='小林 <练习>', cls='A & B 班';
   const html=await renderStudentReport({name,classNames:[cls],at:'2026-11-22',period:'全部时间',courses:[]});
   assert.match(html,/小林 &lt;练习&gt;/);assert.match(html,/A &amp; B 班/);
-  assert.match(html,/data:image\/webp;base64,/);assert.match(html,/data:font\/ttf;base64,/);
-  assert.match(html,/--campus:url\("data:image\/webp;base64,/);assert.doesNotMatch(html,/生成/);
-  assert(Buffer.byteLength(html)<180_000);assert.doesNotMatch(html,/<练习>/);
+  assert.match(html,/经济学学习报告/);assert.doesNotMatch(html,/data:image|data:font/);
+  assert.doesNotMatch(html,/生成/);
+  assert(Buffer.byteLength(html)<22_000);assert.doesNotMatch(html,/<练习>/);
   const url=new URL(studentReportUrl('a&b',{classId:'m&n',period:'term',assignmentId:'x#y'}),'http://localhost');
   assert.equal(url.searchParams.get('student'),'a&b');assert.equal(url.searchParams.get('class'),'m&n');
   assert.equal(url.searchParams.get('assignment'),'x#y');
+});
+
+test('research charts draw missing marks as gaps and display zero and partial radar samples faithfully',async()=>{
+  const {trendFigure,radarFigure}=await import('../homework-server/student-report-figures.mjs');
+  const c={course:'macro',cells:[
+    cell({total:6,maxPoints:10},[],{title:'最近',offline:true}),
+    {status:'missing',assignment:{title:'未交'}},
+    cell({total:0,maxPoints:10},[],{title:'最早'})
+  ],evidence:{axes:[{skill:1,band:2},{skill:3,band:4}]}};
+  const trend=trendFigure(c,2),radar=radarFigure(c,1);
+  assert.match(trend,/class="final-line" d="M[^"]+ M/);
+  assert.equal((trend.match(/class="final-dot"/g)||[]).length,2);
+  assert.equal((trend.match(/class="first-dot"/g)||[]).length,1);
+  assert.match(trend,/最早 · 首答 0%/);assert.match(trend,/最近 · 最终 60%/);
+  assert.doesNotMatch(radar,/class="radar-area"/);assert.match(radar,/class="final-line" d=""/);
+  assert.equal((radar.match(/class="final-dot"/g)||[]).length,2);
+  assert.match(radar,/解读样本不足/);
+  assert.match(trendFigure({cells:[]},2),/还没有已公布成绩/);
+  assert.equal((radarFigure({course:'micro'},1).match(/class="final-dot"/g)||[]).length,0);
 });
