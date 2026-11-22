@@ -866,6 +866,17 @@ export async function createHomework({externalAuth} = {}) {
         return studentPerformance(work.submissions,work.assignments,mistakes,classes,await db.getMany(refs));
       }
       // One selected student only: never calculate a whole roster on the matrix request.
+      if(route.join('/')==='learning/student-report' && method==='GET'){
+        teacher();
+        const {readStudentReport}=await import('./student-report.mjs');
+        const {renderStudentReport}=await import('./student-report-view.mjs');
+        const report=await readStudentReport({db,teacherId:user.id,query:url.searchParams,availableClasses,availableStudents,correctionReview});
+        const html=await renderStudentReport(report);
+        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'private, no-store',
+          'Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff',
+          'Content-Security-Policy':"default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}).end(html);
+        return true;
+      }
       if(route.join('/')==='learning/student-performance'&&method==='GET'){
         teacher();
         const studentId=url.searchParams.get('student'),scope=classKey(url.searchParams.get('class'));

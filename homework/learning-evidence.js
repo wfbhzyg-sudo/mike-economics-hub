@@ -16,7 +16,7 @@ export function verificationMarkup(review,h){
   return `<div class="evidence-verdict" data-review-state="${review.status}"><strong>${labels[review.status]||'待订正'}${review.credit?` · 已补回 ${number(review.credit)} 分`:''}</strong>${review.feedback?`<p>${h(review.feedback)}</p>`:review.status==='queued'?'<p>现在可以继续下一题。</p>':''}</div>`;
 }
 
-function radar(axes){
+export function skillRadarSvg(axes){
   const levels=Array.from({length:5},(_,i)=>(i+1)*12);
   const point=(i,r)=>[[74,74-r],[74+r,74],[74,74+r],[74-r,74]][i];
   const polygon=radius=>axes.map((_,i)=>point(i,radius).join(',')).join(' ');
@@ -49,7 +49,7 @@ export function performanceMarkup(value,h,link,{teacher=false}={}){
       ${advice?`<p class="evidence-next"><strong>${advice}</strong>${teacher?'':`<button type="button" class="text-button" data-performance-advice="${value.course}">生成练习建议</button>`}</p><p data-advice-output role="status"></p>`:''}
       ${teacher?'<small class="evidence-scope">本教师可见作业 · 全时段</small>':''}
       <details><summary>查看计算依据</summary><p>独立首答 ${value.first??'待积累'} · 订正后迁移 ${value.transfer??'待积累'}<br>通过订正 ${corrections.done} / ${corrections.total} 道</p></details>
-    </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${radar(axes)}<div>
+    </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${skillRadarSvg(axes)}<div>
       ${axes.map((item,i)=>`<details ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i][0]} <small>${skills[i][1]}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
         <p>${item.count} 道独立题${item.value!==null?` · 得分率 ${item.value}%`:''}</p>
         ${item.references.slice(0,4).map(r=>`<div class="evidence-item">${teacher?h(r.title):r.score<r.max?link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.title)):h(r.title)}<span>第 ${h(r.questionId)} 题 · ${r.score}/${r.max}</span></div>`).join('')}</details>`).join('')}

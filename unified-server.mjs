@@ -21,6 +21,8 @@ const publicAssets=new Set(['assets/notebook/paper-index.css','assets/notebook/p
 for(const f of ['homework/study-workflow.js','homework/study-workflow.css','homework/mock-student-detail.js','homework/library-ui.js','homework/demand-lab.js','homework/library-grading.js','homework/lesson-panel.js','homework/lesson-review.css','homework/mistake-navigation.js','homework/library-packs.js','homework/disclosure-menu.js','homework/assignment-navigation.js','homework/library-navigation.js','homework/library-reader.js','homework/library.css','homework/ink.js','companion.js','companion.css','homework/task-flow.css','homework/import-review-model.js','homework/review-links.js','homework/choice-correction.js','homework/mcq-session.js','homework/mcq.js','homework/reading-positions.js','homework/mcq-import.js','homework/mcq.css'])pages.add(f);
 for(const f of ['companion.js','companion.css','assets/mike-pixel.png','assets/companion/html2canvas-1.4.1.min.js'])publicAssets.add(f);
 for(let stage=0;stage<5;stage++)publicAssets.add('assets/companion/quest-mike-'+stage+'.webp');
+pages.add('homework/student-report-link.js');
+pages.add('teacher/student-report-actions.js');
 pages.add('homework/learning-evidence.js');
 pages.add('homework/learning-evidence.css');
 const compressed=new Map();

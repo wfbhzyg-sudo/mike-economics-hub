@@ -15,6 +15,12 @@ const validResult = a => a.status === 'submitted' && a.result?.questions?.length
 const finiteScore = q => Number.isFinite(q?.score) && Number.isFinite(q?.maxPoints) && q.maxPoints > 0;
 const subject = a => a.libraryCourse || namedCourse(a.course) || 'unknown';
 
+export function visibleStudentMock(attempt, student, classes) {
+  return student?.id === attempt.studentId && classes.some(c => member(student.classIds, c.id)
+    && (!singleClassCourse(c) || singleClassCourse(c) === attempt.course)
+    && (attempt.classIds?.length ? member(attempt.classIds, c.id) : singleClassCourse(c) === attempt.course));
+}
+
 export function mockScorePercent({total, maxPoints}) {
   if (!Number.isFinite(total) || !Number.isFinite(maxPoints) || maxPoints <= 0 || total < 0 || total > maxPoints) return null;
   return Math.round(1000 * total / maxPoints) / 10;
@@ -219,9 +225,7 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const scopedClasses=classes.filter(c=>(!classId||classKey(c.id)===classKey(classId))&&(!course||!singleClassCourse(c)||course===singleClassCourse(c)));
     const students=(await availableStudents()).filter(s=>scopedClasses.some(c=>member(s.classIds,c.id)));
     const people=new Map(students.map(s=>[s.id,s]));
-    const inScope=a=>people.has(a.studentId)&&scopedClasses.some(c=>member(people.get(a.studentId).classIds,c.id)
-      && (!singleClassCourse(c)||singleClassCourse(c)===a.course)
-      && (a.classIds?.length?member(a.classIds,c.id):singleClassCourse(c)===a.course));
+    const inScope=a=>visibleStudentMock(a,people.get(a.studentId),scopedClasses);
     const reportDate=value=>Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(value)?value+'T00:00:00+08:00':value);
     const after=reportDate(query.get('from')||new Date(Date.now()-30*86400000).toISOString()),to=query.get('to');
     const before=to?reportDate(to)+86400000:Date.now()+1000;

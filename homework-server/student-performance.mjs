@@ -68,7 +68,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
       const {s,grade,date}=source,parsed=Date.parse(date),weight=Number.isFinite(parsed)&&at-parsed<recency?2:1;
       const meta=new Map((s.rubricSnapshot||[]).map(q=>[q.id,q]));
       if(!a.performanceTransfer)add(first,grade.total,grade.maxPoints,weight);
-      for(const q of grade.questions||[]){
+      for(const [i,q] of (grade.questions||[]).entries()){
         if(!Number.isFinite(q.score)||!(q.maxPoints>0)||q.score<0||q.score>q.maxPoints)continue;
         const info=meta.get(q.id),qid=info?.libraryQuestionId||info?.prompt?.trim()||a.id+':'+q.id;
         const samples=questionSkills(info,q);
@@ -89,7 +89,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
           usedSkills.add(key);
           const axis=skills[Number(p.skill)-1];
           add(axis,p.score,p.max,weight);axis.questions.add(qid);
-          if(axis.references.length<8)axis.references.push({assignmentId:a.id,title:a.title,questionId:q.id,score:q.score,max:q.maxPoints});
+          if(axis.references.length<8)axis.references.push({assignmentId:a.id,title:a.title,questionId:q.id,questionNumber:i+1,score:q.score,max:q.maxPoints});
         }
       }
     }

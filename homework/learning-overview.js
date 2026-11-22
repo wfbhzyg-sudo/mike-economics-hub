@@ -1,3 +1,4 @@
+import {studentReportUrl} from './student-report-link.js';
 import {scoreSources,showTeacherEvidence} from './learning-evidence.js';
 import {courseLabel,singleClassCourse} from './course-scope.js';
 import {studyReportMarkup} from './study-workflow.js';
@@ -135,7 +136,7 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
     </div>
     <div class="lo-panel" id="lo-panel-reports" role="tabpanel" aria-labelledby="lo-tab-reports" ${tab === 'reports' ? '' : 'hidden'}>
-      <header class="lo-panel-bar"><strong>当前范围的学情报告</strong><div><button type="button" class="lo-btn" data-action="class-report">班级学情摘要</button>${ai ? '<button type="button" class="lo-btn" data-action="report-history">报告历史</button><button type="button" class="lo-btn lo-primary" data-action="ai-report">生成学情分析</button>' : ''}</div></header>
+      <header class="lo-panel-bar"><strong>当前范围的学情报告</strong><div><button type="button" class="lo-btn" data-action="class-report">班级学情摘要</button>${ai ? '<button type="button" class="lo-btn" data-action="report-history">报告历史</button><button type="button" class="lo-btn lo-primary" data-action="ai-report">分析学情</button>' : ''}</div></header>
       <div class="lo-report-overview" id="lo-report-overview"></div>
     </div>
     <aside class="lo-detail" id="lo-detail" aria-label="成绩详情"></aside>
@@ -456,7 +457,7 @@ export function mountLearningOverview(ctx, initialData) {
     const prior=host.querySelector('[data-profile-evidence]');
     host.innerHTML = `<div class="lo-profile-head">
       <button type="button" class="lo-back lo-mobile-only" data-profile-back>← 返回学生列表</button>
-      <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><div class="lo-profile-head-actions">${ai ? `<button type="button" class="lo-btn lo-primary" data-ai-profile="${h(row.student.id)}">生成学习建议</button>` : ''}<a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div></div>
+      <div class="lo-profile-title"><div><h2>${h(row.student.name)}</h2><p>${h(row.student.username || '')}${classLabel() ? ` · ${h(classLabel())}` : ''}</p></div><div class="lo-profile-head-actions"><a class="lo-btn lo-primary" href="${h(studentReportUrl(row.student.id,filter))}" target="_blank" rel="noopener">查看学情手帐</a><details class="lo-more"><summary class="lo-btn lo-icon" aria-label="更多学生档案操作">⋯</summary><div class="lo-menu">${ai ? `<button type="button" data-ai-profile="${h(row.student.id)}">整理学习建议</button>` : ''}<a class="lo-btn" href="#work/gradebook/${encodeURIComponent(row.student.id)}">完整成绩轨迹</a></div></details></div></div>
       <div class="lo-profile-metrics">
         <div><span>平均</span><strong class="lo-band-pill" data-band="${profile.row.band?.level || ''}">${formatPercent(profile.row.average)}</strong></div>
         <div><span>已出分</span><strong>${profile.row.published}<small>/${profile.row.total}</small></strong></div>
@@ -597,7 +598,7 @@ export function mountLearningOverview(ctx, initialData) {
     const unit = assignment.libraryUnit ? `${assignment.libraryUnit} · ` : '';
     return `<div class="lo-diag-body">
       <button type="button" class="lo-back lo-mobile-only" data-diag-back>← 返回作业列表</button>
-      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div><div class="lo-diag-actions">${ai?`<button type="button" class="lo-btn lo-primary" data-ai-assignment="${h(assignment.id)}" ${diagnosis.published?'':'disabled title="已有成绩后可生成"'}>生成作业分析</button>`:''}${link(`work/overview/${assignment.id}`, '查看作业')}</div></header>
+      <header class="lo-diag-head"><div><h2>${h(assignment.title || assignmentLabel(assignment))}</h2><p>${h(unit)}${h(TYPES[assignment.format] || '作业')}${assignment.dueAt ? ` · 截止 ${h(longDate(assignment.dueAt))}` : ''}</p></div><div class="lo-diag-actions">${ai?`<button type="button" class="lo-btn lo-primary" data-ai-assignment="${h(assignment.id)}" ${diagnosis.published?'':'disabled title="有已公布成绩后可查看"'}>分析这份作业</button>`:''}${link(`work/overview/${assignment.id}`, '查看作业')}</div></header>
       <div class="lo-diag-metrics">
         <div><span>已发布</span><strong>${diagnosis.published}<small> 份</small></strong></div>
         <div><span>平均</span><strong>${accuracyBadge(diagnosis.average)}</strong></div>
@@ -710,7 +711,7 @@ export function mountLearningOverview(ctx, initialData) {
   }
 
   function aiLoadingMarkup() {
-    return '<div class="lo-ai-loading" role="status"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在根据本范围已发布成绩生成草稿，可能需要十几秒。</p><p class="lo-note">只发送匿名统计与题目编号，不发送学生姓名、附件或作答原文。</p></div>';
+    return '<div class="lo-ai-loading" role="status"><span class="lo-ai-spinner" aria-hidden="true"></span><p>正在根据本范围已发布成绩整理草稿，可能需要十几秒。</p><p class="lo-note">只发送匿名统计与题目编号，不发送学生姓名、附件或作答原文。</p></div>';
   }
 
   function aiErrorMarkup(message) {
@@ -730,13 +731,13 @@ export function mountLearningOverview(ctx, initialData) {
       aiReport = report;
       renderAiDraft(report);
     } catch (error) {
-      if(!destroyed&&generation===aiGeneration)aiBody.innerHTML = aiErrorMarkup(error.message || '暂时无法生成分析');
+      if(!destroyed&&generation===aiGeneration)aiBody.innerHTML = aiErrorMarkup(error.message || '暂时无法完成分析');
     }
   }
 
   function renderAiDraft(report) {
     aiBody.innerHTML = `<div class="lo-ai-report">${studyReportMarkup(report,{teacher:true})}
-      <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重新生成</button><button type="button" class="lo-btn" data-ai-edit>编辑草稿</button><button type="button" class="lo-btn lo-primary" data-ai-publish>确认发布</button></div>
+      <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-again>重新整理</button><button type="button" class="lo-btn" data-ai-edit>编辑草稿</button><button type="button" class="lo-btn lo-primary" data-ai-publish>确认发布</button></div>
     </div>`;
     aiBody.querySelector('[data-ai-edit]').onclick=()=>editAiDraft(report);
   }
@@ -765,7 +766,7 @@ export function mountLearningOverview(ctx, initialData) {
     aiBody.innerHTML = `<div class="lo-ai-confirm">
       <h3>确认发布这份草稿？</h3>
       <p>${personal ? '发布后，该学生会在「我的学习 > 老师的学习建议」看到这份内容。' : '班级汇总只作为教师存档，不会显示给学生。'}</p>
-      <p class="lo-note">发布后数据变化不会自动改写已发布内容；如需更新请重新生成并再次发布。</p>
+      <p class="lo-note">发布后数据变化不会自动改写已发布内容；如需更新请重新整理并再次发布。</p>
       <div class="lo-sheet-actions"><button type="button" class="lo-btn" data-ai-back>返回草稿</button><button type="button" class="lo-btn lo-primary" data-ai-confirm>确认发布</button></div>
     </div>`;
   }
@@ -813,7 +814,7 @@ async function openHistory() {
 
 function renderHistory(reports) {
   if (!reports.length) {
-    histBody.innerHTML = `<div class="lo-ai-done"><h3>还没有报告</h3><p>在「生成学情分析」或「生成学习建议」里生成草稿，确认发布后会出现在这里。</p></div>`;
+    histBody.innerHTML = `<div class="lo-ai-done"><h3>还没有报告</h3><p>在「分析学情」或「整理学习建议」里整理草稿，确认发布后会出现在这里。</p></div>`;
     return;
   }
   histBody.innerHTML = `<ul class="lo-hist-list">${reports.map(historyRowMarkup).join('')}</ul><p class="lo-note">已撤回的个人建议会立即从学生「我的学习」消失；班级分析只作为教师档案。</p>`;
@@ -1386,7 +1387,8 @@ function renderDetail() {
 
   // Close the more-menu after choosing an item.
   root.addEventListener('click', event => {
-    if (event.target.closest('.lo-menu button')) $('#lo-more').open = false;
+    const menu = event.target.closest('.lo-menu button, .lo-menu a')?.closest('details');
+    if (menu) menu.open = false;
   }, true);
 
   $('#lo-matrix-scroll').addEventListener('keydown', event => {

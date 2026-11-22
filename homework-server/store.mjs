@@ -60,6 +60,23 @@ export function createStore(connectionString, schema = "homework") {
       return (await client.query(`SELECT data FROM ${table} WHERE id=ANY($1::text[])`, [[...new Set(keys)]]))
         .rows.map((row) => row.data);
     },
+    async reportAssignments(teacherId, studentId, classIds, submittedIds) {
+      // Return assignment metadata and this student's snapshot only. Rubrics, files and class rosters can be large.
+      const result = await pool.query(`SELECT jsonb_build_object(
+          'id', a.id, 'title', data->'title', 'published', true, 'classIds', data->'classIds',
+          'course', data->'course', 'libraryUnit', data->'libraryUnit', 'libraryCourse', data->'libraryCourse',
+          'libraryUnits', data->'libraryUnits', 'librarySourceUnit', data->'librarySourceUnit',
+          'offline', data->'offline', 'format', data->'format', 'performanceTransfer', data->'performanceTransfer',
+          'opensAt', data->'opensAt', 'createdAt', data->'createdAt', 'dueAt', data->'dueAt',
+          'recipient', snapshot.person) AS work
+        FROM ${table} a LEFT JOIN LATERAL (
+          SELECT person FROM jsonb_array_elements(CASE WHEN jsonb_typeof(data#>'{recipients,students}')='array' THEN data#>'{recipients,students}' ELSE '[]'::jsonb END) person WHERE person->>'id'=$2 LIMIT 1
+        ) snapshot ON true
+        WHERE kind='assignment' AND data->>'teacherId'=$1 AND data->>'published'='true' AND data->>'deletedAt' IS NULL
+          AND (data->'classIds' ?| $3::text[] OR a.id=ANY($4::text[]) OR snapshot.person IS NOT NULL)`,
+        [teacherId, studentId, classIds, submittedIds]);
+      return result.rows.map(row => row.work);
+    },
     async submissionsForTeacherStudent(teacherId, studentId, client = pool) {
       const result=await client.query(`SELECT s.data FROM ${table} s
         JOIN ${table} a ON a.id=s.data->>'assignmentId' AND a.kind='assignment'

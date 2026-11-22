@@ -26,7 +26,7 @@ export function mistakeRows(submissions, assignments, notes=[], bindings=[]) {
   const rows=[];
   for(const record of assignmentRecords(submissions,assignments)){
     if(!record.grade)continue;
-    for(const [index,q] of record.grade.questions.entries()){
+    for(const [index,q] of (record.grade.questions || []).entries()){
       if(q.score==null||q.score>=q.maxPoints)continue;
       const ref=visibleQuestions(record.effective).find(r=>r.id===q.id)||{};
       const raw=record.effective.rubricSnapshot?.find(r=>r.id===q.id);
