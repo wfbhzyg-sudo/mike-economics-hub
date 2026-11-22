@@ -79,7 +79,7 @@ export async function renderStudentReport(report){
 :root{--campus:url("data:image/webp;base64,${await campus}")}
 ${await css}
 @page{@bottom-left{content:"${footer}"}}</style><script defer src="/teacher/student-report-actions.js"></script></head>
-  <body><nav class="actions" aria-label="文档操作"><button type="button" id="save">下载网页版</button><button type="button" id="print">打印 / 保存 PDF</button></nav><main>
+  <body><nav class="actions" aria-label="文档操作"><button type="button" id="save">下载网页版</button><button type="button" id="print">打印 / 保存 PDF</button></nav><main class="${report.courses.length > 1 ? 'multiple-courses' : 'single-course'}">
   <header class="cover"><div class="identity"><b class="wordmark">Mike 的经济一页通</b><h1>${escape(report.name)}<span>的经济学学习手帐</span></h1>
   <p class="class-list"><b>班级</b> ${report.classNames.length?report.classNames.map(v=>`<span>${escape(v)}</span>`).join(' '):'历史记录 · 班名待确认'}</p>
   <small>${scope.map(escape).join(' · ')}　|　${date(report.at)}</small></div></header>

@@ -37,3 +37,11 @@ main{--grid:#b1cfca30;background-color:#fffdf5;background-image:linear-gradient(
 .course{background:#fffefa;padding:0 12px 10px;border-radius:8px}.course>h2{padding-top:7px}.skills article{background:#f5f8f4}
 @media(max-width:580px){body,main{background-size:14px 14px}.cover{padding:10px;min-height:146px;background-size:auto 100%}.identity{max-width:78%;padding:6px 8px;border-radius:7px;background:linear-gradient(90deg,#fff1cbe8 79%,#fff1cb00)}.identity .wordmark{font-size:.74em}.identity h1{font-size:25px}.identity small{font-size:.7em}.course{padding-inline:6px}.class-list span{font-size:.78em}.summary-card .bubble-title{font-size:23px}}
 @media print{body,main{background:white;box-shadow:none}main{border:0}.cover{min-height:31mm;padding:5pt 11pt;border-width:1pt;box-shadow:none}.identity{padding:0;max-width:65%;background:transparent}.identity h1{font-size:20pt}.identity .wordmark{font-size:8pt}.summary-card,.mike-note>div{box-shadow:none}.summary-card .bubble-title{font-size:15pt;line-height:1.3;-webkit-text-stroke:1.5pt white;text-shadow:0 1pt #a7bbb9}.course{padding:0;background:white}.skills article{background:white}}
+
+@media print {
+  .multiple-courses .course { break-before: page }
+  .multiple-courses .cover { min-height: 45mm }
+  .multiple-courses .overview .summary-card { padding: 12pt 11pt }
+  .multiple-courses .overview .value { margin-block: 6pt }
+  .summary-card .bubble-title { text-shadow: none; -webkit-text-stroke: 0 }
+}
