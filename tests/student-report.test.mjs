@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {resultParts,readingHighlight} from '../homework-server/student-report.mjs';
+import {resultParts} from '../homework-server/student-report.mjs';
 import {renderStudentReport} from '../homework-server/student-report-view.mjs';
 import {studentReportUrl} from '../homework/student-report-link.js';
 
@@ -15,12 +15,6 @@ test('student report keeps a valid zero and reconciles resubmission, recovery an
   assert.equal(resultParts(cell(grade,[{...before,publishedGrade:{total:0,maxPoints:6}}])).first,null);
   assert.equal(resultParts(cell({total:0,maxPoints:10},[],{offline:true})).first,null);
   assert.equal(resultParts({status:'missing'}),null);
-});
-test('feedback uses verified evidence for praise, with no invented achievement for an empty profile',()=>{
-  assert.match(readingHighlight({verified:2}),/2 道题/);
-  assert.match(readingHighlight({graded:0,mockHistory:[]}),/还没有已公布/);
-  const skill={skill:2,band:3,value:50,count:4,references:[{title:'读图练习',questionNumber:4,score:2,max:2}]};
-  assert.match(readingHighlight({graded:1,evidence:{axes:[skill]}}),/《读图练习》第 4 题/);
 });
 test('offline report carries a labelled identity, compact offline styling and escaped student text',async()=>{
   const name='小林 <练习>', cls='A & B 班';
@@ -51,4 +45,17 @@ test('research charts draw missing marks as gaps and display zero and partial ra
   assert.match(radar,/解读样本不足/);
   assert.match(trendFigure({cells:[]},2),/还没有已公布成绩/);
   assert.equal((radarFigure({course:'micro'},1).match(/class="final-dot"/g)||[]).length,0);
+});
+
+test('the editorial report keeps the teacher’s words and shows empty states only where useful',async()=>{
+  const course={course:'micro',label:'AP 微观',average:0,trend:null,cells:[],graded:0,pending:0,errors:0,mockHistory:[],advice:[]};
+  const report={name:'测试',classNames:['A'],period:'本学期',courses:[course],at:'2026-11-22',includeMock:true,
+    latestNote:{headline:'明天一起看看 <曲线>。',publishedAt:'2026-11-22',nextSteps:[]}};
+  const body=await renderStudentReport(report);
+  assert.match(body,/明天一起看看 &lt;曲线&gt;。/);
+  assert.match(body,/<strong class="average">0%/);
+  assert.doesNotMatch(body,/近期变化¹|<h3>自主模考|<h3>下一次练习|本期观察/);
+  assert.equal((body.match(/<figure /g)||[]).length,2);
+  const active=await renderStudentReport({...report,courses:[{...course,trend:0,mockHistory:[{date:'2026-11-20',rate:0,seconds:60}]}]});
+  assert.match(active,/近期变化¹/);assert.match(active,/正确率 0%，用时 1 分 0 秒/);
 });

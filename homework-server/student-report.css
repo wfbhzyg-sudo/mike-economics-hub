@@ -1,18 +1,143 @@
-:root{--ink:#152c41;--muted:#4c6170;--rule:#ccd6da;--navy:#204465;--teal:#246d68;--copper:#93502b;--accent:var(--navy);font:15px/1.62 "PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);background:#eaf0f3;font-variant-numeric:tabular-nums}
-*{box-sizing:border-box}body{margin:0}main,.actions{width:min(950px,calc(100% - 48px));margin-inline:auto}.actions{display:flex;justify-content:flex-end;gap:12px;padding:12px 0}.actions button{min-height:44px;padding:7px 18px;border:1px solid #aabcc5;background:#fff;color:var(--ink);font:inherit;border-radius:4px;cursor:pointer}.actions #print{color:white;background:var(--navy);border-color:var(--navy)}:focus-visible{outline:3px solid #ba661e;outline-offset:3px}
-main{background:white;padding:42px clamp(24px,6vw,70px) 54px;margin-bottom:32px;box-shadow:0 4px 24px #1d303a10;overflow-wrap:anywhere}.mast{display:flex;align-items:baseline;justify-content:space-between;border-top:5px solid var(--ink);border-bottom:1px solid var(--ink);padding:8px 0 9px;gap:10px;color:var(--ink)}.mast b{font:700 23px/1.2 Georgia,serif}.mast b span{font:600 13px/1.3 system-ui,sans-serif}.mast time,.scope{font-size:13px;color:var(--muted)}h1,h2,h3,p,figure,ol,ul{margin:0}h1,.chapter h2{font-family:"Songti SC","STSong","Noto Serif CJK SC",serif}h1{margin:22px 0 10px;font-size:clamp(32px,5vw,48px);line-height:1.15;letter-spacing:.025em}.identity{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 20px}.identity strong{font-size:21px}.identity span{color:var(--muted)}.scope{margin:2px 0 20px}h2{font-size:21px}h3,caption,figcaption{font-size:16px;line-height:1.5;font-weight:700}p{margin:4px 0}a{color:var(--navy);text-decoration-thickness:1px;text-underline-offset:3px}
-.summary{background:#f0f4f6;border-left:3px solid var(--navy);padding:13px 18px;margin-bottom:20px}.summary h2,.teacher-note h2{font-size:15px}.lead{font-weight:650;font-size:18px;margin:4px 0 6px}.observation{margin:3px 0}.observation b{margin-right:.75em}.caption,small{font-size:12px;line-height:1.5;color:var(--muted)}.caption{margin:6px 0 0}
-table{width:100%;border-collapse:collapse;line-height:1.45}caption{text-align:left;margin-bottom:6px}th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--rule);vertical-align:middle}th:first-child{text-align:left;padding-left:0}th:last-child,td:last-child{padding-right:0}thead{border-top:1.5px solid var(--ink);border-bottom:1px solid #7f949e;color:var(--muted)}thead th{font-size:12px;font-weight:600}tbody th{font-weight:550}td small,th small{display:block;font-weight:400}.metrics td:first-of-type{font-size:18px;font-weight:700}.metrics a{text-decoration:none}.metrics a:hover{text-decoration:underline}.band{font-weight:600;white-space:nowrap}.band::before{content:"";display:inline-block;width:.48em;height:.48em;border-radius:50%;margin-right:.32em;vertical-align:.1em;background:var(--dot)}.level-1{--dot:#a3433d}.level-2{--dot:#b76826}.level-3{--dot:#a88a20}.level-4{--dot:#70a46a}.level-5{--dot:#257650}
-.subject-macro{--accent:var(--teal)}.exhibits{margin-top:22px}.exhibits h3{display:flex;align-items:baseline;justify-content:space-between;gap:16px;color:var(--accent);padding-bottom:4px;border-bottom:2px solid var(--accent)}.exhibits h3 a{font-size:12px;font-weight:500}.pair{display:grid;grid-template-columns:minmax(0, .88fr) minmax(0,1.12fr);gap:24px;margin-top:7px}.pair figure{min-width:0}.pair .trend{padding-left:18px;border-left:1px solid var(--rule)}figcaption{font-size:15px}figcaption span{font-size:.85em;color:var(--muted);margin-right:.35em}.pair svg{display:block;width:100%;height:151px;overflow:visible}.legend{min-height:18px;display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px;line-height:1.4;margin:4px 0 0}.key{display:inline-flex;align-items:center;gap:5px}.key:before{content:'';width:21px;border-top:2px solid var(--accent)}.original:before{border-top:2px dashed var(--copper)}.grid,.ring{fill:none;stroke:#d4dee2;stroke-width:1}.ring:last-of-type{stroke:#a7b8bf}.radar-area{fill:var(--accent);fill-opacity:.12}.final-line,.first-line{stroke:var(--accent);stroke-width:2.2;fill:none;stroke-linejoin:round;stroke-linecap:round}.first-line{stroke:var(--copper);stroke-dasharray:4 5;stroke-width:1.55}.first-dot{fill:white;stroke:var(--copper);stroke-width:1.5}.final-dot{fill:var(--accent)}.axis-name,.tick,.empty-plot{font-family:"PingFang SC",system-ui,sans-serif;fill:var(--muted);font-size:12px}.axis-value{font-weight:700;fill:var(--ink)}.empty-plot{paint-order:stroke;stroke:white;stroke-width:5px}
-.detail{margin-top:42px;scroll-margin:15px}.chapter{display:flex;gap:14px;align-items:baseline;border-bottom:2px solid var(--accent);padding-bottom:6px}.chapter span{font:italic 28px/1 Georgia,serif;color:var(--accent)}.chapter h2{font-size:27px}.intro{margin:10px 0}.detail h3{margin:18px 0 5px}.skills td:last-child{text-align:left;padding-left:14px}.skills td:first-of-type,.skills th:nth-child(2){text-align:left}.skills th:first-child,.skills td:nth-child(2){white-space:nowrap}.skills td:nth-child(2){font-size:13px}.skills td:last-child{width:37%}.advice{padding-left:22px}.advice li::marker{color:var(--accent);font-weight:650}.advice p{margin:0}.examples{padding-left:20px;color:var(--muted);font-size:.9em}.works td{white-space:nowrap}.works tbody th{width:46%}.teacher-note{margin:20px 0 0;padding:9px 13px;border-left:2px solid var(--muted);background:#f6f8f9}.empty{padding:20px 0}
-@media screen and (max-width:620px){:root{font-size:14px}main,.actions{width:100%;margin-bottom:0}main{padding:16px 16px 34px;box-shadow:none}.actions{padding:6px 13px;gap:8px}.mast{border-top-width:4px}.mast b{font-size:20px}.identity{display:block}.identity span{display:block;font-size:13px}.scope{margin-bottom:14px}.summary{padding:10px 12px}.lead{font-size:16px}.metrics{font-size:12px}.metrics td:first-of-type{font-size:15px}td,th{padding:7px 3px}.metrics thead th{font-size:11px}.pair{grid-template-columns:minmax(0,1fr);gap:14px}.pair .trend{border:0;padding-left:0}.pair svg{height:auto;max-height:198px}.radar svg{max-height:158px}.detail{margin-top:30px}.skills{font-size:12px}.skills td:last-child{width:28%;padding-left:6px}.skills td:nth-child(2){font-size:12px;white-space:normal}.works,.works tbody,.works tr,.works th,.works td{display:block}.works thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.works tbody tr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--rule);padding:7px 0}.works tbody th{grid-column:1/-1;width:auto}.works th,.works td{border:0;padding:2px 0;text-align:left}.works td::before{content:attr(data-col);display:block;color:var(--muted);font-size:11px}.chapter h2{font-size:24px}}
-@page{size:A4;margin:13mm 15mm 14mm;@bottom-left{font:8pt sans-serif;color:#4c6170}@bottom-right{content:counter(page) " / " counter(pages);font:8pt sans-serif;color:#4c6170}}
-@media print{:root{background:white;font-size:10pt;line-height:1.48;print-color-adjust:exact;-webkit-print-color-adjust:exact}.actions,.exhibits h3 a{display:none}main{width:auto;max-width:none;padding:0;margin:0;box-shadow:none}.mast{padding:3pt 0 5pt}.mast b{font-size:14pt}.mast b span,.mast time,.scope{font-size:8pt}h1{font-size:27pt;margin:11pt 0 5pt}.identity strong{font-size:13pt}.scope{margin-bottom:8pt}.lead{font-size:12pt}.summary{padding:6pt 10pt;margin-bottom:8pt}.summary h2,.teacher-note h2{font-size:10.5pt}.summary p{margin:2pt 0}h3,caption,figcaption{font-size:10.5pt}.metrics td:first-of-type{font-size:12pt}th,td{padding:4pt 3pt}.caption,small,thead th,.legend{font-size:8pt}.exhibits{margin-top:10pt;break-inside:avoid}.pair{gap:12pt;margin-top:4pt}.pair .trend{padding-left:12pt}.pair svg{height:85pt}.legend{min-height:10pt;margin:1pt 0}.caption{margin:3pt 0}.detail{break-before:page;margin-top:0}.chapter h2{font-size:20pt}.chapter span{font-size:17pt}.detail h3{margin:9pt 0 3pt}.skills td:nth-child(2){font-size:9pt}.teacher-note{break-inside:avoid}.intro{margin:6pt 0}thead{display:table-header-group}tr,.advice li{break-inside:avoid}h1,h2,h3,caption,figcaption{break-after:avoid}p{orphans:2;widows:2}a{color:inherit;text-decoration:none}}
-@media print{
-  .detail h3{margin:7pt 0 3pt}
-  .works td,.works th,.skills td,.skills th{padding-block:3pt}
-  .works tbody tr:last-child{break-after:avoid}
+:root {
+  --ink:#1e2d39; --muted:#546371; --rule:#dbe0df; --navy:#284c6c; --teal:#286c60; --copper:#95582e; --accent:var(--navy);
+  font:15px/1.55 "PingFang SC","Microsoft YaHei",system-ui,sans-serif; font-variant-numeric:tabular-nums; background:#eeefec; color:var(--ink);
 }
-.skills thead th:last-child{text-align:left;padding-left:14px}
-@media screen and (max-width:620px){.skills thead th:last-child{padding-left:6px}}
-@media print{.pair svg{height:100pt}.axis-name,.tick{font-size:14px}}
+* {box-sizing:border-box}
+body,h1,h2,h3,p,figure,ul {margin:0}
+main {width:min(960px,calc(100% - 48px));margin:24px auto 40px;padding:24px clamp(28px,5vw,66px) 54px;background:#fff;overflow-wrap:anywhere}
+h1,.exhibits h2,.detail h2 {font-family:"Songti SC","STSong","Noto Serif CJK SC",serif}
+a {color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+a:focus-visible,button:focus-visible {outline:2px solid #b56529;outline-offset:2px}
+.mast,.actions,.section-head {display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mast {border-bottom:2px solid var(--ink);min-height:43px}
+.mast b {font:600 22px/1 Georgia,serif}
+.mast b span {font:550 12px/1 system-ui,sans-serif}
+.actions {gap:14px}
+.actions button {appearance:none;display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 3px;background:transparent;color:var(--muted);border:0;font:inherit;font-size:13px;cursor:pointer}
+.actions button:hover {color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.actions svg {width:16px;height:16px}
+.front {display:grid;grid-template-columns:minmax(0,0.91fr) minmax(0,1.09fr);align-items:start;gap:28px;margin:28px 0 24px}
+.front.expanded {grid-template-columns:1fr}
+.front h1 {font-size:clamp(28px,3.1vw,42px);line-height:1.22;letter-spacing:.01em;margin:3px 0 17px}
+.identity strong {display:block;font-size:21px;line-height:1.3;margin-bottom:5px}
+.classes {display:flex;flex-direction:column;font-size:14px;line-height:1.5}.classes i {font-style:normal}
+.dateline,.footnote,.caption,.method,.teacher-note small,th small {color:var(--muted);font-size:12px;line-height:1.5}
+.dateline {margin-top:12px}
+table {width:100%;border-collapse:collapse;line-height:1.45}
+caption,h3 {font-size:16px;text-align:left;font-weight:650}
+caption {margin-bottom:7px}
+th,td {text-align:right;padding:6px 7px;border-bottom:1px solid var(--rule)}
+th:first-child {text-align:left;padding-left:0}
+td:last-child,th:last-child {padding-right:0}
+thead th {color:var(--muted);font-size:12px;font-weight:550}
+thead {border-bottom:1px solid #839393}
+tbody th {font-weight:500}
+.metrics {font-size:14px}
+.metrics thead th {font-size:15px;font-weight:650;color:var(--accent)}
+.metrics th,.metrics td {padding-block:4px}
+.metrics tr:last-child>* {border-bottom:0}
+.metrics tbody th {color:var(--muted);font-size:13px}
+.metrics .average {font-family:Georgia,"Times New Roman",serif;font-size:27px;font-weight:500;line-height:1.2;color:var(--ink)}
+.metrics td small {font-size:11px;color:var(--muted);white-space:nowrap}
+.band {font-weight:600;white-space:nowrap}
+.band::before {content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;background:var(--dot);vertical-align:.12em}
+.level-1 {--dot:#ac4f4b}.level-2 {--dot:#ba762e}.level-3 {--dot:#a28a25}.level-4 {--dot:#71a46d}.level-5 {--dot:#287658}
+.subject-macro {--accent:var(--teal)}
+.exhibits {margin-top:23px}
+.section-head {border-top:1.5px solid var(--accent);padding:5px 0 8px}
+.section-head h2 {font-size:23px;line-height:1.4;color:var(--accent)}
+.section-head a {font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;min-height:36px}
+.section-head a:hover {text-decoration:underline}
+.pair {display:grid;grid-template-columns:minmax(0,.84fr) minmax(0,1.16fr);gap:24px}
+.pair figure {display:grid;grid-template-columns:auto 1fr;align-content:start;align-items:baseline;min-width:0}
+.pair .trend {border-left:1px solid var(--rule);padding-left:20px}
+figcaption {font-size:16px;font-weight:650;line-height:1.5}
+figcaption small {color:var(--muted);font:400 12px/1.4 system-ui,sans-serif;margin-left:5px}
+.legend {display:flex;justify-content:end;gap:10px;color:var(--muted);font-size:12px;line-height:1.4}
+.key {display:inline-flex;align-items:center;gap:5px}
+.key:before {content:"";width:17px;border-top:2px solid var(--accent)}
+.original:before {border-top:2px dashed var(--copper)}
+.pair svg {grid-column:1/-1;display:block;width:100%;height:164px;overflow:visible;margin-top:3px}
+.caption {grid-column:1/-1;margin:3px 0 0}
+.grid,.ring {fill:none;stroke:#cbd5d8;stroke-width:1}
+.ring:last-of-type {stroke:#a9b9bd}
+.radar-area {fill:var(--accent);fill-opacity:.13}
+.final-line,.first-line {stroke:var(--accent);stroke-width:2.2;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.first-line {stroke:var(--copper);stroke-dasharray:4 5;stroke-width:1.55}
+.first-dot {fill:white;stroke:var(--copper);stroke-width:1.5}.final-dot {fill:var(--accent)}
+.axis-name,.tick,.empty-plot {font-family:"PingFang SC",system-ui,sans-serif;fill:var(--muted);font-size:12px}
+.axis-value {font-weight:700;fill:var(--ink)}.empty-plot {paint-order:stroke;stroke:white;stroke-width:5px}
+.method {border-top:1px solid var(--rule);margin-top:18px;padding-top:7px}
+.detail {margin-top:44px;scroll-margin:14px}
+.detail h2 {font-size:29px;line-height:1.4;padding-bottom:7px;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:16px}
+.detail h3,.detail caption {font-size:16px;margin-bottom:5px}
+.skills td:nth-child(2),.skills thead th:nth-child(2),.skills td:last-child,.skills thead th:last-child {text-align:left}
+.skills td:last-child {width:36%}
+.skills td:nth-child(2) {font-size:13px}
+.footnote {margin-top:5px}
+.block,.works {margin-top:19px}
+.practice {border-left:2px solid var(--accent);padding-left:13px}
+.practice ul {list-style:none;padding:0}.practice li+li {margin-top:5px}
+.practice strong {font-weight:550}
+.examples {padding-left:20px;margin-top:4px;font-size:14px;color:var(--muted)}
+.works tbody th {width:45%}
+.works td {white-space:nowrap}.works td:last-child {font-weight:650}
+th small {display:block;font-weight:400}
+.empty,.teacher-note {margin:14px 0}
+.teacher-note {border-left:2px solid var(--accent);padding-left:12px}
+.teacher-note h2 {font-size:16px}
+@media screen and (max-width:680px) {
+  :root {font-size:14px}
+  main {width:100%;margin:0;padding:7px 16px 32px}
+  .mast b {font-size:20px}.actions {gap:8px}.actions button {font-size:12px}
+  .front {display:block;margin:14px 0 18px}
+  .front h1 {font-size:31px;margin:0 0 6px}
+  .identity {margin-bottom:13px}
+  .identity strong {display:inline;font-size:17px;margin-right:8px}
+  .classes {display:flex;flex-flow:row wrap;gap:0 12px;font-size:12px}
+  .dateline {margin:3px 0 0;font-size:12px}
+  .metrics {font-size:13px}.metrics td,.metrics th {padding-block:3px}
+  .metrics .average {font-size:22px}
+  .metrics thead th {font-size:14px}
+  .pair {grid-template-columns:1fr;gap:9px}
+  .pair .trend {border-left:0;padding-left:0}
+  .pair svg {height:auto;max-height:185px}.pair .radar svg {height:150px}
+  .section-head a {min-height:44px}
+  .section-head {padding:0 0 4px}
+  .detail h2 {font-size:25px}.exhibits {margin-top:17px}
+  .skills {font-size:12px}.skills th,.skills td {padding:5px 3px}.skills td:nth-child(2) {font-size:12px}
+  .skills td:last-child {width:30%}
+  .works,.works tbody,.works tr,.works th,.works td {display:block}
+  .works caption {display:block}
+  .works thead {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .works tbody tr {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--rule);padding:7px 0}
+  .works tbody th {grid-column:1/-1;width:auto}
+  .works th,.works td {border:0;padding:2px 0;text-align:left}
+  .works td::before {content:attr(data-col);display:block;color:var(--muted);font-size:11px}
+}
+@page {size:A4;margin:14mm 16mm 15mm;@bottom-left {font:8pt sans-serif;color:#546371}@bottom-right {content:counter(page) " / " counter(pages);font:8pt sans-serif;color:#546371}}
+@media print {
+  :root {background:white;font-size:10pt;line-height:1.47;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  main {width:auto;margin:0;padding:0}
+  .actions,.section-head a {display:none}
+  .mast {min-height:0;padding-bottom:5pt}
+  .mast b {font-size:16pt}.mast b span {font-size:8pt}
+  .front {margin:16pt 0;gap:18pt}
+  .front h1 {font-size:23pt;margin:3pt 0 12pt}
+  .identity strong {font-size:15pt}.classes {font-size:10pt}
+  .dateline,.footnote,.caption,.method,.teacher-note small,th small,thead th,.legend,figcaption small {font-size:8pt}
+  .metrics {font-size:10pt}.metrics th,.metrics td {padding-block:3pt}
+  .metrics thead th {font-size:10.5pt}.metrics tbody th {font-size:9pt}.metrics td small {font-size:8pt}.metrics .average {font-size:17pt}
+  .section-head {padding:4pt 0}.section-head h2 {font-size:17pt}
+  .exhibits {margin-top:13pt;break-inside:avoid}
+  .pair {gap:13pt}.pair .trend {padding-left:12pt}
+  figcaption {font-size:11pt}.pair svg {height:132pt}.axis-name,.tick {font-size:13.5px}
+  .method {padding-top:5pt;margin-top:11pt}
+  .detail {break-before:page;margin-top:0}
+  .detail h2 {font-size:20pt;margin-bottom:9pt}.detail h3,.detail caption {font-size:11.5pt}
+  th,td {padding:4pt 3pt}.skills td:nth-child(2) {font-size:9pt}
+  .block,.works {margin-top:10pt}.examples {font-size:9pt}
+  thead {display:table-header-group}tr,.practice li,.teacher-note {break-inside:avoid}
+  h1,h2,h3,caption,figcaption {break-after:avoid}
+  p {orphans:2;widows:2}
+}

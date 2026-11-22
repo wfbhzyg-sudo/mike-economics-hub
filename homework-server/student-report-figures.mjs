@@ -15,7 +15,7 @@ function lineSegments(points) {
   }).join(' ');
 }
 
-export function trendFigure(course, number) {
+export function trendFigure(course) {
   const items=course.cells.slice(0,12).reverse().map(cell => {
     const grade=resultParts(cell);
     const rate=score => grade?.max>0 && Number.isFinite(score)?num(100*score/grade.max):null;
@@ -32,26 +32,29 @@ export function trendFigure(course, number) {
   const ticks=items.map((r,i)=>labels.has(i)?`<text class="tick" x="${num(x(i))}" y="153" text-anchor="${items.length===1?'middle':i===0?'start':i===items.length-1?'end':'middle'}">${Number.isFinite(Date.parse(r.date))?shortDate.format(new Date(r.date)):'日期待录'}</text>`:'').join('');
   const grid=[0,1,2,3,4].map(t=>{const v=num(max*t/4);return `<path class="grid" d="M${left} ${num(y(v))}H${right}"/><text class="tick" text-anchor="end" x="33" y="${num(y(v)+3.8)}">${v}%</text>`;}).join('');
   const graded=items.filter(r=>r.final!==null).length;
-  return `<figure class="trend"><figcaption><span>图 ${number}</span> 作业得分率趋势</figcaption><div class="legend"><span class="key original">首答</span><span class="key final">最终</span></div>
-    <svg viewBox="0 0 396 162" role="img" aria-label="按作业顺序排列的首答和最终得分率，具体分数见作业明细">${grid}
+  const notes=[];
+  if(course.cells.length>12) notes.push('最近 12 份作业');
+  if(graded && graded<items.length) notes.push('缺分处断线');
+  return `<figure class="trend"><figcaption>作业得分率</figcaption><div class="legend"><span class="key original">首答</span><span class="key final">最终</span></div>
+    <svg viewBox="0 0 396 162" role="img" aria-label="作业依截止日排列，无截止日时取布置日。首答与最终得分率的数值见作业明细">${grid}
     <path class="final-line" d="${lineSegments(final)}"/><path class="first-line" d="${lineSegments(first)}"/>
     ${dots(first,'first-dot')}${dots(final,'final-dot')}${ticks}
     ${graded?'':'<text x="213" y="80" class="empty-plot" text-anchor="middle">还没有已公布成绩</text>'}</svg>
-    <p class="caption">${course.cells.length>12?'仅列最近 12 份；':''}按截止日排列，无截止日取布置日。缺分处断线。${graded===1?'目前只有一个成绩点。':''}</p></figure>`;
+    ${notes.length?'<p class="caption">'+notes.join(' · ')+'</p>':''}</figure>`;
 }
 
-export function radarFigure(course, number) {
+export function radarFigure(course) {
   const axes=skillNames.map((_,i)=>course.evidence?.axes.find(a=>a.skill===i+1));
-  const cx=156,cy=78,r=48;
+  const cx=130,cy=80,r=57;
   const pos=(i,level)=>[cx+[0,1,0,-1][i]*r*level/5,cy+[-1,0,1,0][i]*r*level/5].map(num);
   const points=axes.map((a,i)=>a?.band>=1?pos(i,a.band):null);
   const rings=[1,2,3,4,5].map(k=>`<polygon class="ring" points="${axes.map((_,i)=>pos(i,k).join(',')).join(' ')}"/>`).join('');
   const edges=points.map((p,i)=>{const q=points[(i+1)%4];return p&&q?`M${p.join(' ')}L${q.join(' ')}`:'';}).filter(Boolean).join(' ');
-  const anchors=[[156,15,'middle'],[216,81,'start'],[156,147,'middle'],[96,81,'end']];
+  const anchors=[[130,15,'middle'],[195,84,'start'],[130,158,'middle'],[65,84,'end']];
   const labels=axes.map((a,i)=>`<text x="${anchors[i][0]}" y="${anchors[i][1]}" text-anchor="${anchors[i][2]}" class="axis-name">${skillNames[i]}<tspan class="axis-value"> ${a?.band??'—'}</tspan></text>`).join('');
-  return `<figure class="radar"><figcaption><span>图 ${number}</span> 四项技能分布</figcaption><p class="legend">由内向外为第 1–5 档</p>
-  <svg viewBox="0 0 312 158" role="img" aria-label="${html(axes.map((a,i)=>skillNames[i]+(a?.band?'第'+a.band+'档':'样本不足')).join('，'))}">${rings}<path class="grid" d="M156 30V126M108 78H204"/>
+  return `<figure class="radar"><figcaption>技能分布 <small>1–5 档</small></figcaption>
+  <svg viewBox="0 0 260 166" role="img" aria-label="${html(axes.map((a,i)=>skillNames[i]+(a?.band?'第'+a.band+'档':'样本不足')).join('，'))}">${rings}<path class="grid" d="M130 23V137M73 80H187"/>
   ${points.every(Boolean)?`<polygon class="radar-area" points="${points.map(p=>p.join(',')).join(' ')}"/>`:''}<path class="final-line" d="${edges}"/>
   ${points.map(p=>p?`<circle class="final-dot" cx="${p[0]}" cy="${p[1]}" r="3.1"/>`:'').join('')}${labels}</svg>
-  <p class="caption">依据独立作答。短横线表示该技能的题目样本尚少。</p></figure>`;
+  ${points.some(p=>!p)?'<p class="caption">— 样本不足</p>':''}</figure>`;
 }

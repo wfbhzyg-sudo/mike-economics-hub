@@ -12,27 +12,11 @@ const shares = (ids, key) => ids?.some(id => classKey(id) === classKey(key));
 const num = value => Math.round(value * 10) / 10;
 export const skillNames = ['原理与模型', '解读', '分析推演', '绘图'];
 const exercises = [
-  '先用自己的话说说这道题用到了哪个原理。试着改动题目中的一个条件，看看原来的判断是否还成立。',
-  '先圈出题目里发生变化的量，用一句话说清它变大了还是变小了，再回到题目看看它问的是什么。',
-  '在草稿上写下“什么变了 → 它会影响什么 → 结果怎样”。看看哪两个环节之间还需要补一句解释。',
-  '遮住原图，自己画一次。先标坐标轴，再补曲线和关键点，最后对着原题看看两幅图哪里不同。',
+  '换一个题设条件，说说原来的判断还成不成立，以及哪个原理能解释它。',
+  '圈出题中发生变化的量，再用一句话说明图或表里的数字怎样支持你的判断。',
+  '从题设的变化写到最后的结果，每一步补上它影响下一步的原因。',
+  '遮住原图，先标横纵轴，再画曲线并标出题目问到的点。对照原图，检查位置和移动方向。',
 ];
-
-export function readingHighlight({verified, graded, evidence, mockHistory}) {
-  if (verified) return `你重新梳理了 ${verified} 道题的思路，这些订正已经通过验收。下次做相似的题时，可以试试自己再走一遍这几步。`;
-  const supported = (evidence?.axes || []).filter(a => a.band !== null);
-  const best = supported.sort((a,b) => b.value-a.value || b.count-a.count || a.skill-b.skill)[0];
-  if (best?.band >= 4) {
-    const label = skillNames[best.skill-1];
-    if (best.value===100 && best.references.every(r=>r.score===r.max)) return `有 ${best.count} 道独立练习考到了「${label}」，这几道的技能得分都是满分。下次复习，可以挑一道讲给别人听，说说你当时是怎么想到的。`;
-    return `「${label}」这项技能目前的得分率是 ${best.value}%，来自 ${best.count} 道独立练习。下次复习，可以挑一道印象深的题，说说当时是怎样判断的。`;
-  }
-  const example = best?.references?.find(r=>r.max>0 && r.score===r.max);
-  if (example) return `《${example.title}》第 ${example.questionNumber} 题，你拿到了全部 ${example.max} 分。复习「${skillNames[best.skill-1]}」时，可以从这道已经会做的题出发，再试一道换了条件的题。`;
-  if (graded) return `已经有 ${graded} 份作业有了成绩。挑一道还记得自己当时怎么想的题，从那一步重新试，比从头重做整份作业更容易入手。`;
-  if (mockHistory.length) return `你已经独立完成了 ${mockHistory.length} 次模考。这些练习可以帮你找到下次想弄明白的问题，模考成绩单独记录。`;
-  return '这段时间还没有已公布的作业成绩。等第一份作业有了反馈，我们再一起看，哪些地方已经会了，哪些值得再练一次。';
-}
 
 export async function readStudentReport({db, teacherId, query, availableClasses, availableStudents, correctionReview, at = new Date()}) {
   const id = query.get('student'), scope = classKey(query.get('class')), unit = query.get('unit') || '';
@@ -94,21 +78,20 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
     if(evidence?.focus){
       const skill=evidence.axes.find(axis=>axis.skill===evidence.focus);
       const ref=skill.references.find(q=>q.score<q.max) || skill.references[0];
-      advice.push({title:(skill.band===5?'换一道题试试':'这次可以练练')+'「'+skillNames[skill.skill-1]+'」',
-        detail:(ref?'可以从《'+ref.title+'》第 '+ref.questionNumber+' 题开始。':'')+exercises[skill.skill-1],
-        basis:skill.count+' 道独立题 · '+skill.value+'%'});
+      advice.push({
+        title:ref?'《'+ref.title+'》第 '+ref.questionNumber+' 题':skillNames[skill.skill-1],
+        detail:exercises[skill.skill-1]
+      });
     }
-    if(pending.length && advice.length===0){
+    if(pending.length && !advice.length){
       const target=pending[0];
-      advice.push({title:'挑一道题，再试一次',detail:'可以从《'+target.assignmentTitle+'》第 '+target.questionNumber+' 题开始。先留着原来的答案，在旁边写一句“这次我会换哪一步”。',basis:pending.length+' 道待订正'});
+      advice.push({title:'《'+target.assignmentTitle+'》第 '+target.questionNumber+' 题',detail:'保留第一次的作答，在改动的那一步旁写下理由。'});
     }
-    const missing=cells.filter(c=>c.status==='missing' && !c.assignment.offline && c.assignment.format!=='score');
-    if(missing.length)advice.push({title:'和老师一起核对提交记录',detail:'《'+missing[0].assignment.title+'》已经到期，平台还没有收到提交。如果已经交过纸质版，或者当时请了假，可以请老师一起确认。',basis:missing.length+' 份逾期未交'});
+    const missing=cells.find(c=>c.status==='missing' && !c.assignment.offline && c.assignment.format!=='score');
+    if(missing)advice.push({title:'《'+missing.assignment.title+'》',detail:'这份作业已到期，系统里还没有提交记录。如果交过纸质版或当时请了假，请和老师核对。'});
     if(!advice.length){
       const next=cells.find(c=>c.status==='todo' && !c.assignment.offline && c.assignment.format!=='score' && c.label!=='尚未开放');
-      if (next) advice.push({title:'从手边这份作业开始',detail:'可以先做《'+next.assignment.title+'》。遇到拿不准的地方，把自己的想法写在题旁，下次听讲时就知道该问什么。',basis:''});
-      else if (publishedGrades.length) advice.push({title:'留下一句自己的解题心得',detail:'翻开最近一次有成绩的《'+publishedGrades[0].assignment.title+'》，挑一道印象深的题，用自己的话说说第一步为什么这样做。',basis:''});
-      else advice.push({title:'给下一份练习留一个小目标',detail:'下次做课堂练习时，可以选一道题，记下自己最有把握的一步。收到反馈后，再看看哪一步有了新的想法。',basis:''});
+      if(next)advice.push({title:'《'+next.assignment.title+'》',detail:'先完成这份作业，把拿不准的题号留给下次讲评。'});
     }
     return {course,label:courseLabel(course),evidence,cells,average:publishedGrades.length?gradeSummary(publishedGrades.map(c=>c.record)).average:null,
       graded:publishedGrades.length,trend:progressChange([...cells].reverse()),pending:pending.length,verified:verified.length,waiting:waiting.length,
