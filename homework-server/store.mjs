@@ -60,6 +60,19 @@ export function createStore(connectionString, schema = "homework") {
       return (await client.query(`SELECT data FROM ${table} WHERE id=ANY($1::text[])`, [[...new Set(keys)]]))
         .rows.map((row) => row.data);
     },
+    async teacherAssignments(teacherId, trash) {
+      // Older online assignments recorded the original publication in answer version one.
+      // Read only that timestamp, never the historical rubric or its attachments.
+      const {rows} = await pool.query(`SELECT a.data, v.data->>'confirmedAt' AS first_publication
+        FROM ${table} a LEFT JOIN ${table} v ON v.id = a.id || ':v1' AND v.kind='answer-version'
+          AND a.data->>'published'='true' AND a.data->>'publishedAt' IS NULL
+          AND a.data->>'offline' IS DISTINCT FROM 'true' AND a.data->>'format' IS DISTINCT FROM 'score'
+        WHERE a.kind='assignment' AND a.data->>'teacherId'=$1
+          AND (a.data->>'deletedAt' IS NOT NULL)=$2
+        ORDER BY a.created DESC, a.id`, [teacherId, trash]);
+      return rows.map(({data, first_publication}) =>
+        first_publication ? {...data, publishedAt: first_publication} : data);
+    },
     async teacherWorklist(teacherId) {
       const {rows}=await pool.query(`SELECT jsonb_build_object(
         'id',s.id,'assignmentId',s.data->'assignmentId','studentId',s.data->'studentId',

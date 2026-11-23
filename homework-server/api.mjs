@@ -1131,17 +1131,17 @@ export async function createHomework({externalAuth} = {}) {
           return (json(res,{summaries,byClass}),true);
         }
         if (method === "GET" && !route[1]) {
-          const all = (await db.list("assignment")).filter((a) =>
-            user.role === "teacher"
-              ? a.teacherId === user.id
-              : a.published &&
-                a.classIds.some((x) => user.classIds.includes(x)),
-          );
-          const attempts=user.role==='student'?(await db.find('mcq-attempt',{studentId:user.id})).filter(t=>!t.submittedId):[];
+          if (user.role === "teacher") {
+            const assignments = await db.teacherAssignments(user.id, url.searchParams.get("trash")==="1");
+            return (json(res, {assignments}), true);
+          }
+          const all = (await db.list("assignment")).filter(a =>
+            a.published && a.classIds.some(x => user.classIds.includes(x)));
+          const attempts=(await db.find('mcq-attempt',{studentId:user.id})).filter(t=>!t.submittedId);
           return (
             json(res, {
               assignments:
-                user.role === "teacher" ? all.filter(a=>url.searchParams.get("trash")==="1"?a.deletedAt:!a.deletedAt) : all.filter(a=>!a.deletedAt).map(a=>({...publicAssignment(a),attemptProgress:attempts.find(t=>t.assignmentId===a.id&&t.version===a.version)?{started:true,answered:Object.values(attempts.find(t=>t.assignmentId===a.id&&t.version===a.version).answers).filter(Boolean).length}:null})),
+                all.filter(a=>!a.deletedAt).map(a=>({...publicAssignment(a),attemptProgress:attempts.find(t=>t.assignmentId===a.id&&t.version===a.version)?{started:true,answered:Object.values(attempts.find(t=>t.assignmentId===a.id&&t.version===a.version).answers).filter(Boolean).length}:null})),
             }),
             true
           );
@@ -1394,6 +1394,8 @@ export async function createHomework({externalAuth} = {}) {
               for(const q of questions)if(q.paperFileId||q.paperPage){const f=await db.get(q.paperFileId,c);assert(current.questionFiles.includes(q.paperFileId)&&f?.mime==='application/pdf'&&q.paperPage<=f.pages,'请核对第 '+q.id+' 题对应的 PDF 与页码');}
               if(current.version>0){const previousPaper=paperOf(current);for(const submission of await db.list('submission',c))if(submission.assignmentId===current.id&&!submission.paperSnapshot){submission.paperSnapshot=structuredClone(previousPaper);await db.put('submission',submission,c);}}
               const version = current.version + 1;
+              const confirmedAt = now();
+              if (version === 1 && !current.publishedAt) current.publishedAt = confirmedAt;
               const paper=capturePaper(current,questions,version);paper.files=[];for(const key of paper.questionFiles){const f=await db.get(key,c);paper.files.push({id:f.id,name:f.name,mime:f.mime,pages:f.pages});}
               await db.put(
                 "answer-version",
@@ -1406,7 +1408,7 @@ export async function createHomework({externalAuth} = {}) {
                   answerText: current.answerText,
                   answerFiles: current.answerFiles,
                   confirmedBy: user.id,
-                  confirmedAt: now(),
+                  confirmedAt,
                 },
                 c,
               );

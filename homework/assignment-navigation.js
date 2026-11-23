@@ -22,3 +22,23 @@ export function studentAssignmentAction(assignment, submissions, time = Date.now
 export function assignmentOpensLater(assignment, time = Date.now()) {
   return Boolean(assignment.opensAt && Date.parse(assignment.opensAt) > time);
 }
+
+export function publicationTime(a) {
+  if (!a.published) return null;
+  // Imported paper assignments use the original classroom date. An import, edit
+  // or deadline is not evidence of when a teacher distributed the assignment.
+  const value = a.publishedAt || ((a.offline || a.format === 'score') && a.opensAt);
+  const time = value ? Date.parse(value) : NaN;
+  return Number.isFinite(time) ? time : null;
+}
+
+export function byPublication(assignments, order = 'desc') {
+  return assignments.map(a => ({a, time: publicationTime(a)})).sort((left, right) => {
+    if (Boolean(left.a.published) !== Boolean(right.a.published)) return left.a.published ? -1 : 1;
+    if (!left.a.published) return 0;
+    if (left.time === null && right.time !== null) return 1;
+    if (right.time === null && left.time !== null) return -1;
+    const delta = left.time - right.time;
+    return (order === 'asc' ? delta : -delta) || left.a.id.localeCompare(right.a.id);
+  }).map(item => item.a);
+}

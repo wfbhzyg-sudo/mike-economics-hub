@@ -3993,3 +3993,28 @@
 .homework-surface .subject-tag[data-subject=micro]{ background:#accff7 }
 
 .homework-surface .roster-class-label{display:flex;align-items:center;gap:8px;font-weight:650;margin:12px 0 4px}.homework-surface .roster-class-label select{min-width:9rem;max-width:min(80%,28rem)}
+
+.homework-surface .assignment-status-sort{
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.homework-surface .assignment-status-sort .filter-tabs{ width: auto; }
+.homework-surface .assignment-status-sort select{
+  width: auto;
+  min-height: 38px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  background: var(--paper, white);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.homework-surface .assignment-status-sort select[hidden]{ display: none; }
+@media (max-width: 700px){
+  .homework-surface .assignment-status-sort{ width: 100%; justify-content: space-between; }
+  .homework-surface .assignment-status-sort select{ min-height: 44px; font-size: 12px; }
+}

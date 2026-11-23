@@ -1,9 +1,22 @@
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {assignmentCourse,courseLabel,coursesFor,courseTabs,selectedCourse,rememberCourse,classKey,namedCourse,singleClassCourse} from './course-scope.js';
-import {studentAssignmentAction,assignmentOpensLater} from './assignment-navigation.js';
+import {studentAssignmentAction,assignmentOpensLater,publicationTime,byPublication} from './assignment-navigation.js';
 import {insightsMarkup} from './student-home.js';
 import {highlightText} from './search-text.js';
 import { assignmentState, assignmentRecords } from "./learning-model.js";
+const publicationDate = new Intl.DateTimeFormat('zh-CN', {year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+const classroomDate = new Intl.DateTimeFormat('zh-CN', {year:'numeric', month:'numeric', day:'numeric', timeZone:'Asia/Shanghai'});
+
+function publicationLabel(a) {
+  if (!a.published) return '';
+  const time = publicationTime(a);
+  if (time === null) return '<span>布置时间未记录</span>';
+  const offline = (a.offline || a.format === 'score') && !a.publishedAt;
+  const label = offline ? '线下布置' : '发布';
+  const display = offline ? classroomDate : publicationDate;
+  return `<time datetime="${new Date(time).toISOString()}">${label} ${display.format(time)}</time>`;
+}
+
 export function createWorkspaceUI(ctx) {
   const {
     state,
@@ -70,7 +83,7 @@ export function createWorkspaceUI(ctx) {
       const offline=a.offline||a.format==='score';
       const counts=state.assignmentClass?state.rosterByClass?.[state.assignmentClass]?.[a.id]:state.rosterSummaries?.[a.id], summary=counts||{submitted:records.length,review:review.length,published:done.length};
       const stat=(filter,text,cls)=>link('overview/'+a.id+'/'+filter+scopeSuffix,text,'roster-count '+cls);
-      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title"><span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta"><span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.opensAt&&Date.parse(a.opensAt)>Date.now()?'开放 '+date(a.opensAt)+(a.dueAt?' · 截止 '+date(a.dueAt):''):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?(state.assignmentClass&&!counts?'<span class="hint">班级人数待同步</span>':offline?`${stat('recorded',(summary.recorded??done.filter(r=>r.grade?.total!=null).length)+' 已录分','is-submitted')}${stat('unrecorded',summary.unrecorded==null?(state.rosterError?'名单待重试':'同步名单…'):summary.unrecorded+' 待录分','is-neutral')}`:`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'—':'同步名单…'):summary.missing+(opensLater?' 待开始':' 未提交'),!opensLater&&summary.missing>0?'is-missing':'is-neutral')}${stat('published',summary.published+' 已出分','is-neutral')}${summary.review?stat('review',summary.review+' 待处理','is-review'):''}`):'<span class="hint">发布后查看名单</span>'}</div><div class="actions task-actions">${link(target,opensLater?'查看安排':action,'primary')}${menu(a)}</div></article>`;
+      return `<article class="assignment-row assignment-management-row"><div class="task-copy"><div class="task-title"><span class="subject-tag" data-subject="${subject}">${courseLabel(subject)}</span>${link(target,highlightText(a.title,state.assignmentSearch),'task-name')}${!a.published?'<span class="badge" data-tone="lilac">草稿</span>':''}</div><div class="meta">${publicationLabel(a)}<span>${a.classIds.map(id=>h(state.classes.find(c=>c.id===id)?.name||'班级')).join(' · ')}</span><span>${a.opensAt&&Date.parse(a.opensAt)>Date.now()?'开放 '+date(a.opensAt)+(a.dueAt?' · 截止 '+date(a.dueAt):''):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span></div></div><div class="task-stats">${a.published?(state.assignmentClass&&!counts?'<span class="hint">班级人数待同步</span>':offline?`${stat('recorded',(summary.recorded??done.filter(r=>r.grade?.total!=null).length)+' 已录分','is-submitted')}${stat('unrecorded',summary.unrecorded==null?(state.rosterError?'名单待重试':'同步名单…'):summary.unrecorded+' 待录分','is-neutral')}`:`${stat('submitted',summary.submitted+' 已提交','is-submitted')}${stat('missing',summary.missing==null?(state.rosterError?'名单待重试':counts?'—':'同步名单…'):summary.missing+(opensLater?' 待开始':' 未提交'),!opensLater&&summary.missing>0?'is-missing':'is-neutral')}${stat('published',summary.published+' 已出分','is-neutral')}${summary.review?stat('review',summary.review+' 待处理','is-review'):''}`):'<span class="hint">发布后查看名单</span>'}</div><div class="actions task-actions">${link(target,opensLater?'查看安排':action,'primary')}${menu(a)}</div></article>`;
     }
     return `<article class="assignment-row compact-task" data-tone="${tone}"><div class="task-copy"><div class="task-title">${target?link(target, highlightText(a.title,state.assignmentSearch), "task-name"):`<strong class="task-name">${highlightText(a.title,state.assignmentSearch)}</strong>`}<span class="badge" data-tone="${tone}">${t ? (a.published ? "已发布" : "草稿") : h(studentAction.label)}</span></div><div class="meta">${studentSubject(a)}${t ? `<span>${a.classIds.map((id) => h(state.classes.find((c) => c.id === id)?.name || "班级")).join(" · ")}</span>` : ""}<span>${!t&&studentAction.opensLater?"开放 "+date(a.opensAt):a.dueAt ? "截止 " + date(a.dueAt) : "不限截止时间"}</span></div>${score ? `<p class="assignment-types">${questions.length} 题 · ${score} 分${a.paper?.files?.length ? " · 题纸 " + a.paper.files.reduce((n, f) => n + f.pages, 0) + " 页" : ""}</p>` : ""}${t && a.published ? `<div class="task-stats">${link("overview/" + a.id, records.length + " 人已提交", "text-button")}${review.length ? link("reviews/" + a.id, review.length + " 份待复核", "text-button attention") : ""}<span>${done.length} 人已出分</span></div>` : ""}</div><div class="actions task-actions">${target?link(target, action, "primary"):`<button class="secondary" disabled>${h(action)}</button>`}${t ? link("edit/" + a.id, "编辑") : ""}${t ? menu(a) : ""}</div></article>`;
   }
@@ -204,8 +217,11 @@ export function createWorkspaceUI(ctx) {
     const t = teacher(),
       key =
         "hw-filters:" + state.user.id + ":" + (state.workspaceClassId || "all");
+    let publishOrder = 'desc';
     try {
-      Object.assign(state, JSON.parse(sessionStorage.getItem(key) || "{}"));
+      const saved = JSON.parse(sessionStorage.getItem(key) || "{}");
+      Object.assign(state, saved);
+      if (saved.publishOrder === 'asc') publishOrder = 'asc';
     } catch {}
     const filters = t
       ? [
@@ -231,7 +247,14 @@ export function createWorkspaceUI(ctx) {
     const courses=[...new Set(state.assignments.map(subjectOf))];
     if (!courses.includes(state.assignmentCourse)) state.assignmentCourse = "";
     if(!state.classes.some(c=>c.id===state.assignmentClass))state.assignmentClass='';
-    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>` + `<div data-course-insights></div>`}<div class="assignment-toolbar"><div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div><div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h(["macro","micro","mixed","unknown"].includes(c)?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
+    const sortControl = `<select id="assignment-publish-order" aria-label="按发布时间排序">
+      <option value="desc">发布时间 · 从新到旧</option><option value="asc">发布时间 · 从旧到新</option></select>`;
+    main.innerHTML = `<section class="paper workspace-home">${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>` + `<div data-course-insights></div>`}<div class="assignment-toolbar">${t?'<div class="assignment-status-sort">':''}<div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div>${t?sortControl+'</div>':''}<div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h(["macro","micro","mixed","unknown"].includes(c)?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label></div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
+    const sortPicker = $('#assignment-publish-order');
+    if (sortPicker) {
+      sortPicker.value = publishOrder;
+      sortPicker.onchange = () => { publishOrder = sortPicker.value; draw(); };
+    }
     const releaseTools=t?bindDisclosureMenus(main,'.work-tools'):null;
     function draw() {
       const fixed=singleClassCourse(state.classes.find(c=>c.id===state.assignmentClass));
@@ -262,7 +285,9 @@ export function createWorkspaceUI(ctx) {
           (el.textContent =
             " " + base.filter((a) => matches(a, el.dataset.count)).length),
       );
-      const rows = base.filter((a) => matches(a, state.assignmentFilter));
+      const filtered = base.filter((a) => matches(a, state.assignmentFilter));
+      if (sortPicker) sortPicker.hidden = state.assignmentFilter === 'draft';
+      const rows = t && state.assignmentFilter !== 'draft' ? byPublication(filtered, publishOrder) : filtered;
       $("#assignment-count").textContent = `${rows.length} 份作业`;
       try {
         sessionStorage.setItem(
@@ -272,6 +297,7 @@ export function createWorkspaceUI(ctx) {
             assignmentSearch: state.assignmentSearch,
             assignmentCourse: state.assignmentCourse,
             assignmentClass:state.assignmentClass,
+            ...(t ? {publishOrder} : {}),
           }),
         );
       } catch {}

@@ -213,10 +213,11 @@ try {
     },
   ];
   await worker(`jobs/${parsed.id}/complete`, { questions }, 200, parsed.lease);
-  await teacher.request("assignments/" + a.id + "/confirm", "POST", {
+  const initialPublication = (await teacher.request("assignments/" + a.id + "/confirm", "POST", {
     questions,
     sourceRevision: 1,
-  });
+  })).assignment.publishedAt;
+  assert.ok(Number.isFinite(Date.parse(initialPublication)));
   const publicA = (await student.request("assignments/" + a.id)).assignment;
   check("answer key absent from student response", () => {
     assert.equal(publicA.rubric, undefined);
@@ -380,6 +381,9 @@ try {
     questions,
     sourceRevision: 1,
   });
+  const listedAssignment = (await teacher.request("assignments")).assignments.find(item => item.id === a.id);
+  check("changing the answer version preserves the first publication date", () =>
+    assert.equal(listedAssignment.publishedAt, initialPublication));
   await teacher.request(
     "submissions/" + submission.id + "/regrade",
     "POST",
