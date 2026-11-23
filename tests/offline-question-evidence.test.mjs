@@ -22,6 +22,8 @@ test('correction credit respects the recorded scale and preserves the independen
 });
 test('a scored exam covers every skill while each skill score requires its own evidence',()=>{
  for(const title of ['Unit 2 Progress Check FRQ','Monthly Test','Quiz','考试','随堂测','Test 1'])assert(testsAllSkills({title}));
+ assert(testsAllSkills({title:'Chapter review',assessmentMode:'exam'}));
+ assert(testsAllSkills({title:'Unit 2',libraryCollection:'progress'}));
  assert(!testsAllSkills({title:'Unit 2.1 Homework'}));
  const micro=studentPerformance([s],[a],[]).find(p=>p.course==='micro');
  assert.deepEqual(micro.axes.map(s=>s.comprehensiveAssessments),[1,1,1,1]);assert.deepEqual(micro.axes.map(s=>s.count),[0,1,0,0]);

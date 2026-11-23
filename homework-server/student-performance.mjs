@@ -19,6 +19,7 @@ function independentGrade(s){
 }
 
 export function testsAllSkills(a){
+  if(a.assessmentMode==='exam' || ['progress','progress-check','exam'].includes(a.libraryCollection))return true;
   const label=[a.offlineType,a.assessmentType,a.title].filter(Boolean).join(' ');
   return /\b(?:quizzes|quiz|tests?|exams?|examinations?|progress[\s:-]*check)\b|小测|测验|单元测|随堂测|月考|期中|期末|考试/i.test(label);
 }
