@@ -16,3 +16,16 @@ export function mistakeNavigation(link, h, {current, subjects, subject}) {
 export function bindMistakeNavigation(root) {
   root.querySelector('.mistake-current')?.setAttribute('aria-current','page');
 }
+
+// The same bank question may be awaiting correction in one paper and already
+// verified in another. Apply the user's filters to each occurrence.
+export function matchingMistakes(groups, matches) {
+  const visible = [];
+  for (const group of groups) {
+    const rows = [group, ...(group.occurrences || [])].filter(matches);
+    if (!rows.length) continue;
+    const [first, ...others] = rows;
+    visible.push({...first, occurrences: others, mistakeCount: rows.length});
+  }
+  return visible;
+}

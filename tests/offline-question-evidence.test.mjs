@@ -80,3 +80,14 @@ test('only published and graded offline items expose answers in the individual r
   assert.equal(offlineResultQuestions({...record,status:'draft'},bare),bare);
   assert.equal(offlineResultQuestions({...record,offlineEvidence:null},bare),bare);
 });
+
+test('a corrected occurrence remains findable when the same bank question was missed elsewhere',async()=>{
+ const {matchingMistakes}=await import('../homework/mistake-navigation.js');
+ const done={assignmentId:'old-import',course:'micro',status:'verified'};
+ const pending={assignmentId:'new-import',course:'micro',status:'todo',occurrences:[done],mistakeCount:2};
+ const scoped=matchingMistakes([pending],row=>row.course==='micro');
+ assert.equal(scoped.length,1);assert.equal(scoped[0].mistakeCount,2);
+ const verified=matchingMistakes(scoped,row=>row.status==='verified');
+ assert.equal(verified.length,1);assert.equal(verified[0].assignmentId,done.assignmentId);
+ assert.equal(verified[0].mistakeCount,1);assert.deepEqual(verified[0].occurrences,[]);
+});
