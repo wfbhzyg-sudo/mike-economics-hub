@@ -1,114 +1,79 @@
 import {readFile} from 'node:fs/promises';
-import {skillNames, resultParts} from './student-report.mjs';
-import {radarFigure, trendFigure, html} from './student-report-figures.mjs';
-import {workDate} from '../homework/grade-journey-model.js';
+import {resultParts} from './student-report.mjs';
+import {radarFigure,trendFigure,html} from './student-report-figures.mjs';
+import {buildReportAnalysis,representativeWorks,selectedItems,teacherTasks} from './student-report-analysis.mjs';
 
-const readStyle = file => readFile(new URL(file, import.meta.url), 'utf8');
-const styles = readStyle('./student-report.css');
-const mobileStyles = readStyle('./student-report-mobile.css');
-const paperStyles = readStyle('./student-report-paper.css');
-const fullDate = new Intl.DateTimeFormat('zh-CN', {year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Shanghai'});
-const date = stamp => Number.isFinite(Date.parse(stamp)) ? fullDate.format(new Date(stamp)) : '日期待录';
-const number = n => Number.isFinite(n) ? String(n) : '—';
-const rate = n => Number.isFinite(n) ? n+'%' : '—';
-const signed = n => Number.isFinite(n) ? (n>0?'+':'')+n : '—';
-const band = n => n ? `<b class="band level-${Number(n)}">第 ${Number(n)} 档</b>` : '样本不足';
-const sectionId = c => 'detail-'+c.course;
+const css=file=>readFile(new URL(file,import.meta.url),'utf8');
+const styles=Promise.all(['./student-report.css','./student-report-mobile.css','./student-report-paper.css'].map(css));
+const formatter=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Shanghai'});
+const date=s=>Number.isFinite(Date.parse(s))?formatter.format(new Date(s)):'日期待录';
+const number=n=>Number.isFinite(n)?String(n):'—';
+const rate=n=>Number.isFinite(n)?n+'%':'—';
+const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
+const labels={S:'优势',W:'待加强',O:'可用机会',T:'近期风险',now:'重要 · 紧急',plan:'重要 · 不紧急',quick:'非重要 · 紧急',later:'非重要 · 不紧急'};
 
-function metrics(courses) {
-  if (!courses.length) return '<p class="empty">这段时间还没有学习记录。</p>';
-  const index = c => c.evidence?.index;
-  const metrics = [
-    ['作业平均', c=>`<strong class="average">${rate(c.average)}</strong>`],
-    ...(courses.some(c=>Number.isFinite(c.trend)) ? [['近期变化¹', c=>Number.isFinite(c.trend) ? signed(c.trend)+' <small>个百分点</small>' : '—']] : []),
-    ['课堂表现', c=>index(c) ? band(index(c).level)+' <small>'+index(c).value+'/100</small>' : '样本不足'],
-    ['已出分 / 应交', c=>c.graded+' / '+c.cells.length],
-    ['待订正', c=>c.pending+' 道']
-  ];
-  return `<table class="metrics" aria-label="分科学习指标"><thead><tr><td></td>${courses.map(c=>`<th scope="col" class="subject-${c.course}">${html(c.label)}</th>`).join('')}</tr></thead>
-    <tbody>${metrics.map(([label,format])=>`<tr><th scope="row">${label}</th>${courses.map(c=>`<td>${format(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+function summary(c){
+  const index=c.evidence?.index;
+  const parts=c.cells.map(resultParts).filter(Boolean);
+  const recovered=parts.filter(p=>Number.isFinite(p.recovered));
+  const sum=Math.round(recovered.reduce((s,p)=>s+p.recovered,0)*10)/10;
+  const note=recovered.length?'已核实订正补回 '+sum+' 分':'订正补回 —';
+  return `<article class="card summary ${c.course}"><h2 class="subj">${html(c.label)}</h2><div class="stats"><div><div class="band">${index?'<b>'+number(index.level)+'</b> 档':'样本不足'}</div><div class="ruler">${index?'<i style="left:'+number(index.value)+'%"></i>':''}</div><small>课堂表现指数 ${number(index?.value)}</small></div><div class="totals"><strong class="average">${rate(c.average)}</strong><span>作业均分</span><small>${c.graded} / ${c.cells.length} 份已出分 · ${note}</small></div></div>${Number.isFinite(c.trend)?'<small>近期变化¹　'+signed(c.trend)+' 个百分点</small>':''}</article>`;
 }
 
-function workTable(c) {
-  if (!c.cells.length) return '';
-  const heads=['首答','订正补回','教师调整','最终 / 满分'];
-  const rows=c.cells.map(cell=>{
-    const p=resultParts(cell), a=cell.assignment, offline=a.offline||a.format==='score';
-    const notes=[date(workDate(a))];
-    if (offline) notes.push('线下');
-    if (!p) notes.push(offline&&['todo','missing'].includes(cell.status)?'待录分':cell.label);
-    if (cell.pendingUpdate) notes.push('重交成绩待更新');
-    if (p?.resubmission) notes.push('重交变化 '+signed(p.resubmission)+' 分');
-    const values=[number(p?.first),signed(p?.recovered),signed(p?.adjustment),p?number(p.total)+' / '+number(p.max):'—'];
-    return `<tr><th scope="row">${html(a.title||'历史作业')}<small>${notes.filter(Boolean).map(html).join(' · ')}</small></th>${values.map((v,i)=>`<td data-col="${heads[i]}">${v}</td>`).join('')}</tr>`;
-  });
-  return `<table class="works${rows.length >= 20 ? ' extended' : ''}"><caption>作业明细</caption><thead><tr><th scope="col">作业</th>${heads.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+function analysisCard(key,item,report){
+  const isTask=key.length>1;
+  const label=labels[key];
+  const cls=isTask?'task '+key:'sw '+key.toLowerCase();
+  const heading=isTask?item?.title||'本期暂无':label;
+  const text=item?(item.edited||[item.text,item.advice].filter(Boolean).join('')):isTask?'':'待更多学习记录。';
+  const cell=item?.assignmentId&&report.courses.flatMap(c=>c.cells).find(c=>c.assignment.id===item.assignmentId);
+  const receipt=cell?.record?.effective?.id;
+  const link=receipt?'work/review/'+encodeURIComponent(receipt):cell?'work/overview/'+encodeURIComponent(cell.assignment.id):'';
+  const body=`${isTask?'<small class="priority">'+label+'</small>':'<span class="monogram" aria-hidden="true">'+key+'</span>'}<span class="copy"><b>${html(heading)}</b>${text?'<span class="interpretation">'+html(text)+'</span>':''}</span>`;
+  if(!item)return '<article class="'+cls+' empty-card">'+body+'</article>';
+  return `<article class="${cls}"><button class="proof" type="button" data-proof="${item.ref}" data-slot="${key}" data-manual="${Boolean(item.manual)}" ${item.manual?'data-course="'+html(item.course)+'" data-due="'+html(item.due)+'" data-important="'+item.important+'"':''} aria-haspopup="dialog" aria-label="${html(label+'，'+item.subject+'，查看依据')}">${body}<small class="subject">${html(item.subject)} <i>↗</i></small></button><template class="basis"><p>${html(item.basis)}</p>${link?'<a class="online-only" target="_blank" rel="noopener" href="/teacher/#'+html(link)+'">查看对应作业 ↗</a>':''}</template></article>`;
 }
 
-function skills(c){
-  const axes=c.evidence?.axes||[];
-  if (!axes.length) return '';
-  const rows=axes.map(a=>{
-    const ref=a.references.find(q=>q.score<q.max)||a.references[0];
-    return `<tr><th scope="row">${html(skillNames[a.skill-1])}</th><td>${band(a.band)}</td><td>${rate(a.value)}</td><td>${a.count}</td><td>${ref?'《'+html(ref.title)+'》第 '+html(ref.questionNumber)+' 题':'—'}</td></tr>`;
-  }).join('');
-  const e=c.evidence;
-  const notes=[];
-  if (axes[0]?.comprehensiveAssessments) notes.push('综合测验覆盖四项技能 '+axes[0].comprehensiveAssessments+' 次');
-  if (Number.isFinite(e.first)) notes.push('独立首答得分率 '+rate(e.first));
-  if (Number.isFinite(e.transfer)) notes.push('订正后同技能新题正确率 '+rate(e.transfer));
-  if (Number.isFinite(e.next)) notes.push('课堂表现距下一档 '+e.next+' 分');
-  return `<table class="skills"><caption>技能表现</caption><thead><tr><th>技能</th><th>档位</th><th>得分率</th><th>独立题数</th><th>对应练习</th></tr></thead><tbody>${rows}</tbody></table>
-    ${notes.length?`<p class="footnote">${notes.join(' · ')}</p>`:''}`;
+function evidenceTable(report,items){
+  const rows=representativeWorks(report,items),total=report.courses.reduce((n,c)=>n+c.graded,0);
+  return `<div class="cardhead"><h2>代表性作业</h2><small>选录 ${rows.length} / ${total} 份</small></div>${rows.length?`<table class="works"><thead><tr><th>作业</th><th>首次</th><th>订正补回</th><th>最终 / 满分</th></tr></thead><tbody>${rows.map(({cell,course,label})=>{
+    const p=resultParts(cell);
+    const extra=[p.resubmission&&'重交变化 '+signed(p.resubmission),p.adjustment&&'教师调整 '+signed(p.adjustment),cell.pendingUpdate&&'重交成绩待更新'].filter(Boolean);
+    return `<tr class="${course}"><th scope="row"><small>${html(label)}</small><span class="work-title">${html(cell.assignment.title||'历史作业')}</span>${extra.length?'<em>'+extra.join(' · ')+'</em>':''}</th><td>${number(p.first)}</td><td>${signed(p.recovered)}</td><td>${number(p.total)} / ${number(p.max)}</td></tr>`;
+  }).join('')}</tbody></table>`:'<p>本期尚无已公布的作业成绩。</p>'}`;
 }
 
-function corrections(c){
-  if (!c.errors) return '';
-  const counts=[c.verified&&c.verified+' 道已通过',c.pending&&c.pending+' 道待订正',c.waiting&&c.waiting+' 道待验收',c.selfReviewed&&c.selfReviewed+' 道已标记复习或掌握'].filter(Boolean);
-  const examples=c.practiceItems.map(m=>`<li>《${html(m.assignmentTitle)}》第 ${html(m.questionNumber)} 题${m.knowledge?' · '+html(m.knowledge):''}</li>`);
-  return `<section class="block"><h3>错题订正</h3><p>${html(['共 '+c.errors+' 道',...counts].join('，'))}。</p>
-    ${examples.length?'<ul class="examples">'+examples.join('')+'</ul>':''}</section>`;
+export function reportPanels(report,facts,state={}){
+  const items={...selectedItems(facts,state.ai,state.edits),...teacherTasks(state.tasks||[],report.at)};
+  return {swot:['S','W','O','T'].map(k=>analysisCard(k,items[k],report)).join(''),tasks:['now','plan','quick','later'].map(k=>analysisCard(k,items[k],report)).join(''),
+    works:evidenceTable(report,items),revision:state.revision||0,hasAI:Boolean(state.hasAI)};
 }
 
-function practice(c,includeMock){
-  const latest=c.mockHistory[0];
-  if (!includeMock || !latest) return '';
-  const duration=Number.isFinite(latest.seconds)?'，用时 '+Math.floor(latest.seconds/60)+' 分 '+Math.floor(latest.seconds%60)+' 秒':'';
-  return `<section class="block"><h3>自主模考</h3><p>已完成 ${c.mockHistory.length} 次。最近一次在 ${date(latest.date)}，正确率 ${rate(latest.rate)}${duration}。</p></section>`;
-}
-
-function detail(c,includeMock) {
-  const exercises=c.advice.map(a=>`<li><strong>${html(a.title)}</strong><p>${html(a.detail)}</p></li>`).join('');
-  return `<section class="detail subject-${c.course}" id="${sectionId(c)}">
-    <h2>${html(c.label)}学习记录</h2>
-    ${skills(c)}
-    ${exercises?`<section class="block practice"><h3>下一次练习</h3><ul>${exercises}</ul></section>`:''}
-    ${corrections(c)}${practice(c,includeMock)}${workTable(c)}
-    ${!c.cells.length && !c.mockHistory.length?'<p class="empty">当前范围还没有已布置的作业。</p>':''}
-    </section>`;
-}
-
-const downloadIcon='<path d="M12 3v11m-4-4 4 4 4-4M4 16v4h16v-4"/>';
-const printIcon='<path d="M7 8V3h10v5M6 17H3V9h18v8h-3M7 14h10v7H7z"/>';
-const icon=path=>`<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
-
-export async function renderStudentReport(report){
-  const courses=report.courses, note=report.latestNote;
+export async function renderStudentReport(report,facts=buildReportAnalysis(report),state={}){
+  const [base,mobile,paper]=await styles,courses=report.courses,note=report.latestNote;
   const scope=[report.period,report.unit,report.assignmentTitle].filter(Boolean).join(' · ');
-  const hasTrend=courses.some(c=>Number.isFinite(c.trend));
-  const finalOnly=courses.some(c=>c.cells.some(cell=>cell.status==='graded' && resultParts(cell)?.first===null));
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${await styles}</style>
-  <style id="report-mobile" media="screen and (max-width:680px)">${await mobileStyles}</style>
-  <style id="report-paper" media="print">${await paperStyles}</style><script defer src="/teacher/student-report-actions.js"></script></head><body><main class="${courses.length===1?'single-subject':''}">
-    <div class="mast"><b>Mike <span>的经济一页通</span></b><nav class="actions" aria-label="文档操作"><button type="button" id="save">${icon(downloadIcon)}下载网页</button><button type="button" id="print">${icon(printIcon)}打印 / PDF</button></nav></div>
-    <header class="front${courses.length>2?' expanded':''}">
-      <div class="identity"><h1>经济学学习报告</h1><strong>${html(report.name)}</strong><span class="classes">${report.classNames.map(n=>'<i>'+html(n)+'</i>').join(' ')||'班级待确认'}</span>
-      <p class="dateline"><time>${date(report.at)}</time>${scope?' · '+html(scope):''}</p></div>
-      ${metrics(courses)}
-    </header>
-    <div class="chart-spread">${courses.map(c=>`<section class="exhibits subject-${c.course}" aria-label="${html(c.label)}图表"><div class="section-head"><h2>${html(c.label)}</h2><a href="#${sectionId(c)}" aria-label="${html(c.label)}分科明细">分科明细 <span aria-hidden="true">↓</span></a></div>
-      <div class="pair">${radarFigure(c)}${trendFigure(c)}</div></section>`).join('')}</div>
-    ${courses.length?`<aside class="method" aria-label="统计口径">${hasTrend?'<p>¹ 最近三份已出分作业的平均得分率，与此前三份相比。</p>':''}<p>作业平均按已公布的最终得分率计算，缺分留空、零分计入。课堂表现参考独立首答和订正后同技能新题，采用五档。${finalOnly?'仅有总分的记录只列最终分。':''}</p></aside>`:''}
-    ${note?`<aside class="teacher-note"><h2>老师的话</h2><p>${html(note.headline)}</p>${(note.nextSteps||[]).map(s=>'<p>'+html(s.text)+'</p>').join('')}<small>${html([date(note.publishedAt),note.className,note.period].filter(Boolean).join(' · '))}</small></aside>`:''}
-    <div class="detail-spread">${courses.map(c=>detail(c,report.includeMock)).join('')}</div></main></body></html>`;
+  const panels=reportPanels(report,facts,state);
+  const exhibit=(title,fig)=>`<article class="card figure"><div class="cardhead"><h2>${title}</h2>${fig===trendFigure?'<small class="legend">┄ 首次　━ 最终</small>':'<small>1–5 档</small>'}</div><div class="${fig===trendFigure?'trends':'radars'}">${courses.map(c=>'<section class="exhibits '+c.course+'"><h3>'+html(c.label)+'</h3>'+fig(c,true)+'</section>').join('')}</div></article>`;
+  const activity=courses.flatMap(c=>{
+    const entries=[];
+    if(c.errors)entries.push('共 '+c.errors+' 道错题，'+(c.verified||0)+' 道订正通过，'+(c.pending||0)+' 道待订正，'+(c.waiting||0)+' 道待验收。');
+    const mock=c.mockHistory?.[0];
+    if(report.includeMock&&mock)entries.push('自主模考 '+c.mockHistory.length+' 次。最近一次正确率 '+rate(mock.rate)+(Number.isFinite(mock.seconds)?'，用时 '+Math.floor(mock.seconds/60)+' 分 '+Math.floor(mock.seconds%60)+' 秒':'')+'。');
+    return entries.length?['<article class="card notes '+c.course+'"><h3>'+html(c.label)+'学习记录</h3><p>'+html(entries.join(''))+'</p></article>']:[];
+  });
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${base}</style><style id="report-mobile" media="screen and (max-width:700px)">${mobile}</style><style id="report-paper" media="print">${paper}</style><script defer src="/teacher/student-report-actions.js?v=bento1"></script></head><body><main data-version="${facts.version}" data-revision="${panels.revision}" data-ai="${panels.hasAI?'ready':Object.values(facts.candidates).some(a=>a.length)?'available':'empty'}">
+    <div class="strap"><b>Mike <span>经济一页通</span></b><nav class="actions"><button id="save">下载网页</button><button id="print">打印 / PDF</button></nav></div>
+    <header class="header"><div class="identity"><h1>经济学学习报告</h1><div><strong>${html(report.name)}</strong><span class="classes">${report.classNames.map(n=>'<i>'+html(n)+'</i>').join(' · ')||'班级待确认'}</span></div></div><div class="dateline"><time>${date(report.at)}</time><b>${html(scope)}</b></div></header>
+    <section class="overview">${courses.map(summary).join('')||'<p>当前范围暂无学习记录。</p>'}</section>
+    ${courses.length?'<section class="figures">'+exhibit('技能分布',radarFigure)+exhibit('作业得分率',trendFigure)+'</section>':''}
+    <section class="tasksection"><div class="secthead"><h2>下一步怎么做</h2><i></i><button type="button" id="add-task" class="online-only" ${courses.length?'':'hidden'}>补充任务</button><small class="paper-label">任务优先级</small></div><div class="tasks" id="tasks">${panels.tasks}</div></section>
+    <section class="swsection"><div class="secthead"><h2>学习诊断</h2><i></i><small>SWOT</small></div><div class="swot" id="swot">${panels.swot}</div></section>
+    <section class="card evidence" id="works">${panels.works}</section>
+    ${activity.length?'<div class="activities">'+activity.join('')+'</div>':''}
+    ${note?'<aside class="card notes teacher-note"><h3>老师的话</h3><p>'+html(note.headline)+'</p>'+(note.nextSteps||[]).map(s=>'<p>'+html(s.text)+'</p>').join('')+'</aside>':''}
+    <footer class="foot"><span>课堂五档为校内学习参考。作业均分仅计已公布成绩，含零分，缺分留空。${courses.some(c=>Number.isFinite(c.trend))?'¹ 最近三份已出分作业与此前三份比较。':''}</span><b id="source">${panels.hasAI?'AI 辅助分析':'按学习记录整理'}</b></footer>
+    <div class="actions ai-state" role="status"><span id="status"></span><button id="retry" hidden>重新整理分析</button></div>
+    </main><dialog id="proof-dialog" aria-labelledby="proof-title"><header><h2 id="proof-title"></h2><button id="close">关闭</button></header><p id="reading"></p><h3>学习依据</h3><div id="basis"></div><div class="online-only"><button id="edit">修改措辞</button><form id="edit-form" hidden><label>教师评语<textarea maxlength="160" rows="3" id="comment"></textarea></label><button type="submit">保存评语</button><span role="status" id="edit-status"></span></form><button id="remove-task" hidden>移除这项提醒</button></div></dialog>
+    <dialog id="task-dialog" class="online-only" aria-labelledby="task-title"><header><h2 id="task-title">补充学习任务</h2><button id="close-task">关闭</button></header><form id="task-form"><label>学科<select name="course">${courses.map(c=>'<option value="'+html(c.course)+'">'+html(c.label)+'</option>').join('')}</select></label><label>任务<input name="title" maxlength="40" required></label><label>说明<textarea name="text" maxlength="160" rows="2"></textarea></label><label>重要程度<select name="priority"><option value="important">重要</option><option value="normal">非重要</option></select></label><label>办理时间（上海，可留空）<input type="datetime-local" name="due"></label><p>48 小时内的任务将列为紧急。同一象限显示一项教师任务。</p><button type="submit">保存任务</button><small role="status"></small></form></dialog></body></html>`;
 }

@@ -15,13 +15,13 @@ function lineSegments(points) {
   }).join(' ');
 }
 
-export function trendFigure(course) {
+export function trendFigure(course,compact=false) {
   const items=course.cells.slice(0,12).reverse().map(cell => {
     const grade=resultParts(cell);
     const rate=score => grade?.max>0 && Number.isFinite(score)?num(100*score/grade.max):null;
     return {title:cell.assignment.title,date:workDate(cell.assignment),first:rate(grade?.first),final:rate(grade?.total)};
   });
-  const left=39,right=382,top=17,bottom=132;
+  const left=39,right=382,top=12,bottom=compact===true?70:132;
   const max=Math.max(100,...items.flatMap(r=>[r.final??0,r.first??0]));
   const x=i=>items.length===1?(left+right)/2:left+(right-left)*i/Math.max(items.length-1,1);
   const y=v=>bottom-(bottom-top)*v/max;
@@ -29,17 +29,17 @@ export function trendFigure(course) {
   const first=series('first'),final=series('final');
   const dots=(points,klass)=>points.map((p,i)=>p?`<circle class="${klass}" cx="${p[0]}" cy="${p[1]}" r="${klass==='first-dot'?4:2.4}"><title>${html(items[i].title)} · ${klass==='first-dot'?'首答':'最终'} ${items[i][klass==='first-dot'?'first':'final']}%</title></circle>`:'').join('');
   const labels=new Set([0,Math.floor((items.length-1)/2),items.length-1]);
-  const ticks=items.map((r,i)=>labels.has(i)?`<text class="tick" x="${num(x(i))}" y="153" text-anchor="${items.length===1?'middle':i===0?'start':i===items.length-1?'end':'middle'}">${Number.isFinite(Date.parse(r.date))?shortDate.format(new Date(r.date)):'日期待录'}</text>`:'').join('');
-  const grid=[0,1,2,3,4].map(t=>{const v=num(max*t/4);return `<path class="grid" d="M${left} ${num(y(v))}H${right}"/><text class="tick" text-anchor="end" x="33" y="${num(y(v)+3.8)}">${v}%</text>`;}).join('');
+  const ticks=items.map((r,i)=>labels.has(i)?`<text class="tick" x="${num(x(i))}" y="${bottom+20}" text-anchor="${items.length===1?'middle':i===0?'start':i===items.length-1?'end':'middle'}">${Number.isFinite(Date.parse(r.date))?shortDate.format(new Date(r.date)):'日期待录'}</text>`:'').join('');
+  const grid=(compact===true?[0,2,4]:[0,1,2,3,4]).map(t=>{const v=num(max*t/4);return `<path class="grid" d="M${left} ${num(y(v))}H${right}"/><text class="tick" text-anchor="end" x="33" y="${num(y(v)+3.8)}">${v}%</text>`;}).join('');
   const graded=items.filter(r=>r.final!==null).length;
   const notes=[];
   if(course.cells.length>12) notes.push('最近 12 份作业');
   if(graded && graded<items.length) notes.push('缺分处断线');
   return `<figure class="trend"><figcaption>作业得分率</figcaption><div class="legend"><span class="key original">首答</span><span class="key final">最终</span></div>
-    <svg viewBox="0 0 396 162" role="img" aria-label="作业依截止日排列，无截止日时取布置日。首答与最终得分率的数值见作业明细">${grid}
+    <svg viewBox="0 0 396 ${bottom+30}" role="img" aria-label="作业依日期排列。虚线为首次，实线为最终，缺分处断开。">${grid}
     <path class="final-line" d="${lineSegments(final)}"/><path class="first-line" d="${lineSegments(first)}"/>
     ${dots(first,'first-dot')}${dots(final,'final-dot')}${ticks}
-    ${graded?'':'<text x="213" y="80" class="empty-plot" text-anchor="middle">还没有已公布成绩</text>'}</svg>
+    ${graded?'':'<text x="213" y="${(top+bottom)/2}" class="empty-plot" text-anchor="middle">还没有已公布成绩</text>'}</svg>
     ${notes.length?'<p class="caption">'+notes.join(' · ')+'</p>':''}</figure>`;
 }
 

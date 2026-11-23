@@ -901,15 +901,27 @@ export async function createHomework({externalAuth} = {}) {
         return studentPerformance(work.submissions,work.assignments,mistakes,classes,await db.getMany(refs));
       }
       // One selected student only: never calculate a whole roster on the matrix request.
-      if(route.join('/')==='learning/student-report' && method==='GET'){
+      if(route.join('/')==='learning/student-report' && ['GET','POST'].includes(method)){
         teacher();
         const {readStudentReport}=await import('./student-report.mjs');
-        const {renderStudentReport}=await import('./student-report-view.mjs');
+        const {renderStudentReport,reportPanels}=await import('./student-report-view.mjs');
+        const {buildReportAnalysis,reportScope,reportState,personalizeReport,editReport}=await import('./student-report-analysis.mjs');
         const report=await readStudentReport({db,teacherId:user.id,query:url.searchParams,availableClasses,availableStudents,correctionReview});
-        const html=await renderStudentReport(report);
+        const facts=buildReportAnalysis(report),scope=reportScope(user.id,url.searchParams);
+        if(method==='POST'){
+          const b=await body(req);
+          assert(b.version===facts.version,'学习记录已更新，请刷新报告',409);
+          if(['edit','task','remove-task'].includes(b.action))await editReport(db,scope,facts,b,report);
+          else{
+            assert(b.action==='analyze','未知的报告操作');
+            await personalizeReport(db,decrypt,scope,facts);
+          }
+          return (json(res,reportPanels(report,facts,await reportState(db,scope,facts))),true);
+        }
+        const html=await renderStudentReport(report,facts,await reportState(db,scope,facts));
         res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'private, no-store',
           'Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff',
-          'Content-Security-Policy':"default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}).end(html);
+          'Content-Security-Policy':"default-src 'none'; img-src data:; font-src data:; connect-src 'self'; style-src 'unsafe-inline'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}).end(html);
         return true;
       }
       if(route.join('/')==='learning/student-performance'&&method==='GET'){
