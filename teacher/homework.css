@@ -1917,6 +1917,11 @@
 .homework-surface .offline-score-edit>summary{cursor:pointer;padding:.6rem 0;font-weight:600}
 @media(max-width:540px){.homework-surface .oa-line{grid-template-columns:1.1fr 1fr 1fr 1.25fr .85fr;gap:.2rem;padding:.7rem .22rem;font-size:.8rem}.homework-surface .oa-line span,.homework-surface .oa-line strong{min-width:0;overflow-wrap:anywhere}.homework-surface .oa-head{font-size:.76rem}}
 
+.homework-surface .pdf-reader .reader-body{position:relative}
+.homework-surface .reader-alternative{position:absolute;inset:0;z-index:2;overflow:auto;padding:.65rem;background:#fff;color:#19364c}
+.homework-surface .reader-alternative > a:first-of-type{display:inline-block;margin:.3rem .6rem}
+.homework-surface .reader-alternative img{display:block;width:100%;height:auto;margin:.35rem auto}
+
 /* V3 workspaces: task-first layout, semantic sections and stable touch targets. */
 .homework-surface{
   --navy: var(--ui-primary);

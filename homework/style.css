@@ -1954,3 +1954,8 @@ main:focus,main:focus-visible {outline:none;}
 .oa-detail p {white-space:pre-wrap}
 .offline-score-edit>summary {cursor:pointer;padding:.6rem 0;font-weight:600}
 @media(max-width:540px){.oa-line{grid-template-columns:1.1fr 1fr 1fr 1.25fr .85fr;gap:.2rem;padding:.7rem .22rem;font-size:.8rem}.oa-line span,.oa-line strong{min-width:0;overflow-wrap:anywhere}.oa-head{font-size:.76rem}}
+
+.pdf-reader .reader-body {position:relative}
+.reader-alternative {position:absolute;inset:0;z-index:2;overflow:auto;padding:.65rem;background:#fff;color:#19364c}
+.reader-alternative > a:first-of-type {display:inline-block;margin:.3rem .6rem}
+.reader-alternative img {display:block;width:100%;height:auto;margin:.35rem auto}

@@ -1,13 +1,19 @@
 import {questionMarker} from './question-marker.js';
 import {textIndex,findText,highlightText} from './search-text.js';
-let libraryPromise;
+let libraryPromise,importAttempt=0;
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export async function pdfLibrary(){
- libraryPromise ||= import('/assets/pdfjs/pdf.mjs').then(lib=>{lib.GlobalWorkerOptions.workerSrc='/assets/pdfjs/pdf.worker.mjs';return lib;});
+ if(!libraryPromise){
+   const retry=importAttempt++ ? '?retry='+importAttempt : '';
+   libraryPromise=import('/assets/pdfjs/pdf.mjs'+retry).then(lib=>{
+     lib.GlobalWorkerOptions.workerSrc='/assets/pdfjs/pdf.worker.mjs'+retry;
+     return lib;
+   }).catch(error=>{libraryPromise=null;throw error;});
+ }
  return libraryPromise;
 }
 export function openPDF(fileId,lib){return lib.getDocument({url:'/api/homework/files/'+encodeURIComponent(fileId),cMapUrl:'/assets/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/assets/pdfjs/standard_fonts/',wasmUrl:'/assets/pdfjs/wasm/',isEvalSupported:false,disableAutoFetch:true,disableStream:true,rangeChunkSize:131072});}
-export function mountPDFReader(root,{fileId,title='作业题纸',storageKey='',initialPage=null,initialOffset=0,loadPosition,savePosition}={}){
+export function mountPDFReader(root,{fileId,title='作业题纸',hasPaperImage=false,storageKey='',initialPage=null,initialOffset=0,loadPosition,savePosition}={}){
  const interactionEvents=new AbortController();let userInteracted=false;for(const name of ['pointerdown','keydown','wheel','touchstart'])root.addEventListener(name,e=>{userInteracted=true;if(name==='wheel'||((name==='pointerdown'||name==='touchstart')&&e.target.closest('.reader-scroll')))++jumpId;},{passive:true,signal:interactionEvents.signal});
  let pdfLib,rotation=0,panel="",matches=[],selectedMatch=-1,indexing=false,searchTimer,jumpId=0,thumbRunning=false;
  const textPromises=new Map(),thumbTasks=new Set();
@@ -19,6 +25,22 @@ export function mountPDFReader(root,{fileId,title='作业题纸',storageKey='',i
  const glyph=(path)=>`<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
  root.innerHTML=`<div class="reader-toolbar"><div class="reader-tool-group"><button type="button" class="reader-tool reader-thumbnails" aria-expanded="false">${glyph('M4 3h6v7H4z M14 3h6v7h-6z M4 14h6v7H4z M14 14h6v7h-6z')}<span>页面</span></button><button type="button" class="reader-tool reader-search-toggle" aria-expanded="false">${glyph('M21 21l-6-6 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0')}<span>搜索</span></button><a class="reader-tool" href="/api/homework/files/${encodeURIComponent(fileId)}?download=1" download>${glyph('M12 3v12m-5-5 5 5 5-5 M4 17v4h16v-4')}<span>下载</span></a></div><div class="reader-paging"><button type="button" class="icon-btn reader-prev" aria-label="上一页">${glyph('m15 5-7 7 7 7')}</button><label><span class="sr-only">跳转页码</span><input class="reader-page-number" type="number" value="1" min="1" inputmode="numeric" aria-label="跳转页码"></label><span class="reader-total">/ —</span><button type="button" class="icon-btn reader-next" aria-label="下一页">${glyph('m9 5 7 7-7 7')}</button></div><div class="reader-zoom-controls"><button type="button" class="icon-btn reader-minus" aria-label="缩小 PDF">${glyph('M5 12h14')}</button><button type="button" class="reader-fit" aria-label="适合宽度"><output class="reader-zoom">100%</output></button><button type="button" class="icon-btn reader-plus" aria-label="放大 PDF">${glyph('M5 12h14M12 5v14')}</button></div><button type="button" class="reader-rotate icon-btn" aria-label="旋转题纸">${glyph('M20 7V3m0 4h-4 M20 7a8 8 0 1 0 0 10')}</button><button type="button" class="reader-fullscreen">全屏</button></div><p class="reader-status hint" role="status">正在打开题纸…</p><div class="reader-body"><aside class="reader-panel" hidden aria-label="题纸导航"><div class="reader-panel-head"><strong>页面</strong><button type="button" class="reader-panel-close icon-btn" aria-label="关闭阅读导航">${glyph('m6 6 12 12M18 6 6 18')}</button></div><div class="reader-search-content" hidden><div class="reader-find"><label><span class="sr-only">搜索题纸文字</span><input type="search" placeholder="搜索题纸文字" aria-label="搜索题纸文字"></label></div><div class="reader-match-tools"><output class="reader-match-count" aria-live="polite">输入关键词</output><button type="button" class="icon-btn reader-match-prev" aria-label="上一个匹配">↑</button><button type="button" class="icon-btn reader-match-next" aria-label="下一个匹配">↓</button></div><div class="reader-search-results" role="list" aria-label="搜索结果"></div></div><nav class="reader-outline" aria-label="PDF 页面目录"></nav></aside><div class="reader-scroll" role="region" tabindex="0" aria-label="题纸阅读区域"><div class="reader-stack"></div></div></div>`;
  const $=s=>root.querySelector(s),scroll=$('.reader-scroll'),stack=$('.reader-stack'),status=$('.reader-status'),pageInput=$('.reader-page-number'),total=$('.reader-total'),outline=$('.reader-outline'),panelEl=$('.reader-panel'),searchInput=$('.reader-find input');
+ const fileURL='/api/homework/files/'+encodeURIComponent(fileId);
+ if(hasPaperImage){
+   const imageLink=document.createElement('a');imageLink.className='reader-tool';imageLink.href=fileURL+'?paperImage=1';imageLink.target='_blank';imageLink.rel='noopener';imageLink.textContent='整页图';imageLink.setAttribute('aria-label','在新窗口查看整页题纸图片');$('.reader-tool-group').append(imageLink);
+ }
+ let fallback;
+ function showAlternative(){
+   if(destroyed||!root.isConnected||rendered.size||fallback)return;
+   fallback=document.createElement('div');fallback.className='reader-alternative';
+   const original=document.createElement('a');original.href=fileURL;original.target='_blank';original.rel='noopener';original.textContent='在浏览器中打开原 PDF';fallback.append(original);
+   if(hasPaperImage){
+     const full=document.createElement('a');full.href=fileURL+'?paperImage=1';full.target='_blank';full.rel='noopener';full.setAttribute('aria-label','打开整页题纸大图');
+     const img=document.createElement('img');img.alt=title+' · 完整题纸';img.src=full.href;img.onerror=()=>full.remove();full.append(img);fallback.append(full);
+   }
+   scroll.parentElement.append(fallback);
+ }
+ const slowTimer=hasPaperImage?setTimeout(showAlternative,5500):null;
  const marker=storageKey?questionMarker($('.reader-tool-group'),storageKey,message=>status.textContent=message):null;
  let cached;try{cached=JSON.parse(localStorage.getItem(storageKey)||'null');}catch{}
  let remotePromise=loadPosition?loadPosition().catch(()=>null):Promise.resolve(null);
@@ -48,10 +70,10 @@ export function mountPDFReader(root,{fileId,title='作业题纸',storageKey='',i
    const base=pdfPage.getViewport({scale:1,rotation:(pdfPage.rotate+rotation)%360});p.ratio=base.height/base.width;size(p);
    const displayWidth=width(),scale=displayWidth/base.width,pixelRatio=Math.min(devicePixelRatio||1,2,Math.sqrt(9000000/(displayWidth*displayWidth*p.ratio))),view=pdfPage.getViewport({scale:scale*pixelRatio,rotation:(pdfPage.rotate+rotation)%360});
    p.canvas.width=Math.ceil(view.width);p.canvas.height=Math.ceil(view.height);const task=pdfPage.render({canvasContext:p.canvas.getContext('2d'),viewport:view});active.set(index,task);await task.promise;if(destroyed||stamp!==generation)return;
-   p.canvas.style.visibility='visible';p.el.classList.add('is-rendered');rendered.add(index);
+   p.canvas.style.visibility='visible';p.el.classList.add('is-rendered');rendered.add(index);clearTimeout(slowTimer);fallback?.remove();fallback=null;
    const source=await content(index);if(destroyed||stamp!==generation)return;
    p.text.replaceChildren();p.text.style.setProperty('--total-scale-factor',scale);p.layer=new pdfLib.TextLayer({textContentSource:source,container:p.text,viewport:pdfPage.getViewport({scale,rotation:(pdfPage.rotate+rotation)%360})});await p.layer.render();if(destroyed||stamp!==generation)return;paintHighlights(index);
-  }catch(e){if(!destroyed&&stamp===generation&&e?.name!=='RenderingCancelledException'&&e?.name!=='AbortException'){if(!rendered.has(index)){p.el.classList.add('render-failed');p.label.textContent='这一页暂未加载，点击重试';}else status.textContent='文字层未能打开，请重试阅读器；仍可按页查看。';}}
+  }catch(e){if(!destroyed&&stamp===generation&&e?.name!=='RenderingCancelledException'&&e?.name!=='AbortException'){if(!rendered.has(index)){p.el.classList.add('render-failed');p.label.textContent='这一页暂未加载，点击重试';if(hasPaperImage)showAlternative();}else status.textContent='文字层未能打开，请重试阅读器；仍可按页查看。';}}
   finally{busyCount--;p.pending=false;if(stamp===generation)active.delete(index);schedule();}
  }
  function update(){
@@ -105,14 +127,14 @@ export function mountPDFReader(root,{fileId,title='作业题纸',storageKey='',i
  scroll.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){e.preventDefault();e.stopPropagation();pinch.next=Math.max(.65,Math.min(4,pinch.zoom*distance(e.touches)/pinch.distance));stack.style.transformOrigin='top left';stack.style.transform=`scale(${pinch.next/zoom})`;$('.reader-zoom').textContent=Math.round(pinch.next*100)+'%';}},{passive:false});
  const finishPinch=()=>{if(pinch){const next=pinch.next;pinch=null;stack.style.transform='';if(next)setZoom(next);}};scroll.addEventListener('touchend',finishPinch);scroll.addEventListener('touchcancel',finishPinch);
  const observer=new ResizeObserver(()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(doc&&scroll.clientWidth>0)setZoom(zoom,lastPosition);},120);});observer.observe(scroll);
- function destroy(){if(replacement){replacement.destroy();replacement=null;}if(destroyed)return;const value=doc?position():null;if(value&&!restoring){try{if(storageKey)localStorage.setItem(storageKey,JSON.stringify(value));}catch{}savePosition?.(value)?.catch(()=>{});}clearTimeout(timer);clearTimeout(resizeTimer);observer.disconnect();interactionEvents.abort();clearTimeout(searchTimer);++jumpId;for(const t of thumbTasks)t.cancel();closeFullscreen();cancelAnimationFrame(layoutFrame);cancel();destroyed=true;searchId++;void documentTask?.destroy().catch(()=>{});}
+ function destroy(){clearTimeout(slowTimer);fallback?.remove();if(replacement){replacement.destroy();replacement=null;}if(destroyed)return;const value=doc?position():null;if(value&&!restoring){try{if(storageKey)localStorage.setItem(storageKey,JSON.stringify(value));}catch{}savePosition?.(value)?.catch(()=>{});}clearTimeout(timer);clearTimeout(resizeTimer);observer.disconnect();interactionEvents.abort();clearTimeout(searchTimer);++jumpId;for(const t of thumbTasks)t.cancel();closeFullscreen();cancelAnimationFrame(layoutFrame);cancel();destroyed=true;searchId++;void documentTask?.destroy().catch(()=>{});}
  const ready=(async()=>{try{
   const lib=await pdfLibrary();pdfLib=lib;if(destroyed||!root.isConnected)return {destroy};documentTask=openPDF(fileId,lib);doc=await documentTask.promise;if(destroyed||!root.isConnected){destroy();return {destroy};}
   const first=await doc.getPage(1);if(destroyed||!root.isConnected)return {destroy};const view=first.getViewport({scale:1});
   for(let i=0;i<doc.numPages;i++){const el=document.createElement('div');el.className='reader-leaf';el.dataset.page=i+1;const canvas=document.createElement('canvas');canvas.setAttribute('role','img');canvas.setAttribute('aria-label',title+' · 第 '+(i+1)+' 页');const label=document.createElement('button');label.type='button';label.className='reader-page-placeholder';label.textContent='第 '+(i+1)+' 页 · 等待加载';label.onclick=()=>{el.classList.remove('render-failed');void renderPage(i);};const text=document.createElement('div'),highlights=document.createElement('div');text.className='reader-text-layer';highlights.className='reader-highlights';highlights.setAttribute('aria-hidden','true');el.append(canvas,text,highlights,label);stack.append(el);marker?.attachPage(el,'page-'+i,()=>rotation);const p={el,canvas,label,text,highlights,ratio:view.height/view.width};pages.push(p);size(p);const button=document.createElement('button');button.type='button';button.className='reader-outline-page';button.dataset.page=i+1;button.setAttribute('aria-label','第 '+(i+1)+' 页缩略图');button.innerHTML='<canvas aria-hidden="true"></canvas><span>第 '+(i+1)+' 页</span>';button.onclick=()=>{++jumpId;if(matchMedia('(max-width:700px)').matches)togglePanel('');gotoPage(i+1);};p.thumb=button;outline.append(button);}
   // Paint the first page immediately; account restoration has a bounded wait.
   schedule();const remote=await Promise.race([remotePromise,new Promise(resolve=>setTimeout(()=>resolve(null),1200))]);if(destroyed)return {destroy};const remembered=cached&&(!remote||cached.updatedAt>Date.parse(remote.updatedAt))?cached:remote;const chosen=userInteracted?position():null,page=chosen?.page||initialPage||remembered?.page||1,offset=chosen?chosen.offset:initialPage?initialOffset:remembered?.offset||0;zoom=chosen?.zoom||Math.max(.65,Math.min(4,Number(cached?.zoom)||1));cancel();for(const p of pages)size(p);gotoPage(page,offset);restoring=false;root.classList.add('reader-loaded');status.textContent=initialPage?'已定位到题目所在页。':remembered?'已恢复上次阅读位置。':doc.numPages+' 页题纸 · 支持放大和全屏阅读。';controls();if(panel==='pages')void drawThumbnails();if(panel==='search'&&searchInput.value.trim())void find();
- }catch(e){if(!destroyed){root.classList.add('reader-error');status.textContent=e?.name==='PasswordException'?'这份 PDF 有密码保护，请老师上传可直接阅读的学生版。':'题纸暂时无法预览，可以重试或下载原件。';const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='重新打开题纸';button.onclick=()=>{destroy();replacement=mountPDFReader(root,{fileId,title,storageKey,initialPage,initialOffset,loadPosition,savePosition});};scroll.replaceChildren(button);}}
+ }catch(e){if(!destroyed){root.classList.add('reader-error');status.textContent=e?.name==='PasswordException'?'这份 PDF 有密码保护，请老师上传可直接阅读的学生版。':'题纸暂时无法预览，可以重试或下载原件。';const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='重新打开题纸';button.onclick=()=>{destroy();replacement=mountPDFReader(root,{fileId,title,hasPaperImage,storageKey,initialPage,initialOffset,loadPosition,savePosition});};showAlternative();(fallback||scroll).prepend(button);}}
  })();
  return {gotoPage,setZoom,destroy,position,fullscreen,ready};
 }

@@ -1063,6 +1063,14 @@ export async function createHomework({externalAuth} = {}) {
           );
           if (url.searchParams.get("meta") === "1")
             return (json(res, { file: f }), true);
+          if(url.searchParams.get('paperImage')==='1'){
+            assert(f.purpose==='question' && f.mime==='application/pdf' && f.pages===1 && f.paperPreview?.key,'暂时没有整页预览',404);
+            const image=f.paperPreview;
+            const stream=method==='HEAD'?null:await files.read({id:image.key});
+            res.writeHead(200,{'Content-Type':'image/png','Content-Length':image.size,'Cache-Control':'private, no-store'});
+            if(stream)stream.pipe(res);else res.end();
+            return true;
+          }
           const download = url.searchParams.has('download');
           const size = download ? (f.originalSize || f.size) : f.size;
           const range = method === 'GET' ? byteRange(req.headers.range, size) : null;

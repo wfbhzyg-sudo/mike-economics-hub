@@ -1100,7 +1100,7 @@ function renderPDFs(root = document) {
  for(const [el,task] of pdfTasks)if(!el.isConnected){Promise.resolve(task.destroy()).catch(()=>{});pdfTasks.delete(el);}
  for(const el of $$('.pdf-preview:not([data-loading])',root)){
   el.dataset.loading='true';const fileId=el.dataset.pdf;
-  const reader=mountPDFReader(el,{fileId,title:el.dataset.title||state.files.get(fileId)?.name||'PDF',storageKey:`hw-reading:${state.user?.id}:${fileId}`,initialPage:el.dataset.page?Number(el.dataset.page):null,loadPosition:()=>api('files/'+fileId+'/reading').then(x=>x.position),savePosition:position=>put('files/'+fileId+'/reading',position)});
+  const reader=mountPDFReader(el,{fileId,hasPaperImage:Boolean(state.files.get(fileId)?.paperPreview),title:el.dataset.title||state.files.get(fileId)?.name||'PDF',storageKey:`hw-reading:${state.user?.id}:${fileId}`,initialPage:el.dataset.page?Number(el.dataset.page):null,loadPosition:()=>api('files/'+fileId+'/reading').then(x=>x.position),savePosition:position=>put('files/'+fileId+'/reading',position)});
   pdfTasks.set(el,reader);
  }
 }
