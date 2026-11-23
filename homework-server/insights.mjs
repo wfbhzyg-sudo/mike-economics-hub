@@ -1,6 +1,7 @@
 // Deterministic facts + optional AI phrasing for teacher learning reports.
 // The teacher always reviews a draft; nothing reaches a student before publish.
 import {createHash} from 'node:crypto';
+import {assignmentRecords} from '../homework/learning-model.js';
 import {deepseek} from './ai.mjs';
 import {assignmentLabel, questionStats, buildRows, classObservations, formatPercent, overviewStats, scopedAssignments, scopedStudents, studentObservations, studentProfile, typeBreakdown} from '../homework/learning-analytics-model.js';
 
@@ -35,7 +36,7 @@ export function insightData({assignments, submissions, mistakes = [], students})
 
 // Rules version is part of the data version so a report generated under older
 // fact-building rules is treated as stale instead of silently re-used.
-const FACTS_RULES_VERSION = 4;
+const FACTS_RULES_VERSION = 5;
 const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
 
 function reportData(scope, data) {
@@ -138,19 +139,19 @@ export function insightVersion({scope, data}) {
 
 function knowledgeFacts(data, assignments, studentIds) {
   const scores = new Map();
-  for (const assignment of assignments) {
-    for (const s of data.submissions) {
-      if (s.assignmentId !== assignment.id || !studentIds.has(s.studentId)) continue;
-      if (s.status === 'draft' || s.publishedGrade?.total === null || s.publishedGrade?.total === undefined) continue;
-      for (const q of s.publishedGrade.questionsSnapshot || s.rubricSnapshot || s.publishedGrade.questions || []) {
-        const tag = clean(q.knowledge, 40);
-        if (!tag || !Number.isFinite(q.score) || !Number.isFinite(q.maxPoints) || !q.maxPoints) continue;
-        const entry = scores.get(tag) || {score: 0, total: 0, graded: 0};
-        entry.score += q.score;
-        entry.total += q.maxPoints;
-        entry.graded += 1;
-        scores.set(tag, entry);
-      }
+  const scope=new Set(assignments.map(a=>a.id));
+  const submissions=data.submissions.filter(s=>scope.has(s.assignmentId)&&studentIds.has(s.studentId));
+  for(const {effective:s,grade} of assignmentRecords(submissions)){
+    if(!Number.isFinite(grade?.total))continue;
+    const refs=new Map((s.rubricSnapshot||[]).map(q=>[String(q.id),q]));
+    for(const q of grade.questions?.length?grade.questions:(grade.questionsSnapshot||[])){
+      const tag=clean(q.knowledge || refs.get(String(q.id))?.knowledge,40);
+      if(!tag || !Number.isFinite(q.score) || !(q.maxPoints>0))continue;
+      const entry=scores.get(tag)||{score:0,total:0,graded:0};
+      entry.score+=q.score;
+      entry.total+=q.maxPoints;
+      entry.graded++;
+      scores.set(tag,entry);
     }
   }
   return [...scores.entries()]
@@ -186,7 +187,7 @@ export function buildInsightFacts({scope, data}) {
       add('s.lowest', `最低 ${assignmentLabel(lowest.assignment)}`, `最低一次是「${assignmentLabel(lowest.assignment)}」，得分率 ${pct(lowest.rate)}。`);
     }
     if (profile.row.trend !== null) add('s.trend', `近期变化 ${profile.row.trend > 0 ? '+' : ''}${profile.row.trend} 分`, `最近三次平均比更早三次${profile.row.trend >= 0 ? '高' : '低'} ${Math.abs(profile.row.trend)} 分。`);
-    const types = typeBreakdown(data, student.id);
+    const types = typeBreakdown(data, student.id, assignments);
     if (types.choice.rate !== null) add('s.choice', `选择题 ${pct(types.choice.rate)}`, `选择题平均得分率 ${pct(types.choice.rate)}（${types.choice.questions} 题）。`);
     if (types.written.rate !== null) add('s.written', `书面题 ${pct(types.written.rate)}`, `书面题平均得分率 ${pct(types.written.rate)}（${types.written.questions} 题）。`);
     const weak = knowledgeFacts(data, assignments, new Set([student.id]));

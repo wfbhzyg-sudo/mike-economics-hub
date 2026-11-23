@@ -60,6 +60,20 @@ export function createStore(connectionString, schema = "homework") {
       return (await client.query(`SELECT data FROM ${table} WHERE id=ANY($1::text[])`, [[...new Set(keys)]]))
         .rows.map((row) => row.data);
     },
+    async teacherWorklist(teacherId) {
+      const {rows}=await pool.query(`SELECT jsonb_build_object(
+        'id',s.id,'assignmentId',s.data->'assignmentId','studentId',s.data->'studentId',
+        'studentName',COALESCE(s.data->'studentName',u.data->'name'),'classIds',s.data->'classIds',
+        'status',s.data->'status','submittedAt',s.data->'submittedAt','createdAt',s.data->'createdAt',
+        'manualScoreEntry',s.data->'manualScoreEntry','version',s.data->'version',
+        'reviewRequests',CASE WHEN s.data->'reviewRequests' @> '[{"status":"open"}]'::jsonb THEN '[{"status":"open"}]'::jsonb ELSE '[]'::jsonb END,
+        'publishedGrade',CASE WHEN jsonb_typeof(s.data->'publishedGrade')='object' THEN jsonb_build_object(
+          'total',s.data#>'{publishedGrade,total}','maxPoints',s.data#>'{publishedGrade,maxPoints}') END
+      ) AS item FROM ${table} a JOIN ${table} s ON s.kind='submission' AND s.data->>'assignmentId'=a.id
+      LEFT JOIN ${table} u ON u.id=s.data->>'studentId' AND u.kind='user'
+      WHERE a.kind='assignment' AND a.data->>'teacherId'=$1 AND a.data->>'deletedAt' IS NULL`,[teacherId]);
+      return rows.map(row=>row.item);
+    },
     async reportAssignments(teacherId, studentId, classIds, submittedIds) {
       // Return assignment metadata and this student's snapshot only. Rubrics, files and class rosters can be large.
       const result = await pool.query(`SELECT jsonb_build_object(

@@ -15,6 +15,7 @@ import {createMCQUI} from './mcq.js?v=study-20261118';
 import {prepareForm,validateForm} from './form-feedback.js';
 import {mountPDFReader} from "./pdf-reader.js";
 import {createWorkspaceUI} from "./workspace-ui.js";
+import {offlineAnswers,hasItemScores,bindOfflineOriginals} from "./offline-answers.js";
 import {assignmentRecords,assignmentState,questionTotals,usesTotalOnlyEditor} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
 import {createSelfPracticeUI} from "./self-practice.js";
@@ -282,7 +283,7 @@ function showLogin(register = false) {
 async function refresh(route = 'assignments', version = state.routeVersion) {
   const studentHome = state.user?.role !== 'teacher' && route === 'assignments';
   const [data, learning] = await Promise.all([
-    loadWorkspaceData(api, route, embedded && route !== 'assignments' ? embeddedContext.classId : ''),
+    loadWorkspaceData(key=>api(key==='submissions' && state.user?.role==='teacher' && ['assignments','reviews','review'].includes(route.split('/')[0])?'submissions?view=worklist':key), route, embedded && !['assignments','reviews','review'].includes(route.split('/')[0]) ? embeddedContext.classId : ''),
     studentHome ? api('learning').catch(() => null) : Promise.resolve(null),
   ]);
   if (version === state.routeVersion) {
@@ -699,6 +700,27 @@ async function deskReviews(queue,version){
 function reviews(assignmentId) {
   const teacher = state.user.role === "teacher";
   let rows = state.submissions.filter((s) => s.status !== "draft");
+  if(teacher && assignmentId==='published'){
+    const publishedIds=new Set(rows.filter(s=>s.status==='published'&&s.publishedGrade).map(s=>s.assignmentId));
+    const works=state.assignments.filter(a=>publishedIds.has(a.id)).sort((a,b)=>String(b.dueAt||b.createdAt||'').localeCompare(String(a.dueAt||a.createdAt||'')));
+    const classes=state.classes.filter(c=>works.some(a=>a.classIds.includes(c.id)));
+    const scope=viewMemory('review-history:'+state.user.id);
+    const options=classes.map(c=>'<option value="'+h(c.id)+'">'+h(c.name)+'</option>').join('');
+    main.innerHTML=`<section class="paper">${head('','已出分作业','',link('reviews','待处理'))}${classes.length>1?'<label class="roster-class-label">班级 <select id="review-history-class"><option value="">全部班级</option>'+options+'</select></label>':''}<div id="review-history-list"></div></section>`;
+    const select=$('#review-history-class');
+    if(select && classes.some(c=>c.id===scope.get('class','')))select.value=scope.get('class','');
+    function draw(){
+      const classId=select?.value||'';
+      const visible=works.filter(a=>!classId||a.classIds.includes(classId));
+      $('#review-history-list').innerHTML=visible.length?visible.map(a=>{
+        const route='overview/'+encodeURIComponent(a.id)+'/all/'+(classId?encodeURIComponent(classId):'all-classes');
+        return `<article class="assignment-row"><div><h2>${link(route,h(a.title),'task-name')}</h2><div class="meta">${h(a.course||'')}</div></div>${link(route,'查看学生')}</article>`;
+      }).join(''):empty('暂无已出分作业','');
+    }
+    if(select)select.onchange=()=>{scope.set({class:select.value});draw();};
+    draw();
+    return;
+  }
   if (assignmentId) rows = rows.filter((s) => s.assignmentId === assignmentId);
   if(teacher)rows=rows.filter(s=>s.status==="needs_review"||s.reviewRequests?.some(r=>r.status==="open"));
   rows.sort(
@@ -706,7 +728,7 @@ function reviews(assignmentId) {
       (a.status === "needs_review" ? -1 : 1) -
       (b.status === "needs_review" ? -1 : 1),
   );
-  main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "作业批阅" : "提交记录", teacher ? "核对初评分，也可以直接改分后发布。" : "每次提交都会保留。成绩发布后，可在这里查看成绩。", link("assignments", "返回作业列表"))}${rows.length ? submissionRows(rows) : empty(teacher ? "暂无待复核作业" : "还没有提交记录", teacher ? "需要人工评分的作答会显示在这里。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
+  main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "作业批阅" : "提交记录", teacher ? "核对初评分，也可以直接改分后发布。" : "每次提交都会保留。成绩发布后，可在这里查看成绩。", teacher?link("reviews/published","已出分作业"):link("assignments","返回作业列表"))}${rows.length ? submissionRows(rows) : empty(teacher ? "暂无待复核作业" : "还没有提交记录", teacher ? "需要人工评分的作答会显示在这里。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
 }
 async function resultPage(id) {
  const version=state.routeVersion,{submission:s}=await api('submissions/'+id);
@@ -864,11 +886,15 @@ async function reviewPage(id,source) {
   if(usesTotalOnlyEditor(a,s)){
     if(renderId!==state.routeVersion)return;
     const g=s.publishedGrade||{}, max=Number(g.maxPoints||a?.maxPoints||0);
-    const back=queueRoute||state.reviewReturn?.route||'overview/'+s.assignmentId;
+    const personal=embedded && source==='profile' && s.studentId?.startsWith('bookself:');
+    const returnLink=personal?'<a class="secondary" data-teacher-return href="#student/'+encodeURIComponent(s.studentId.slice(9))+'">返回学生档案</a>':embedded&&source==='matrix'?'<a class="secondary" data-teacher-return href="#analytics">返回成绩与学情</a>':link(queueRoute||state.reviewReturn?.route||'overview/'+s.assignmentId,'返回成绩名单');
+    const detailed=hasItemScores(s);
     const valid=Number.isFinite(max)&&max>0;
-    main.innerHTML=`<section class="paper result-paper">${head('',a?.title||'线下成绩',name,link(back,'返回成绩名单'))}
+    main.innerHTML=`<section class="paper result-paper">${head('',a?.title||'线下成绩',name,returnLink)}
       <div class="result-score"><strong>${g.total??'—'}<small> / ${valid?max:'—'}</small></strong></div>
-      ${valid?`<form id="offline-grade-form" class="stack"><label class="field"><span>线下分数</span><input name="score" type="number" inputmode="decimal" min="0" max="${max}" step="0.1" value="${g.total??''}"></label><p class="hint">留空表示待录分，0 分作为有效成绩。</p><button type="submit" class="primary">保存成绩</button></form>`:'<p class="hint">请先为这份作业设置有效满分。</p>'}</section>`;
+      ${detailed?offlineAnswers(s,h)+'<details class="offline-score-edit"><summary>修改总分</summary>':'<p>原表仅记录总分。</p>'}
+      ${valid?`<form id="offline-grade-form" class="stack"><label class="field"><span>线下分数</span><input name="score" type="number" inputmode="decimal" min="0" max="${max}" step="0.1" value="${g.total??''}"></label><p class="hint">留空表示待录分，0 分作为有效成绩。</p><button type="submit" class="primary">保存成绩</button></form>`:'<p class="hint">请先为这份作业设置有效满分。</p>'}${detailed?'</details>':''}</section>`;
+    if(detailed)bindOfflineOriginals(main.querySelector('.offline-answers'));
     const form=$('#offline-grade-form');
     if(form)formHandler(form,async ({score})=>{
       await api('submissions/'+encodeURIComponent(s.id)+'/offline-score',{method:'PATCH',body:{score,absent:score==='',revision:g.revision||1}});
@@ -1063,7 +1089,7 @@ export async function mountTeacherHomework(route="assignments",context={}) {
 export function unmountTeacherHomework(){$("#preview").close();document.querySelector("#work-dialog")?.close();embeddedGeneration++;state.routeVersion++;clearTimeout(pollTimer);state.viewCleanup?.();state.viewCleanup=null;clearPDFs();main.replaceChildren();}
 if(embedded){
   // Delegate anchors because many reused views render their links dynamically.
-  main.addEventListener('click',event=>{const a=event.target.closest('a[href^="#"]');if(!a)return;const route=a.getAttribute('href').slice(1);if(route==='classes'||route.startsWith('work/'))return;event.preventDefault();go(route);});
+  main.addEventListener('click',event=>{const a=event.target.closest('a[href^="#"]');if(!a)return;const route=a.getAttribute('href').slice(1);if(a.hasAttribute('data-teacher-return')||route==='classes'||route.startsWith('work/'))return;event.preventDefault();go(route);});
 }else{
   window.addEventListener("hashchange", () => render());
   try {await loginResult(await api("me"));} catch {showLogin();}

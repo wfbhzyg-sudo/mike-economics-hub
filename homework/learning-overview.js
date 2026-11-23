@@ -445,7 +445,7 @@ export function mountLearningOverview(ctx, initialData) {
     const profile = studentProfile(data, row.student, context.assignments);
     const chip = rowStatus(profile.row);
     const recent = profile.recent;
-    const types = typeBreakdown(data, row.student.id);
+    const types = typeBreakdown(data, row.student.id, context.assignments);
     const corrections = correctionSummary(data, row.student.id);
     const history = assignmentHistory(data, row.student, context.assignments);
     const observations = studentObservations(data, row.student, context.assignments, profile);
@@ -670,7 +670,7 @@ export function mountLearningOverview(ctx, initialData) {
     return `<div class="lo-detail-inner">
       <header class="lo-detail-head"><div><h2>第 ${diagnosis.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || '题目')}</h2><p>${h(assignmentLabel(diagnosis.assignment))}${question.knowledge ? ` · ${h(question.knowledge)}` : ''}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
       <div class="lo-detail-score"><strong>${accuracyBadge(rate)}</strong><span class="lo-chip">${choice ? '首次正确率' : '首次得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
-      ${question.recoveredPoints?`<p>订正后达标率 ${accuracyBadge(question.afterRate)} · 补回 ${question.recoveredPoints} 分</p>`:''}
+      ${question.corrected||question.recoveredPoints?`<p>订正后达标率 ${accuracyBadge(question.afterRate)} · 补回 ${question.recoveredPoints} 分</p>`:''}
       ${originalQuestion(diagnosis.assignment,question)}
       <div class="lo-qstats">
         <div><span>${choice ? '班级正确率' : '平均得分'}</span><strong>${choice ? accuracyBadge(question.rate) : `${question.average}/${question.maxPoints}`}</strong><small>${question.correct}/${question.graded} 份${choice ? '完全正确' : '达到满分'}</small></div>
@@ -914,11 +914,11 @@ function renderDetail() {
       </dl>
       <div class="lo-detail-links">
         ${cell.required || grade ? '<button type="button" class="lo-btn" data-edit-score>修改成绩</button>' : ''}
-        ${record?.latest?.id && !record.latest.manualScoreEntry ? link(`work/review/${record.latest.id}`, '查看作答与复核') : ''}
+        ${record?.effective?.id && (assignment.offline||assignment.format==='score') && own.some(q=>Number.isFinite(q.score)) ? link(`work/review/${record.effective.id}/matrix`, '逐题作答') : record?.latest?.id && !record.latest.manualScoreEntry && !assignment.offline && assignment.format!=='score' ? link(`work/review/${record.latest.id}`, '查看作答与复核') : ''}
         ${link(`work/overview/${assignment.id}`, '作业设置')}
       </div>
       <section class="lo-detail-section">
-        <div class="lo-section-head"><h3>题目与本班数据</h3><small>${assignment.offline||assignment.format==='score'?'线下总分':summary.graded ? `${summary.graded} 份已发布` : grade?'已公布总分':'尚无已发布成绩'}</small></div>
+        <div class="lo-section-head"><h3>题目与本班数据</h3><small>${(assignment.offline||assignment.format==='score')&&!summary.questions.length?'线下总分':summary.graded ? `${summary.graded} 份已发布` : grade?'已公布总分':'尚无已发布成绩'}</small></div>
         ${summary.questions.length ? `<ul class="lo-qlist">
           <li class="lo-qlist-head" aria-hidden="true"><span>题</span><span>题目</span><span>本人</span><span>正确率</span></li>
           ${summary.questions.map((question, index) => {
@@ -942,7 +942,7 @@ function renderDetail() {
 
   function questionMarkup(row, cell, summary, question) {
     const own = cell.record?.grade?.questions?.find(item => item.id === question.id);
-    const submission = cell.record?.latest;
+    const submission = cell.record?.effective || cell.record?.latest;
     const choice = submission?.choices?.[question.id] || '';
     const total = question.distribution.reduce((sum, item) => sum + item.count, 0) || 1;
     const options = question.options?.length ? question.options : question.distribution.filter(item => item.count).map(item => ({label: item.label, text: ''}));
@@ -951,8 +951,8 @@ function renderDetail() {
       <button type="button" class="lo-back" data-back-question>← 返回全部题目</button>
       <header class="lo-detail-head"><div><h2>第 ${summary.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || question.type || '题目')}</h2><p>${h(row.student.name)} · ${h((cell.assignment.title || assignmentLabel(cell.assignment)))}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
       <div class="lo-detail-score"><strong>${own ? `${own.score}<small>/${own.maxPoints}</small>` : '—'}</strong>${currentChoiceChip(choice, own)}</div>
-      <p class="lo-prompt">${h(question.prompt || '未记录题干')}</p>
-      ${question.options?.length ? `<ol class="lo-options" aria-label="选项">${options.map(option => `<li${option.label === choice ? ' class="chosen"' : ''}><span class="lo-option-label">${h(option.label)}</span><span>${h(option.text || '')}</span>${option.label === choice ? '<em>本人选择</em>' : ''}</li>`).join('')}</ol>` : '<p class="lo-note">该题没有选项结构，可能为简答或材料题。</p>'}
+      ${question.type==='choice'&&own?`<p class="lo-note">学生答案 <strong>${h(choice||'未作答')}</strong>　参考答案 <strong>${h(submission?.version && cell.assignment.version && submission.version!==cell.assignment.version?'请查看该次作答快照':question.correctOptions?.join('、')||'待核对')}</strong>　${own.score==null?'待评分':own.score===own.maxPoints?'✓ 正确':'× 错误'}</p>`:''}
+      ${originalQuestion(cell.assignment,question)}
       <div class="lo-qstats">
         <div><span>班级正确率</span><strong>${accuracyBadge(question.rate)}</strong><small>${question.correct}/${question.graded} 份</small></div>
         <div><span>有效选项</span><strong>${question.answered}</strong><small>${question.unanswered ? `${question.unanswered} 份未记录选项` : '全部已记录'}</small></div>

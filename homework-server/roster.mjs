@@ -27,6 +27,7 @@ export function assignmentRoster(assignment, students, submissions) {
     const scoreReady=Boolean(submission?.suggestedGrade?.questions?.length && submission.suggestedGrade.questions.every(q=>Number.isFinite(q.score)));
     return {id:u.id,name:u.name,username:u.username||'',classIds:assignedClasses(assignment.classIds,[...(u.classIds||[]),...(snapshots.get(u.id)?.classIds||[]),...(submission?.classIds||[])]),historical:!active.has(u.id),required,
       state:offline?(hasGrade?'recorded':required?'unrecorded':'unassigned'):(submission&&submission.status!=='returned'?'submitted':required?'missing':'unassigned'),submissionId:submission?.id||null,
+      hasItemScores:Boolean(effective?.publishedGrade?.questions?.some(q=>Number.isFinite(q.score))),
       submittedAt:submission?.submittedAt||null,status:submission?.status||null,scoreReady,
       needsReview:Boolean(submission&&submission.status!=='returned'&&(submission.status==='needs_review'||submission.reviewRequests?.some(r=>r.status==='open'))),
       pendingUpdate:Boolean(effective&&effective.id!==submission?.id),grade:hasGrade?{total:effective.publishedGrade.total,maxPoints:effective.publishedGrade.maxPoints}:null};

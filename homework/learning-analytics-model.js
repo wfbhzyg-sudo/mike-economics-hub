@@ -62,12 +62,17 @@ export function assignmentLabel(assignment) {
   return label.length > 24 ? `${label.slice(0, 23)}…` : label;
 }
 
+function countsAsSubmitted(cell){
+  if(cell.assignment.offline||cell.assignment.format==='score')return Number.isFinite(cell.record?.grade?.total);
+  return Boolean(cell.record && !cell.record.latest.manualScoreEntry);
+}
+
 export function buildRows(data, students, assignments) {
   const scope = new Set(assignments.map(assignment => assignment.id));
   return students.map(student => {
     const cells = cellsFor(data, student, assignments);
     const summary = cellSummary(cells);
-    const submitted = cells.filter(cell => cell.record && !cell.record.latest.manualScoreEntry).length;
+    const submitted = cells.filter(countsAsSubmitted).length;
     const published = cells.filter(cell => cell.rate !== null).length;
     const needsReview = cells.filter(cell => cell.record?.latest?.status === 'needs_review').length;
     const reviewing = cells.filter(cell => ['queued', 'grading'].includes(cell.record?.latest?.status)).length;
@@ -93,7 +98,7 @@ export function overviewStats(rows, assignments) {
   let submitted = 0, published = 0, needsReview = 0, reviewing = 0, missing = 0, attention = 0;
   for (const row of rows) {
     for (const cell of row.cells) {
-      if (cell.record && !cell.record.latest.manualScoreEntry) submitted += 1;
+      if (countsAsSubmitted(cell)) submitted += 1;
       if (cell.rate !== null) { published += 1; rates.push(cell.rate); const g=cell.record.grade;firstRates.push((g.scoreSources?.first??g.total)/g.maxPoints*100);recoveryRates.push((g.scoreSources?.recovered??0)/g.maxPoints*100); }
       if (cell.record?.latest?.status === 'needs_review') needsReview += 1;
       if (['queued', 'grading'].includes(cell.record?.latest?.status)) reviewing += 1;
@@ -133,7 +138,9 @@ export function questionStats(data, assignmentId) {
       scoreSum += Number(hit.score) || 0;
       if (hit.score >= hit.maxPoints) correct += 1;
       const added=submission.publishedGrade.scoreSources?.byQuestion?.[question.id]||0;
-      recoveredPoints+=added;if(added&&hit.score+added>=hit.maxPoints)corrected++;
+      recoveredPoints+=added;
+      const verified=submission.publishedGrade.verifiedQuestionIds;
+      if(hit.score<hit.maxPoints && (verified?verified.includes(question.id):added&&hit.score+added>=hit.maxPoints))corrected++;
       const sameVersion = assignment.version == null || submission.version === assignment.version;
       const choice = sameVersion ? submission.choices?.[question.id] : null;
       if (choice) { counts.set(choice, (counts.get(choice) || 0) + 1); answered += 1; }
@@ -234,10 +241,10 @@ export {workDate};
 // ---------- report facts (deterministic, no model call) ----------
 const pct = value => formatPercent(value);
 
-function latestSubmitted(data, studentId) {
+function latestSubmitted(data, studentId, allowed) {
   const latest = new Map();
   for (const submission of data.submissions) {
-    if (submission.studentId !== studentId || submission.status === 'draft') continue;
+    if (submission.studentId !== studentId || submission.status === 'draft' || (allowed && !allowed.has(submission.assignmentId))) continue;
     const previous = latest.get(submission.assignmentId);
     if (!previous || stampOf(submission) > stampOf(previous) || (stampOf(submission) === stampOf(previous) && submission.id > previous.id)) latest.set(submission.assignmentId, submission);
   }
@@ -246,11 +253,12 @@ function latestSubmitted(data, studentId) {
 
 // Split a student's published points by question type. Choice answers are scored
 // automatically; written answers carry teacher-reviewed points in the same grade.
-export function typeBreakdown(data, studentId) {
+export function typeBreakdown(data, studentId, assignments) {
+  const allowed=assignments && new Set(assignments.map(a=>a.id));
   const buckets = {choice: {score: 0, total: 0, questions: 0}, written: {score: 0, total: 0, questions: 0}};
-  for (const submission of latestSubmitted(data, studentId).values()) {
+  for (const submission of latestSubmitted(data, studentId, allowed).values()) {
     const grade = submission.publishedGrade;
-    if (!grade) continue;
+    if (!grade || !Number.isFinite(grade.total)) continue;
     for (const question of grade.questions || []) {
       if (!(question.maxPoints > 0) || !Number.isFinite(question.score)) continue;
       const bucket = question.type === 'choice' ? buckets.choice : buckets.written;
@@ -309,7 +317,7 @@ export function studentObservations(data, student, assignments, profile = studen
       evidence: [`近期变化 ${trendLabel(row.trend)}`],
     });
   }
-  const types = typeBreakdown(data, student.id);
+  const types = typeBreakdown(data, student.id, assignments);
   if (types.choice.rate !== null && types.written.rate !== null && types.choice.questions >= 3 && types.written.questions >= 3) {
     const gap = round1(Math.abs(types.choice.rate - types.written.rate));
     if (gap >= 15) items.push({

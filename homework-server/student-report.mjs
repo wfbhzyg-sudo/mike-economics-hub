@@ -112,7 +112,11 @@ export function resultParts(cell){
   const totalOnly={first:null,recovered:null,adjustment:null,resubmission:null,total:g.total,max:g.maxPoints};
   if(effective.offlineEvidence){
     const evidence=effective.offlineEvidence;
-    if(evidence.maxPoints!==g.maxPoints || !Number.isFinite(evidence.total))return totalOnly;
+    if(evidence.maxPoints!==g.maxPoints || !Number.isFinite(evidence.total)){
+      const source=g.scoreSources;
+      if(!source || !Number.isFinite(source.first) || !Number.isFinite(source.recovered))return totalOnly;
+      return {first:source.first,recovered:source.recovered,adjustment:num(g.total-source.first-source.recovered),resubmission:0,total:g.total,max:g.maxPoints};
+    }
     const recovered=g.scoreSources?.recovered??0;
     return {first:evidence.total,recovered,adjustment:num(g.total-evidence.total-recovered),resubmission:0,total:g.total,max:g.maxPoints};
   }

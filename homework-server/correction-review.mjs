@@ -40,20 +40,22 @@ export function applyRecovery(submissions, reviews, assignments) {
     const assignment=assignmentMap.get(s.assignmentId);
     if (s.status!=='published'||!saved?.length||!current.has(s.id)||!Number.isFinite(grade?.total)||!Number.isFinite(base?.total)||!grade.maxPoints||assignment?.deletedAt||assignment?.published===false) return s;
     let room=Math.max(0,decimal(grade.maxPoints-base.total));
-    const byQuestion=Object.create(null);
+    const byQuestion=Object.create(null),verifiedQuestionIds=[];
     const points=new Map((s.offlineEvidence ? grade.questions : base.questions)?.map(q=>[q.id,q]));
     const unit=s.offlineEvidence?.maxPoints>0?grade.maxPoints/s.offlineEvidence.maxPoints:1;
     for(const review of saved.sort((a,b)=>a.questionId.localeCompare(b.questionId,undefined,{numeric:true}))){
       const q=points.get(review.questionId);
       if (!q || !Number.isFinite(q.score) || review.rubricHash!==signature(s.rubricSnapshot?.find(q=>q.id===review.questionId))) continue;
+      if(q.score<q.maxPoints && !verifiedQuestionIds.includes(q.id))verifiedQuestionIds.push(q.id);
+      else continue;
       const delta=decimal(Math.min(room,Math.max(0,(q.maxPoints-q.score)*unit)));
       if(delta){byQuestion[q.id]=delta;room=decimal(room-delta);}
     }
     const recovered=decimal(Object.values(byQuestion).reduce((a,b)=>a+b,0));
-    if (!recovered) return s;
+    if (!recovered) return verifiedQuestionIds.length?{...s,publishedGrade:{...grade,verifiedQuestionIds}}:s;
     const sum=decimal(base.total+recovered);
     const total=grade.manualTotal ? grade.total : sum;
-    return {...s,publishedGrade:{...grade,total,scoreSources:{first:base.total,original:actual(s)?.total??base.total,recovered,adjustment:decimal(total-sum),byQuestion}}};
+    return {...s,publishedGrade:{...grade,total,verifiedQuestionIds,scoreSources:{first:base.total,original:s.offlineEvidence?base.total:(actual(s)?.total??base.total),recovered,adjustment:decimal(total-sum),byQuestion}}};
   });
 }
 

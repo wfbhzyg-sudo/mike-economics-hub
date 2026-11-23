@@ -201,3 +201,14 @@ test('single-assignment analysis uses only its recipients, grades and per-questi
   data.submissions[0].publishedGrade.questions[0].score=5;
   assert.notEqual(insightVersion({scope,data}),first);
 });
+
+test('imported item scores join to the original topic and keep another subject outside the selected class',()=>{
+ const f=fixture(),s=f.submissions[0],scope=insightScope({classId:'c1',studentId:'u1',period:'all'});
+ s.rubricSnapshot=s.publishedGrade.questions.map(q=>({id:q.id,knowledge:'测试知识点'}));
+ s.publishedGrade.questions=s.publishedGrade.questions.map(({knowledge,...q})=>q);
+ f.assignments.push({...f.assignments[0],id:'elsewhere',classIds:['c2']});
+ f.submissions.push({...s,id:'outside',assignmentId:'elsewhere',publishedGrade:{total:0,maxPoints:100,questions:[{id:'outsider',type:'choice',maxPoints:100,score:0}]}});
+ const {facts}=buildInsightFacts({scope,data:insightData(f)});
+ assert(facts.some(x=>x.id.startsWith('k.')&&x.text.includes('测试知识点')&&x.text.includes('80%')));
+ assert(facts.find(x=>x.id==='s.choice').text.includes('80%'));
+});

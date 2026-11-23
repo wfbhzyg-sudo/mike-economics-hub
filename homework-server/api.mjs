@@ -1100,7 +1100,7 @@ export async function createHomework({externalAuth} = {}) {
           teacher();
           const assignments=(await db.find('assignment',{teacherId:user.id})).filter(a=>!a.deletedAt);
           const [students,submissions]=await Promise.all([
-            availableStudents(),db.find('submission',{assignmentId:assignments.map(a=>a.id)})]);
+            availableStudents(),db.teacherWorklist(user.id)]);
 
           const submissionsByWork=Map.groupBy(submissions,s=>s.assignmentId);
           const summaries={}, byClass={};
@@ -1418,6 +1418,10 @@ export async function createHomework({externalAuth} = {}) {
       }
       if (route[0] === "submissions") {
         if (method === "GET" && !route[1]) {
+          if(url.searchParams.get('view')==='worklist'){
+            teacher();
+            return (json(res,{submissions:await db.teacherWorklist(user.id)}),true);
+          }
           const assignments = user.role === 'teacher' ? (await db.find('assignment',{teacherId:user.id})).map(a=>a.id) : [];
           const users = user.role === 'teacher' ? await db.list('user') : [];
           const scope=user.role==='teacher'?{assignmentId:assignments}:{studentId:user.id};
@@ -1548,13 +1552,14 @@ export async function createHomework({externalAuth} = {}) {
             });
             return (json(res, { submission: publicSubmission(result) }), true);
           }
-          if (method === "GET")
-            return (
-              json(res, {
-                submission: {...(user.role === "teacher" ? s : publicSubmission(s)),responses:s.responses||{},assignment:publicAssignment(await db.get(s.assignmentId))},
-              }),
-              true
-            );
+          if (method === "GET"){
+            const detail=user.role==="teacher" ? {...s} : publicSubmission(s);
+            if(user.role==="teacher" && !detail.studentName){
+              const student=(await availableStudents()).find(person=>person.id===s.studentId);
+              detail.studentName=student?.name || (await db.get(s.studentId))?.name || "历史学生";
+            }
+            return (json(res,{submission:{...detail,responses:s.responses||{},assignment:publicAssignment(await db.get(s.assignmentId))}}),true);
+          }
           teacher();
           const b = await body(req);
           if(route[2]==='review-draft'&&method==='PUT'){
