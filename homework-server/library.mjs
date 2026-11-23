@@ -1,4 +1,5 @@
 import {lessonFocus} from '../homework/lesson-focus.js';
+import {lessonExamples} from './lesson-mcq-data.mjs';
 import {expandedLessonFocus} from './lesson-focus-data.mjs';
 import {classKey,namedCourse} from '../homework/course-scope.js';
 import {automaticGradeReady,libraryOptions} from '../homework/library-grading.js';
@@ -110,9 +111,11 @@ async function handle({req,res,route,method,user,json,availableClasses,available
    let topicId = query.get('topic') || '';
    const bankId = query.get('bank');
    if (bankId && (!unitId || !topicId) && bankId.length <= 200) {
-     const bank = await db.get(bankId);
-     if (bank?.type === 'library-question' && (!unitId || bank.unitId === unitId)) {
-       unitId = bank.unitId;
+     const bank = (await db.query(
+       `SELECT data->>'unitId' AS unit, data->>'topic' AS topic FROM ${db.table} WHERE kind='library-question' AND id=$1`, [bankId]
+     )).rows[0];
+     if (bank?.unit && (!unitId || bank.unit === unitId)) {
+       unitId = bank.unit;
        topicId ||= bank.topic || '';
      }
    }
@@ -123,7 +126,7 @@ async function handle({req,res,route,method,user,json,availableClasses,available
    const key = unitId.split('-')[0] + ':' + topic?.id;
    const expanded = expandedLessonFocus[key];
    const original = lessonFocus[key];
-   const focus = expanded && original ? {...original, ...expanded} : null;
+   const focus = expanded && original ? {...original, ...expanded, examples:lessonExamples[key] || []} : null;
    const hasTextbook = Boolean(topic && unit.resources?.some(resource => resource.kind === 'textbook' &&
      (!resource.topicId || resource.topicId === topic.id) && (user.role === 'teacher' || resource.audience !== 'teacher')));
    json(res, {unit:{id:unit.id,title:unit.title}, topics, topic:topic || null, focus, hasTextbook});

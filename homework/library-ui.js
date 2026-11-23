@@ -4,6 +4,7 @@ import {bindDisclosureMenus} from './disclosure-menu.js';
 import {studentAssignmentAction} from './assignment-navigation.js';
 import {libraryLocation,packReference,packQuestions} from './library-navigation.js';
 import {highlightText} from './search-text.js';
+import {bindExamples} from './lesson-examples.js';
 import {focusMarkup} from './lesson-panel.js';
 import {buildPacks,canonicalQuestions,questionHasTopic} from './library-packs.js';
 import {mountLibraryReader} from './library-reader.js';
@@ -12,11 +13,10 @@ const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const remember=(key,value)=>{try{sessionStorage.setItem(key,JSON.stringify(value));}catch{}};
 const recall=(key,fallback)=>{try{return JSON.parse(sessionStorage.getItem(key))??fallback;}catch{return fallback;}};
 export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic='',topicOrMode='',readerMode='',viewDetail=''){
- let disposed=false,content,readerCleanup,questions,sources,dialog,sourceReader,closeContextMenus,closeBankMenus;
+ let disposed=false,content,readerCleanup,questions,sources,dialog,sourceReader,closeContextMenus,closeBankMenus,boardCleanup;
  const events=new AbortController();
- state.viewCleanup=()=>{disposed=true;events.abort();closeContextMenus?.();closeBankMenus?.();readerCleanup?.();content?.libraryDispose?.();sourceReader?.destroy?.();dialog?.close();dialog?.remove();document.body.classList.remove('library-focused','library-project');};
+ state.viewCleanup=()=>{disposed=true;events.abort();boardCleanup?.();closeContextMenus?.();closeBankMenus?.();readerCleanup?.();content?.libraryDispose?.();sourceReader?.destroy?.();dialog?.close();dialog?.remove();document.body.classList.remove('library-focused','library-project');};
  const teacher=state.user.role==='teacher',$=s=>main.querySelector(s);
- let boardCleanup=null;
  const {units}=await api('library/catalog');if(disposed)return;
  if(!units.length){main.innerHTML='<section class="library-work"><h1>课程教学包</h1><p>老师开放课程后，课件与教材会显示在这里。</p></section>';return;}
  const last=recall('lib-last:'+state.user.id,{});if(!teacher&&!unitOrTopic){const preferred=selectedCourse(state.user.id,['micro','macro'],'');if(preferred&&!last.unit?.startsWith(preferred)){const target=units.find(u=>u.id.startsWith(preferred));if(target){last.unit=target.id;last.topic='';last.detail='';}}}
@@ -62,10 +62,11 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
    const {focus}=await api('library/focus?'+new URLSearchParams({unit:unitId,topic:topic.id})), anchor=new URLSearchParams(location.search).get('focus');
    if(disposed||!host.isConnected)return;
    host.innerHTML=focusMarkup(focus);
+   bindExamples(host,focus?.examples);
    if(unitId==='micro-unit-2'&&['2.1','2.6'].includes(topic.id)){
      const {mountDemandLab}=await import('./demand-lab.js');
      if(disposed||!host.isConnected)return;
-     const lab=document.createElement('div');host.prepend(lab);mountDemandLab(lab,{teacher});
+     const lab=document.createElement('div');host.append(lab);mountDemandLab(lab,{teacher});
    }
    if(['goals','rule','apply','pitfall'].includes(anchor))host.querySelector('#focus-'+anchor)?.scrollIntoView({block:'start'});
   }catch(e){if(!disposed&&host.isConnected){host.innerHTML='<p role="alert">学习重点暂时无法加载。</p><button type="button">重试</button>';host.querySelector('button').onclick=overview;}}
@@ -151,6 +152,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   el.newbox.addEventListener('click',()=>load());
   root.querySelector('[data-board-all]').addEventListener('click',openAll);
   paintKinds();paintNew();await load();
+  if(disposed || !root.isConnected)return;
   try{const es=new EventSource(`/api/homework/library/board/stream?unit=${encodeURIComponent(st.unitId)}&topic=${encodeURIComponent(st.topicId)}`);es.addEventListener('update',()=>{st.newCount+=1;paintNew();refreshCountsOnly();});es.addEventListener('report',()=>{refreshCountsOnly();});st.es=es;}catch{}
   boardCleanup=()=>{try{st.es?.close();}catch{}};
  }

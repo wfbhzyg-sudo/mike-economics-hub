@@ -174,3 +174,41 @@
     order:-1;flex:0 0 auto;min-height:44px;padding-inline:8px;
   }
 }
+
+/* Shared by the course pack and the question-side study panel. */
+.lesson-focus-content .lf-practice { margin-top: 8px; border: 0; }
+.lf-card { border-bottom: 1px solid #d6e1e6; }
+.lf-card > summary {
+  display: grid; grid-template-columns: minmax(0,1fr) auto 12px; align-items: center;
+  gap: 6px 12px; min-height: 44px; padding: 8px 4px; cursor: pointer; list-style: none;
+  color: #17364d; text-align: start;
+}
+.lf-card > summary::-webkit-details-marker { display: none; }
+.lf-card > summary::after { content: ''; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.lf-card[open] > summary::after { transform: rotate(225deg); }
+.lf-term [lang] { font-size: .83em; color: #4e626e; }
+.lf-skill { color: #425c71; font-size: .78em; }
+.lf-example { padding: 2px 4px 14px; max-width: 72ch; }
+.lf-example .lf-rule { margin: 0 0 9px; color: #48606b; }
+.lf-example fieldset { display: block; min-width: 0; margin: 0; border: 0; padding: 0; }
+.lf-example legend { padding: 0; font-weight: 650; color: #142e43; }
+.lf-options { display: grid; gap: 4px; margin-top: 8px; }
+.lf-options > button { display: flex; align-items: baseline; gap: .65em; width: 100%; min-height: 40px; margin: 0; padding: 7px 10px; text-align: start; white-space: normal; color: #193750; background: #fff; border: 1px solid #c4d3dc; border-radius: 6px; font: inherit; line-height: 1.35; }
+.lf-options b { flex: none; }
+.lf-options > [data-mark="correct"] { color: #185239; background: #e9f4ec; border-color: #77a68b; }
+.lf-options > [data-mark="incorrect"] { color: #842f2d; background: #fbefed; border-color: #ce9590; }
+.lf-card :is(summary,button):focus-visible { outline: 2px solid #215c8b; outline-offset: 2px; }
+.lf-example .lf-feedback:not(:empty) { margin-top: 8px; }
+.lf-figure { display: block; width: min(100%,325px); height: auto; margin: 8px 0; color: #18354b; }
+.lf-table { border-collapse: collapse; margin: 8px 0; max-width: 100%; font-variant-numeric: tabular-nums; }
+.lf-table :is(td,th) { text-align: start; padding: 4px 8px; border-bottom: 1px solid #cdd8df; }
+.lf-table thead { background: #edf3f5; }
+.lesson-panel .lf-card > summary { grid-template-columns: minmax(0,1fr) 12px; }
+.lesson-panel .lf-skill { grid-column: 1; }
+.lesson-panel .lf-card > summary::after { grid-column: 2; grid-row: 1 / 3; }
+@media(max-width:650px) {
+  .lf-card > summary { grid-template-columns: minmax(0,1fr) 12px; gap: 1px 8px; }
+  .lf-skill { grid-column: 1; }
+  .lf-card > summary::after { grid-column: 2; grid-row: 1 / 3; }
+  .lf-options > button { min-height: 44px; }
+}

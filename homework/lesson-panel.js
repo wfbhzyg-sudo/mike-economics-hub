@@ -1,3 +1,4 @@
+import {exampleMarkup,bindExamples} from './lesson-examples.js';
 import {namedCourse} from './course-scope.js';
 import {reviewLinksMarkup} from './review-links.js';
 
@@ -32,6 +33,7 @@ export function focusMarkup(focus, {canPin = false} = {}) {
   return `<article class="lesson-focus-content" lang="en">
     <div class="lesson-focus-terms">${focus.terms.map(([term, zh]) =>
       `<span><strong><u>${escape(term)}</u></strong> <span lang="zh-CN">${escape(zh)}</span></span>`).join('')}</div>
+    ${exampleMarkup(focus.examples,escape)}
     ${anchors.map(([id, title]) => `<section id="focus-${id}" data-focus=${id} tabindex="-1"><h2>${title}</h2>
       ${sections[id].length > 1 ? '<ul>' + sections[id].map(item => '<li>' + text(item) + '</li>').join('') + '</ul>' : '<p>' + text(sections[id][0]) + '</p>'}
       ${canPin && (id === 'rule' || id === 'apply') ? `<button type="button" class="lesson-pin" data-pin="${id}" lang="zh-CN">固定这条重点</button>` : ''}
@@ -85,6 +87,7 @@ export function mountLessonLinks(root, api) {
         `<p>选择本单元的主题</p><div class="lesson-directory">${data.topics.map(t =>
           `<button type="button" data-lesson-topic="${escape(t.id)}">${escape(t.id + ' ' + (t.title || ''))}</button>`).join('')}</div>`;
       if (data.topic) {
+        bindExamples(body,data.focus?.examples);
         const path = '#library/' + encodeURIComponent(data.unit.id) + '/' + encodeURIComponent(data.topic.id);
         body.insertAdjacentHTML('beforeend', `<div class="lesson-panel-links">
           <a target="_blank" rel="noopener" href="/homework/?focus=rule${path}">打开教学包 ↗</a>
