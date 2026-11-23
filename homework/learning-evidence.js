@@ -101,18 +101,26 @@ export function showTeacherEvidence(host,{read,student,scope='',subject='',h}){
 
 export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPreviews,toast},assignment,students){
   const route='correction-reviews/'+encodeURIComponent(assignment.id);
-  const labels={passed:'已订正',manual:'待教师核对',revise:'需补充',queued:'验收中'};
-  let closed=false;
-  async function draw(reopen){
+  const labels={recorded:'已提交订正',passed:'已订正',manual:'待教师核对',revise:'需补充',queued:'验收中'};
+  let closed=false, sequence=0, lastContent;
+  const editing=()=>Boolean(host.querySelector('form[aria-busy="true"],form textarea:focus,[data-enable]:disabled')) ||
+    [...host.querySelectorAll('form textarea')].some(t=>t.value.trim());
+  async function draw(reopen,background=false){
+    if(background&&(document.hidden||host.closest('[hidden]')||editing()))return;
+    const request=++sequence;
     const {items,enabled}=await api(route);
-    if(closed||!host.isConnected)return;
+    if(closed||!host.isConnected||request!==sequence)return;
+    const signature=JSON.stringify([enabled,items]);
+    if(background&&(signature===lastContent||editing()))return;
+    const expanded=new Set([...host.querySelectorAll('details[open] [data-review-files]')].map(el=>el.dataset.reviewFiles));
+    lastContent=signature;
     host.innerHTML=`<div class="evidence-settings"><label><input type="checkbox" data-enable ${enabled?'checked':''}> 通过验收后补回本题失分</label>
       <label><input type="checkbox" data-transfer ${assignment.performanceTransfer?'checked':''}> 作为订正后独立迁移练习</label></div>
       <div class="evidence-review-list">${items.length?items.map(item=>`<details><summary>${h(students.find(x=>x.id===item.studentId)?.name||'学生')} · 第 ${h(item.questionId)} 题 <b>${labels[item.status]}</b></summary>
       <p class="instructions">${h(item.text||'见附件')}</p><div data-review-files="${h(item.id)}"></div>
-      <p>${h(item.feedback||'')}</p><div class="task-action-row evidence-reference">${link('review/'+encodeURIComponent(item.submissionId),'查看原题和首次作答','document-link')}</div>
-      ${item.status==='queued'?'':`<form data-review-form="${h(item.id)}"><label>处理理由<textarea required maxlength="300" name="reason"></textarea></label><div class="actions">${item.status==='passed'?'':'<button class="primary" name="decision" value="passed">确认通过</button>'}<button class="secondary" name="decision" value="revise">${item.status==='passed'?'撤销补分':'退回补充'}</button></div></form>`}
-      </details>`).join(''):'<p>还没有提交验收的订正。</p>'}</div>`;
+      <p>${h(item.feedback||'')}</p><div class="task-action-row evidence-reference">${item.submissionId?link('review/'+encodeURIComponent(item.submissionId),'查看原题和首次作答','document-link'):''}</div>
+      ${['recorded','queued'].includes(item.status)?'':`<form data-review-form="${h(item.id)}"><label>处理理由<textarea required maxlength="300" name="reason"></textarea></label><div class="actions">${item.status==='passed'?'':'<button class="primary" name="decision" value="passed">确认通过</button>'}<button class="secondary" name="decision" value="revise">${item.status==='passed'?'撤销补分':'退回补充'}</button></div></form>`}
+      </details>`).join(''):'<p>还没有学生提交订正。</p>'}</div>`;
     if(reopen){const summary=[...host.querySelectorAll('[data-review-files]')].find(x=>x.dataset.reviewFiles===reopen)?.closest('details');if(summary){summary.open=true;summary.querySelector('summary').focus({preventScroll:true});}}
     const credit=host.querySelector('[data-enable]'),transfer=host.querySelector('[data-transfer]');
     for(const input of [credit,transfer])input.onchange=async()=>{
@@ -128,6 +136,7 @@ export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPr
         try{await metadata(item.files);if(!box.isConnected)return;box.innerHTML=fileMarkup(item.files);bindPreviews(box);box.dataset.loaded='true';}
         catch(e){toast(e.message);}
       });
+      if(expanded.has(item.id))box.closest('details').open=true;
       const form=[...host.querySelectorAll('form')].find(x=>x.dataset.reviewForm===item.id);
       if(form)form.onsubmit=async event=>{
         event.preventDefault();
@@ -137,6 +146,11 @@ export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPr
       };
     }
   }
-  draw().catch(e=>toast(e.message));
-  return ()=>{closed=true;};
+  const refresh=()=>{if(!closed)void draw(null,true).catch(()=>{});};
+  draw().catch(e=>{if(!closed)toast(e.message);});
+  const timer=setInterval(refresh,20000);
+  document.addEventListener('visibilitychange',refresh);
+  window.addEventListener('focus',refresh);
+  return ()=>{closed=true;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('focus',refresh);};
+
 }

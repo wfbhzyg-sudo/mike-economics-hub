@@ -2,6 +2,7 @@
 // Score, audience and neutral-status rules stay in grade-journey-model.js so the
 // overview can never disagree with the existing gradebook.
 import {visibleAssignments, cellsFor, cellSummary, progressChange, timeRange, inRange, workDate} from './grade-journey-model.js';
+import {correctionCounts} from './learning-model.js';
 import {scoreBand} from './score-bands.js';
 
 export const PERIODS = [['4w', '最近四周'], ['term', '本学期'], ['all', '全部时间']];
@@ -79,7 +80,7 @@ export function buildRows(data, students, assignments, scopeClass = '') {
     const missing = cells.filter(cell => cell.status === 'missing').length;
     const attention = cells.filter(cell => cell.status === 'attention').length;
     const unconfirmed = cells.filter(cell => cell.status === 'unconfirmed').length;
-    const openCorrections = (data.mistakes || []).filter(row => row.studentId === student.id && scope.has(row.assignmentId) && row.status === 'todo').length;
+    const openCorrections = (data.mistakes || []).filter(row => row.studentId === student.id && scope.has(row.assignmentId) && (row.progressStatus || row.status) === 'todo').length;
     const total = cells.filter(cell => cell.required || cell.record).length;
     const average = summary.average;
     return {
@@ -204,7 +205,7 @@ export function studentProfile(data, student, assignments) {
     recent: row.cells.filter(cell => cell.rate !== null).slice(-8).reverse(),
     weak,
     mistakes: mistakes.length,
-    openCorrections: mistakes.filter(item => item.status === 'todo').length,
+    openCorrections: mistakes.filter(item => (item.progressStatus || item.status) === 'todo').length,
   };
 }
 
@@ -271,10 +272,9 @@ export function typeBreakdown(data, studentId, assignments) {
   return buckets;
 }
 
-export function correctionSummary(data, studentId) {
-  const rows = (data.mistakes || []).filter(item => item.studentId === studentId);
-  const by = status => rows.filter(item => item.status === status).length;
-  return {total: rows.length, open: by('todo'), review: by('review'), mastered: by('mastered')};
+export function correctionSummary(data, studentId, assignments) {
+  const scope = assignments && new Set(assignments.map(a => a.id));
+  return correctionCounts((data.mistakes || []).filter(item => item.studentId === studentId && (!scope || scope.has(item.assignmentId))));
 }
 
 export function assignmentHistory(data, student, assignments) {
@@ -287,12 +287,12 @@ export function assignmentHistory(data, student, assignments) {
 export function studentObservations(data, student, assignments, profile = studentProfile(data, student, assignments)) {
   const items = [];
   const row = profile.row;
-  const corrections = correctionSummary(data, student.id);
+  const corrections = correctionSummary(data, student.id, assignments);
   if (corrections.open > 0) {
     items.push({
       key: 'correction',
-      text: `还有 ${corrections.open} 道失分题未订正${corrections.review ? `，${corrections.review} 道已提交待复核` : ''}。`,
-      evidence: [`待订正 ${corrections.open}`, corrections.review ? `待复核 ${corrections.review}` : ''],
+      text: `还有 ${corrections.open} 道失分题未订正${corrections.review ? `，${corrections.review} 道已提交订正` : ''}。`,
+      evidence: [`待订正 ${corrections.open}`, corrections.review ? `已提交订正 ${corrections.review}` : ''],
     });
   }
   const graded = row.cells.filter(cell => cell.rate !== null);
@@ -346,7 +346,7 @@ export function classObservations(data, rows, assignments, stats = overviewStats
     });
   }
   const mistakes = (data.mistakes || []).filter(item => assignments.some(assignment => assignment.id === item.assignmentId));
-  const open = mistakes.filter(item => item.status === 'todo');
+  const open = mistakes.filter(item => (item.progressStatus || item.status) === 'todo');
   if (open.length) {
     const students = new Set(open.map(item => item.studentId)).size;
     items.push({key: 'correction', text: `${students} 名学生共有 ${open.length} 道题待订正。`, evidence: [`待订正 ${open.length} 题`]});

@@ -69,7 +69,7 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
     const errors = mistakes.filter(m => scopeIds.has(m.assignmentId));
     const evidence = values.find(v => v.course === course);
     const publishedGrades = cells.filter(c => c.status === 'graded');
-    const pending = errors.filter(m => ['todo','revise'].includes(m.status) && !['queued','manual'].includes(m.verification?.status));
+    const pending = errors.filter(m => ['todo','revise'].includes(m.progressStatus||m.status) && !['queued','manual'].includes(m.verification?.status));
     const verified = errors.filter(m => m.verification?.status === 'passed');
     const waiting = errors.filter(m=>['queued','manual'].includes(m.verification?.status) );
     const mockHistory = mockAttempts.filter(a=>a.course===course).sort((a,b)=>String(b.submittedAt).localeCompare(String(a.submittedAt)))
@@ -95,7 +95,7 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
     }
     return {course,label:courseLabel(course),evidence,cells,average:publishedGrades.length?gradeSummary(publishedGrades.map(c=>c.record)).average:null,
       graded:publishedGrades.length,trend:progressChange([...cells].reverse()),pending:pending.length,verified:verified.length,waiting:waiting.length,
-      errors:errors.length,practiceItems:pending.slice(0,3),selfReviewed:errors.filter(m=>!m.verification && ['mastered','review'].includes(m.status)).length,advice,mockHistory};
+      errors:errors.length,practiceItems:pending.slice(0,3),selfReviewed:errors.filter(m=>!m.verification && ['mastered','review'].includes(m.progressStatus||m.status)).length,advice,mockHistory};
   });
   return {name:person.name || '学生',classNames:displayClasses.map(c=>c.name),period:PERIODS.find(([k])=>k===period)[1],unit,
     assignmentTitle:assignmentId ? assignments.find(a=>a.id===assignmentId)?.title || '指定作业（当前范围无记录）' : '',

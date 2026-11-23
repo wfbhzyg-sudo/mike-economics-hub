@@ -3,7 +3,7 @@
 import {createHash} from 'node:crypto';
 import {assignmentRecords} from '../homework/learning-model.js';
 import {deepseek} from './ai.mjs';
-import {assignmentLabel, questionStats, buildRows, classObservations, formatPercent, overviewStats, scopedAssignments, scopedStudents, studentObservations, studentProfile, typeBreakdown} from '../homework/learning-analytics-model.js';
+import {assignmentLabel, correctionSummary, questionStats, buildRows, classObservations, formatPercent, overviewStats, scopedAssignments, scopedStudents, studentObservations, studentProfile, typeBreakdown} from '../homework/learning-analytics-model.js';
 
 const OBS_MAX = 3;
 const STEP_MAX = 2;
@@ -36,7 +36,7 @@ export function insightData({assignments, submissions, mistakes = [], students})
 
 // Rules version is part of the data version so a report generated under older
 // fact-building rules is treated as stale instead of silently re-used.
-const FACTS_RULES_VERSION = 5;
+const FACTS_RULES_VERSION = 6;
 const sorted = (list, key = item => item.id) => list.slice().sort((a, b) => String(key(a)).localeCompare(String(key(b))));
 
 function reportData(scope, data) {
@@ -122,7 +122,7 @@ export function insightVersion({scope, data}) {
       assignmentId: m.assignmentId,
       studentId: m.studentId,
       questionId: m.questionId,
-      status: m.status || null,
+      status: m.progressStatus || m.status || null,
       note: m.note || null,
       revision: m.revision ?? null,
       corrections: sorted((m.corrections || []).map(c => ({id: c.id, text: c.text || null, createdAt: c.createdAt || null}))),
@@ -181,7 +181,7 @@ export function buildInsightFacts({scope, data}) {
       add('s.score-sources','学生成绩来源',`首次平均 ${pct(b.firstAverage)}，订正补回 ${b.recoveryAverage} 个百分点，计入平均 ${pct(b.average)}。`);
     }
     add('s.submitted', `完成 ${profile.row.submitted}/${profile.row.total}`, `应完成 ${profile.row.total} 次，已提交 ${profile.row.submitted} 次，未交 ${profile.row.missing} 次。`);
-    add('s.corrections', `待订正 ${profile.openCorrections}`, `待订正 ${profile.openCorrections} 道，已提交待复核 ${profile.row.reviewing || 0} 道。`);
+    add('s.corrections', `待订正 ${profile.openCorrections}`, `待订正 ${profile.openCorrections} 道，已提交订正 ${correctionSummary(data,student.id,assignments).review} 道。`);
     if (graded.length >= 2) {
       const lowest = graded.reduce((worst, cell) => cell.rate < worst.rate ? cell : worst, graded[0]);
       add('s.lowest', `最低 ${assignmentLabel(lowest.assignment)}`, `最低一次是「${assignmentLabel(lowest.assignment)}」，得分率 ${pct(lowest.rate)}。`);
@@ -202,7 +202,7 @@ export function buildInsightFacts({scope, data}) {
   add('c.missing', `未交 ${stats.missing}`, `未交 ${stats.missing} 人次。`);
   add('c.review', `待复核 ${stats.needsReview}`, `${stats.needsReview} 份提交等待复核，暂不计入平均。`);
   const studentIds = new Set(rows.map(row => row.student.id));
-  const corrections = (data.mistakes || []).filter(item => item.status === 'todo' && studentIds.has(item.studentId) && assignments.some(a => a.id === item.assignmentId));
+  const corrections = (data.mistakes || []).filter(item => (item.progressStatus || item.status) === 'todo' && studentIds.has(item.studentId) && assignments.some(a => a.id === item.assignmentId));
   add('c.corrections', `待订正 ${corrections.length}`, `${new Set(corrections.map(item => item.studentId)).size} 名学生共有 ${corrections.length} 道题待订正。`);
   const per = assignments.map(assignment => {
     const rates = rows.map(row => row.cells.find(cell => cell.assignment.id === assignment.id)?.rate).filter(rate => rate !== null && rate !== undefined);

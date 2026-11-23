@@ -70,7 +70,7 @@ test('correctionCounts separates open, review, mastered', () => {
     {id: 1, status: 'todo'}, {id: 2, status: 'todo'},
     {id: 3, status: 'review'}, {id: 4, status: 'mastered'},
   ]);
-  assert.deepEqual(counts, {open: 2, review: 1, mastered: 1, total: 4});
+  assert.deepEqual(counts, {open: 2, review: 1, mastered: 1, verified: 0, total: 4});
   assert.equal(correctionCounts([]).open, 0);
 });
 

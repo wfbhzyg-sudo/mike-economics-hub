@@ -288,7 +288,7 @@ async function refresh(route = 'assignments', version = state.routeVersion) {
     if(version===state.routeVersion)Object.assign(state,{assignments:[assignment],submissions,classes:[]});
     return;
   }
-  const studentHome = state.user?.role !== 'teacher' && route === 'assignments';
+  const studentHome = state.user?.role !== 'teacher' && route.split(/[/?]/)[0] === 'assignments';
   const [data, learning] = await Promise.all([
     loadWorkspaceData(key=>api(key==='submissions' && state.user?.role==='teacher' && ['assignments','reviews','review'].includes(route.split('/')[0])?'submissions?view=worklist':key), route, embedded && !['assignments','reviews','review'].includes(route.split('/')[0]) ? embeddedContext.classId : ''),
     studentHome ? api('learning').catch(() => null) : Promise.resolve(null),

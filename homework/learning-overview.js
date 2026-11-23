@@ -446,7 +446,7 @@ export function mountLearningOverview(ctx, initialData) {
     const chip = rowStatus(profile.row);
     const recent = profile.recent;
     const types = typeBreakdown(data, row.student.id, context.assignments);
-    const corrections = correctionSummary(data, row.student.id);
+    const corrections = correctionSummary(data, row.student.id, context.assignments);
     const history = assignmentHistory(data, row.student, context.assignments);
     const observations = studentObservations(data, row.student, context.assignments, profile);
     profileReports.set(row.student.id, {
@@ -473,7 +473,7 @@ export function mountLearningOverview(ctx, initialData) {
       <dl class="lo-breakdown">
         <div><dt>选择题</dt><dd>${formatPercent(types.choice.rate)}<small>${types.choice.score}/${types.choice.total} 分 · ${types.choice.questions} 题</small></dd></div>
         <div><dt>书面题</dt><dd>${formatPercent(types.written.rate)}<small>${types.written.score}/${types.written.total} 分 · ${types.written.questions} 题</small></dd></div>
-        <div><dt>订正状态</dt><dd>${corrections.open}<small>道待订正 · ${corrections.review} 道待复核 · ${corrections.mastered} 道已掌握</small></dd></div>
+        <div><dt>订正状态</dt><dd>${corrections.open}<small>道待订正 · ${corrections.review} 道已提交 · ${corrections.verified} 道已验收 · ${corrections.mastered} 道自评掌握</small></dd></div>
       </dl>
     </section>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>作业记录</h3><small>${history.length} 次</small></div>

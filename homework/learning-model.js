@@ -19,6 +19,17 @@ export function assignmentRecords(submissions, assignments = []) {
       pendingUpdate: Boolean(effective && (effective.id !== latest.id || latest.status !== 'published'))};
   }).sort((a,b) => (b.latest.submittedAt || '').localeCompare(a.latest.submittedAt || ''));
 }
+// Workflow counts follow the effective submission. A student's revision notes and first score stay independent.
+export function correctionCounts(rows = []) {
+  const counts = {total: rows.length, open: 0, review: 0, mastered: 0, verified: 0};
+  for (const row of rows) {
+    const status = row.progressStatus || row.status;
+    if (['review', 'mastered', 'verified'].includes(status)) counts[status]++;
+    else counts.open++;
+  }
+  return counts;
+}
+
 export function gradeSummary(records) {
   const graded=records.filter(r => r.grade?.maxPoints > 0 && Number.isFinite(r.grade.total));
   const rates=graded.map(r=>r.grade.total/r.grade.maxPoints*100);

@@ -17,7 +17,7 @@ import {prepareForm,validateForm} from '../homework/form-feedback.js';
 import {highlightText} from '../homework/search-text.js';
 import {renderStimulus,escapeHtml as h} from './graphs.js';
 import {hasItemScores} from '../homework/offline-answers.js';
-import {assignmentRecords,gradeSummary} from '../homework/learning-model.js';
+import {assignmentRecords,gradeSummary,correctionCounts} from '../homework/learning-model.js';
 import {mountLearningOverview} from '../homework/learning-overview.js';
 import {deskPage,onDeskPage} from '../assets/notebook/desk-context.js';
 const deskOrigin=deskPage(new URLSearchParams(location.search));
@@ -203,7 +203,9 @@ async function student(id,part='',scope=''){
  const available=state.meta.classes.filter(c=>memberships.includes(c.id)||learning.assignments.some(a=>a.classIds?.includes('bookself-class:'+c.id)&&learning.submissions.some(x=>x.assignmentId===a.id&&x.studentId==='bookself:'+id)));
  if(scope&&!available.some(c=>c.id===scope))scope='';
  const classAssignments=learning.assignments.filter(a=>a.published!==false&&!a.deletedAt&&(!scope||a.classIds?.includes('bookself-class:'+scope))&&(a.classIds?.some(x=>memberships.includes(x.replace(/^bookself-class:/,'')))||learning.submissions.some(x=>x.assignmentId===a.id&&x.studentId==='bookself:'+id)));
- const records=assignmentRecords(learning.submissions,classAssignments).filter(r=>r.studentId==='bookself:'+id&&classAssignments.some(a=>a.id===r.assignmentId)),sum=gradeSummary(records),total=classAssignments.length,graded=records.filter(r=>r.grade&&r.grade.total!=null).length,offline=records.filter(r=>r.grade&&(r.assignment.offline||r.assignment.format==='score')).length,openCorrections=sum.wrong||0;
+ const records=assignmentRecords(learning.submissions,classAssignments).filter(r=>r.studentId==='bookself:'+id&&classAssignments.some(a=>a.id===r.assignmentId)),sum=gradeSummary(records),total=classAssignments.length,graded=records.filter(r=>r.grade&&r.grade.total!=null).length,offline=records.filter(r=>r.grade&&(r.assignment.offline||r.assignment.format==='score')).length;
+ const assignmentIds=new Set(classAssignments.map(a=>a.id));
+ const corrections=correctionCounts(learning.mistakes.filter(m=>m.studentId==='bookself:'+id&&assignmentIds.has(m.assignmentId)));
  let s=identity,p=null;const concepts=profile.quest.concepts,className=state.meta.classes.filter(c=>memberships.includes(c.id)).map(c=>c.name).join(' · ');
  if(part==='extended'){
   const selected=available.find(c=>c.id===state.classId&&memberships.includes(c.id))||available.find(c=>memberships.includes(c.id));
@@ -216,9 +218,25 @@ async function student(id,part='',scope=''){
   main.innerHTML=`${header}${tabs(routes,active)}<section><h2>教材学习</h2><div class="tw-statline"><span><strong>${s.read}/${s.pages}</strong> 阅读页数</span><span><strong>${percent(s.overall.percent)}</strong> 最近答案正确率</span><span><strong>${s.attempts}</strong> 练习次数</span></div><p class="tw-note">每题取最后一次作答；重复尝试不重复计入正确率。无作答不计零分。教材与游戏记录独立于作业成绩。</p>${table(['章节','阅读','已答题','正确率','复习'],p.columns.map(c=>{const v=s.cells.find(x=>x.topicId===c.id);return `<tr><td>${h(c.title)}</td><td>${v.read}/${v.pages}</td><td>${v.total}</td><td>${percent(v.percent)}</td><td>${v.practiced?'已练习':'待练习'} · 第 ${v.reviewStage} 阶段</td></tr>`;}))}</section><section class="tw-section"><h2>最近教材作答</h2>${s.recent.length?table(['题目','作答','时间'],s.recent.map(a=>`<tr><td><a href="#question/${encodeURIComponent(a.questionId)}">${h(a.preview)}</a></td><td>${h(a.optionId)} · ${a.correct?'正确':'需回顾'}</td><td>${when(a.at)}</td></tr>`)):empty('还没有教材作答','学生开始练习后，会在这里显示逐题记录。')}</section><section class="tw-section"><h2>EconQuest 学习</h2><p class="tw-note">概念证据与游戏掌握独立记录，不与作业分数合并。</p><div class="tw-statline">${courses.map(([c,t])=>`<span><strong>${Object.keys(profile.quest.mastery[c]||{}).length}</strong> ${t} 已掌握路线</span>`).join('')}</div>${concepts.length?table(['概念','证据状态','尝试','回访通过'],concepts.map(c=>`<tr><td>${h(c.id)}</td><td>${h({repair:'需要补练',repaired:'已纠正',independent:'独立完成',revisited:'回访通过',practised:'已练习'}[c.status]||c.status)}</td><td>${c.attempts}</td><td>${c.revisitPasses}</td></tr>`)):empty('暂无游戏学习记录','完成游戏任务后会显示概念掌握与回访情况。')}</section>`;
   return;
  }
- main.innerHTML=`${header}${tabs(routes,active)}<label class="tw-profile-scope"><span>该学生的成绩范围</span><select id="student-grade-scope"><option value="">全部班级</option>${available.map(c=>`<option value="${c.id}" ${scope===c.id?'selected':''}>${h(c.name)}</option>`).join('')}</select></label><section class="student-kpis"><div><span>作业平均</span>${scoreBadge(sum.average)}<small>${graded} 次已出分</small></div><div><span>已完成</span><strong>${graded}<em> / ${total}</em></strong><small>含线下作业</small></div><div><span>线下成绩</span><strong>${offline}</strong><small>已计入均分</small></div><div><span>待订正</span><strong>${openCorrections}</strong><small>线上失分题</small></div></section><div id="profile-evidence"></div><section class="tw-section tw-profile-records"><div class="tw-section-head"><h2>作业与考试记录</h2>${button('analytics','打开学情分析')}</div>${records.length?table(['作业 / 考试','来源','得分','状态','操作'],records.slice().sort((a,b)=>String(b.assignment.dueAt||b.assignment.createdAt||'').localeCompare(String(a.assignment.dueAt||a.assignment.createdAt||''))).map(r=>{const isOffline=r.assignment.offline||r.assignment.format==='score';return `<tr><td><strong>${h(r.assignment.title)}</strong><p>${h(r.assignment.course||'')}${r.assignment.dueAt?' · 截止 '+when(r.assignment.dueAt):''}</p></td><td>${isOffline?badge('线下','warn'):'线上'}</td><td>${r.grade?`${r.grade.total??'—'}/${r.grade.maxPoints}`:'待批阅'}</td><td>${isOffline?(r.grade?.total!=null?'已录分':'待录分'):h(submissionLabel(r.latest.status,'teacher'))}</td><td>${isOffline?(hasItemScores(r.effective)?button('work/review/'+r.effective.id+'/profile','逐题作答'):'仅总分'):button('work/review/'+r.latest.id,'查看')}</td></tr>`;})):empty('暂无作业或考试记录','学生提交或教师录入线下成绩后，会显示在这里。')}</section>`;
+ main.innerHTML=`${header}${tabs(routes,active)}<label class="tw-profile-scope"><span>该学生的成绩范围</span><select id="student-grade-scope"><option value="">全部班级</option>${available.map(c=>`<option value="${c.id}" ${scope===c.id?'selected':''}>${h(c.name)}</option>`).join('')}</select></label><section class="student-kpis"><div><span>作业平均</span>${scoreBadge(sum.average)}<small>${graded} 次已出分</small></div><div><span>已完成</span><strong>${graded}<em> / ${total}</em></strong><small>含线下作业</small></div><div><span>线下成绩</span><strong>${offline}</strong><small>已计入均分</small></div><div data-student-corrections><span>待订正</span><strong>${corrections.open}</strong><small>已提交 ${corrections.review} · 已验收 ${corrections.verified}</small></div></section><div id="profile-evidence"></div><section class="tw-section tw-profile-records"><div class="tw-section-head"><h2>作业与考试记录</h2>${button('analytics','打开学情分析')}</div>${records.length?table(['作业 / 考试','来源','得分','状态','操作'],records.slice().sort((a,b)=>String(b.assignment.dueAt||b.assignment.createdAt||'').localeCompare(String(a.assignment.dueAt||a.assignment.createdAt||''))).map(r=>{const isOffline=r.assignment.offline||r.assignment.format==='score';return `<tr><td><strong>${h(r.assignment.title)}</strong><p>${h(r.assignment.course||'')}${r.assignment.dueAt?' · 截止 '+when(r.assignment.dueAt):''}</p></td><td>${isOffline?badge('线下','warn'):'线上'}</td><td>${r.grade?`${r.grade.total??'—'}/${r.grade.maxPoints}`:'待批阅'}</td><td>${isOffline?(r.grade?.total!=null?'已录分':'待录分'):h(submissionLabel(r.latest.status,'teacher'))}</td><td>${isOffline?(hasItemScores(r.effective)?button('work/review/'+r.effective.id+'/profile','逐题作答'):'仅总分'):button('work/review/'+r.latest.id,'查看')}</td></tr>`;})):empty('暂无作业或考试记录','学生提交或教师录入线下成绩后，会显示在这里。')}</section>`;
  showTeacherEvidence($('#profile-evidence'),{read:teacherEvidenceReader(hw),student:'bookself:'+id,scope,h});
- $('#student-grade-scope').onchange=e=>{void student(id,part,e.target.value).catch(error=>toast(error.message));};
+ const counter=$('[data-student-corrections]');
+ let reading=false;
+ const refreshCorrections=async()=>{
+   if(reading||document.hidden||!counter.isConnected)return;
+   reading=true;
+   try{
+     const {corrections:c}=await hw('learning/student-performance?'+qs({student:'bookself:'+id,class:scope,view:'corrections'}));
+     if(!counter.isConnected||requestId!==state.studentRequest||version!==state.version)return;
+     counter.querySelector('strong').textContent=String(c.open);
+     counter.querySelector('small').textContent='已提交 '+c.review+' · 已验收 '+c.verified;
+   }catch{}finally{reading=false;}
+ };
+ const timer=setInterval(refreshCorrections,30000);
+ document.addEventListener('visibilitychange',refreshCorrections);
+ window.addEventListener('focus',refreshCorrections);
+ state.viewCleanup=()=>{clearInterval(timer);document.removeEventListener('visibilitychange',refreshCorrections);window.removeEventListener('focus',refreshCorrections);};
+ $('#student-grade-scope').onchange=e=>{state.viewCleanup?.();void student(id,part,e.target.value).catch(error=>toast(error.message));};
 }
 
 const bankState={course:'all',unit:'',topic:'',type:'',status:'all',q:'',page:1,selected:new Map(),catalog:null,activeUnitIds:new Set()};

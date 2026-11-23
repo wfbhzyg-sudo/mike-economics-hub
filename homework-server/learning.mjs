@@ -40,26 +40,30 @@ export function publishedResult(s, result, actor, at, note='', source='teacher',
   s.reviewRequests=(s.reviewRequests||[]).map(r=>r.status==='open'?{...r,status:'resolved',resolvedAt:at,resolvedBy:actor}:r);
   return s;
 }
-export function mistakeRows(submissions, assignments, notes=[], bindings=[]) {
+export function mistakeRows(submissions, assignments, notes=[], bindings=[], {progressOnly=false}={}) {
   const rows=[];
  const noteKey=(student,assignment,question)=>JSON.stringify([student,assignment,question]);
  const noteMap=new Map(notes.map(n=>[noteKey(n.studentId,n.assignmentId,n.questionId),n]));
   for(const record of assignmentRecords(submissions,assignments)){
     if(!record.grade)continue;
-    const visible=new Map(visibleQuestions(record.effective).map(q=>[q.id,q]));
+    const visible=progressOnly?null:new Map(visibleQuestions(record.effective).map(q=>[q.id,q]));
     const snapshot=new Map((record.effective.rubricSnapshot||[]).map(q=>[q.id,q]));
     const fallbackMap=record.effective.version!=null && record.effective.version===record.assignment.version ? new Map((record.assignment.rubric||[]).map(q=>[q.id,q])) : new Map();
     for(const [index,q] of (record.grade.questions || []).entries()){
       if(q.score==null||q.score>=q.maxPoints)continue;
-      const ref=visible.get(q.id)||{};
+      const ref=visible?.get(q.id)||{};
       const raw=snapshot.get(q.id);
       const fallback=fallbackMap.get(q.id);
       const meta=noteMap.get(noteKey(record.studentId,record.assignmentId,q.id));
       const last = meta?.corrections?.at(-1);
       const submittedAt = record.effective.submittedAt || record.effective.createdAt;
       const sameSubmission = last && (last.submissionId ? last.submissionId === record.effective.id : !submittedAt || last.createdAt >= submittedAt);
-      rows.push({choiceMode:raw?.choiceMode||fallback?.choiceMode||'single',
-        correctionFeedback:sameSubmission ? correctionFeedback(raw||fallback,last) : null,assignmentId:record.assignmentId,assignmentTitle:record.assignment.title||'作业',course:record.assignment.course||'',studentId:record.studentId,
+      const feedback=sameSubmission ? correctionFeedback(raw||fallback,last) : null;
+      const submitted=Boolean(sameSubmission && (last.text?.trim() || last.choice || last.files?.length));
+      const progressStatus=!submitted || feedback?.state==='incorrect' ? 'todo' : meta.status==='mastered' ? 'mastered' : 'review';
+      if(progressOnly){rows.push({submissionId:record.effective.id,questionId:q.id,progressStatus});continue;}
+      rows.push({progressStatus,choiceMode:raw?.choiceMode||fallback?.choiceMode||'single',
+        correctionFeedback:feedback,assignmentId:record.assignmentId,assignmentTitle:record.assignment.title||'作业',course:record.assignment.course||'',studentId:record.studentId,
         libraryQuestionId:raw?.libraryQuestionId||fallback?.libraryQuestionId||null,source:'assignment',
         libraryUnit:record.assignment.libraryUnit||null,submissionId:record.effective.id,questionId:q.id,questionNumber:index+1,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',
         originalChoice:record.effective.choices?.[q.id]||'',

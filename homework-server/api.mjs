@@ -6,7 +6,7 @@ import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,classKey,singleClassCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
-import {assignmentRecords,assignmentState,retryWorkMode,usesTotalOnlyEditor} from '../homework/learning-model.js';
+import {assignmentRecords,assignmentState,correctionCounts,retryWorkMode,usesTotalOnlyEditor} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
 import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
@@ -53,6 +53,7 @@ const safeUser = (u) => ({
   canManageGrading: u.role === "teacher" && (!u.unified || u.canManageGrading === true),
 });
 export const publicAssignment = (a) => ({
+  supportsCorrectionReview:Boolean(a.offlineEdition || (!a.offline && a.format!=='score')),
   correctionCredit:a.correctionCredit===true, performanceTransfer:a.performanceTransfer===true,
   offline: Boolean(a.offline), ...((a.offline||a.format==='score')&&!a.makeupMode?{zeroRetryMode:retryWorkMode(a)}:{}), makeupMode:a.makeupMode||null, maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
@@ -757,13 +758,23 @@ export async function createHomework({externalAuth} = {}) {
         teacher();
         if(method==='GET'&&route[1]){
           const a=await requireAssignment(route[1],user);
-          const reviews=await correctionReview.reviews({assignmentId:a.id,teacherId:user.id});
-          const notes=await db.getMany(reviews.map(r=>r.noteKey));
+          const [reviews,notes]=await Promise.all([
+            correctionReview.reviews({assignmentId:a.id,teacherId:user.id}),
+            db.find('mistake-note',{assignmentId:a.id}),
+          ]);
           const noteMap=new Map(notes.map(n=>[n.id,n]));
           const items=reviews.map(r=>{
             const entry=noteMap.get(r.noteKey)?.corrections?.find(item=>item.id===r.correctionId);
-            return {...reviewView(r),studentId:r.studentId,submissionId:r.submissionId,questionId:r.questionId,text:entry?.text||'',files:entry?.files||[]};
+            return {...reviewView(r),studentId:r.studentId,submissionId:r.submissionId,questionId:r.questionId,text:entry?.text||'',files:entry?.files||[],submittedAt:entry?.createdAt||r.createdAt};
           });
+          const reviewed=new Set(reviews.map(r=>r.correctionId));
+          for(const note of notes){
+            const entry=note.corrections?.at(-1);
+            if(!entry || reviewed.has(entry.id) || (!entry.text?.trim()&&!entry.files?.length))continue;
+            items.push({id:note.id,status:'recorded',studentId:note.studentId,submissionId:entry.submissionId||null,
+              questionId:note.questionId,text:entry.text||'',files:entry.files||[],submittedAt:entry.createdAt});
+          }
+          items.sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||'')));
           return (json(res,{items,enabled:a.correctionCredit===true}),true);
         }
         if(method==='PUT'&&route[1]&&route[2]==='settings'){
@@ -941,12 +952,20 @@ export async function createHomework({externalAuth} = {}) {
         const ids=new Set(assignments.map(a=>a.id)),submissions=visible.filter(s=>ids.has(s.assignmentId));
         const reviews=await correctionReview.reviews({teacherId:user.id,studentId});
         const verified=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
-        const mistakes=mistakeRows(submissions,assignments).map(m=>attachReview(m,verified.get(JSON.stringify([m.submissionId,m.questionId]))));
+        const progressOnly=url.searchParams.get('view')==='corrections';
+        const notes=await db.find('mistake-note',{studentId,assignmentId:[...ids]});
+        const mistakes=mistakeRows(submissions,assignments,notes,[],{progressOnly}).map(m=>attachReview(m,verified.get(JSON.stringify([m.submissionId,m.questionId]))));
+        if(progressOnly)return (json(res,{corrections:correctionCounts(mistakes)}),true);
         const values=await performanceOf({submissions,assignments},classes,mistakes);
         const subjects=new Set(assignments.map(a=>assignmentCourse(a,classes)));
         for(const c of classes)if(scope?classKey(c.id)===scope:member?.classIds?.some(id=>classKey(id)===classKey(c.id)))subjects.add(singleClassCourse(c));
         const known=values.filter(v=>subjects.has(v.course));
         return (json(res,{performance:known.length?known:values}),true);
+      }
+      if(route.join('/')==='learning/correction-updates'&&method==='GET'){
+        assert(user.role==='student','请使用学生账号',403);
+        const rows=await correctionReview.reviews({studentId:user.id});
+        return (json(res,{updates:rows.filter(r=>!r.mock).map(r=>({id:r.id,status:r.status==='running'?'queued':r.status,revision:r.revision}))}),true);
       }
       if(route[0]==='learning'&&route[1]==='performance-advice'&&method==='POST'){
         assert(user.role==='student','请使用学生账号',403);
@@ -955,7 +974,7 @@ export async function createHomework({externalAuth} = {}) {
         const work=await accessibleWork();
         const reviews=await correctionReview.reviews({studentId:user.id});
         const byQuestion=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
-        const mistakes=mistakeRows(work.submissions,work.assignments).map(m=>attachReview(m,byQuestion.get(JSON.stringify([m.submissionId,m.questionId]))));
+        const mistakes=mistakeRows(work.submissions,work.assignments,await db.find('mistake-note',{studentId:user.id})).map(m=>attachReview(m,byQuestion.get(JSON.stringify([m.submissionId,m.questionId]))));
         const value=(await performanceOf(work,await availableClasses(),mistakes)).find(x=>x.course===course);
         rate(req,'performance-advice',8,user.id);
         return (json(res,await performanceAdvice({db,decrypt,studentId:user.id,value})),true);

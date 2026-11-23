@@ -1,4 +1,4 @@
-import {assignmentRecords, assignmentState} from './learning-model.js';
+import {assignmentRecords, assignmentState, correctionCounts} from './learning-model.js';
 import {studentAssignmentAction} from './assignment-navigation.js';
 
 const DAY = 86400000;
@@ -52,15 +52,7 @@ export function nextAssignment(assignments, submissions, now = Date.now()) {
   };
 }
 
-export function correctionCounts(mistakes = []) {
-  const counts = {open: 0, review: 0, mastered: 0, total: mistakes.length};
-  for (const mistake of mistakes) {
-    if (mistake.status === 'mastered') counts.mastered += 1;
-    else if (mistake.status === 'review') counts.review += 1;
-    else counts.open += 1;
-  }
-  return counts;
-}
+export {correctionCounts};
 
 export function recentResults(assignments, submissions, limit = 3) {
   return assignmentRecords(submissions, assignments)
@@ -98,7 +90,7 @@ export function unitTrail(assignments, submissions, next, now = Date.now()) {
 export function learningReminders({next, corrections, recent, now = Date.now()}) {
   const out = [];
   if (corrections.open > 0) {
-    out.push(`有 ${corrections.open} 道失分题等待订正；订正不会改变原成绩。`);
+    out.push(`有 ${corrections.open} 道失分题等待订正。`);
   }
   if (next) {
     const due = Date.parse(next.assignment.dueAt || '');

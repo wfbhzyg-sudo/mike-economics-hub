@@ -23,11 +23,14 @@ export async function showAssignmentRoster(ctx,id,initialFilter=null,initialClas
  main.innerHTML=`<section class="paper roster-paper">${head('',a.title,detailMeta,link('assignments','返回作业','roster-back')+link('edit/'+id,'编辑作业','secondary')+(['mcq','mixed'].includes(a.format)?link('mcq-analysis/'+id,'逐题分析','secondary'):'' )+(a.published&&classes.length&&a.questions?.length?'<button type="button" class="secondary" data-discussion-admin>同伴思路记录</button>':''))}<div class="assignment-detail-tabs" role="tablist" aria-label="作业详情"><button type="button" role="tab" data-detail="submissions" aria-selected="true">${offline?"学生成绩":"学生提交"}</button><button type="button" role="tab" data-detail="paper" aria-selected="false">题纸与要求</button><button type="button" role="tab" data-detail="chapters" aria-selected="false">复习章节</button></div><section id="assignment-students" role="tabpanel">${classes.length>1?`<label class="roster-class-label">查看班级 <select id="roster-class" aria-label="筛选班级"><option value="">全部班级</option>${classes.map(c=>`<option value="${h(c.id)}">${h(c.name)}</option>`).join('')}</select></label>`:''}<div class="roster-summary" aria-live="polite"></div><div class="roster-toolbar"><div class="filter-tabs" role="group" aria-label="${offline?"录分状态":"提交状态"}">${filters.map(([v,label])=>`<button type="button" data-roster-filter="${v}" aria-pressed="${v===filter}">${label}</button>`).join('')}</div><div class="roster-search"><input id="roster-search" type="search" placeholder="搜索姓名或账号" aria-label="搜索姓名或账号"></div></div><p class="sr-only" id="roster-count" role="status"></p><div id="roster-rows"></div></section><section id="assignment-paper" role="tabpanel" hidden></section><section id="assignment-chapters" role="tabpanel" hidden></section></section>`;
  const $=s=>main.querySelector(s),scrollRoot=main.closest('#teacher-content')||main;
  let closeReview;
- if(!offline&&a.published){
+ if(a.published&&(!offline||a.offlineEdition||a.supportsCorrectionReview)){
    const host=document.createElement('details');
    host.className='evidence-review';host.innerHTML='<summary>订正验收</summary><div></div>';
    $('#assignment-students').prepend(host);
-   host.addEventListener('toggle',()=>{if(host.open&&!closeReview)closeReview=mountReviewPanel(host.querySelector('div'),ctx,a,data.rows);});
+   host.addEventListener('toggle',()=>{
+     closeReview?.();
+     closeReview=host.open?mountReviewPanel(host.querySelector('div'),ctx,a,data.rows):null;
+   });
  }
  const admin=$('[data-discussion-admin]');let notesDialog;
  if(admin)admin.onclick=()=>notesDialog=openDiscussion({api,user:state.user,assignmentId:id,version:a.version,classes:[...classes].sort((x,y)=>Number(y.id===classId)-Number(x.id===classId)),trigger:admin,teacher:true});

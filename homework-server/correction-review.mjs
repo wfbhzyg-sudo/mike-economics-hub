@@ -69,7 +69,8 @@ export function reviewView(review, grade) {
 
 export function attachReview(row, review, grade) {
   if (!review) return row;
-  return {...row,verification:reviewView(review,grade),status:review.status==='passed'?'verified':'todo'};
+  const status=review.status==='passed'?'verified':review.status==='revise'?'todo':'review';
+  return {...row,verification:reviewView(review,grade),status,progressStatus:status};
 }
 
 export function createCorrectionReview({db,files,decrypt,reviewModel=deepseek}) {

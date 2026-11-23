@@ -193,8 +193,8 @@ test('correction summary counts each state without inventing records', () => {
     {studentId: 's1', assignmentId: 'a1', questionId: 'q3', status: 'mastered'},
     {studentId: 's2', assignmentId: 'a1', questionId: 'q1', status: 'todo'},
   ]});
-  assert.deepEqual(correctionSummary(fixture, 's1'), {total: 3, open: 1, review: 1, mastered: 1});
-  assert.deepEqual(correctionSummary(fixture, 'missing'), {total: 0, open: 0, review: 0, mastered: 0});
+  assert.deepEqual(correctionSummary(fixture, 's1'), {total: 3, open: 1, review: 1, mastered: 1, verified: 0});
+  assert.deepEqual(correctionSummary(fixture, 'missing'), {total: 0, open: 0, review: 0, mastered: 0, verified: 0});
 });
 
 test('assignment history is newest first and keeps each cell status', () => {
@@ -221,8 +221,8 @@ test('student observations name the facts behind each sentence', () => {
   const profile = studentProfile(fixture, fixture.students[0], [a1, a2]);
   const items = studentObservations(fixture, fixture.students[0], [a1, a2], profile);
   assert.equal(items[0].key, 'correction');
-  assert.match(items[0].text, /1 道失分题未订正，1 道已提交待复核/);
-  assert.deepEqual(items[0].evidence.filter(Boolean), ['待订正 1', '待复核 1']);
+  assert.match(items[0].text, /1 道失分题未订正，1 道已提交订正/);
+  assert.deepEqual(items[0].evidence.filter(Boolean), ['待订正 1', '已提交订正 1']);
   assert.equal(items[1].key, 'lowest');
   assert.match(items[1].text, /2\.3/);
   assert.match(items[1].text, /40%.*比个人平均低/);

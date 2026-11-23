@@ -4,7 +4,7 @@ import {assignmentCourse,courseLabel,coursesFor,courseTabs,selectedCourse,rememb
 import {studentAssignmentAction,assignmentOpensLater,publicationTime,byPublication} from './assignment-navigation.js';
 import {insightsMarkup} from './student-home.js';
 import {highlightText} from './search-text.js';
-import { assignmentState, assignmentRecords } from "./learning-model.js";
+import { assignmentState, assignmentRecords, correctionCounts } from "./learning-model.js";
 const publicationDate = new Intl.DateTimeFormat('zh-CN', {year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 const classroomDate = new Intl.DateTimeFormat('zh-CN', {year:'numeric', month:'numeric', day:'numeric', timeZone:'Asia/Shanghai'});
 
@@ -188,7 +188,7 @@ export function createWorkspaceUI(ctx) {
       hover: `hsl(${hue} ${sat + 6}% ${light - 2}%)`,
     };
   }
-  function studentCard(a) {
+  function studentCard(a, bySubmission) {
     const info = assignmentState(a, state.submissions),
       action = studentAssignmentAction(a, state.submissions),
       offline = Boolean(a.offline || a.format === "score"),
@@ -201,9 +201,10 @@ export function createWorkspaceUI(ctx) {
     let detail = "";
     if (info.key === "done" && grade && grade.total != null) {
       const total = Number(grade.total ?? 0),
-        wrong = (grade.questions || []).filter((q) => q.score != null && q.score < q.maxPoints).length,
+        progress = correctionCounts(bySubmission.get(info.latest.id)),
+        remaining = progress.open,
         rate = max ? Math.round((total / max) * 100) : null;
-      detail = `<p class="card-score"><strong>${total}</strong><span>/ ${max || "?"}</span>${rate != null ? `<em>${rate}%</em>` : ""}${wrong ? `<span class="card-correct">需订正 ${wrong} 题</span>` : ""}</p>`;
+      detail = `<p class="card-score"><strong>${total}</strong><span>/ ${max || "?"}</span>${rate != null ? `<em>${rate}%</em>` : ""}${remaining ? `<span class="card-correct">需订正 ${remaining} 题</span>` : ""}${progress?.review ? `<span>已提交订正 ${progress.review} 题</span>` : ""}${progress?.verified ? `<span>已验收 ${progress.verified} 题</span>` : ""}</p>`;
     } else if (!offline && info.key === "todo") {
       const total = a.format === "mcq" ? questions.filter((q) => q.type === "choice").length : 0,
         answered = Math.max(Number(a.attemptProgress?.answered || 0), info.draft ? Object.values(info.draft.choices || {}).filter(Boolean).length : 0);
@@ -222,6 +223,15 @@ export function createWorkspaceUI(ctx) {
     const t = teacher(),
       key =
         "hw-filters:" + state.user.id + ":" + (state.workspaceClassId || "all");
+    const bySubmission = new Map();
+    function indexProgress(){
+      bySubmission.clear();
+      for(const m of state.learning?.mistakes || []){
+        if(!bySubmission.has(m.submissionId))bySubmission.set(m.submissionId,[]);
+        bySubmission.get(m.submissionId).push(m);
+      }
+    }
+    if(!t)indexProgress();
     let publishOrder = 'desc';
     try {
       const saved = JSON.parse(sessionStorage.getItem(key) || "{}");
@@ -322,7 +332,7 @@ export function createWorkspaceUI(ctx) {
         return;
       }
       if (!t) {
-        pane.innerHTML = `<div class="assignment-grid">${rows.map(studentCard).join("")}</div>`;
+        pane.innerHTML = `<div class="assignment-grid">${rows.map(a=>studentCard(a,bySubmission)).join("")}</div>`;
         bindActions();
         return;
       }
@@ -429,9 +439,36 @@ export function createWorkspaceUI(ctx) {
     const version=state.routeVersion;
     const loadSummary=()=>api('assignments/roster-summary').then(data=>{if(version!==state.routeVersion)return;state.rosterSummaries=data.summaries;state.rosterByClass=data.byClass;state.rosterError=false;draw();}).catch(()=>{if(version!==state.routeVersion)return;state.rosterError=true;draw();const b=document.createElement('button');b.className='text-button roster-retry';b.textContent='班级名单同步失败 · 重试';b.onclick=()=>{b.disabled=true;loadSummary();};$('#task-workspace').prepend(b);});
     if(t)void loadSummary();
+    const view=main.querySelector('[data-student-assignments]');
+    let watchTimer;
+    const awaiting=()=>state.learning?.mistakes?.filter(m=>['queued','manual'].includes(m.verification?.status)) || [];
+    const watch=async()=>{
+      if(!view?.isConnected||version!==state.routeVersion)return;
+      const pending=awaiting();
+      if(!pending.length)return;
+      try{
+        if(!document.hidden){
+          const {updates}=await api('learning/correction-updates');
+          const status=new Map(updates.map(r=>[r.id,r]));
+          if(pending.some(({verification:v})=>status.get(v.id)?.status!==v.status || status.get(v.id)?.revision!==v.revision)){
+            const fresh=await api('learning');
+            if(!view.isConnected||version!==state.routeVersion)return;
+            const grades=new Map(fresh.submissions.map(s=>[s.id,s.publishedGrade]));
+            for(const s of state.submissions)if(grades.has(s.id))s.publishedGrade=grades.get(s.id);
+            state.learning=fresh;indexProgress();draw();
+          }
+        }
+      }catch{/* Keep the last confirmed counts until the next successful read. */}
+      if(view.isConnected&&version===state.routeVersion)schedule();
+    };
+    function schedule(){
+      const pending=awaiting();
+      if(pending.length)watchTimer=setTimeout(watch,pending.some(m=>m.verification.status==='queued')?6500:30000);
+    }
+    if(view)schedule();
     const saved=state.assignmentListPosition;
     if(saved){requestAnimationFrame(()=>{(main.id==='homework-main'?document.scrollingElement:main).scrollTop=saved.top;const target=main.querySelector('[href="'+CSS.escape(saved.href||'')+'"]');target?.focus({preventScroll:true});});}
-    state.viewCleanup=()=>{releaseTools?.();state.assignmentListPosition={top:(main.id==='homework-main'?document.scrollingElement:main).scrollTop,href:document.activeElement?.getAttribute('href')};};
+    state.viewCleanup=()=>{clearTimeout(watchTimer);releaseTools?.();state.assignmentListPosition={top:(main.id==='homework-main'?document.scrollingElement:main).scrollTop,href:document.activeElement?.getAttribute('href')};};
   }
   async function trash() {
     const { assignments } = await api("assignments?trash=1");
