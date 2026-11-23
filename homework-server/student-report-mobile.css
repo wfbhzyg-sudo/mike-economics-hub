@@ -1,0 +1,27 @@
+:root {font-size:14px}
+  main {width:100%;margin:0;padding:7px 16px 32px}
+  .mast b {font-size:20px}.actions {gap:8px}.actions button {font-size:12px}
+  .front {display:block;margin:14px 0 18px}
+  .front h1 {font-size:31px;margin:0 0 6px}
+  .identity {margin-bottom:13px}
+  .identity strong {display:inline;font-size:17px;margin-right:8px}
+  .classes {display:flex;flex-flow:row wrap;gap:0 12px;font-size:12px}
+  .dateline {margin:3px 0 0;font-size:12px}
+  .metrics {font-size:13px}.metrics td,.metrics th {padding-block:3px}
+  .metrics .average {font-size:22px}
+  .metrics thead th {font-size:14px}
+  .pair {grid-template-columns:1fr;gap:9px}
+  .pair .trend {border-left:0;padding-left:0}
+  .pair svg {height:auto;max-height:185px}.pair .radar svg {height:150px}
+  .section-head a {min-height:44px}
+  .section-head {padding:0 0 4px}
+  .detail h2 {font-size:25px}.exhibits {margin-top:17px}
+  .skills {font-size:12px}.skills th,.skills td {padding:5px 3px}.skills td:nth-child(2) {font-size:12px}
+  .skills td:last-child {width:30%}
+  .works,.works tbody,.works tr,.works th,.works td {display:block}
+  .works caption {display:block}
+  .works thead {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .works tbody tr {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--rule);padding:7px 0}
+  .works tbody th {grid-column:1/-1;width:auto}
+  .works th,.works td {border:0;padding:2px 0;text-align:left}
+  .works td::before {content:attr(data-col);display:block;color:var(--muted);font-size:11px}

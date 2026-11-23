@@ -1,0 +1,59 @@
+@page { size:A4 portrait; margin:5mm }
+:root {
+  --paper-width:200mm; --paper-height:287mm;
+  background:white; font-size:9pt; line-height:1.38;
+  print-color-adjust:exact; -webkit-print-color-adjust:exact;
+}
+body { margin:0; background:white }
+main {
+  display:flex; flex-direction:column;
+  width:var(--report-layout-width,var(--paper-width));
+  zoom:var(--report-zoom,1); margin:0; padding:0;
+}
+.actions,.section-head a { display:none }
+.mast { min-height:0; padding-bottom:1.5mm; border-bottom:1pt solid var(--ink) }
+.mast b { font-size:13pt }.mast b span { font-size:7.5pt }
+.front { grid-template-columns:minmax(0,0.88fr) minmax(0,1.12fr); gap:6mm; margin:3mm 0 }
+.front.expanded { grid-template-columns:1fr 2fr }
+.front h1 { font-size:20pt; margin:0 0 2mm }
+.identity strong { font-size:13pt; margin-bottom:0.7mm }
+.classes,.metrics { font-size:8.5pt }
+.dateline,.footnote,.caption,.method,.teacher-note small,th small,thead th,.legend,figcaption small { font-size:7pt }
+.dateline { margin-top:1.5mm }
+.metrics th,.metrics td { padding:.6mm 1mm }
+.metrics thead th { font-size:9pt }.metrics tbody th { font-size:8pt }
+.metrics td small { font-size:6.8pt }.metrics .average { font-size:15pt }
+.chart-spread,.detail-spread { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3mm 4mm; align-items:start }
+.single-subject .chart-spread,.single-subject .detail-spread { grid-template-columns:1fr }
+.exhibits,.detail { min-width:0; margin:0; break-before:auto; break-after:auto }
+.section-head { border-top-width:1pt; padding:.8mm 0 }
+.section-head h2 { font-size:13pt }
+.pair { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); gap:1.8mm }
+.pair .trend { padding-left:1.8mm }
+.pair figure { display:block }
+figcaption { font-size:8.5pt; line-height:1.3 }
+figcaption small { margin-left:0 }
+.legend { min-height:0; justify-content:start; gap:2mm; margin-top:.4mm; line-height:1.2 }
+.radar figcaption { padding-bottom:3.3mm }
+.pair svg { margin-top:.5mm; width:100%; height:26mm }
+.single-subject .pair svg { height:35mm }
+.axis-name,.tick { font-size:14px }
+.caption { font-size:6.8pt; margin-top:0 }
+.detail-spread { margin-top:3mm }
+.detail h2 { font-size:12pt; line-height:1.25; padding-bottom:1mm; margin-bottom:1.5mm; border-bottom-width:1pt }
+.detail h3,.detail caption,.teacher-note h2 { font-size:9pt; margin-bottom:.6mm }
+th,td { padding:.9mm .7mm }
+.skills { font-size:7.8pt }.skills td:nth-child(2) {font-size:7.5pt}
+.skills td:last-child { width:32%; line-height:1.32 }
+.works { font-size:8pt }.works th small { font-size:6.8pt; line-height:1.2 }
+.works tbody th { width:43% }
+.works.extended tbody :is(th,td) { padding-block:.45mm }
+.works.extended tbody th { width:55% }
+.works.extended th small { display:inline-block; margin-inline-start:1.5mm }
+.footnote { margin-top:.6mm }
+.block,.works { margin-top:2mm }
+.practice { padding-left:2mm; border-left-width:1pt }.practice li+li { margin-top:.8mm }
+.examples { padding-left:3.5mm; margin-top:.6mm; font-size:7.7pt }
+.teacher-note { order:1; margin:2mm 0 0;padding-left:2mm }
+.method { order:2; margin-top:2mm; padding-top:1mm; line-height:1.3 }
+.empty { margin:2mm 0 }

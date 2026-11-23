@@ -3,7 +3,10 @@ import {skillNames, resultParts} from './student-report.mjs';
 import {radarFigure, trendFigure, html} from './student-report-figures.mjs';
 import {workDate} from '../homework/grade-journey-model.js';
 
-const styles = readFile(new URL('./student-report.css', import.meta.url), 'utf8');
+const readStyle = file => readFile(new URL(file, import.meta.url), 'utf8');
+const styles = readStyle('./student-report.css');
+const mobileStyles = readStyle('./student-report-mobile.css');
+const paperStyles = readStyle('./student-report-paper.css');
 const fullDate = new Intl.DateTimeFormat('zh-CN', {year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Shanghai'});
 const date = stamp => Number.isFinite(Date.parse(stamp)) ? fullDate.format(new Date(stamp)) : '日期待录';
 const number = n => Number.isFinite(n) ? String(n) : '—';
@@ -39,7 +42,7 @@ function workTable(c) {
     const values=[number(p?.first),signed(p?.recovered),signed(p?.adjustment),p?number(p.total)+' / '+number(p.max):'—'];
     return `<tr><th scope="row">${html(a.title||'历史作业')}<small>${notes.filter(Boolean).map(html).join(' · ')}</small></th>${values.map((v,i)=>`<td data-col="${heads[i]}">${v}</td>`).join('')}</tr>`;
   });
-  return `<table class="works"><caption>作业明细</caption><thead><tr><th scope="col">作业</th>${heads.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  return `<table class="works${rows.length >= 20 ? ' extended' : ''}"><caption>作业明细</caption><thead><tr><th scope="col">作业</th>${heads.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 
 function skills(c){
@@ -91,21 +94,20 @@ const icon=path=>`<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke
 export async function renderStudentReport(report){
   const courses=report.courses, note=report.latestNote;
   const scope=[report.period,report.unit,report.assignmentTitle].filter(Boolean).join(' · ');
-  const footer=[report.name,...report.classNames].join(' · ');
-  const cssFooter=Array.from(footer).slice(0,48).map(c=>'\\'+c.codePointAt(0).toString(16)+' ').join('');
   const hasTrend=courses.some(c=>Number.isFinite(c.trend));
   const finalOnly=courses.some(c=>c.cells.some(cell=>cell.status==='graded' && resultParts(cell)?.first===null));
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${await styles}
-  @page{@bottom-left{content:"${cssFooter}"}}</style><script defer src="/teacher/student-report-actions.js"></script></head><body><main>
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${await styles}</style>
+  <style id="report-mobile" media="screen and (max-width:680px)">${await mobileStyles}</style>
+  <style id="report-paper" media="print">${await paperStyles}</style><script defer src="/teacher/student-report-actions.js"></script></head><body><main class="${courses.length===1?'single-subject':''}">
     <div class="mast"><b>Mike <span>的经济一页通</span></b><nav class="actions" aria-label="文档操作"><button type="button" id="save">${icon(downloadIcon)}下载网页</button><button type="button" id="print">${icon(printIcon)}打印 / PDF</button></nav></div>
     <header class="front${courses.length>2?' expanded':''}">
       <div class="identity"><h1>经济学学习报告</h1><strong>${html(report.name)}</strong><span class="classes">${report.classNames.map(n=>'<i>'+html(n)+'</i>').join(' ')||'班级待确认'}</span>
       <p class="dateline"><time>${date(report.at)}</time>${scope?' · '+html(scope):''}</p></div>
       ${metrics(courses)}
     </header>
-    ${courses.map(c=>`<section class="exhibits subject-${c.course}" aria-label="${html(c.label)}图表"><div class="section-head"><h2>${html(c.label)}</h2><a href="#${sectionId(c)}" aria-label="${html(c.label)}分科明细">分科明细 <span aria-hidden="true">↓</span></a></div>
-      <div class="pair">${radarFigure(c)}${trendFigure(c)}</div></section>`).join('')}
+    <div class="chart-spread">${courses.map(c=>`<section class="exhibits subject-${c.course}" aria-label="${html(c.label)}图表"><div class="section-head"><h2>${html(c.label)}</h2><a href="#${sectionId(c)}" aria-label="${html(c.label)}分科明细">分科明细 <span aria-hidden="true">↓</span></a></div>
+      <div class="pair">${radarFigure(c)}${trendFigure(c)}</div></section>`).join('')}</div>
     ${courses.length?`<aside class="method" aria-label="统计口径">${hasTrend?'<p>¹ 最近三份已出分作业的平均得分率，与此前三份相比。</p>':''}<p>作业平均按已公布的最终得分率计算，缺分留空、零分计入。课堂表现参考独立首答和订正后同技能新题，采用五档。${finalOnly?'仅有总分的记录只列最终分。':''}</p></aside>`:''}
     ${note?`<aside class="teacher-note"><h2>老师的话</h2><p>${html(note.headline)}</p>${(note.nextSteps||[]).map(s=>'<p>'+html(s.text)+'</p>').join('')}<small>${html([date(note.publishedAt),note.className,note.period].filter(Boolean).join(' · '))}</small></aside>`:''}
-    ${courses.map(c=>detail(c,report.includeMock)).join('')}</main></body></html>`;
+    <div class="detail-spread">${courses.map(c=>detail(c,report.includeMock)).join('')}</div></main></body></html>`;
 }
