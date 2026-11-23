@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';import {validateItems,choiceScore,combineScores,activeExam} from '../homework-server/mcq-model.mjs';import {createMCQ} from '../homework-server/mcq.mjs';import {createCompanion} from '../homework-server/companion.mjs';import {openPDF,renderPage} from '../homework-server/pdf-pages.mjs';
-function store(){const rows=new Map();let tail=Promise.resolve();return {rows,async get(id){return structuredClone(rows.get(id)?.data)},async put(kind,data){rows.set(data.id,{kind,data:structuredClone(data)});return data},async remove(id){rows.delete(id)},async list(kind){return [...rows.values()].filter(r=>r.kind===kind).map(r=>structuredClone(r.data))},async find(kind,filters){return (await this.list(kind)).filter(r=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.map(String).includes(String(r[k])):String(r[k])===String(v)))},tx(fn){const result=tail.then(()=>fn({}));tail=result.catch(()=>{});return result},async audit(){}}}
+function store(){const rows=new Map();let tail=Promise.resolve();return {rows,async latestReceipt(scope){const entries=await this.find('submission',scope);return entries.filter(s=>s.status!=='draft').sort((a,b)=>(b.submittedAt||b.createdAt||'').localeCompare(a.submittedAt||a.createdAt||'')||b.id.localeCompare(a.id)).slice(0,1)},async get(id){return structuredClone(rows.get(id)?.data)},async put(kind,data){rows.set(data.id,{kind,data:structuredClone(data)});return data},async remove(id){rows.delete(id)},async list(kind){return [...rows.values()].filter(r=>r.kind===kind).map(r=>structuredClone(r.data))},async find(kind,filters){return (await this.list(kind)).filter(r=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.map(String).includes(String(r[k])):String(r[k])===String(v)))},tx(fn){const result=tail.then(()=>fn({}));tail=result.catch(()=>{});return result},async audit(){}}}
 const item=()=>({id:'1',type:'choice',prompt:'Price falls. Which change explains this?',options:'ABCDE'.split('').map(label=>({label,text:'Option '+label})),regions:[{page:1,x:.05,y:.05,w:.9,h:.45}],answer:'C',sourcePages:'Answer key p.2 Q1 C',checked:true});
 function fixture(){const db=store();let uploads=0;const assets=new Map();const files={async read(f){return {transformToByteArray:async()=>assets.get(f.id)}},async upload(bytes,meta){const f={...meta,id:'crop'+(++uploads),mime:'image/jpeg'};assets.set(f.id,bytes);await db.put('file',f);return f},async validate(ids,owner){assert.ok(ids.every(id=>db.rows.get(id)?.data.owner===owner))}};const teacher={id:'teacher',role:'teacher'},student={id:'student',role:'student',classIds:['class']};const requireAssignment=async(id,user)=>{const a=await db.get(id);assert.ok(a&&a.type==='assignment');assert.ok(user.role==='teacher'?a.teacherId===user.id:a.classIds.some(c=>user.classIds.includes(c)));return a};const handler=createMCQ({db,files,decrypt:x=>x,requireAssignment,queueGrade:async(s,a)=>{s.status='queued';s.choiceGrade=choiceScore(a.rubric,s.choices);await db.put('submission',s)},callModel:async()=>({questions:[{...item(),number:'1',section:''}],keys:[{number:'1',section:'',answer:'C',page:1}]})});return {db,files,assets,teacher,student,handler};}
 async function call(handler,user,route,method='GET',data={}){let value,status;const req={headers:{},url:'/api/homework/'+route};const res=new EventEmitter();res.writeHead=n=>{status=n;return res};res.end=()=>{};await handler({req,res,user,route:route.split('/'),method,body:async()=>data,json:(_r,d,n=200)=>{value=d;status=n},availableClasses:async()=>[{id:'class'}],availableStudents:async()=>[{id:'student',classIds:['class']}]});return {value,status};}
@@ -331,4 +331,24 @@ test('earned cosmetics, request retries and release receipts belong to one authe
  await call(handler,student,'companion/profile','POST',{action:'read',ids:state.editions.map(r=>r.id)});
  assert.equal((await call(handler,student,'companion/position')).value.profile.unread,false);
  assert.equal((await call(handler,{...student,id:'second'},'companion/position')).value.profile.unread,true);
+});
+
+test('published zero starts a fresh timed attempt past the deadline; replay keeps both receipts',async()=>{
+ const f=await prepare();
+ const a=(await call(f.handler,f.teacher,'mcq/imports/import/publish','POST',{items:[item()],revision:0,classIds:['class'],allowResubmit:false})).value.assignment;
+ const url='mcq/attempt/'+a.id,first=(await call(f.handler,f.student,url+'/submit','POST',{revision:0,answers:{1:'A'}})).value;
+ assert.equal((await f.db.get(first.submittedId)).publishedGrade.total,0);
+ a.dueAt='2000-04-01T12:00:00Z';a.timeLimitMinutes=20;await f.db.put('assignment',a);
+ assert.equal((await call(f.handler,f.student,url,'GET')).value.assignment.zeroRetry,true);
+ const retry=(await call(f.handler,f.student,url+'/restart','POST',{receiptId:first.submittedId,revision:0})).value.attempt;
+ assert.deepEqual(retry.answers,{});assert.equal(retry.zeroRetryOf,first.submittedId);
+ await assert.rejects(call(f.handler,f.student,url+'/submit','POST',{revision:retry.revision,sequence:0,answers:{1:'A'}}),/新一轮/);
+ const payload={revision:retry.revision,sequence:retry.sequence,answers:{1:'C'}};
+ const done=(await call(f.handler,f.student,url+'/submit','POST',payload)).value;
+ assert.notEqual(done.submittedId,first.submittedId);
+ assert.equal((await call(f.handler,f.student,url+'/submit','POST',payload)).value.submittedId,done.submittedId);
+ assert.equal((await f.db.get(done.submittedId)).publishedGrade.total,1);
+ assert.equal((await f.db.get(first.submittedId)).publishedGrade.total,0);
+ assert.equal((await call(f.handler,f.student,url,'GET')).value.assignment.zeroRetry,false);
+ await assert.rejects(call(f.handler,f.student,url+'/restart','POST',{revision:0,receiptId:done.submittedId}),/未开放/);
 });

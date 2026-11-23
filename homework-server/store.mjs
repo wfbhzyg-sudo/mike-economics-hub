@@ -10,6 +10,10 @@ export const id = () => randomUUID();
 export const token = () => randomBytes(32).toString("base64url");
 export const hash = (value) => createHash("sha256").update(value).digest("hex");
 export const now = () => new Date().toISOString();
+export function submissionTimeAfter(previous) {
+  const last=Date.parse(previous?.submittedAt || previous?.createdAt);
+  return new Date(Number.isFinite(last) ? Math.max(Date.now(),last+1) : Date.now()).toISOString();
+}
 export function passwordHash(value) {
   const salt = token();
   return `${salt}:${scryptSync(value, salt, 64).toString("hex")}`;
@@ -59,6 +63,19 @@ export function createStore(connectionString, schema = "homework") {
       if (!keys.length) return [];
       return (await client.query(`SELECT data FROM ${table} WHERE id=ANY($1::text[])`, [[...new Set(keys)]]))
         .rows.map((row) => row.data);
+    },
+    async latestReceipt({studentId,assignmentId}, client = pool) {
+      // Retry eligibility does not need answer snapshots, attachments, or older attempts.
+      const {rows}=await client.query(`SELECT jsonb_build_object(
+        'id',id,'assignmentId',data->'assignmentId','status',data->'status',
+        'submittedAt',data->'submittedAt','createdAt',data->'createdAt',
+        'manualScoreEntry',data->'manualScoreEntry','offlineMakeup',data->'offlineMakeup',
+        'publishedGrade',CASE WHEN jsonb_typeof(data->'publishedGrade')='object' THEN
+          jsonb_build_object('total',data#>'{publishedGrade,total}','maxPoints',data#>'{publishedGrade,maxPoints}') END
+        ) AS receipt FROM ${table}
+        WHERE kind='submission' AND data->>'studentId'=$1 AND data->>'assignmentId'=$2 AND data->>'status'<>'draft'
+        ORDER BY COALESCE(data->>'submittedAt',data->>'createdAt','') DESC,id DESC LIMIT 1`,[studentId,assignmentId]);
+      return rows.map(r=>r.receipt);
     },
     async teacherAssignments(teacherId, trash) {
       // Older online assignments recorded the original publication in answer version one.
@@ -124,7 +141,7 @@ export function createStore(connectionString, schema = "homework") {
     },
     // Filter before transferring JSON (rubrics and paper snapshots can be large).
     async find(kind, filters, client = pool) {
-      const allowed = new Set(['studentId','assignmentId','owner','teacherId','unitId','version','status','threadKey','postId','classId']);
+      const allowed = new Set(['studentId','assignmentId','submissionId','owner','teacherId','unitId','version','status','threadKey','postId','classId']);
       const values = [kind], clauses = ['kind=$1'];
       for (const [field, value] of Object.entries(filters)) {
         if (!allowed.has(field)) throw new Error('Invalid record filter');

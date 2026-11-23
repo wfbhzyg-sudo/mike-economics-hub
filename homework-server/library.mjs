@@ -2,6 +2,7 @@ import {lessonFocus} from '../homework/lesson-focus.js';
 import {lessonExamples} from './lesson-mcq-data.mjs';
 import {expandedLessonFocus} from './lesson-focus-data.mjs';
 import {classKey,namedCourse} from '../homework/course-scope.js';
+import {questionHasTopic,matchLegacySkillPack} from '../homework/library-packs.js';
 import {automaticGradeReady,libraryOptions} from '../homework/library-grading.js';
 import {answerSuggestionInput,withAnswerSuggestion} from './library-answer-review.mjs';
 import {resolveQuestionSource,replaceQuestionSlice} from './library-slices.mjs';
@@ -428,20 +429,29 @@ async function handle({req,res,route,method,user,json,availableClasses,available
    return true;
  }
  if(route[1]==='publish'&&method==='POST'){
- teacher();const b=await bdy(),classes=await availableClasses();assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(c=>plainClass(c.id)===plainClass(x))),'请选择自己的班级');assert(typeof b.clientId==='string'&&b.clientId.length>=16&&b.clientId.length<=100,'发布标识无效');const title=text(b.title,120);assert(title,'请填写作业名称');
+ teacher();const b=await bdy(),classes=await availableClasses();assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(c=>plainClass(c.id)===plainClass(x))),'请选择自己的班级');assert(typeof b.clientId==='string'&&b.clientId.length>=16&&b.clientId.length<=100,'发布标识无效');let title=text(b.title,120);assert(title,'请填写作业名称');
  const units=await db.list('library-unit'),unitMap=new Map(units.map(u=>[u.id,u]));
- const chosen=validateSelection(b.questionIds,await db.list('library-question'));
+ const bankQuestions=await db.list('library-question'),chosen=validateSelection(b.questionIds,bankQuestions);
  const pointOverrides=b.maxPointsByQuestion||{};for(const q of chosen){if(automaticGradeReady(q))continue;const points=Number(pointOverrides[q.id]??q.maxPoints??(q.type==='choice'?1:NaN));assert(Number.isFinite(points)&&points>0&&points<=100,'请填写待核对题目的满分（0–100 之间）');}
  const unitIds=[...new Set(chosen.map(q=>q.unitId))];
  for(const unitId of unitIds)await unitFor(user,unitId);
  const primary=unitMap.get(unitIds[0]);assert(primary,'题目所属单元不存在');
+ let skillTopic=b.skillTopic;
+ if (skillTopic!==undefined) {
+   assert(typeof skillTopic==='string' && unitIds.length===1 && primary.topics.some(t=>t.id===skillTopic) &&
+     chosen.every(q=>q.type==='choice' && questionHasTopic(q,skillTopic)),
+     '所选题目与作业包的 Topic 不一致，请重新打开作业包');
+ } else if (unitIds.length===1 && title.startsWith('Skill ')) {
+   const legacy=matchLegacySkillPack(title,b.questionIds,bankQuestions,primary);
+   if (legacy) {title=legacy.title;skillTopic=legacy.skillTopic;}
+ }
  const courseIds=[...new Set(unitIds.map(unitId=>unitId.split('-')[0]))];
  const courseLabel=courseIds.length===1?(courseIds[0]==='macro'?'AP 宏观经济学':'AP 微观经济学'):'AP 经济学';
  const timing=validateTiming(b),students=await availableStudents();
  const a=await db.tx(async c=>{const key='library-publish:'+hash(user.id+b.clientId),prior=await db.get(key,c);if(prior){const saved=await db.get(prior.assignmentId,c);if(saved)return saved;}
  const rubric=chosen.map((q,i)=>{const unit=unitMap.get(q.unitId),manualGradingRequired=!automaticGradeReady(q),maxPoints=manualGradingRequired?Number(pointOverrides[q.id]??q.maxPoints??1):(q.maxPoints||1);return {id:String(i+1),manualGradingRequired,libraryReviewStatus:q.status,skill:q.skill||'',type:q.type,prompt:q.type==='short'?(q.searchText||''):'',sliceOnly:true,options:q.type==='choice'?libraryOptions(q).map(label=>({label,text:''})):[],correctOptions:q.type==='choice'&&!manualGradingRequired?[q.answer]:[],choiceMode:'single',answer:manualGradingRequired?'':q.answer||q.criteria,maxPoints,criteria:q.criteria||(q.type==='choice'&&!manualGradingRequired?'与已确认的答案一致得分':''),scoringPoints:q.scoringPoints||[],questionImages:q.questionImages,sourcePages:q.source+' · 原题 '+q.number+' · p.'+(Array.isArray(q.sourcePages)?q.sourcePages:[q.sourcePages||1]).join(', '),knowledge:q.topic?('Topic '+q.topic+' · '+(unit?.topics||[]).find(t=>t.id===q.topic)?.title||''):q.collection==='exam'?q.source:(unit?.title||''),lessonUnit:q.unitId,lessonTopic:q.topic||'',libraryChapter:q.chapterKey||'',libraryQuestionId:q.id,libraryVersion:q.version||1};});
  const publishedAt=now();
- const a={id:id(),type:'assignment',teacherId:user.id,title,course:courseLabel,classIds:[...new Set(b.classIds.map(x=>'bookself-class:'+plainClass(x)))],...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:true,status:'ready',version:1,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:publishedAt,publishedAt,recipients:captureRecipients(b.classIds,students),libraryUnit:unitIds.length===1&&!chosen.some(q=>q.collection==='exam')?primary.id:null,librarySourceUnit:unitIds.length===1?primary.id:'mixed',libraryUnits:unitIds,libraryCollection:chosen.some(q=>q.collection==='exam')?'exam':'unit',libraryCourse:courseIds.length===1?courseIds[0]:'mixed',libraryVersion:unitIds.length===1?primary.version:null};a.publishedPaper=capturePaper(a,rubric,1);
+ const a={id:id(),type:'assignment',teacherId:user.id,title,...(skillTopic?{libraryPackTopic:skillTopic}:{}),course:courseLabel,classIds:[...new Set(b.classIds.map(x=>'bookself-class:'+plainClass(x)))],...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:true,status:'ready',version:1,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:publishedAt,publishedAt,recipients:captureRecipients(b.classIds,students),libraryUnit:unitIds.length===1&&!chosen.some(q=>q.collection==='exam')?primary.id:null,librarySourceUnit:unitIds.length===1?primary.id:'mixed',libraryUnits:unitIds,libraryCollection:chosen.some(q=>q.collection==='exam')?'exam':'unit',libraryCourse:courseIds.length===1?courseIds[0]:'mixed',libraryVersion:unitIds.length===1?primary.version:null};a.publishedPaper=capturePaper(a,rubric,1);
  await db.put('assignment',a,c);await db.put('answer-version',{id:a.id+':v1',assignmentId:a.id,version:1,rubric,paper:a.publishedPaper,answerFiles:[],confirmedBy:user.id,confirmedAt:publishedAt},c);await db.put('review-links',{id:'review-links:'+hash(a.id),assignmentId:a.id,defaults:[],questions:rubric.filter(q=>q.libraryChapter).map(q=>({id:q.id,fingerprint:questionFingerprint(q),chapters:[q.libraryChapter]})),revision:1},c);await db.put('library-publication',{id:key,assignmentId:a.id,createdAt:now()},c);await db.audit(user.id,'library_publish',a.id,c);return a;});json(res,{assignment:{id:a.id,title:a.title}},201);return true;}
  if(route[1]==='notes'){
  const query=new URL(req.url,'http://local').searchParams,b=method==='GET'?Object.fromEntries(query):await bdy();let scope;

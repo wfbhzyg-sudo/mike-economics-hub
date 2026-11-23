@@ -49,9 +49,10 @@ test('only completed desk work invalidates the paper, not answer autosaves or dr
   assert.equal(affectsDeskTask('submissions/a/review-draft',{method:'PUT'}),false);
 });
 
-test('desk offers enabled offline makeups and skips pending or recorded work, including zero',async()=>{
+test('desk offers zero-score redos and skips pending work and positive grades',async()=>{
   const a={...assignment('makeup',18),offline:true,allowLate:true,makeupMode:'upload'};
   assert.equal((await studentTask([a])).id,a.id);
   assert.equal(await studentTask([a],[{id:'s',assignmentId:a.id,offlineMakeup:true,status:'needs_review'}]),null);
-  assert.equal(await studentTask([a],[{id:'s',assignmentId:a.id,manualScoreEntry:true,status:'published',publishedGrade:{total:0}}]),null);
+  assert.equal((await studentTask([a],[{id:'s',assignmentId:a.id,manualScoreEntry:true,status:'published',publishedGrade:{total:0}}])).id,a.id);
+  assert.equal(await studentTask([a],[{id:'s',assignmentId:a.id,status:'published',publishedGrade:{total:1}}]),null);
 });

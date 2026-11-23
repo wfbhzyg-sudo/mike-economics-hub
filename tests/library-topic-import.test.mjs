@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {buildPacks,canonicalQuestions} from '../homework/library-packs.js';
+import {buildPacks,canonicalQuestions,matchLegacySkillPack} from '../homework/library-packs.js';
 import {validateSelection} from '../homework-server/library-model.mjs';
 import {drawPaper,buildCatalog,questionEligible} from '../homework-server/self-practice-model.mjs';
 const question=(id,number,pack,topic='3.6')=>({id,number,type:'choice',topic,status:'ready',collection:'topic',sourceId:pack,assignmentPack:pack?{id:pack,title:'AP Classroom · '+pack}:undefined});
@@ -36,4 +36,26 @@ test('Related chapter access reuses one canonical question and self practice nev
  const chapter=buildPacks(rows,{topic:'3.7'});assert.equal(chapter[0].count,10);assert.equal(chapter[0].id,'topic:0');
  const catalog=buildCatalog({units:[unit],questionsByUnit:{[unit.id]:[...rows,alias]}});assert.equal(catalog[0].questionCount,10);assert.deepEqual(catalog[0].topics.map(t=>t.count),[10,10]);
  const paper=drawPaper({questions:rows,topicIds:['3.6','3.7'],count:10,random:()=>.5});assert.equal(new Set(paper.map(q=>q.id)).size,10);
+});
+
+test('skill packs carry the selected topic through related questions and numbered parts', () => {
+ const rows=Array.from({length:42},(_,i)=>({...question('q'+i,i+1,null,'3.6'),unitId:'micro-unit-3',skill:'1.A',relatedTopics:['3.7']}));
+ for(const topic of ['3.6','3.7']){
+   const packs=buildPacks(rows,{topic}).filter(p=>p.skillTopic);
+   assert.deepEqual(packs.map(p=>p.title),[1,2].map(n=>`Topic ${topic} · Skill 1 · Principles and Models · Part ${n}`));
+   assert.deepEqual(packs.map(p=>p.id),['skill1:0','skill1:40']);
+   assert(packs.every(p=>p.skillTopic===topic));
+ }
+});
+
+test('recover legacy titles only from a unique complete ordered pack in the same course', () => {
+ const unit={id:'macro-unit-3',topics:[{id:'3.6'},{id:'3.7'}]};
+ const q=(id,n,topic,relatedTopics=[])=>({...question(id,n,null,topic),unitId:unit.id,skill:'3.B',relatedTopics});
+ const bank=[q('one',1,'3.6',['3.7']),q('two',2,'3.7')];
+ const title='Skill 3 · Manipulation';
+ assert.equal(matchLegacySkillPack(title,['one','two'],bank,unit)?.skillTopic,'3.7');
+ assert.equal(matchLegacySkillPack(title,['two','one'],bank,unit),null);
+ assert.equal(matchLegacySkillPack('My own title',['one','two'],bank,unit),null);
+ assert.equal(matchLegacySkillPack(title,['one'],bank.slice(0,1),unit),null);
+ assert.equal(matchLegacySkillPack(title,['one','two'],bank,{...unit,id:'micro-unit-3'}),null);
 });

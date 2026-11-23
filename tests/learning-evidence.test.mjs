@@ -76,3 +76,14 @@ test('profile evidence deduplicates in-flight requests per student and class, an
  await assert.rejects(read('one'));assert.deepEqual(await Promise.all([read('one'),read('one')]),[['ok'],['ok']]);
  await read('two');await read('one','class-2');assert.equal(calls.length,4);assert.equal(new URLSearchParams(calls.at(-1).split('?')[1]).get('class'),'class-2');
 });
+
+test('a graded zero-score redo replaces old evidence once, regardless of input order',()=>{
+ const works=[assignment('a'),assignment('b')];
+ const original=make('old','a','07');
+ original.publishedGrade={...original.publishedGrade,total:0,questions:original.publishedGrade.questions.map(q=>({...q,score:0}))};
+ const redo={...make('redo','a','09',2),retryOf:'old'},other=make('other','b','10',2);
+ const metrics=rows=>{const course=studentPerformance(rows,works,[],[],[],Date.parse('2026-11-15'))[0];return [course.first,course.works,course.points];};
+ assert.notEqual(metrics([original,other])[0],metrics([redo,other])[0]);
+ assert.deepEqual(metrics([redo,other,original]),metrics([other,redo]));
+ assert.deepEqual(metrics([original,other,{...redo,status:'needs_review',publishedGrade:null}]),metrics([original,other]));
+});

@@ -26,13 +26,16 @@ export function testsAllSkills(a){
 
 export function studentPerformance(submissions,assignments,mistakes,classes=[],library=[],at=Date.now()){
   const bank=new Map(library.map(q=>[q.id,q]));
-  const earliest=new Map();
+  // For a zero-score redo, the newly graded attempt replaces the earlier evidence.
+  const retried=new Set(submissions.filter(s=>s.retryOf && s.status!=='returned' && Number.isFinite(s.publishedGrade?.total)).map(s=>s.assignmentId));
+  const evidenceByAssignment=new Map();
   for(const s of submissions){
     const grade=independentGrade(s);
     if(s.status==='draft'||!Number.isFinite(grade?.total)||!(grade.maxPoints>0)||grade.total<0||grade.total>grade.maxPoints)continue;
     const date=s.submittedAt||s.createdAt||grade.publishedAt;
-    const old=earliest.get(s.assignmentId);
-    if(!old||date<old.date||date===old.date&&s.id<old.s.id)earliest.set(s.assignmentId,{s,grade,date});
+    const old=evidenceByAssignment.get(s.assignmentId);
+    const order=old && (String(date).localeCompare(String(old.date)) || s.id.localeCompare(old.s.id));
+    if(!old || (retried.has(s.assignmentId)?order>0:order<0)) evidenceByAssignment.set(s.assignmentId,{s,grade,date});
   }
   const bindings=q=>{
     const item=bank.get(q?.libraryQuestionId);
@@ -57,7 +60,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
     const aIds=new Set(available.map(a=>a.id)),verified=new Map();
     for(const m of mistakes){
       if(!aIds.has(m.assignmentId)||m.verification?.status!=='passed')continue;
-      const entry=earliest.get(m.assignmentId);
+      const entry=evidenceByAssignment.get(m.assignmentId);
       const q=entry?.s.rubricSnapshot?.find(q=>q.id===m.questionId);
       if(entry?.s.id!==m.submissionId||!q)continue;
       const base=entry.grade.questions.find(q=>q.id===m.questionId);
@@ -69,9 +72,9 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
       }
     }
     const usedTransfer=new Set(),usedSkills=new Set();
-    const ordered=available.sort((a,b)=>String(earliest.get(a.id)?.date||'').localeCompare(String(earliest.get(b.id)?.date||'')));
+    const ordered=available.sort((a,b)=>String(evidenceByAssignment.get(a.id)?.date||'').localeCompare(String(evidenceByAssignment.get(b.id)?.date||'')));
     for(const a of ordered){
-      const source=earliest.get(a.id);
+      const source=evidenceByAssignment.get(a.id);
       if(!source)continue;
       const {s,grade,date}=source,parsed=Date.parse(date),weight=Number.isFinite(parsed)&&at-parsed<recency?2:1;
       if(testsAllSkills(a))comprehensiveAssessments++;

@@ -5,7 +5,7 @@ import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,classKey,singleClassCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
-import {assignmentRecords,assignmentState,usesTotalOnlyEditor} from '../homework/learning-model.js';
+import {assignmentRecords,assignmentState,retryWorkMode,usesTotalOnlyEditor} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
 import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
@@ -31,6 +31,7 @@ import {
   now,
   passwordHash,
   passwordMatches,
+  submissionTimeAfter,
 } from "./store.mjs";
 import { createFiles, readBody, MAX_FILE } from "./files.mjs";
 import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } from "./validation.mjs";
@@ -50,7 +51,7 @@ const safeUser = (u) => ({
 });
 export const publicAssignment = (a) => ({
   correctionCredit:a.correctionCredit===true, performanceTransfer:a.performanceTransfer===true,
-  offline: Boolean(a.offline), makeupMode:a.makeupMode||null, maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
+  offline: Boolean(a.offline), ...((a.offline||a.format==='score')&&!a.makeupMode?{zeroRetryMode:retryWorkMode(a)}:{}), makeupMode:a.makeupMode||null, maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
@@ -298,7 +299,20 @@ export async function createHomework({externalAuth} = {}) {
     return false;
   };
   const library=createLibrary({db,files,requireAssignment,decrypt});
-  const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade});
+  // Desk and roster summaries carry totals only. Read full evidence only for a
+  // current zero with a passed correction, so eligibility matches the gradebook.
+  async function effectiveZeros(rows, assignments, c) {
+    if(!rows.some(s=>s.status==='published' && s.publishedGrade?.total===0))return rows;
+    const ids=assignmentRecords(rows).map(r=>r.latest)
+      .filter(s=>s.status==='published' && s.publishedGrade?.total===0).map(s=>s.id);
+    if(!ids.length)return rows;
+    const reviews=await db.find('correction-review',{submissionId:ids,status:'passed'},c);
+    if(!reviews.length)return rows;
+    const full=await db.getMany([...new Set(reviews.map(r=>r.submissionId))],c);
+    const grades=new Map(applyRecovery(full,reviews,assignments).map(s=>[s.id,s.publishedGrade]));
+    return rows.map(s=>grades.has(s.id)?{...s,publishedGrade:grades.get(s.id)}:s);
+  }
+  const mcq=createMCQ({db,files,decrypt,requireAssignment,queueGrade,effectiveZeros});
   const companion=createCompanion({db,decrypt});
   // Only identical, authorized downloads share work. Nothing is persisted.
   const activePapers = new Map();
@@ -1109,7 +1123,7 @@ export async function createHomework({externalAuth} = {}) {
       }
       if(method==='GET'&&route.length===1&&route[0]==='desk-task'){
         res.setHeader('Cache-Control','private, no-store');
-        return (json(res,{task:await deskTask(db,user)}),true);
+        return (json(res,{task:await deskTask(db,user,Date.now(),effectiveZeros)}),true);
       }
       if (route[0] === "assignments") {
         if(method==='GET'&&route[1]==='roster-summary'){
@@ -1118,7 +1132,7 @@ export async function createHomework({externalAuth} = {}) {
           const [students,submissions]=await Promise.all([
             availableStudents(),db.teacherWorklist(user.id)]);
 
-          const submissionsByWork=Map.groupBy(submissions,s=>s.assignmentId);
+          const submissionsByWork=Map.groupBy(await effectiveZeros(submissions,assignments),s=>s.assignmentId);
           const summaries={}, byClass={};
           for(const a of assignments){
             const {rows,counts}=assignmentRoster(a,students,submissionsByWork.get(a.id)||[]);
@@ -1252,7 +1266,7 @@ export async function createHomework({externalAuth} = {}) {
                 assert(attempts.some(t=>t.startedAt || t.submittedId),'开始作答后可导出本次试卷',409);
               }
             }
-            assert(a.makeupMode==='questions'||(!a.offline&&a.format!=='score'),'这份线下成绩没有在线题面',409);
+            assert(retryWorkMode(a)==='questions'||(!a.offline&&a.format!=='score'),'这份线下成绩没有在线题面',409);
             await sendQuestionPaper(req,res,user,'assignment:'+a.id+':'+a.version,paperOf(a),a.rubric);
             return true;
           }
@@ -1478,11 +1492,15 @@ export async function createHomework({externalAuth} = {}) {
             const previous = await db.get(submissionId, c);
             if (previous && previous.status !== "draft") return previous;
             assert(b.draft||b.paperVersion===undefined||Number(b.paperVersion)===paperOf(a).version,'题纸已更新，请先重新打开作业查看新版；已保存的作答会保留',409);
-            const earlier=(await db.find('submission',{studentId:user.id,assignmentId:a.id},c)).filter(s=>s.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt));
+            const earlier=(await db.find('submission',{studentId:user.id,assignmentId:a.id},c)).filter(s=>s.status!=='draft')
+              .sort((a,b)=>(b.submittedAt||b.createdAt||'').localeCompare(a.submittedAt||a.createdAt||'') || b.id.localeCompare(a.id));
             const offline=a.offline||a.format==='score';
-            if(offline)assert(a.makeupMode==='upload' && assignmentState(a,earlier).canSubmit,'这份作业未开放上传补交或已有成绩',409);
-            assert(!late||a.allowLate||b.draft||earlier[0]?.status==='returned','已超过截止时间，请联系教师开放补交');
-            assert(offline||b.draft||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
+            const policy=assignmentState(a,await effectiveZeros(earlier,[a],c));
+            const uploadMode=a.makeupMode || (policy.zeroRetryOf || earlier[0]?.offlineMakeup ? retryWorkMode(a) : null);
+            if(!offline && policy.zeroRetryOf && ['mcq','mixed'].includes(a.format))assert(false,'请在在线答题页重新作答',409);
+            if(offline)assert(uploadMode==='upload' && policy.canSubmit,'这份作业未开放上传补交或已有成绩',409);
+            assert(!late||a.allowLate||b.draft||policy.zeroRetryOf||earlier[0]?.status==='returned','已超过截止时间，请联系教师开放补交');
+            assert(offline||b.draft||policy.zeroRetryOf||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
             await files.validate(b.files || [], user.id, "submission", c);
             const content = boundedText(b.text, 40000, "作业文字");
             assert(
@@ -1490,6 +1508,7 @@ export async function createHomework({externalAuth} = {}) {
               "请上传附件或填写答案",
             );
             assert(a.version > 0, "教师尚未确认评分标准");
+            const makeupMax=offline ? (a.makeupMaxPoints || scoreMaximum(a,earlier.map(s=>s.publishedGrade))) : null;
             const s = {
               id: submissionId,
               type: "submission",
@@ -1499,17 +1518,17 @@ export async function createHomework({externalAuth} = {}) {
               text: content,
               files: b.files || [],
               paperSnapshot:structuredClone(paperOf(a)),
-              classIds:[...user.classIds],late, ...(offline?{offlineMakeup:{mode:'upload',maxPoints:a.makeupMaxPoints}}:{}),
+              classIds:[...user.classIds],late, ...(policy.zeroRetryOf?{retryOf:policy.zeroRetryOf}:{}), ...(offline?{offlineMakeup:{mode:'upload',maxPoints:makeupMax}}:{}),
               status: "draft",
               createdAt: previous?.createdAt || now(),
               updatedAt: now(),
             };
             if (!b.draft) {
-              s.submittedAt = now();
+              s.submittedAt = submissionTimeAfter(earlier.find(entry=>entry.id===s.retryOf));
               if(offline){
-                assert(a.makeupMaxPoints>0,'请教师确认这份作业的满分',409);
+                assert(makeupMax>0,'请教师确认这份作业的满分',409);
                 s.status='needs_review';s.version=a.version;s.jobId=null;s.teacherReviewDraft=null;
-                s.rubricSnapshot=[{id:'total',type:'short',prompt:'本次补交作答',maxPoints:a.makeupMaxPoints}];
+                s.rubricSnapshot=[{id:'total',type:'short',prompt:'本次补交作答',maxPoints:makeupMax}];
                 s.suggestedGrade=manualAssignmentScore(s.rubricSnapshot);
                 await db.put('submission',s,c);
               }else await queueGrade(s, a, c);

@@ -33,7 +33,7 @@ export async function deskSubmissions(db,user,queue){
 
 // Fetch only fields used to select a task. In particular, never load papers,
 // rubrics, attachment bodies or full grading histories for the notebook.
-export async function deskTask(db,user,now=Date.now()){
+export async function deskTask(db,user,now=Date.now(),effectiveZeros=rows=>rows){
   const table=db.table;
   if(user.role==='teacher'){
     const {rows}=await db.query(`${teacherPending(table)} SELECT count(*) FILTER(WHERE status='needs_review' AND NOT requested)::int AS grading,
@@ -49,8 +49,6 @@ export async function deskTask(db,user,now=Date.now()){
       data->>'makeupMode' AS "makeupMode",data->>'format' AS format,data->>'offline'='true' AS offline
       FROM ${table} WHERE kind='assignment' AND data->>'published'='true'
         AND data->>'deletedAt' IS NULL AND (data->'classIds') ?| $1::text[]
-        AND ((data->>'offline' IS DISTINCT FROM 'true' AND data->>'format' IS DISTINCT FROM 'score')
-             OR (data->>'allowLate'='true' AND data->>'makeupMode' IN ('questions','upload')))
       ORDER BY created DESC,id`,[user.classIds]),
     db.query(`SELECT id,data->>'assignmentId' AS "assignmentId",data->>'status' AS status,
       data->>'submittedAt' AS "submittedAt",data->>'updatedAt' AS "updatedAt",data->>'createdAt' AS "createdAt",
@@ -58,7 +56,7 @@ export async function deskTask(db,user,now=Date.now()){
       CASE WHEN data#>>'{publishedGrade,total}' IS NOT NULL THEN jsonb_build_object('total',data#>'{publishedGrade,total}') END AS "publishedGrade"
       FROM ${table} WHERE kind='submission' AND data->>'studentId'=$1`,[user.id]),
   ]);
-  const byWork=Map.groupBy(submissions.rows,s=>s.assignmentId);
+  const byWork=Map.groupBy(await effectiveZeros(submissions.rows,assignments.rows),s=>s.assignmentId);
   const pending=assignments.rows.filter(a=>!assignmentOpensLater(a,now)&&assignmentState(a,byWork.get(a.id)||[],now).key==='todo');
   // Upcoming deadlines, then the most recent eligible late work, then undated work.
   const rank=a=>!a.dueAt?2:Date.parse(a.dueAt)<now?1:0;

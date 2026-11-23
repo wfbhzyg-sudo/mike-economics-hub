@@ -1,12 +1,16 @@
-import {assignmentState} from './learning-model.js';
+import {assignmentState,retryWorkMode} from './learning-model.js';
 
 // Course practice and the assignment centre must lead to the same next action.
 export function studentAssignmentAction(assignment, submissions, time = Date.now()) {
   const info = assignmentState(assignment, submissions, time);
   const offline = Boolean(assignment.offline||assignment.format==='score');
   const opensLater = !info.latest && assignmentOpensLater(assignment, time);
+  if(info.zeroRetryOf){
+    const choice=offline?retryWorkMode(assignment)==='questions':['mcq','mixed'].includes(assignment.format);
+    return {info,target:(choice?'mcq/':'submit/')+assignment.id,action:info.draft||assignment.attemptProgress?'继续重做':'重新作答',opensLater:false,label:info.label};
+  }
   if(offline && info.canSubmit){
-    return {info,target:(assignment.makeupMode==='questions'?'mcq/':'submit/')+assignment.id,action:info.draft||assignment.attemptProgress?'继续补交':'补交作业',opensLater,label:info.label};
+    return {info,target:(retryWorkMode(assignment)==='questions'?'mcq/':'submit/')+assignment.id,action:info.draft||assignment.attemptProgress?'继续补交':'补交作业',opensLater,label:info.label};
   }
   if(offline && info.key==='processing')return {info,target:'result/'+info.latest.id,action:'查看提交',opensLater,label:info.label};
   const target = offline ? (info.key==='done' ? 'result/'+info.latest.id : null)

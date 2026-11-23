@@ -40,8 +40,20 @@ test('overdue offline makeups route by paper, respect recorded zero and stop aft
     assert.equal(studentAssignmentAction(a,[]).target,route+a.id);
     assert.equal(studentAssignmentAction({...a,allowLate:false},[]).target,null);
     assert.equal(studentAssignmentAction(a,[{...row,status:'published',publishedGrade:{total:null,maxPoints:10}}]).target,route+a.id);
-    assert.equal(assignmentState(a,[{...row,status:'published',publishedGrade:{total:0,maxPoints:10}}]).canSubmit,false);
+    assert.equal(assignmentState(a,[{...row,status:'published',publishedGrade:{total:0,maxPoints:10}}]).canSubmit,true);
     assert.equal(studentAssignmentAction(a,[{...row,status:'needs_review',offlineMakeup:{mode}}]).target,'result/s1');
     assert.equal(studentAssignmentAction(a,[{...row,status:'returned',offlineMakeup:{mode}}]).target,route+a.id);
   }
+});
+
+test('a zero is actionable until a newer receipt is pending or has a positive grade',()=>{
+ const work={...offline,allowLate:false,allowResubmit:false,published:true};
+ const zero={id:'original',assignmentId:work.id,status:'published',publishedGrade:{total:0,maxPoints:20},submittedAt:'2026-10-01'};
+ const pending={id:'new',assignmentId:work.id,status:'needs_review',offlineMakeup:{mode:'upload'},submittedAt:'2026-11-20'};
+ assert.equal(studentAssignmentAction(work,[zero]).target,'submit/'+work.id);
+ assert.equal(assignmentState(work,[zero,pending]).key,'processing');
+ assert.equal(assignmentState(work,[pending,zero]).canSubmit,false);
+ assert.equal(assignmentState(work,[zero,{...pending,status:'published',publishedGrade:{total:6,maxPoints:20}}]).key,'done');
+ assert.equal(assignmentState(work,[{...zero,publishedGrade:{total:null}}]).zeroRetryOf,undefined);
+ assert.equal(assignmentState(work,[{...zero,status:'needs_review'}]).zeroRetryOf,undefined);
 });

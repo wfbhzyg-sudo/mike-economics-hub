@@ -254,3 +254,18 @@ dialog.lib-board-detail:not([open]),dialog.lib-board-dialog:not([open]){display:
 .demand-controls{justify-content:flex-start}.demand-controls output{font-variant-numeric:tabular-nums;font-weight:650;margin-right:auto}
 .demand-lab button{min-height:42px;min-width:42px;border:1px solid #a9b8b2;border-radius:6px;color:#163649;background:white}
 .demand-projection{width:min(95vw,1300px);max-height:95dvh;padding:0;border:0}.demand-projection::backdrop{background:#172d3de8}.demand-projection .demand-lab{margin:0}.demand-projection svg{max-width:100%;max-height:70dvh}
+
+/* Keep native scrolling through nested lesson panes, including when the
+   document fits its reader. Focused projection remains its own scroll surface. */
+.library-work :is(.lib-content,.lib-pdf-area,.lib-question-list) { overscroll-behavior-y:auto; }
+.library-work :is(.lib-expanded,.lib-reader:fullscreen,.lib-project) .lib-pdf-area { overscroll-behavior-y:contain; }
+@media(max-width:900px) {
+  .library-work .lib-content { overflow:visible; }
+  .library-work .lib-reader:not(.lib-expanded):not(.lib-project):not(:fullscreen) .lib-pdf-area:not(:has(.lib-page-stage.zoom)) {
+    height:auto;
+    max-height:none;
+    min-height:0;
+    overflow:visible;
+    scrollbar-gutter:auto;
+  }
+}

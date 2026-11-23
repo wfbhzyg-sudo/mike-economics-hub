@@ -1,9 +1,10 @@
 import {groundQuestion,assembleImport} from './mcq-layout.mjs';
 import {keyChangePlan} from './mcq-regrade.mjs';
 import sharp from 'sharp';
-import {id,hash,now} from './store.mjs';
+import {id,hash,now,submissionTimeAfter} from './store.mjs';
 import {assert,text,boundedText} from './validation.mjs';
-import {assignmentState} from '../homework/learning-model.js';
+import {assignmentState,retryWorkMode} from '../homework/learning-model.js';
+import {scoreMaximum} from '../homework/score-entry.js';
 import {publishedResult} from './learning.mjs';
 import {deepseek} from './ai.mjs';
 import {openPDF,renderPage} from './pdf-pages.mjs';
@@ -11,7 +12,7 @@ import {validateItems,choiceScore,studentItems,attemptRules,validateTiming} from
 import {captureRecipients} from './roster.mjs';
 import {capturePaper} from './paper.mjs';
 import {SLICE_SYSTEM,KEY_SYSTEM,CONTINUATION_SYSTEM,SLICE_LIMITS,sliceResult,continuationResult,labelOptions} from './mcq-extraction.mjs';
-export function createMCQ({db,files,decrypt,requireAssignment,queueGrade,callModel=deepseek}){
+export function createMCQ({db,files,decrypt,requireAssignment,queueGrade,effectiveZeros=rows=>rows,callModel=deepseek}){
  let pumping=false;
  async function pump(){if(pumping)return;pumping=true;let task;
  try{task=await db.tx(async c=>{const t=(await db.list('mcq-import',c)).find(x=>x.status==='queued'||x.status==='running'&&Date.parse(x.leaseUntil||0)<Date.now());if(!t)return;t.status='running';t.leaseUntil=new Date(Date.now()+180000).toISOString();await db.put('mcq-import',t,c);return t});if(!task)return;
@@ -70,19 +71,50 @@ export function createMCQ({db,files,decrypt,requireAssignment,queueGrade,callMod
  teacher();const a=await requireAssignment(route[2],user),all=(await db.list('submission')).filter(s=>s.assignmentId===a.id&&s.choices),latest=new Map();for(const s of all.sort((x,y)=>Date.parse(x.submittedAt)-Date.parse(y.submittedAt)))latest.set(s.studentId,s);
  json(res,{assignment:{id:a.id,title:a.title,version:a.version},count:latest.size,questions:a.rubric.map(q=>({...q,distribution:Object.fromEntries((q.options||[]).map(o=>[o.label,[...latest.values()].filter(s=>s.version===a.version&&s.choices[q.id]===o.label).length])),unanswered:[...latest.values()].filter(s=>s.version===a.version&&!s.choices[q.id]).length})),currentCount:[...latest.values()].filter(s=>s.version===a.version).length});return true;}
  if(route[1]==='attempt'){
- assert(user.role==='student','请使用学生账号',403);const a=attemptRules(await requireAssignment(route[2],user),user.id);const offline=a.offline||a.format==='score';assert(offline?a.makeupMode==='questions':['mcq','mixed'].includes(a.format),'此作业使用原件提交');assert(!a.opensAt||Date.parse(a.opensAt)<=Date.now(),'作业尚未开放',409);const canonicalKey='attempt:'+hash(user.id+':'+a.id+':'+a.version);
+ assert(user.role==='student','请使用学生账号',403);const a=attemptRules(await requireAssignment(route[2],user),user.id);const offline=a.offline||a.format==='score';assert(offline?retryWorkMode(a)==='questions':['mcq','mixed'].includes(a.format),'此作业使用原件提交');assert(!a.opensAt||Date.parse(a.opensAt)<=Date.now(),'作业尚未开放',409);const canonicalKey='attempt:'+hash(user.id+':'+a.id+':'+a.version);
  // Key-only corrections keep the original attempt identity, timer and receipt.
  const existing=await db.get(canonicalKey)||(await db.find('mcq-attempt',{studentId:user.id,assignmentId:a.id,version:a.version}))[0];
  const key=existing?.id||canonicalKey;
- if(method==='GET'){const attempt=await db.get(key);
- if(offline&&!attempt?.submittedId)assert(assignmentState(a,await db.find('submission',{studentId:user.id,assignmentId:a.id})).canSubmit,'本作业未开放补交或已有成绩',409);
- json(res,{assignment:{id:a.id,title:a.title,version:a.version,classIds:a.classIds,questions:studentItems(a),dueAt:a.dueAt,timeLimitMinutes:a.timeLimitMinutes,assessmentMode:a.assessmentMode,allowResubmit:!offline&&a.allowResubmit,allowLate:Boolean(a.allowLate||attempt?.returnedFrom)},attempt:attempt||null});return true;}
- assert(method==='POST'&&(!route[3]||['submit','restart'].includes(route[3])),'不支持的操作',405);const b=await body(req);const result=await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);assert(current.version===a.version,'题目版本已更新，请重新打开',409);let t=await db.get(key,c);
- if(offline && !(t?.submittedId&&route[3]!=='restart')){
-   const prior=await db.find('submission',{studentId:user.id,assignmentId:a.id},c);
-   assert(current.makeupMode==='questions'&&assignmentState(current,prior).canSubmit,'本作业未开放补交或已有成绩',409);
+ const scope={studentId:user.id,assignmentId:a.id};
+ if(method==='GET'){
+   const attempt=existing;
+   const prior=offline||!attempt||attempt.submittedId?await db.latestReceipt(scope):[];
+   const policy=assignmentState(a,await effectiveZeros(prior,[a]));
+   if(offline&&!attempt?.submittedId)assert(policy.canSubmit,'本作业未开放补交或已有成绩',409);
+   const zeroRetry=Boolean(policy.zeroRetryOf || (!attempt?.submittedId && attempt?.zeroRetryOf));
+   json(res,{assignment:{id:a.id,title:a.title,version:a.version,classIds:a.classIds,questions:studentItems(a),dueAt:a.dueAt,timeLimitMinutes:a.timeLimitMinutes,assessmentMode:a.assessmentMode,zeroRetry,allowResubmit:zeroRetry||(!offline&&a.allowResubmit),allowLate:Boolean(a.allowLate||attempt?.returnedFrom||zeroRetry)},attempt:attempt||null});return true;
  }
- if(t?.submittedId){if(route[3]!=='restart')return {submittedId:t.submittedId};assert(a.allowResubmit,'教师未开放重交',409);await db.put('mcq-attempt-history',{...t,id:t.id+':'+(t.sequence||0)},c);t={...t,sequence:(t.sequence||0)+1,returnedFrom:null,submittedId:null,answers:{},responses:{},freeText:'',files:[],flags:[],excluded:{},index:0,revision:0,startedAt:now()};}if(t?.returnedFrom && !t.startedAt)t.startedAt=now();const pastDue=!t?.returnedFrom&&a.dueAt&&Date.parse(a.dueAt)<=Date.now()&&!a.allowLate;assert(!pastDue||route[3]==='submit'&&t,'已截止，请联系教师开放补交',409);if(!t)t={id:key,studentId:user.id,assignmentId:a.id,version:a.version,startedAt:now(),revision:0,answers:{},responses:{},freeText:'',files:[],flags:[],excluded:{},index:0,mode:a.assessmentMode};assert(Number(b.revision)===t.revision,'其他设备更新了答案，请刷新后继续；本机草稿已保留',409);
+ assert(method==='POST'&&(!route[3]||['submit','restart'].includes(route[3])),'不支持的操作',405);
+ const b=await body(req);
+ const result=await db.tx(async c=>{
+   const current=await requireAssignment(a.id,user,c);
+   assert(current.version===a.version,'题目版本已更新，请重新打开',409);
+   let t=await db.get(key,c);
+   const restart=route[3]==='restart',submit=route[3]==='submit';
+   if(t?.submittedId&&!restart)return {submittedId:t.submittedId};
+   if(restart&&b.receiptId && b.receiptId!==t?.submittedId){
+     if(t?.zeroRetryOf===b.receiptId&&!t.submittedId)return t;
+     assert(false,'这次提交已经更新，请刷新后再试',409);
+   }
+   if(!restart&&t?.zeroRetryOf && (t.sequence||0)>0)
+     assert(b.sequence===t.sequence,'已开始新一轮作答，请刷新后继续',409);
+   const prior=!t||restart||(submit&&(offline||t.zeroRetryOf))?await db.latestReceipt(scope,c):[];
+   const policy=assignmentState(current,await effectiveZeros(prior,[current],c));
+   if(offline && (!t||restart||submit))
+     assert(retryWorkMode(current)==='questions'&&policy.canSubmit,'本作业未开放补交或已有成绩',409);
+   if(t?.zeroRetryOf&&submit && !policy.zeroRetryOf && !current.allowResubmit && !t.returnedFrom)
+     assert(false,'老师已更新成绩，请重新打开作业查看',409);
+   if(t?.submittedId){
+     assert(policy.zeroRetryOf || (!offline&&current.allowResubmit),'教师未开放重交',409);
+     await db.put('mcq-attempt-history',{...t,id:t.id+':'+(t.sequence||0)},c);
+     t={id:key,studentId:user.id,assignmentId:a.id,version:a.version,sequence:(t.sequence||0)+1,mode:a.assessmentMode,revision:0,startedAt:now(),answers:{},responses:{},freeText:'',files:[],views:{},flags:[],excluded:{},index:0,...(policy.zeroRetryOf?{zeroRetryOf:policy.zeroRetryOf}:{})};
+   }
+   if(t?.returnedFrom && !t.startedAt)t.startedAt=now();
+   const zeroRetryOf=t?.zeroRetryOf||(!t&&policy.zeroRetryOf);
+   const pastDue=!zeroRetryOf&&!t?.returnedFrom&&a.dueAt&&Date.parse(a.dueAt)<=Date.now()&&!a.allowLate;
+   assert(!pastDue||submit&&t,'已截止，请联系教师开放补交',409);
+   if(!t)t={id:key,studentId:user.id,assignmentId:a.id,version:a.version,startedAt:now(),revision:0,answers:{},responses:{},freeText:'',files:[],flags:[],excluded:{},index:0,mode:a.assessmentMode,...(zeroRetryOf?{zeroRetryOf}:{})};
+   assert(Number(b.revision)===t.revision,'其他设备更新了答案，请刷新后继续；本机草稿已保留',409);
  const expired=pastDue||(a.timeLimitMinutes&&Date.now()>Date.parse(t.startedAt)+a.timeLimitMinutes*60000);assert(!expired||route[3]==='submit','作答时间已到，请交卷',409);
  if(!expired){const answers=b.answers||{};for(const [id,v]of Object.entries(answers)){const q=a.rubric.find(q=>q.id===id);assert(q&&(!v||q.type==='choice'&&q.options.some(o=>o.label===v)),'答案无效')}t.answers=answers;
  if(b.views && typeof b.views==='object')t.views=Object.fromEntries(a.rubric.filter(q=>b.views[q.id]).map(q=>{
@@ -91,7 +123,7 @@ export function createMCQ({db,files,decrypt,requireAssignment,queueGrade,callMod
  const responses=b.responses===undefined?(t.responses||{}):b.responses;assert(responses&&typeof responses==='object'&&!Array.isArray(responses),'简答作答格式无效');
  let textLength=0;const normalized={};for(const [id,response] of Object.entries(responses)){assert(a.rubric.some(q=>q.id===id&&q.type==='short'),'简答题号无效');assert(response&&typeof response==='object'&&Array.isArray(response.files||[]),'简答附件格式无效');const text=boundedText(response.text,30000,'简答文字'),ids=response.files||[];textLength+=text.length;await files.validate(ids,user.id,'submission',c);Object.defineProperty(normalized,id,{value:{text,files:[...new Set(ids)]},enumerable:true});}
  t.freeText=boundedText(b.freeText===undefined?t.freeText:b.freeText,30000,'简答文字');assert(textLength+t.freeText.length<=30000,'简答文字合计不能超过 30000 字');t.responses=normalized;t.files=b.files===undefined?(t.files||[]):b.files;await files.validate(t.files,user.id,'submission',c);await files.validate([...new Set([...t.files,...Object.values(t.responses).flatMap(r=>r.files)])],user.id,'submission',c);t.flags=Array.isArray(b.flags)?b.flags.filter(x=>a.rubric.some(q=>q.id===x)):[];t.excluded=Object.fromEntries(a.rubric.filter(q=>q.type==='choice').map(q=>[q.id,(b.excluded?.[q.id]||[]).filter(v=>q.options.some(o=>o.label===v))]));t.index=Math.max(0,Math.min(a.rubric.length-1,Number(b.index)||0));}
- t.revision++;t.updatedAt=now();if(route[3]==='submit'){const submittedFiles=[...new Set([...(t.files||[]),...Object.values(t.responses||{}).flatMap(r=>r.files)])],pageLabels=new Map();let page=1;for(const fid of submittedFiles){const file=await db.get(fid,c),count=Math.max(1,file?.pages||1);pageLabels.set(fid,count===1?String(page):page+'–'+(page+count-1));page+=count;}const sid=hash(key+':submission:'+(t.sequence||0)),s={id:sid,type:'submission',studentId:user.id,assignmentId:a.id,clientId:key,text:a.rubric.filter(q=>q.type==='choice').map(q=>q.id+': '+(t.answers[q.id]||'未答')).join('\n')+'\n'+a.rubric.filter(q=>q.type==='short').map(q=>'第 '+q.id+' 题：\n'+(t.responses?.[q.id]?.text||'')+(t.responses?.[q.id]?.files?.length?'\n本题作答见附件第 '+t.responses[q.id].files.map(fid=>pageLabels.get(fid)).join('、')+' 页':'')).join('\n\n')+(t.freeText?'\n历史共同作答（学生已标注题号）：\n'+t.freeText:''),files:submittedFiles,late:Boolean(a.dueAt&&Date.parse(a.dueAt)<Date.now()),...(offline?{offlineMakeup:{mode:'questions',maxPoints:a.makeupMaxPoints,originalMax:a.rubric.reduce((sum,q)=>sum+q.maxPoints,0)}}:{}),responses:structuredClone(t.responses||{}),choices:t.answers,paperSnapshot:structuredClone(a.publishedPaper||capturePaper(a)),rubricSnapshot:structuredClone(a.rubric),classIds:user.classIds,version:a.version,submittedAt:now(),createdAt:now(),updatedAt:now(),status:'needs_review',suggestedGrade:choiceScore(a.rubric,t.answers)};
+ t.revision++;t.updatedAt=now();if(route[3]==='submit'){const submittedFiles=[...new Set([...(t.files||[]),...Object.values(t.responses||{}).flatMap(r=>r.files)])],pageLabels=new Map();let page=1;for(const fid of submittedFiles){const file=await db.get(fid,c),count=Math.max(1,file?.pages||1);pageLabels.set(fid,count===1?String(page):page+'–'+(page+count-1));page+=count;}const sid=hash(key+':submission:'+(t.sequence||0)),s={id:sid,type:'submission',studentId:user.id,assignmentId:a.id,clientId:key,text:a.rubric.filter(q=>q.type==='choice').map(q=>q.id+': '+(t.answers[q.id]||'未答')).join('\n')+'\n'+a.rubric.filter(q=>q.type==='short').map(q=>'第 '+q.id+' 题：\n'+(t.responses?.[q.id]?.text||'')+(t.responses?.[q.id]?.files?.length?'\n本题作答见附件第 '+t.responses[q.id].files.map(fid=>pageLabels.get(fid)).join('、')+' 页':'')).join('\n\n')+(t.freeText?'\n历史共同作答（学生已标注题号）：\n'+t.freeText:''),files:submittedFiles,late:Boolean(a.dueAt&&Date.parse(a.dueAt)<Date.now()),...(t.zeroRetryOf?{retryOf:t.zeroRetryOf}:{}),...(offline?{offlineMakeup:{mode:'questions',maxPoints:a.makeupMaxPoints||scoreMaximum(a,prior.map(p=>p.publishedGrade)),originalMax:a.rubric.reduce((sum,q)=>sum+q.maxPoints,0)}}:{}),responses:structuredClone(t.responses||{}),choices:t.answers,paperSnapshot:structuredClone(a.publishedPaper||capturePaper(a)),rubricSnapshot:structuredClone(a.rubric),classIds:user.classIds,version:a.version,submittedAt:submissionTimeAfter(prior.find(entry=>entry.id===t.zeroRetryOf)),createdAt:now(),updatedAt:now(),status:'needs_review',suggestedGrade:choiceScore(a.rubric,t.answers)};
  if(a.rubric.some(q=>q.type==='short'))await queueGrade(s,a,c);
  else {
    if(!s.suggestedGrade.needsReview)publishedResult(s,s.suggestedGrade,'system',now(),'','automatic');

@@ -174,14 +174,28 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
     }catch(err){d.querySelector('[role=alert]').textContent=err.message;button.disabled=false;}}
    });
   }catch(e){error(e);}}
- async function publish(ids,title){
-  const key=`lib-publish-draft:${state.user.id}:${unitId}:${ids.join(',')}`,draft=recall(key,{}),clientId=draft.clientId||crypto.randomUUID();
+ async function publish(ids,title,skillTopic=''){
+  const legacyKey=`lib-publish-draft:${state.user.id}:${unitId}:${ids.join(',')}`;
+  // Two topics can share the same questions. Keep their editable titles and publish tokens separate.
+  const key=skillTopic ? legacyKey+':skill-topic:'+skillTopic : legacyKey;
+  let draft=recall(key,null);
+  if (!draft && skillTopic) {
+    const previous=recall(legacyKey,null);
+    const bareTitle=title.slice(('Topic '+skillTopic+' · ').length);
+    if (previous && (previous.title===bareTitle || !/^(?:Topic |Skill |Related FRQ$)/.test(previous.title||''))) {
+      draft={...previous,title:previous.title===bareTitle ? title : previous.title};
+      remember(key,draft);
+      if (recall(key,null)) sessionStorage.removeItem(legacyKey);
+    }
+  }
+  draft??={};
+  const clientId=draft.clientId||crypto.randomUUID();
   try{const classes=(await api('classes')).classes,selectedQuestions=(await getQuestions()).filter(q=>ids.includes(q.id));if(disposed)return;
    openSheet('布置给班级',`<form class="lib-publish"><label>作业名称<input name="title" required maxlength="120" value="${h(draft.title||title||topic.id+' '+(topic.name||topic.title))}"></label><p>${ids.length} 题 · ${h(unitLabel)}</p>${gradingFields(selectedQuestions,h)}<fieldset><legend>班级</legend><div class="lib-classes">${classes.map(c=>`<label><input name="class" type="checkbox" value="${h(c.id)}" ${draft.classIds?.includes(c.id)?'checked':''}>${h(c.name)}</label>`).join('')}</div></fieldset><label>截止时间<input name="dueAt" type="datetime-local" value="${h(draft.dueAt||'')}"></label><details><summary>更多设置</summary><div class="lib-form-grid"><label>开始时间<input name="opensAt" type="datetime-local" value="${h(draft.opensAt||'')}"></label><label>限时（分钟）<input name="durationMinutes" type="number" min="1" max="240" value="${h(draft.durationMinutes||'')}"></label><label><input name="allowLate" type="checkbox" ${draft.allowLate?'checked':''}>允许补交</label><label><input name="allowResubmit" type="checkbox" ${draft.allowResubmit?'checked':''}>允许重交</label></div></details><p class="lib-publish-policy">批改完成后自动出分。</p><p role="alert"></p><button class="primary" type="submit">确认布置</button></form>`,d=>{
     const form=d.querySelector('form'),button=form.querySelector('[type=submit]');
     const values=()=>({...Object.fromEntries(new FormData(form)),classIds:[...form.querySelectorAll('[name=class]:checked')].map(x=>x.value),allowLate:form.elements.allowLate.checked,allowResubmit:form.elements.allowResubmit.checked,clientId,maxPointsByQuestion:readGradingPoints(form)});
     form.oninput=()=>{const v=values();remember(key,v);button.disabled=!v.classIds.length;};form.oninput();
-    form.onsubmit=async e=>{e.preventDefault();const v=values();remember(key,v);button.disabled=true;try{const {assignment}=await post('library/publish',{...v,unitId,questionIds:ids,dueAt:v.dueAt?new Date(v.dueAt).toISOString():null,opensAt:v.opensAt?new Date(v.opensAt).toISOString():null,durationMinutes:v.durationMinutes?Number(v.durationMinutes):null,gradingMode:'manual'});sessionStorage.removeItem(key);d.close();toast('已布置：'+assignment.title);}catch(err){form.querySelector('[role=alert]').textContent=err.message;}finally{button.disabled=false;}};
+    form.onsubmit=async e=>{e.preventDefault();const v=values();remember(key,v);button.disabled=true;try{const {assignment}=await post('library/publish',{...v,unitId,...(skillTopic?{skillTopic}:{}),questionIds:ids,dueAt:v.dueAt?new Date(v.dueAt).toISOString():null,opensAt:v.opensAt?new Date(v.opensAt).toISOString():null,durationMinutes:v.durationMinutes?Number(v.durationMinutes):null,gradingMode:'manual'});sessionStorage.removeItem(key);d.close();toast('已布置：'+assignment.title);}catch(err){form.querySelector('[role=alert]').textContent=err.message;}finally{button.disabled=false;}};
    });
   }catch(e){error(e);}
  }
@@ -193,7 +207,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   content.innerHTML=`<div class="lib-pack-heading" ${collection!=='topic'?'hidden':''}><p>${collection==='topic'?'Topic '+topic.id+' · 可布置练习':collection==='progress'?unitLabel+' · Progress Check':'Past papers · '+(group==='micro'?'AP Microeconomics':'AP Macroeconomics')}</p>${collection==='topic'?'<button data-unit-papers>Unit Progress Check</button>':''}</div><div class="lib-pack-list">${packRows(true)||'<p class="lib-empty">本范围暂无已核对作业包。待核对作业包也可布置，由教师评分。</p>'}</div>${items.some(p=>!p.ready)?`<details class="lib-pending-packs"><summary>待核对作业包 · 可布置 · ${items.filter(p=>!p.ready).length}</summary><div class="lib-pack-list">${packRows(false)}</div></details>`:''}${collection==='topic'&&!items.some(p=>p.id.startsWith('frq'))?`<div class="lib-pack-note">本主题暂无 FRQ 对应题。${frqs.length?` <button data-unit-frq>查看 ${unitLabel} FRQ（${frqs.length}）</button>`:''}</div>`:''}${ss.length?`<details class="lib-source-list"><summary>原卷与待核对资料 · ${ss.filter(s=>s.collection===collection).length} 份</summary>${ss.filter(s=>s.collection===collection).map((s,i)=>`<div><span>${h(s.title)}<small>${h(s.reviewNote||'')} · ${s.questionCount||0} 题</small></span><button data-source-id="${h(s.id)}">核对原卷</button></div>`).join('')}</details>`:''}`;
   $('[data-unit-papers]')?.addEventListener('click',()=>go(route('all','progress')));
   $('[data-unit-frq]')?.addEventListener('click',()=>go(route('all','bank')+'/frq'));
-  main.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>publish(items[+b.dataset.pack].questionIds,items[+b.dataset.pack].title));
+  main.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>{const item=items[+b.dataset.pack];return publish(item.questionIds,item.title,item.skillTopic);});
   main.querySelectorAll('[data-preview-pack]').forEach(b=>b.onclick=()=>go(route(unitScope?'all':topic.id,'preview')+'/'+encodeURIComponent(collection+':'+items[+b.dataset.previewPack].id)));
   main.querySelectorAll('[data-source-id]').forEach(b=>b.onclick=()=>sourceView(ss.find(s=>s.id===b.dataset.sourceId)));
  }
@@ -274,7 +288,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   $('[data-selected-view]').onclick=()=>{onlySelected=!onlySelected;draw();};
   $('[data-pick]').onclick=()=>{for(const q of visible().filter(q=>q.questionImages?.length)){selected.add(q.id);}$('.lib-selection-more').open=false;draw();};
   $('[data-clear]').onclick=()=>{selected.clear();onlySelected=false;$('.lib-selection-more').open=false;draw();};
-  $('[data-publish]').onclick=()=>publish([...selected],initial.title);draw();
+  $('[data-publish]').onclick=()=>publish([...selected],initial.title,initial.skillTopic);draw();
  }
  async function practice(){
   const [{assignments},{submissions}]=await Promise.all([api('assignments'),api('submissions')]);if(disposed)return;
@@ -282,5 +296,5 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   const date=value=>new Date(value).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
   content.innerHTML=`<div class="lib-practice-list">${rows.map(a=>{const item=studentAssignmentAction(a,submissions),link=item.target?href(item.target):null;return `<article data-state="${item.info.key}"><div><strong>${link?`<a href="${link}">${h(a.title)}</a>`:h(a.title)}</strong><p><span class="lib-status" data-ready="${item.info.key==='done'}">${h(item.label)}</span><span>${item.opensLater?'开放 '+date(a.opensAt):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span>${a.libraryCollection==='exam'?'<span>Course-wide paper</span>':''}</p></div>${link?`<a class="lib-button" href="${link}">${h(item.action)}</a>`:`<button disabled>${h(item.action)}</button>`}</article>`;}).join('')||'<p class="lib-empty">本单元暂无已布置的作业。老师发布后会显示在这里。</p>'}</div>`;
  }
- try{if(['slides','textbook','project'].includes(mode)){const kind=mode==='textbook'?'textbook':'slides',resource=unit.resources.find(r=>r.kind===kind&&r.topicId===topic.id)||unit.resources.find(r=>r.kind===kind);if(!resource)throw Error('本课资料尚未准备好');readerCleanup=await mountLibraryReader(content,{resource,unitId,topic,kind,project:mode==='project',state,api,post,put,toast});if(disposed)readerCleanup?.();}else if(teacher&&mode==='bank')await bank(viewDetail==='frq'?{type:'short',topic:''}:{});else if(teacher&&mode==='preview'){if(!previewRef)throw Error('作业包入口已更新，请从作业包列表重新打开');const items=buildPacks(await getQuestions(),{topic:topic.id,unitLabel,collection:previewRef.collection}),item=items.find(p=>p.id===previewRef.id);if(!item)throw Error('作业包内容已更新，请返回列表重新选择');await bank({ids:item.questionIds,topic:'',type:'',title:item.title,context:viewDetail,collection:previewRef.collection});}else if(teacher&&['packs','progress','exams'].includes(mode))await packs(mode==='packs'?'topic':mode==='exams'?'exam':'progress');else if(!teacher&&mode==='practice')await practice();else overview();}catch(e){error(e);}
+ try{if(['slides','textbook','project'].includes(mode)){const kind=mode==='textbook'?'textbook':'slides',resource=unit.resources.find(r=>r.kind===kind&&r.topicId===topic.id)||unit.resources.find(r=>r.kind===kind);if(!resource)throw Error('本课资料尚未准备好');readerCleanup=await mountLibraryReader(content,{resource,unitId,topic,kind,project:mode==='project',state,api,post,put,toast});if(disposed)readerCleanup?.();}else if(teacher&&mode==='bank')await bank(viewDetail==='frq'?{type:'short',topic:''}:{});else if(teacher&&mode==='preview'){if(!previewRef)throw Error('作业包入口已更新，请从作业包列表重新打开');const items=buildPacks(await getQuestions(),{topic:topic.id,unitLabel,collection:previewRef.collection}),item=items.find(p=>p.id===previewRef.id);if(!item)throw Error('作业包内容已更新，请返回列表重新选择');await bank({ids:item.questionIds,topic:'',type:'',title:item.title,skillTopic:item.skillTopic,context:viewDetail,collection:previewRef.collection});}else if(teacher&&['packs','progress','exams'].includes(mode))await packs(mode==='packs'?'topic':mode==='exams'?'exam':'progress');else if(!teacher&&mode==='practice')await practice();else overview();}catch(e){error(e);}
 }

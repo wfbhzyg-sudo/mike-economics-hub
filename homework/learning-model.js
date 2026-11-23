@@ -33,19 +33,34 @@ export function questionTotals(grade, questions=[]) {
   }
   return totals;
 }
+export function retryWorkMode(a) {
+  if (a.makeupMode || a.zeroRetryMode) return a.makeupMode || a.zeroRetryMode;
+  const complete=a.offlineEdition && a.rubric?.length && a.rubric.every(q=>
+    (q.questionImages?.length || q.prompt?.trim()) && (q.type!=='choice' || q.options?.length>=2));
+  return complete ? 'questions' : 'upload';
+}
+
 export function assignmentState(a, submissions, time=Date.now()) {
   const offline=Boolean(a.offline||a.format==='score');
-  const attempts=submissions.filter(s=>s.assignmentId===a.id&&(offline||!s.manualScoreEntry));
-  const latest=assignmentRecords(attempts,[a])[0]?.latest;
+  const all=submissions.filter(s=>s.assignmentId===a.id);
+  const ordered=assignmentRecords(all)[0]?.attempts||[];
+  const last=ordered[0];
+  const latest=offline?last:ordered.find(s=>!s.manualScoreEntry);
+  const attempts=all;
+  const zeroRetry=last?.status==='published' && last.publishedGrade?.total===0 &&
+    a.published!==false && !a.deletedAt && !(a.opensAt && Date.parse(a.opensAt)>time);
   const draft=attempts.filter(s=>s.status==='draft'&&(!latest||Date.parse(s.updatedAt||s.createdAt)>Date.parse(latest.submittedAt||latest.createdAt))).sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];
   const closed=Boolean(a.dueAt&&Date.parse(a.dueAt)<time&&!a.allowLate&&latest?.status!=='returned');
   const canSubmit=!closed&&(!latest||latest.status==='returned'||a.allowResubmit!==false);
   const base={latest,draft,canSubmit};
+  if(zeroRetry) return {...base,canSubmit:true,zeroRetryOf:last.id,key:'todo',label:draft?'重做中':'零分待重做'};
   if(offline){
-    const recorded=attempts.find(s=>s.status==='published'&&s.publishedGrade?.total!=null);
-    if(recorded)return {...base,latest:latest?.status==='published'&&latest.publishedGrade?.total!=null?latest:recorded,canSubmit:false,key:'done',label:'已录分'};
     if(latest?.offlineMakeup && !['published','returned'].includes(latest.status))
       return {...base,canSubmit:false,key:'processing',label:submissionLabel(latest.status)};
+    if(latest?.offlineMakeup && latest.status==='returned')
+      return {...base,canSubmit:true,key:'todo',label:submissionLabel('returned')};
+    const recorded=attempts.find(s=>s.status==='published'&&s.publishedGrade?.total!=null);
+    if(recorded)return {...base,latest:latest?.status==='published'&&latest.publishedGrade?.total!=null?latest:recorded,canSubmit:false,key:'done',label:'已录分'};
     if(a.allowLate && a.makeupMode && (!a.opensAt || Date.parse(a.opensAt)<=time))
       return {...base,canSubmit:true,key:'todo',label:draft?'草稿待提交':'可补交'};
     return {...base,canSubmit:false,key:'offline',label:'待老师录分'};
