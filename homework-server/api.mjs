@@ -58,6 +58,7 @@ export const publicAssignment = (a) => ({
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
+  publishedAt: a.publishedAt || null,
   course: a.course,
   libraryUnit:a.libraryUnit||null, libraryCollection:a.libraryCollection||null, libraryCourse:a.libraryCourse||null,
   instructions: paperOf(a).instructions,
@@ -1153,16 +1154,19 @@ export async function createHomework({externalAuth} = {}) {
             const assignments = await db.teacherAssignments(user.id, url.searchParams.get("trash")==="1");
             return (json(res, {assignments}), true);
           }
-          const all = (await db.list("assignment")).filter(a =>
-            studentCanAccessAssignment(a,user));
-          const attempts=(await db.find('mcq-attempt',{studentId:user.id})).filter(t=>!t.submittedId);
-          return (
-            json(res, {
-              assignments:
-                all.map(a=>({...publicAssignment(a),classIds:audienceClasses(a,user),attemptProgress:attempts.find(t=>t.assignmentId===a.id&&t.version===a.version)?{started:true,answered:Object.values(attempts.find(t=>t.assignmentId===a.id&&t.version===a.version).answers).filter(Boolean).length}:null})),
-            }),
-            true
-          );
+          const all = await db.studentAssignments(user);
+          const attempts=new Map();
+          for(const attempt of await db.find('mcq-attempt',{studentId:user.id})){
+            if(attempt.submittedId)continue;
+            const key=`${attempt.assignmentId}:${attempt.version}`;
+            if(!attempts.has(key))attempts.set(key,attempt);
+          }
+          const assignments=all.map(a=>{
+            const attempt=attempts.get(`${a.id}:${a.version}`);
+            return {...publicAssignment(a),classIds:audienceClasses(a,user),
+              attemptProgress:attempt?{started:true,answered:Object.values(attempt.answers||{}).filter(Boolean).length}:null};
+          });
+          return (json(res,{assignments}),true);
         }
         if (method === "POST" && !route[1]) {
           teacher();

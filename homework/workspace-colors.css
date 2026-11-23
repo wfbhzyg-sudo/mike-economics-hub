@@ -155,3 +155,44 @@ body :is(.gj-view-switch,.rv-source-switch,.correction-editor .mcq-letters) butt
 /* A native details toggle precedes popover placement by a frame. Keep the
    unpositioned panel hidden until it enters the browser's top layer. */
 .review-studio :is(.rv-title,.rv-work-menu) > [popover]:not(:popover-open) {display:none}
+
+[data-student-assignments] .assignment-sort-field {position:relative}
+[data-student-assignments] .assignment-sort-field::after {
+  content:"";
+  position:absolute;
+  top:50%;
+  right:11px;
+  width:6px;
+  height:6px;
+  border:solid currentColor;
+  border-width:0 1.5px 1.5px 0;
+  transform:translateY(-70%) rotate(45deg);
+  pointer-events:none;
+}
+[data-student-assignments] .assignment-sort-field select {
+  appearance:none;
+  display:block;
+  height:44px;
+  min-height:44px;
+  padding:6px 26px 6px 8px;
+  border:1px solid var(--ui-rule,#ccd5df);
+  border-radius:7px;
+  background:#fff;
+  color:var(--ui-ink,#172b3e);
+}
+@media(max-width:760px) {
+  .workspace-home[data-student-assignments] .assignment-search-controls {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.14fr);
+    gap:8px;
+  }
+  .workspace-home[data-student-assignments] .assignment-search-controls label {
+    min-width:0;
+    grid-column:auto;
+  }
+  [data-student-assignments] .assignment-sort-field select {
+    width:100%;
+    max-width:none;
+    font-size:12px;
+  }
+}

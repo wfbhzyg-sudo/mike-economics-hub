@@ -1,3 +1,4 @@
+import {classKey} from '../homework/course-scope.js';
 import {audienceSql} from './assignment-audience.mjs';
 import pg from "pg";
 import {
@@ -50,6 +51,12 @@ export function createStore(connectionString, schema = "homework") {
   const table = `${schema}.records`,
     jobs = `${schema}.jobs`;
   const query = (sql, params = []) => pool.query(sql, params);
+  // Only old online work needs the original confirmation timestamp.
+  const firstPublicationJoin = `LEFT JOIN ${table} v ON v.id = a.id || ':v1' AND v.kind='answer-version'
+    AND a.data->>'published'='true' AND a.data->>'publishedAt' IS NULL
+    AND a.data->>'offline' IS DISTINCT FROM 'true' AND a.data->>'format' IS DISTINCT FROM 'score'`;
+  const withPublication = ({data, first_publication}) =>
+    first_publication ? {...data, publishedAt: first_publication} : data;
   const api = {
     pool,
     query,
@@ -79,17 +86,23 @@ export function createStore(connectionString, schema = "homework") {
       return rows.map(r=>r.receipt);
     },
     async teacherAssignments(teacherId, trash) {
-      // Older online assignments recorded the original publication in answer version one.
-      // Read only that timestamp, never the historical rubric or its attachments.
       const {rows} = await pool.query(`SELECT a.data, v.data->>'confirmedAt' AS first_publication
-        FROM ${table} a LEFT JOIN ${table} v ON v.id = a.id || ':v1' AND v.kind='answer-version'
-          AND a.data->>'published'='true' AND a.data->>'publishedAt' IS NULL
-          AND a.data->>'offline' IS DISTINCT FROM 'true' AND a.data->>'format' IS DISTINCT FROM 'score'
+        FROM ${table} a ${firstPublicationJoin}
         WHERE a.kind='assignment' AND a.data->>'teacherId'=$1
           AND (a.data->>'deletedAt' IS NOT NULL)=$2
         ORDER BY a.created DESC, a.id`, [teacherId, trash]);
-      return rows.map(({data, first_publication}) =>
-        first_publication ? {...data, publishedAt: first_publication} : data);
+      return rows.map(withPublication);
+    },
+    async studentAssignments(student) {
+      const classIds = [...new Set((student.classIds || []).map(classKey))];
+      if (!classIds.length) return [];
+      const storedIds = classIds.flatMap(key => [key, 'bookself-class:' + key]);
+      const {rows} = await pool.query(`SELECT a.data, v.data->>'confirmedAt' AS first_publication
+        FROM ${table} a ${firstPublicationJoin}
+        WHERE a.kind='assignment' AND a.data->>'published'='true' AND a.data->>'deletedAt' IS NULL
+          AND a.data->'classIds' ?| $1::text[] AND ${audienceSql('$2','$3','a.data')}
+        ORDER BY a.created DESC, a.id`, [storedIds, classIds, student.id]);
+      return rows.map(withPublication);
     },
     async teacherWorklist(teacherId) {
       const {rows}=await pool.query(`SELECT jsonb_build_object(

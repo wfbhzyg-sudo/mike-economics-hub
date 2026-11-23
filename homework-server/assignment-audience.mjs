@@ -24,9 +24,9 @@ export function studentCanAccessAssignment(assignment, student) {
 
 // The predicate is also used in SQL projections so unauthorized work never enters
 // the student's desk feed and does not count as missing in their teacher report.
-export const audienceSql = (classes, student) => `EXISTS (
-  SELECT 1 FROM jsonb_array_elements_text(data->'classIds') cid
+export const audienceSql = (classes, student, data = 'data') => `EXISTS (
+  SELECT 1 FROM jsonb_array_elements_text(${data}->'classIds') cid
   WHERE regexp_replace(cid, '^bookself-class:', '')=ANY(${classes}::text[])
-    AND (data->'individualRecipients'->regexp_replace(cid, '^bookself-class:', '') IS NULL
-      OR data->'individualRecipients'->regexp_replace(cid, '^bookself-class:', '') ? ${student}::text)
+    AND (${data}->'individualRecipients'->regexp_replace(cid, '^bookself-class:', '') IS NULL
+      OR ${data}->'individualRecipients'->regexp_replace(cid, '^bookself-class:', '') ? ${student}::text)
 )`;
