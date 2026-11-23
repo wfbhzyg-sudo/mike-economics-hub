@@ -50,3 +50,7 @@ dialog h2 { font-size:21px }dialog h3 { font-size:14px; margin:12px 0 4px }dialo
 #task-form { display:grid; gap:7px }#task-form label { display:grid; font-size:13px }#task-form input,#task-form select { font:inherit; min-height:36px; border:1px solid #adbfb9; border-radius:5px; background:white; color:inherit; padding:4px 7px }
 
 .trends h3 { flex:0 0 auto; white-space:nowrap }.tick { font-size:13px }
+.opening { margin:0 0 10px; padding:9px 14px; border:1px solid #cad8d3; border-left:3px solid #49736a; border-radius:6px; background:#f1f5f1 }
+.opening>div:first-child { display:flex; align-items:baseline; justify-content:space-between; gap:10px }
+.opening h2 { font-size:16px; line-height:1.35 }.opening p { font-size:14px; line-height:1.55; margin:3px 0 0 }
+.opening .ai-state { justify-content:flex-start }.opening .ai-state:has(#status:empty):has(#retry[hidden]) { display:none }

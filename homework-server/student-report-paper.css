@@ -9,3 +9,4 @@ main { display:block; width:var(--report-layout-width,var(--paper-width)); zoom:
 .proof,.empty-card { padding:8px 12px }.card,.sw,.task { break-inside:avoid }.subj { font-size:13px }
 
 .online-only { display:none!important }.paper-label { display:inline }
+.opening { margin-bottom:7px; padding:6px 11px; break-inside:avoid }.opening h2 { font-size:14px }.opening p { font-size:13px }

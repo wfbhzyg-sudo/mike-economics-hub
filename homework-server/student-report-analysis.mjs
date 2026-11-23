@@ -1,3 +1,4 @@
+import {openingEvidence,modelOpening} from './student-report-opening.mjs';
 import {deepseek} from './ai.mjs';
 import {hash} from './store.mjs';
 import {resultParts,skillNames} from './student-report.mjs';
@@ -68,8 +69,9 @@ export function buildReportAnalysis(report) {
     }
   }
   for(const slot of slots)candidates[slot]=candidates[slot].sort((a,b)=>b.rank-a.rank).slice(0,4);
-  const version=hash(JSON.stringify([3,candidates]));
-  return {candidates,version};
+  const opening=openingEvidence(report);
+  const version=hash(JSON.stringify([4,candidates,opening]));
+  return {candidates,opening,version};
 }
 
 export function selectedItems(facts,selections={},edits={}) {
@@ -106,11 +108,12 @@ export async function personalizeReport(db,decrypt,scope,facts,request=deepseek)
   if(pending.has(key))return pending.get(key);
   const work=(async()=>{
     const input=Object.fromEntries(slots.map(s=>[s,facts.candidates[s].map(c=>({ref:c.ref,subject:c.course,kind:c.kind,...c.metrics}))]));
-    if(!Object.values(input).some(items=>items.length))return {};
+    if(!facts.opening.length&&!Object.values(input).some(items=>items.length))return {};
+    input.openingEvidence=facts.opening;
     const result=await request(db,decrypt,[
-      {role:'system',content:'你为学生写 AP 经济学学习报告。S/W/O/T 是优势、待加强、可用机会、近期风险。now/plan/quick/later 是重要紧急、重要不紧急、非重要紧急、非重要不紧急。逐格选择该格一条最有教学意义的既有证据，各格兼顾宏微观，不重复相同建议。返回 JSON 对象，键为有证据的格名，值为 {"ref":"给定编号","advice":"一句可执行的中文练习建议"}。每条建议不超过40字，只描述动作，不添加数字、知识点、成绩、时间、链接或新的事实。空格省略。'},
+      {role:'system',content:'你为学生写 AP 经济学学习报告。S/W/O/T 是优势、待加强、可用机会、近期风险。now/plan/quick/later 是重要紧急、重要不紧急、非重要紧急、非重要不紧急。逐格选择该格一条最有教学意义的既有证据，各格兼顾宏微观，不重复相同建议。返回 JSON 对象，键为有证据的格名，值为 {"ref":"给定编号","advice":"一句可执行的中文练习建议"}。每条建议不超过40字，只描述动作，不添加数字、知识点、成绩、时间、链接或新的事实。空格省略。另外，openingEvidence 是本期学生的分科学习记录，自主模考与作业分别统计。根据这些记录分析整份报告。如有记录，额外返回 opening:{"observations":["给定的事实id"],"nextStep":"面向学生的一句建议"}。选择一条最能说明进展的事实，必要时再选同科或另一科一条互补的事实。事实会自动原样显示。nextStep 限40字，直接用自然、鼓励的中文，给出与这些事实契合的下一步练习动作。不复述数字，不虚构知识点、原因、测验安排或未来成绩。只有总分时避免推断具体技能，无时间序列不判断趋势。'},
       {role:'user',content:JSON.stringify(input)}
-    ],{json:true,maxTokens:900,signal:AbortSignal.timeout(18000)});
+    ],{json:true,maxTokens:1150,signal:AbortSignal.timeout(22000)});
     const selections={};
     for(const slot of slots){
       const r=result?.[slot];
@@ -119,8 +122,10 @@ export async function personalizeReport(db,decrypt,scope,facts,request=deepseek)
       const valid=text.length>0&&text.length<=48&&!/[0-9０-９%<>\r\n]|https?:|考试预测|一定能|明天|今天|截止/.test(text);
       selections[slot]={ref:r.ref,advice:valid?text:''};
     }
-    assert(Object.keys(selections).length,'暂未获得有依据的分析',503);
-    await db.put('report-bento-ai',{id:key,selections});
+    const opening=modelOpening(result?.opening,facts.opening);
+    if(facts.opening.length)assert(opening,'本次评语缺少可核对的依据，请重试',503);
+    assert(opening||Object.keys(selections).length,'暂未获得有依据的分析',503);
+    await db.put('report-bento-ai',{id:key,selections,opening});
     return selections;
   })();
   pending.set(key,work);
@@ -146,7 +151,7 @@ export function teacherTasks(tasks,at){
 
 export async function reportState(db,scope,facts){
   const [ai,editor]=await Promise.all([db.get('report-bento-ai:'+scope+':'+facts.version),db.get('report-bento-edit:'+scope)]);
-  return {ai:ai?.selections||{},edits:editor?.edits||{},revision:editor?.revision||0,hasAI:Boolean(ai),tasks:editor?.tasks||[]};
+  return {ai:ai?.selections||{},opening:ai?.opening||null,edits:editor?.edits||{},revision:editor?.revision||0,hasAI:Boolean(ai),tasks:editor?.tasks||[]};
 }
 export async function editReport(db,scope,facts,body,report){
   assert(body.version===facts.version,'学习记录已更新，请刷新报告后修改',409);

@@ -4,3 +4,4 @@ main { width:100%; padding:16px 13px; margin:0; display:flex; flex-direction:col
 .tasks,.swot,.activities { grid-template-columns:1fr }.summary { padding:9px 10px }.subj { font-size:12px }.stats { display:block }.band b { font-size:34px }.totals { border:0; border-top:1px solid #d2ded8; margin-top:5px; padding:5px 0 0 }.average { font-size:23px }.stats small { font-size:10px }.classes { font-size:11px }
 .actions button,dialog button { min-height:44px }.strap { gap:4px }.strap .actions { gap:4px }.strap .actions button { padding:4px 7px }.strap>b { font-size:19px }.strap b span { font-size:11px }
 .interpretation { font-size:14px }.works { font-size:12px }.works th small { display:block }.works th:first-child { width:48% }.foot { font-size:10px }
+.opening { order:1; padding:9px 11px }.opening small { font-size:11px }.opening .ai-state { flex-wrap:wrap }

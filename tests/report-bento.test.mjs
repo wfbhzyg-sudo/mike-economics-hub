@@ -31,7 +31,7 @@ test('AI uses opaque references, rejects invented evidence and shares a single i
   const ask=async(d,k,msgs)=>{
     calls++;assert(!msgs[1].content.includes('私人名称'));assert(!msgs[1].content.includes('未公布姓名'));
     await new Promise(resolve=>setTimeout(resolve,8));
-    return {S:{ref:f.candidates.S[0].ref,advice:'请回看改动的那一步。'},now:{ref:'invented',advice:'假的'},T:{ref:f.candidates.T[0].ref,advice:'一定能得到100分'}};
+    return {opening:{observations:[f.opening[0].id],nextStep:'回到订正过的题目，把关键一步独立写出来。'},S:{ref:f.candidates.S[0].ref,advice:'请回看改动的那一步。'},now:{ref:'invented',advice:'假的'},T:{ref:f.candidates.T[0].ref,advice:'一定能得到100分'}};
   };
   const both=await Promise.all([personalizeReport(db,null,'scope',f,ask),personalizeReport(db,null,'scope',f,ask)]);
   assert.equal(calls,1);assert.equal(both[0].S.advice,'请回看改动的那一步。');assert(!both[0].now);assert.equal(both[0].T.advice,'');
@@ -50,4 +50,37 @@ test('teacher reminders require real time to be urgent and edits retain optimist
   await assert.rejects(editReport(db,'scope',f,{...body,revision:1,version:'stale'},r));
   await editReport(db,'scope',f,{action:'remove-task',ref:tasks[0].id,revision:1,version:f.version},r);
   assert.equal(rows.get('report-bento-edit:scope').tasks.length,0);
+});
+
+test('overview-only grades and mock-only results support an opening without inventing first-attempt or skill evidence',async()=>{
+  const {modelOpening,recordOpening}=await import('../homework-server/student-report-opening.mjs');
+  const {reportState}=await import('../homework-server/student-report-analysis.mjs');
+  const {renderStudentReport}=await import('../homework-server/student-report-view.mjs');
+  const r={name:'私人姓名',classNames:['私人班名'],period:'最近四周',at,includeMock:true,courses:[
+    {course:'micro',label:'AP 微观',average:0,graded:1,cells:[{...grade('micro',1),assignment:{id:'private',title:'隐私题目',offline:true}}]},
+    {course:'macro',label:'AP 宏观',average:null,graded:0,cells:[],mockHistory:[{rate:75}]}]};
+  const f=buildReportAnalysis(r);
+  assert.deepEqual(f.opening.map(x=>x.id),['micro.average','macro.practice']);
+  assert(Object.values(f.candidates).every(v=>!v.length));
+  assert.match(recordOpening(f.opening),/0%/);
+  const noData=buildReportAnalysis({...r,courses:[]});
+  assert.equal(noData.opening.length,0);assert.match(recordOpening([]),/记录还较少/);
+  const answer={observations:['micro.average','macro.practice'],nextStep:'先独立写出思路，再对照原作答。'};
+  assert.match(modelOpening(answer,f.opening),/0%。宏观最近一次自主模考正确率为 75%。/);
+  assert.equal(modelOpening({...answer,observations:['invented']},f.opening),null);
+  assert.equal(modelOpening({...answer,nextStep:'你一定能考到5分'},f.opening),null);
+  assert.notEqual(buildReportAnalysis({...r,courses:[{...r.courses[0],average:1},r.courses[1]]}).version,f.version);
+  const rows=new Map();const db={get:async k=>rows.get(k),put:async(_,v)=>rows.set(v.id,v)};
+  const bad=async()=>({opening:{observations:['invalid'],nextStep:'试试。'}});
+  await assert.rejects(personalizeReport(db,null,'student',f,bad));assert.equal(rows.size,0);
+  await personalizeReport(db,null,'student',f,async(_db,_key,messages)=>{
+    assert(!/隐私题目|私人姓名|私人班名/.test(messages[1].content));
+    assert.deepEqual(JSON.parse(messages[1].content).openingEvidence,f.opening);
+    return {opening:answer};
+  });
+  const state=await reportState(db,'student',f);
+  assert.equal(state.opening,modelOpening(answer,f.opening));
+  const page=await renderStudentReport(r,f,state);
+  assert(page.includes(state.opening));assert(page.includes('DeepSeek 评语'));
+  assert(page.indexOf('id="opening-title"')<page.indexOf('<section class="overview">'));
 });

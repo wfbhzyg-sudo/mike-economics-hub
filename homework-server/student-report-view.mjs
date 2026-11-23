@@ -1,3 +1,4 @@
+import {recordOpening} from './student-report-opening.mjs';
 import {readFile} from 'node:fs/promises';
 import {resultParts} from './student-report.mjs';
 import {radarFigure,trendFigure,html} from './student-report-figures.mjs';
@@ -47,7 +48,7 @@ function evidenceTable(report,items){
 export function reportPanels(report,facts,state={}){
   const items={...selectedItems(facts,state.ai,state.edits),...teacherTasks(state.tasks||[],report.at)};
   return {swot:['S','W','O','T'].map(k=>analysisCard(k,items[k],report)).join(''),tasks:['now','plan','quick','later'].map(k=>analysisCard(k,items[k],report)).join(''),
-    works:evidenceTable(report,items),revision:state.revision||0,hasAI:Boolean(state.hasAI)};
+    opening:state.opening||recordOpening(facts.opening),openingSource:state.opening?'DeepSeek 评语':'学习记录摘要',works:evidenceTable(report,items),revision:state.revision||0,hasAI:Boolean(state.hasAI)};
 }
 
 export async function renderStudentReport(report,facts=buildReportAnalysis(report),state={}){
@@ -62,9 +63,11 @@ export async function renderStudentReport(report,facts=buildReportAnalysis(repor
     if(report.includeMock&&mock)entries.push('自主模考 '+c.mockHistory.length+' 次。最近一次正确率 '+rate(mock.rate)+(Number.isFinite(mock.seconds)?'，用时 '+Math.floor(mock.seconds/60)+' 分 '+Math.floor(mock.seconds%60)+' 秒':'')+'。');
     return entries.length?['<article class="card notes '+c.course+'"><h3>'+html(c.label)+'学习记录</h3><p>'+html(entries.join(''))+'</p></article>']:[];
   });
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${base}</style><style id="report-mobile" media="screen and (max-width:700px)">${mobile}</style><style id="report-paper" media="print">${paper}</style><script defer src="/teacher/student-report-actions.js?v=bento1"></script></head><body><main data-version="${facts.version}" data-revision="${panels.revision}" data-ai="${panels.hasAI?'ready':Object.values(facts.candidates).some(a=>a.length)?'available':'empty'}">
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${base}</style><style id="report-mobile" media="screen and (max-width:700px)">${mobile}</style><style id="report-paper" media="print">${paper}</style><script defer src="/teacher/student-report-actions.js?v=opening1"></script></head><body><main data-version="${facts.version}" data-revision="${panels.revision}" data-ai="${panels.hasAI?'ready':(facts.opening.length||Object.values(facts.candidates).some(a=>a.length))?'available':'empty'}">
     <div class="strap"><b>Mike <span>经济一页通</span></b><nav class="actions"><button id="save">下载网页</button><button id="print">打印 / PDF</button></nav></div>
     <header class="header"><div class="identity"><h1>经济学学习报告</h1><div><strong>${html(report.name)}</strong><span class="classes">${report.classNames.map(n=>'<i>'+html(n)+'</i>').join(' · ')||'班级待确认'}</span></div></div><div class="dateline"><time>${date(report.at)}</time><b>${html(scope)}</b></div></header>
+    <section class="opening" aria-labelledby="opening-title"><div><h2 id="opening-title">阶段评语</h2><small id="opening-source">${panels.openingSource}</small></div><p id="opening-text">${html(panels.opening)}</p>
+      <div class="actions ai-state" role="status"><span id="status"></span><button id="retry" hidden>重新整理分析</button></div></section>
     <section class="overview">${courses.map(summary).join('')||'<p>当前范围暂无学习记录。</p>'}</section>
     ${courses.length?'<section class="figures">'+exhibit('技能分布',radarFigure)+exhibit('作业得分率',trendFigure)+'</section>':''}
     <section class="tasksection"><div class="secthead"><h2>下一步怎么做</h2><i></i><button type="button" id="add-task" class="online-only" ${courses.length?'':'hidden'}>补充任务</button><small class="paper-label">任务优先级</small></div><div class="tasks" id="tasks">${panels.tasks}</div></section>
@@ -73,7 +76,6 @@ export async function renderStudentReport(report,facts=buildReportAnalysis(repor
     ${activity.length?'<div class="activities">'+activity.join('')+'</div>':''}
     ${note?'<aside class="card notes teacher-note"><h3>老师的话</h3><p>'+html(note.headline)+'</p>'+(note.nextSteps||[]).map(s=>'<p>'+html(s.text)+'</p>').join('')+'</aside>':''}
     <footer class="foot"><span>课堂五档为校内学习参考。作业均分仅计已公布成绩，含零分，缺分留空。${courses.some(c=>Number.isFinite(c.trend))?'¹ 最近三份已出分作业与此前三份比较。':''}</span><b id="source">${panels.hasAI?'AI 辅助分析':'按学习记录整理'}</b></footer>
-    <div class="actions ai-state" role="status"><span id="status"></span><button id="retry" hidden>重新整理分析</button></div>
     </main><dialog id="proof-dialog" aria-labelledby="proof-title"><header><h2 id="proof-title"></h2><button id="close">关闭</button></header><p id="reading"></p><h3>学习依据</h3><div id="basis"></div><div class="online-only"><button id="edit">修改措辞</button><form id="edit-form" hidden><label>教师评语<textarea maxlength="160" rows="3" id="comment"></textarea></label><button type="submit">保存评语</button><span role="status" id="edit-status"></span></form><button id="remove-task" hidden>移除这项提醒</button></div></dialog>
     <dialog id="task-dialog" class="online-only" aria-labelledby="task-title"><header><h2 id="task-title">补充学习任务</h2><button id="close-task">关闭</button></header><form id="task-form"><label>学科<select name="course">${courses.map(c=>'<option value="'+html(c.course)+'">'+html(c.label)+'</option>').join('')}</select></label><label>任务<input name="title" maxlength="40" required></label><label>说明<textarea name="text" maxlength="160" rows="2"></textarea></label><label>重要程度<select name="priority"><option value="important">重要</option><option value="normal">非重要</option></select></label><label>办理时间（上海，可留空）<input type="datetime-local" name="due"></label><p>48 小时内的任务将列为紧急。同一象限显示一项教师任务。</p><button type="submit">保存任务</button><small role="status"></small></form></dialog></body></html>`;
 }

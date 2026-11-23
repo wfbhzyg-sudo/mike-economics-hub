@@ -84,6 +84,11 @@ const statusLine=document.querySelector('#status'),retry=document.querySelector(
 let deferred=null;
 function applyPanels(data){
   if(data.revision<Number(main.dataset.revision)||deferred&&data.revision<deferred.revision)return;
+  const opening=document.getElementById('opening-text');
+  if(opening&&typeof data.opening==='string'){
+    opening.textContent=data.opening;
+    document.getElementById('opening-source').textContent=data.openingSource;
+  }
   if(dialog.open){deferred=data;return;}
   for(const id of ['works','tasks','swot'])document.getElementById(id).innerHTML=data[id];
   main.dataset.revision=String(data.revision);
@@ -97,17 +102,21 @@ dialog.addEventListener('close',()=>{
   document.querySelector('button[data-proof="'+CSS.escape(ref)+'"]')?.focus({preventScroll:true});
 });
 async function requestReport(action,values={}){
-  const me=await fetch('/api/homework/me');
+  const signal=action==='analyze'?AbortSignal.timeout(30000):undefined;
+  const me=await fetch('/api/homework/me',{signal});
   if(!me.ok)throw Error('登录已更新，请重新打开报告');
-  const res=await fetch(location.href,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':(await me.json()).csrf},body:JSON.stringify({action,version:main.dataset.version,...values})});
+  const res=await fetch(location.href,{method:'POST',signal,headers:{'Content-Type':'application/json','X-CSRF-Token':(await me.json()).csrf},body:JSON.stringify({action,version:main.dataset.version,...values})});
   const data=await res.json();
   if(!res.ok)throw Error(data.error||'暂时无法整理分析');
   return data;
 }
 async function analyze(){
-  retry.hidden=true;statusLine.textContent='正在整理个性化分析，可先查阅或打印。';
+  const exports=document.querySelectorAll('#save,#print');
+  for(const button of exports)button.disabled=true;
+  retry.hidden=true;statusLine.textContent='正在撰写评语，完成后即可导出。';
   try{applyPanels(await requestReport('analyze'));statusLine.textContent='';}
-  catch(e){statusLine.textContent=e.message+'。当前可打印记录摘要。';retry.hidden=false;}
+  catch(e){statusLine.textContent=(e.name==='TimeoutError'?'分析用时较长':e.message)+'。当前可打印记录摘要。';retry.hidden=false;}
+  finally{for(const button of exports)button.disabled=false;}
 }
 retry.onclick=analyze;
 if(main.dataset.ai==='available')analyze();
