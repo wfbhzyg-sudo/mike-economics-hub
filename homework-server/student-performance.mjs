@@ -79,7 +79,11 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
       const {s,grade,date}=source,parsed=Date.parse(date),weight=Number.isFinite(parsed)&&at-parsed<recency?2:1;
       if(testsAllSkills(a))comprehensiveAssessments++;
       const meta=new Map((s.rubricSnapshot||[]).map(q=>[q.id,q]));
-      if(!a.performanceTransfer)add(first,s.offlineEvidence?.total??grade.total,s.offlineEvidence?.maxPoints??grade.maxPoints,weight);
+      if(!a.performanceTransfer){
+        const evidence=s.offlineEvidence;
+        if(evidence?.scorePolicy==='cap-raw')add(first,Math.min(evidence.total,grade.maxPoints),grade.maxPoints,weight);
+        else add(first,evidence?.total??grade.total,evidence?.maxPoints??grade.maxPoints,weight);
+      }
       for(const [i,q] of (grade.questions||[]).entries()){
         if(!Number.isFinite(q.score)||!(q.maxPoints>0)||q.score<0||q.score>q.maxPoints)continue;
         const info=meta.get(q.id),qid=info?.libraryQuestionId||info?.prompt?.trim()||a.id+':'+q.id;

@@ -43,7 +43,8 @@ export function applyRecovery(submissions, reviews, assignments) {
     const byQuestion=Object.create(null),verifiedQuestionIds=[];
     const points=new Map((s.offlineEvidence ? grade.questions : base.questions)?.map(q=>[q.id,q]));
     const rawMax=s.offlineEvidence?.maxPoints||s.offlineMakeup?.originalMax;
-    const unit=rawMax>0?grade.maxPoints/rawMax:1;
+    const capped=(s.offlineEvidence||s.offlineMakeup)?.scorePolicy==='cap-raw' || assignment?.offlineEdition?.scorePolicy==='cap-raw';
+    const unit=rawMax>0&&!capped?grade.maxPoints/rawMax:1;
     for(const review of saved.sort((a,b)=>a.questionId.localeCompare(b.questionId,undefined,{numeric:true}))){
       const q=points.get(review.questionId);
       if (!q || !Number.isFinite(q.score) || review.rubricHash!==signature(s.rubricSnapshot?.find(q=>q.id===review.questionId))) continue;

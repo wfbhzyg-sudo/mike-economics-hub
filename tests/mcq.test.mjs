@@ -352,3 +352,21 @@ test('published zero starts a fresh timed attempt past the deadline; replay keep
  assert.equal((await call(f.handler,f.student,url,'GET')).value.assignment.zeroRetry,false);
  await assert.rejects(call(f.handler,f.student,url+'/restart','POST',{revision:0,receiptId:done.submittedId}),/未开放/);
 });
+
+test('offline capped makeup counts each correct choice and caps only the total',async()=>{
+ const {db,handler,student}=fixture();
+ const question={type:'choice',maxPoints:1,options:[{label:'A',text:'A'},{label:'B',text:'B'}],correctOptions:['A']};
+ const rubric=Array.from({length:19},(_,i)=>({...question,id:String(i+1)}));
+ for(const hits of [0,1,17,18,19]){
+  const id='capped-'+hits;
+  await db.put('assignment',{id,type:'assignment',published:true,version:1,status:'ready',title:id,
+   offline:true,allowLate:true,format:'score',classIds:['class'],rubric,makeupMode:'questions',makeupMaxPoints:18,offlineEdition:{scorePolicy:'cap-raw'}});
+  const answers=Object.fromEntries(rubric.map((q,i)=>[q.id,i<hits?'A':'B']));
+  const {submittedId}=(await call(handler,student,'mcq/attempt/'+id+'/submit','POST',{revision:0,answers})).value;
+  const s=await db.get(submittedId);
+  assert.equal(s.offlineMakeup.scorePolicy,'cap-raw');
+  assert.equal(s.publishedGrade.maxPoints,18);
+  assert.equal(s.publishedGrade.total,Math.min(hits,18));
+  assert.equal(s.publishedGrade.questions.reduce((sum,q)=>sum+q.score,0),hits);
+ }
+});

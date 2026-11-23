@@ -87,3 +87,15 @@ test('a graded zero-score redo replaces old evidence once, regardless of input o
  assert.deepEqual(metrics([redo,other,original]),metrics([other,redo]));
  assert.deepEqual(metrics([original,other,{...redo,status:'needs_review',publishedGrade:null}]),metrics([original,other]));
 });
+
+test('a capped offline paper restores whole raw points and still verifies mistakes after the cap',()=>{
+ const raw=Array.from({length:19},(_,i)=>({id:String(i+1),type:'choice',maxPoints:1,skill:'1.A'}));
+ const grade={total:17,maxPoints:18,questions:raw.map((q,i)=>({id:q.id,score:Number(i<17),maxPoints:1}))};
+ for(const provenance of [{offlineEvidence:{total:17,maxPoints:19,scorePolicy:'cap-raw'}},{offlineMakeup:{mode:'questions',originalMax:19,maxPoints:18,scorePolicy:'cap-raw'}}]){
+  const s={...make('s1','a','08'),...provenance,rubricSnapshot:raw,publishedGrade:grade};
+  const corrected=applyRecovery([s],[event(s,raw[17]),event(s,raw[18])],[assignment('a')])[0].publishedGrade;
+  assert.deepEqual(corrected.verifiedQuestionIds,['18','19']);
+  assert.equal(corrected.total,18);assert.equal(corrected.scoreSources.first,17);assert.equal(corrected.scoreSources.recovered,1);
+  assert.equal(s.publishedGrade.total,17);
+ }
+});

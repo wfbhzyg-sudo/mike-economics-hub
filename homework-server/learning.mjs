@@ -31,7 +31,9 @@ export function publishedResult(s, result, actor, at, note='', source='teacher',
     teacherNote:note,publishedAt:at,answerVersion:s.version,revision:(s.gradeHistory?.length||0)+1,source,model,
     questionsSnapshot:visibleQuestions({...s,publishedGrade:null})};
   if(s.offlineMakeup?.mode==='questions' && s.offlineMakeup.maxPoints>0 && result.maxPoints>0 && Number.isFinite(result.total)){
-    s.publishedGrade.total=Math.round(result.total/result.maxPoints*s.offlineMakeup.maxPoints*1e6)/1e6;
+    s.publishedGrade.total=s.offlineMakeup.scorePolicy==='cap-raw'
+      ? Math.min(result.total,s.offlineMakeup.maxPoints)
+      : Math.round(result.total/result.maxPoints*s.offlineMakeup.maxPoints*1e6)/1e6;
     s.publishedGrade.maxPoints=s.offlineMakeup.maxPoints;
   }
   s.status='published';s.updatedAt=at;
