@@ -73,7 +73,7 @@ export const publicAssignment = (a) => ({
   deletedAt: a.deletedAt || null,
 });
 const publicSubmission = (s) => ({
-  id: s.id, createdAt: s.createdAt, manualScoreEntry: Boolean(s.manualScoreEntry),
+  id: s.id, createdAt: s.createdAt, manualScoreEntry: Boolean(s.manualScoreEntry), offlineEvidence:s.offlineEvidence ? {total:s.offlineEvidence.total,maxPoints:s.offlineEvidence.maxPoints}:undefined,
   assignmentId: s.assignmentId,
   text: s.text,
   files: s.files,
@@ -257,6 +257,15 @@ export async function createHomework({externalAuth} = {}) {
     ['question','library'].includes(file.purpose) && questions?.some(q=>q.questionImages?.includes(file.id));
   const authorizeFile = async (file,user,availableClasses) => {
     if (file.owner === user.id) return true;
+    // Source slices are shared by a few class assignments. Check those rows before scanning the library.
+    if(file.purpose==='library'&&file.mime?.startsWith('image/')&&file.offlineAssignmentIds?.length){
+      const matches=await db.query(`SELECT 1 FROM ${db.table}
+        WHERE kind='assignment' AND id=ANY($1::text[]) AND data->>'published'='true'
+        AND data->>'deletedAt' IS NULL AND data->'classIds' ?| $2::text[]
+        AND EXISTS(SELECT 1 FROM jsonb_array_elements(data->'rubric') q WHERE q->'questionImages' ? $3)
+        LIMIT 1`,[file.offlineAssignmentIds,user.role==='student'?(user.classIds||[]):[],file.id]);
+      if(matches.rowCount)return true;
+    }
     if(await library.canReadFile(file,user))return true;
     if(await selfPractice.canReadFile(file,user))return true;
     if(file.purpose==='board'&&await library.canReadBoardAttachment(file,user,availableClasses))return true;
@@ -735,7 +744,7 @@ export async function createHomework({externalAuth} = {}) {
           const b=await body(req);
           await db.tx(async c=>{
             const a=await requireAssignment(route[1],user,c);
-            assert(!a.offline&&a.format!=='score','线下成绩不支持自动订正补分');
+            assert(a.offlineEdition || (!a.offline&&a.format!=='score'),'仅有总分的线下成绩不支持自动订正补分');
             await db.put('assignment',{...a,correctionCredit:b.enabled===true,...(typeof b.transfer==='boolean'?{performanceTransfer:b.transfer}:{})},c);
             await db.audit(user.id,'correction_credit_setting',a.id,c);
           });
@@ -940,10 +949,17 @@ export async function createHomework({externalAuth} = {}) {
           mistakes=groupMistakes([...mistakes,...mockMistakes(attempts,notes,privateDrafts).map(verified)]);
         }
         const insights=user.role==='student'?(await db.find('insight-report',{studentId:user.id})).filter(r=>r.status==='published'&&r.audience?.kind==='student').map(r=>({id:r.id,scope:r.scope,dataVersion:r.dataVersion,templateVersion:r.templateVersion,headline:r.headline,stats:r.stats,metrics:r.metrics,evidence:r.evidence,status:r.status,source:r.source,observations:r.observations,nextSteps:r.nextSteps,limitations:r.limitations,publishedAt:r.publishedAt})).slice(0,3):[];
+        const assignmentIndex=new Map(assignments.map(a=>[a.id,a]));
         const performance=user.role==='student'&&url.searchParams.get('performance')==='1'?await performanceOf(work,classes,mistakes):undefined;
         return (json(res,{classes,insights,students,performance,assignments:assignments.map(a=>{const publicData=publicAssignment(a);
           if(user.role==='teacher')publicData.questions?.forEach((q,i)=>{const ref=a.rubric[i];q.sourcePages=ref.sourcePages||'';q.correctOptions=ref.manualGradingRequired?[]:ref.correctOptions||[];});
-          return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>({...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(assignments.find(a=>a.id===x.assignmentId)||{})})),mistakes}),true);
+          return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>{
+            const a=assignmentIndex.get(x.assignmentId)||{};
+            if(!x.offlineEvidence)return {...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(a)};
+            // The class-wide response already includes each assignment's question list once.
+            const {rubric,...summary}=a;
+            return {...publicSubmission({...x,rubricSnapshot:[]}),studentId:x.studentId,assignment:publicAssignment(summary)};
+          }),mistakes}),true);
       }
       async function correctionRows(user,assignmentId,c,notes=[]){
         const attempt=await db.get(assignmentId,c);

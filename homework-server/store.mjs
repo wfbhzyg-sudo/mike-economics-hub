@@ -66,7 +66,7 @@ export function createStore(connectionString, schema = "homework") {
           'id', a.id, 'title', data->'title', 'published', true, 'classIds', data->'classIds',
           'course', data->'course', 'libraryUnit', data->'libraryUnit', 'libraryCourse', data->'libraryCourse',
           'libraryUnits', data->'libraryUnits', 'librarySourceUnit', data->'librarySourceUnit',
-          'offline', data->'offline', 'format', data->'format', 'performanceTransfer', data->'performanceTransfer',
+          'offline', data->'offline', 'format', data->'format', 'assessmentType', data->'assessmentType', 'offlineType', data->'offlineType', 'performanceTransfer', data->'performanceTransfer',
           'opensAt', data->'opensAt', 'createdAt', data->'createdAt', 'dueAt', data->'dueAt',
           'recipient', snapshot.person) AS work
         FROM ${table} a LEFT JOIN LATERAL (

@@ -12,9 +12,15 @@ const sameSkill=value=>String(value||'').match(/^([1-4])(?:[A-Z]|\b)/i)?.[1]||''
 
 function independentGrade(s){
   if(s.publishedGrade?.total===null || s.status==='returned')return null;
+  if(s.offlineEvidence && s.publishedGrade?.questions?.length)return s.publishedGrade;
   const history=s.gradeHistory||[];
   return s.publishedGrade?.manualTotal && s.publishedGrade.questions?.length?
     [...history].reverse().find(g=>!g.manualTotal)||s.publishedGrade : s.publishedGrade;
+}
+
+export function testsAllSkills(a){
+  const label=[a.offlineType,a.assessmentType,a.title].filter(Boolean).join(' ');
+  return /\b(?:quizzes|quiz|tests?|exams?|examinations?|progress[\s:-]*check)\b|小测|测验|单元测|随堂测|月考|期中|期末|考试/i.test(label);
 }
 
 export function studentPerformance(submissions,assignments,mistakes,classes=[],library=[],at=Date.now()){
@@ -44,6 +50,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
   };
   return ['micro','macro'].map(course=>{
     const first=numbers(),transfer=numbers();
+    let comprehensiveAssessments=0;
     const skills=Array.from({length:4},()=>({...numbers(),questions:new Set(),references:[]}));
     const available=assignments.filter(a=>a.published&&!a.deletedAt&&assignmentCourse(a,classes)===course);
     const aIds=new Set(available.map(a=>a.id)),verified=new Map();
@@ -66,8 +73,9 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
       const source=earliest.get(a.id);
       if(!source)continue;
       const {s,grade,date}=source,parsed=Date.parse(date),weight=Number.isFinite(parsed)&&at-parsed<recency?2:1;
+      if(testsAllSkills(a))comprehensiveAssessments++;
       const meta=new Map((s.rubricSnapshot||[]).map(q=>[q.id,q]));
-      if(!a.performanceTransfer)add(first,grade.total,grade.maxPoints,weight);
+      if(!a.performanceTransfer)add(first,s.offlineEvidence?.total??grade.total,s.offlineEvidence?.maxPoints??grade.maxPoints,weight);
       for(const [i,q] of (grade.questions||[]).entries()){
         if(!Number.isFinite(q.score)||!(q.maxPoints>0)||q.score<0||q.score>q.maxPoints)continue;
         const info=meta.get(q.id),qid=info?.libraryQuestionId||info?.prompt?.trim()||a.id+':'+q.id;
@@ -98,7 +106,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
     const index=a===null?null:scoreBand(r===null?a:.8*a+.2*r);
     const axes=skills.map((axis,i)=>{
       const value=axis.raw>=4&&axis.questions.size>=2?scoreBand(rate(axis)):null;
-      return {skill:i+1,band:value?.level??null,value:value?.value??null,count:axis.questions.size,references:axis.references};
+      return {skill:i+1,comprehensiveAssessments,band:value?.level??null,value:value?.value??null,count:axis.questions.size,references:axis.references};
     });
     const focus=axes.filter(axis=>axis.band!==null).sort((a,b)=>a.value-b.value||b.count-a.count||a.skill-b.skill)[0]?.skill||null;
     return {course,index,next:index&&index.level<5?round(index.level*20-index.value):null,first:a===null?null:round(a),

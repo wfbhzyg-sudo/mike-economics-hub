@@ -24,14 +24,19 @@ export function publishedResult(s, result, actor, at, note='', source='teacher',
 }
 export function mistakeRows(submissions, assignments, notes=[], bindings=[]) {
   const rows=[];
+ const noteKey=(student,assignment,question)=>JSON.stringify([student,assignment,question]);
+ const noteMap=new Map(notes.map(n=>[noteKey(n.studentId,n.assignmentId,n.questionId),n]));
   for(const record of assignmentRecords(submissions,assignments)){
     if(!record.grade)continue;
+    const visible=new Map(visibleQuestions(record.effective).map(q=>[q.id,q]));
+    const snapshot=new Map((record.effective.rubricSnapshot||[]).map(q=>[q.id,q]));
+    const fallbackMap=record.effective.version!=null && record.effective.version===record.assignment.version ? new Map((record.assignment.rubric||[]).map(q=>[q.id,q])) : new Map();
     for(const [index,q] of (record.grade.questions || []).entries()){
       if(q.score==null||q.score>=q.maxPoints)continue;
-      const ref=visibleQuestions(record.effective).find(r=>r.id===q.id)||{};
-      const raw=record.effective.rubricSnapshot?.find(r=>r.id===q.id);
-      const fallback=record.effective.version!=null && record.effective.version===record.assignment.version?record.assignment.rubric?.find(r=>r.id===q.id):null;
-      const meta=notes.find(n=>n.studentId===record.studentId&&n.assignmentId===record.assignmentId&&n.questionId===q.id);
+      const ref=visible.get(q.id)||{};
+      const raw=snapshot.get(q.id);
+      const fallback=fallbackMap.get(q.id);
+      const meta=noteMap.get(noteKey(record.studentId,record.assignmentId,q.id));
       const last = meta?.corrections?.at(-1);
       const submittedAt = record.effective.submittedAt || record.effective.createdAt;
       const sameSubmission = last && (last.submissionId ? last.submissionId === record.effective.id : !submittedAt || last.createdAt >= submittedAt);

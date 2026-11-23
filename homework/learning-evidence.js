@@ -51,7 +51,7 @@ export function performanceMarkup(value,h,link,{teacher=false}={}){
       <details><summary>查看计算依据</summary><p>独立首答 ${value.first??'待积累'} · 订正后迁移 ${value.transfer??'待积累'}<br>通过订正 ${corrections.done} / ${corrections.total} 道</p></details>
     </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${skillRadarSvg(axes)}<div>
       ${axes.map((item,i)=>`<details ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i][0]} <small>${skills[i][1]}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
-        <p>${item.count} 道独立题${item.value!==null?` · 得分率 ${item.value}%`:''}</p>
+        <p>${item.count} 道独立题${item.comprehensiveAssessments?' · 综合测验覆盖 '+item.comprehensiveAssessments+' 次':''}${item.value!==null?` · 得分率 ${item.value}%`:''}</p>
         ${item.references.slice(0,4).map(r=>`<div class="evidence-item">${teacher?h(r.title):r.score<r.max?link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.title)):h(r.title)}<span>第 ${h(r.questionId)} 题 · ${r.score}/${r.max}</span></div>`).join('')}</details>`).join('')}
     </div></div></div>
   </section>`;

@@ -54,6 +54,7 @@ function skills(c){
   }).join('');
   const e=c.evidence;
   const notes=[];
+  if (axes[0]?.comprehensiveAssessments) notes.push('综合测验覆盖四项技能 '+axes[0].comprehensiveAssessments+' 次');
   if (Number.isFinite(e.first)) notes.push('独立首答得分率 '+rate(e.first));
   if (Number.isFinite(e.transfer)) notes.push('订正后同技能新题正确率 '+rate(e.transfer));
   if (Number.isFinite(e.next)) notes.push('课堂表现距下一档 '+e.next+' 分');
