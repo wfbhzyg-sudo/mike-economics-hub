@@ -212,3 +212,26 @@
   .lf-card > summary::after { grid-column: 2; grid-row: 1 / 3; }
   .lesson-focus-content .lf-options > button { min-height: 44px; }
 }
+.lesson-focus-content .lf-intro { margin: 0 0 9px; max-width: 78ch; color: #294658; }
+.lf-card > summary { grid-template-areas: "term skill arrow" "rule rule rule"; row-gap: 1px; }
+.lf-term { grid-area: term; }
+.lf-skill { grid-area: skill; }
+.lf-card > summary::after { grid-area: arrow; }
+.lf-card > summary .lf-rule { grid-area: rule; color: #405865; font-size: .94em; max-width: 76ch; }
+.lf-card[open] > summary { padding-bottom: 6px; }
+.lf-example legend mark { color: inherit; background: #f9edc7; padding-block: .04em; }
+.lf-example .lf-reading { color: #334e60; border-inline-start: 2px solid #ba9d62; padding-inline-start: 10px; margin: 8px 0 10px; }
+.lf-notes { margin-top: 8px; color: #405669; }
+.lf-notes > summary { cursor: pointer; width: fit-content; padding: 5px 0; font-size: .9em; }
+.lf-notes p { max-width: 69ch; }
+.lf-notes [data-focus] { scroll-margin-top: 12px; }
+.lf-pin { margin-top: 5px; }
+.lesson-panel .lf-card > summary { grid-template-areas: "term arrow" "skill arrow" "rule rule"; }
+@media(max-width:650px) {
+  .lf-card > summary { grid-template-areas: "term arrow" "skill arrow" "rule rule"; }
+  .lf-notes > summary { min-height: 44px; display: list-item; align-content: center; }
+}
+
+.lf-example > p[data-focus="rule"] { margin: 2px 0 10px; }
+.lf-transfer:not([hidden]) { border-inline-start: 2px solid #9bb6ac; padding-inline-start: 10px; margin-top: 6px; color: #385448; }
+.lf-transfer p + p { margin-top: 5px; }

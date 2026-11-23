@@ -31,20 +31,49 @@ function stimulus(item, escape) {
     '</tr></thead><tbody>' + rows.map(row=>'<tr>'+row.map((v,i)=>i===0?'<th scope="row">'+escape(v)+'</th>':'<td>'+escape(v)+'</td>').join('')+'</tr>').join('') + '</tbody></table>';
 }
 
-export function exampleMarkup(items, escape) {
+function questionText(item, escape) {
+  const at = item.clue ? item.stem.indexOf(item.clue) : -1;
+  if (at < 0) return escape(item.stem);
+  return escape(item.stem.slice(0,at)) + '<mark>' + escape(item.clue) + '</mark>' +
+    escape(item.stem.slice(at + item.clue.length));
+}
+
+function guidePassages(item, focus, escape, keys) {
+  if (!focus) return '';
+  const anchors = {goal:'goals',rule:'rule',apply:'apply',pitfall:'pitfall'};
+  return (item.notes || []).flatMap(ref=>{
+    const [key, part] = ref.split(':');
+    if (!keys.includes(key)) return [];
+    const id = anchors[key];
+    const anchor = id && (!part || part==='0') ? `id="focus-${id}" tabindex="-1"` : '';
+    const texts = part===undefined ? [focus[key]].flat() :
+      [focus[key].replace(/([.!?])\s+(?=[A-Z])/g,'$1\n').split('\n')[Number(part)]];
+    return texts.filter(Boolean).map(value=>
+      `<p ${anchor} ${id ? 'data-focus="'+id+'"' : ''}>${escape(value)}</p>`);
+  }).join('');
+}
+
+export function exampleMarkup(items, escape, {focus, canPin = false} = {}) {
   if (!items?.length) return '';
   const cards = items.map((item,index) => {
     const skill = item.skill+' · '+skillActions[item.skill];
-    return `<details class="lf-card" data-lf-card="${index}">
+    const principle = guidePassages(item,focus,escape,['rule']);
+    const transfer = guidePassages(item,focus,escape,['apply','pitfall','pitfalls']);
+    const goals = guidePassages(item,focus,escape,['goal','goals']);
+    return `<details class="lf-card" data-lf-card="${index}"${index===0?' open':''}>
       <summary><span class="lf-term"><strong><u>${escape(item.term)}</u></strong> <span lang="zh-CN">${escape(item.translation)}</span></span>
-        <span class="lf-skill" title="${escape(categories[item.skill[0]])}">${escape(skill)}</span></summary>
-      <div class="lf-example"><p class="lf-rule">${escape(item.rule)}</p>
-        <fieldset><legend>${escape(item.stem)}</legend>${stimulus(item,escape)}
+        <span class="lf-skill" title="${escape(categories[item.skill[0]])}">${escape(skill)}</span>
+        <span class="lf-rule">${escape(item.rule)}</span></summary>
+      <div class="lf-example">${principle}<fieldset><legend>${questionText(item,escape)}</legend>${stimulus(item,escape)}
+        ${item.coach?`<p class="lf-reading">${escape(item.coach)}</p>`:''}
         <div class="lf-options">${item.options.map((text,i)=>`<button type="button" data-lf-choice="${i}" aria-pressed="false"><b>${letter(i)}</b><span>${escape(text)}</span></button>`).join('')}</div></fieldset>
         <p class="lf-feedback" role="status" aria-live="polite"></p>
+        ${transfer?`<div class="lf-transfer" hidden>${transfer}</div>`:''}
+        ${goals?`<details class="lf-notes"><summary>Learning goals</summary>${goals}</details>`:''}
+        ${canPin?`<button type="button" class="lesson-pin lf-pin" lang="zh-CN" data-pin-example="${index}">固定这个知识点</button>`:''}
       </div></details>`;
   });
-  return `<section class="lf-practice"><h2>MCQ focus</h2>${cards.join('')}</section>`;
+  return `<div class="lf-practice">${cards.join('')}</div>`;
 }
 
 export function bindExamples(host, items) {
@@ -61,6 +90,8 @@ export function bindExamples(host, items) {
       option.setAttribute('aria-pressed',String(index===chosen));
       option.dataset.mark=index===item.correct?'correct':index===chosen?'incorrect':'';
     }
+    const transfer=card.querySelector('.lf-transfer');
+    if (transfer) transfer.hidden=false;
     const feedback=card.querySelector('.lf-feedback');
     feedback.textContent=(chosen===item.correct?'Correct. ':'You chose '+letter(chosen)+'. Correct answer: '+letter(item.correct)+'. ')+item.explanation;
   });

@@ -5,7 +5,7 @@ import {studentAssignmentAction} from './assignment-navigation.js';
 import {libraryLocation,packReference,packQuestions} from './library-navigation.js';
 import {highlightText} from './search-text.js';
 import {bindExamples} from './lesson-examples.js';
-import {focusMarkup} from './lesson-panel.js';
+import {focusMarkup,revealFocus} from './lesson-panel.js';
 import {buildPacks,canonicalQuestions,questionHasTopic} from './library-packs.js';
 import {mountLibraryReader} from './library-reader.js';
 import {mountPDFReader} from './pdf-reader.js';
@@ -68,7 +68,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
      if(disposed||!host.isConnected)return;
      const lab=document.createElement('div');host.append(lab);mountDemandLab(lab,{teacher});
    }
-   if(['goals','rule','apply','pitfall'].includes(anchor))host.querySelector('#focus-'+anchor)?.scrollIntoView({block:'start'});
+   revealFocus(host,'focus-'+anchor)?.scrollIntoView({block:'start'});
   }catch(e){if(!disposed&&host.isConnected){host.innerHTML='<p role="alert">学习重点暂时无法加载。</p><button type="button">重试</button>';host.querySelector('button').onclick=overview;}}
  }
 

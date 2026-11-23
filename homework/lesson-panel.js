@@ -30,6 +30,13 @@ export function focusMarkup(focus, {canPin = false} = {}) {
       '<strong><u>' + escape(value.slice(pos, pos + primaryTerm.length)) + '</u></strong>' +
       escape(value.slice(pos + primaryTerm.length));
   };
+  if (focus.examples?.some(item=>item.clue)) {
+    return `<article class="lesson-focus-content" lang="en">
+      <p class="lf-intro">${text(focus.concept || focus.goal)}</p>
+      ${exampleMarkup(focus.examples,escape,{focus,canPin})}
+      <p class="lesson-focus-source">${escape(citation)}</p>
+    </article>`;
+  }
   return `<article class="lesson-focus-content" lang="en">
     <div class="lesson-focus-terms">${focus.terms.map(([term, zh]) =>
       `<span><strong><u>${escape(term)}</u></strong> <span lang="zh-CN">${escape(zh)}</span></span>`).join('')}</div>
@@ -40,6 +47,16 @@ export function focusMarkup(focus, {canPin = false} = {}) {
     </section>`).join('')}
     <p class="lesson-focus-source">${escape(citation)}</p>
   </article>`;
+}
+
+export function revealFocus(root, id) {
+  if (!['focus-goals','focus-rule','focus-apply','focus-pitfall'].includes(id)) return null;
+  const target = root.querySelector('#'+id);
+  for (let el=target?.parentElement; el && el!==root; el=el.parentElement) {
+    if (el.tagName==='DETAILS') el.open=true;
+    if (el.classList.contains('lf-transfer')) el.hidden=false;
+  }
+  return target;
 }
 
 function referenceFor(question, context) {
@@ -90,7 +107,7 @@ export function mountLessonLinks(root, api) {
         bindExamples(body,data.focus?.examples);
         const path = '#library/' + encodeURIComponent(data.unit.id) + '/' + encodeURIComponent(data.topic.id);
         body.insertAdjacentHTML('beforeend', `<div class="lesson-panel-links">
-          <a target="_blank" rel="noopener" href="/homework/?focus=rule${path}">打开教学包 ↗</a>
+          <a target="_blank" rel="noopener" href="/homework/${path}">打开教学包 ↗</a>
           ${data.hasTextbook ? `<a target="_blank" rel="noopener" href="/homework/${path}/textbook">查看教材原页 ↗</a>` : ''}
         </div>`);
       }
@@ -98,11 +115,14 @@ export function mountLessonLinks(root, api) {
       body.querySelectorAll('[data-lesson-topic]').forEach(button => {
         button.onclick = () => show({unit:data.unit.id,topic:button.dataset.lessonTopic});
       });
-      body.querySelectorAll('[data-pin]').forEach(button => {
+      body.querySelectorAll('[data-pin],[data-pin-example]').forEach(button => {
         button.onclick = () => {
           const host = current.pinHost;
-          host.innerHTML = `<strong>已固定 · ${escape(data.topic.id + ' ' + (data.topic.title || ''))}</strong>
-            <button type="button" aria-label="移除固定重点">×</button><p lang="en">${escape(data.focus[button.dataset.pin])}</p>`;
+          const item=button.hasAttribute('data-pin-example') ? data.focus.examples[Number(button.dataset.pinExample)] : null;
+          const label=item?.term || data.topic.title || '';
+          const note=item ? item.rule+' '+item.coach : data.focus[button.dataset.pin];
+          host.innerHTML = `<strong>已固定 · ${escape(data.topic.id+' '+label)}</strong>
+            <button type="button" aria-label="移除固定重点">×</button><p lang="en">${escape(note)}</p>`;
           host.hidden = false;
           host.querySelector('button').onclick = () => {
             host.hidden = true;
@@ -112,7 +132,7 @@ export function mountLessonLinks(root, api) {
           close(true);
         };
       });
-      const target = current.anchor && body.querySelector('[id="' + current.anchor + '"]');
+      const target = revealFocus(body,current.anchor);
       if (target) body.scrollTop = target.offsetTop;
       else body.scrollTop = 0;
     } catch (error) {

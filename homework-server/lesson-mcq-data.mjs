@@ -1,4 +1,4 @@
-// Original worked examples for the two course packs. Topic IDs are scoped to course.
+// Original teaching examples. Notes refer to fields of this course topic’s study guide.
 export const lessonExamples = {
   "micro:1.1": [
     {
@@ -15,7 +15,13 @@ export const lessonExamples = {
         "The wheat still growing in a field"
       ],
       "correct": 0,
-      "explanation": "The oven is a produced tool used to make bread."
+      "explanation": "The oven is a produced tool used to make bread.",
+      "clue": "physical capital",
+      "coach": "Picture what the baker actually uses. A produced object that helps make the bread plays a different role from cash, workers, or raw land.",
+      "notes": [
+        "goal",
+        "pitfall"
+      ]
     },
     {
       "term": "Opportunity cost",
@@ -31,7 +37,15 @@ export const lessonExamples = {
         "All possible uses have equal value"
       ],
       "correct": 1,
-      "explanation": "Using the room now rules out the next-best use of that same time slot."
+      "explanation": "Using the room now rules out the next-best use of that same time slot.",
+      "clue": "free rehearsal room",
+      "coach": "Imagine the choir cancels. What is the most valuable other use that could then take place in the room?",
+      "notes": [
+        "rule",
+        "apply",
+        "goals",
+        "pitfalls"
+      ]
     }
   ],
   "micro:1.2": [
@@ -49,7 +63,15 @@ export const lessonExamples = {
         "All resources are unlimited"
       ],
       "correct": 0,
-      "explanation": "Both systems face scarcity. They differ in who makes the allocation decision."
+      "explanation": "Both systems face scarcity. They differ in who makes the allocation decision.",
+      "clue": "command system",
+      "coach": "Follow one production decision, such as how many houses to build. Who makes that decision, and what signal do they use?",
+      "notes": [
+        "goal",
+        "rule",
+        "apply",
+        "goals"
+      ]
     },
     {
       "term": "Mixed economy",
@@ -65,7 +87,13 @@ export const lessonExamples = {
         "A pure market economy"
       ],
       "correct": 0,
-      "explanation": "Prices allocate some services while public decisions allocate others."
+      "explanation": "Prices allocate some services while public decisions allocate others.",
+      "clue": "Private clinics set fees",
+      "coach": "Compare who decides access to a clinic visit with who decides access to a vaccination slot. The two services can follow different allocation rules in one economy.",
+      "notes": [
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "micro:1.3": [
@@ -83,7 +111,14 @@ export const lessonExamples = {
         "On a strictly downward-sloping PPC"
       ],
       "correct": 0,
-      "explanation": "Unused productive capacity permits more of one good without giving up the other."
+      "explanation": "Unused productive capacity permits more of one good without giving up the other.",
+      "clue": "without sacrificing any desks",
+      "coach": "Trace the move from the factory’s current combination to one with more chairs and the same desks. Ask whether a point on the frontier permits that move.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Unit opportunity cost",
@@ -99,7 +134,14 @@ export const lessonExamples = {
         "0.5"
       ],
       "correct": 2,
-      "explanation": "Six bowls are forgone for three additional lamps."
+      "explanation": "Six bowls are forgone for three additional lamps.",
+      "clue": "per extra lamp",
+      "coach": "Put the bowls forgone in the numerator and the extra lamps in the denominator. Your units should read “bowls per lamp.”",
+      "notes": [
+        "apply",
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Capacity change",
@@ -115,7 +157,13 @@ export const lessonExamples = {
         "The cloth intercept moves out and the food intercept stays fixed"
       ],
       "correct": 4,
-      "explanation": "All resources devoted to food still produce the old maximum. Cloth capacity increases."
+      "explanation": "All resources devoted to food still produce the old maximum. Cloth capacity increases.",
+      "clue": "leaves food technology unchanged",
+      "coach": "Sketch the two intercepts separately. Test what the loom can change when all resources make cloth, then when they all make food.",
+      "notes": [
+        "pitfalls",
+        "pitfall:1"
+      ]
     }
   ],
   "micro:1.4": [
@@ -133,7 +181,14 @@ export const lessonExamples = {
         "Neither, because Bo makes more of both"
       ],
       "correct": 0,
-      "explanation": "Ava sacrifices half a soup per wrap. Bo sacrifices a whole soup."
+      "explanation": "Ava sacrifices half a soup per wrap. Bo sacrifices a whole soup.",
+      "clue": "comparative advantage in wraps",
+      "coach": "Give each cook one hour. Divide the soups forgone by the wraps produced to compare the cost of a single wrap.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Terms of trade",
@@ -149,7 +204,14 @@ export const lessonExamples = {
         "East sells at 1 mug"
       ],
       "correct": 3,
-      "explanation": "East receives more than its cost of 2. West pays less than its cost of 5."
+      "explanation": "East receives more than its cost of 2. West pays less than its cost of 5.",
+      "clue": "both a strict gain",
+      "coach": "Read the exchange rate in mugs per scarf. East’s own production cost sets one boundary and West’s sets the other.",
+      "notes": [
+        "apply",
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Absolute versus comparative advantage",
@@ -165,7 +227,13 @@ export const lessonExamples = {
         "Absolute advantage always implies identical opportunity costs"
       ],
       "correct": 3,
-      "explanation": "Productivity compares output levels. Comparative advantage compares relative sacrifices, which are reciprocal for the two goods."
+      "explanation": "Productivity compares output levels. Comparative advantage compares relative sacrifices, which are reciprocal for the two goods.",
+      "clue": "constant opportunity costs",
+      "coach": "Compare two separate rankings: output in one hour and the amount of the other good forgone. Opportunity costs are reciprocal when you switch goods. Test whether the same constraint applies to the output rankings.",
+      "notes": [
+        "pitfalls",
+        "pitfall:1"
+      ]
     }
   ],
   "micro:1.5": [
@@ -183,7 +251,15 @@ export const lessonExamples = {
         "The fee already paid"
       ],
       "correct": 4,
-      "explanation": "The entry fee is paid whichever choice Kai makes."
+      "explanation": "The entry fee is paid whichever choice Kai makes.",
+      "clue": "already paid a nonrefundable race fee",
+      "coach": "Imagine Kai stays home. Which payments or opportunities change with that decision, and which amount has already been lost either way?",
+      "notes": [
+        "goal",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Net benefit",
@@ -199,7 +275,13 @@ export const lessonExamples = {
         "0"
       ],
       "correct": 0,
-      "explanation": "The first two hours add net value. The third costs $6 more than its benefit."
+      "explanation": "The first two hours add net value. The third costs $6 more than its benefit.",
+      "clue": "Successive tutoring hours",
+      "coach": "Test one more hour at a time. Compare each hour’s benefit with the same $25 before deciding whether to add it.",
+      "notes": [
+        "rule",
+        "apply"
+      ]
     }
   ],
   "micro:1.6": [
@@ -217,7 +299,17 @@ export const lessonExamples = {
         "No change since 12 exceeds 10"
       ],
       "correct": 3,
-      "explanation": "The marginal dollar earns 5 utils on peaches and 4 on avocados."
+      "explanation": "The marginal dollar earns 5 utils on peaches and 4 on avocados.",
+      "clue": "12 utils at $3",
+      "coach": "The fruits have different prices. Compare what the next dollar buys in utility from each fruit before deciding which purchase to expand.",
+      "notes": [
+        "goal",
+        "rule",
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Diminishing marginal utility",
@@ -233,7 +325,9 @@ export const lessonExamples = {
         "12, 10, 6"
       ],
       "correct": 2,
-      "explanation": "The successive gains are 12, 8 and 4. Total utility still rises."
+      "explanation": "The successive gains are 12, 8 and 4. Total utility still rises.",
+      "clue": "starting from zero",
+      "coach": "Subtract neighboring totals, beginning with the first slice minus zero. Compare the resulting increments, not just the total after three slices."
     }
   ],
   "micro:2.1": [
@@ -251,7 +345,15 @@ export const lessonExamples = {
         "Demand shifted right"
       ],
       "correct": 3,
-      "explanation": "The price and quantity change is a movement along the existing demand curve."
+      "explanation": "The price and quantity change is a movement along the existing demand curve.",
+      "clue": "the price of its tea",
+      "coach": "First name the good on the demand curve. Then check whether the change concerns that good’s own price or a separate demand shifter.",
+      "notes": [
+        "rule",
+        "goals",
+        "pitfalls",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Related goods",
@@ -267,7 +369,12 @@ export const lessonExamples = {
         "Supply of bus rides must fall"
       ],
       "correct": 2,
-      "explanation": "A train ride becomes relatively cheaper than the bus alternative."
+      "explanation": "A train ride becomes relatively cheaper than the bus alternative.",
+      "clue": "substitutes for commuters",
+      "coach": "Put train rides on the horizontal axis. The fare change belongs to the bus market, so think about a commuter choosing between the two.",
+      "notes": [
+        "pitfall:1"
+      ]
     },
     {
       "term": "Income and inferior goods",
@@ -283,7 +390,13 @@ export const lessonExamples = {
         "Quantity demanded rises at every price"
       ],
       "correct": 2,
-      "explanation": "For an inferior good, consumers choose fewer units at each price as income increases."
+      "explanation": "For an inferior good, consumers choose fewer units at each price as income increases.",
+      "clue": "an inferior good",
+      "coach": "Hold the noodle price fixed. The word “inferior” describes how purchases respond to income and says nothing about the quality of the noodles.",
+      "notes": [
+        "goal",
+        "apply"
+      ]
     },
     {
       "term": "Complements",
@@ -299,7 +412,9 @@ export const lessonExamples = {
         "Demand shifts right"
       ],
       "correct": 2,
-      "explanation": "Fewer consoles are bought, reducing the value of their complementary games at each game price."
+      "explanation": "Fewer consoles are bought, reducing the value of their complementary games at each game price.",
+      "clue": "no other use",
+      "coach": "Imagine a buyer deciding whether to buy the game after deciding about the console. The price that changed belongs to the companion product."
     }
   ],
   "micro:2.2": [
@@ -317,7 +432,14 @@ export const lessonExamples = {
         "A decrease in demand"
       ],
       "correct": 1,
-      "explanation": "The berries’ own price changed while the supply schedule stayed the same."
+      "explanation": "The berries’ own price changed while the supply schedule stayed the same.",
+      "clue": "with unchanged costs",
+      "coach": "Trace a farmer along the same production conditions. Which variable changed on the axes of the strawberry supply curve?",
+      "notes": [
+        "goal",
+        "pitfalls",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Input costs",
@@ -333,7 +455,15 @@ export const lessonExamples = {
         "Less juice is supplied"
       ],
       "correct": 1,
-      "explanation": "Lower marginal cost makes more units profitable at the same selling price."
+      "explanation": "Lower marginal cost makes more units profitable at the same selling price.",
+      "clue": "At a given juice price",
+      "coach": "Keep the selling price fixed and compare the cost of producing one more bottle before and after packaging becomes cheaper.",
+      "notes": [
+        "rule",
+        "apply",
+        "goals",
+        "pitfall:1"
+      ]
     }
   ],
   "micro:2.3": [
@@ -351,7 +481,15 @@ export const lessonExamples = {
         "Inelastic, with a magnitude of 0.4"
       ],
       "correct": 2,
-      "explanation": "Quantity falls 20/100 or 20%. Price rises 4/10 or 40%. Their ratio in magnitude is 0.5."
+      "explanation": "Quantity falls 20/100 or 20%. Price rises 4/10 or 40%. Their ratio in magnitude is 0.5.",
+      "clue": "from $8 to $12 and quantity demanded falls from 110 to 90",
+      "coach": "Use $10 as the price base and 100 units as the quantity base. Compare the two percentage changes, then decide which side of 1 the elasticity falls on.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "apply:0",
+        "pitfall:1"
+      ]
     },
     {
       "term": "Determinants of elasticity",
@@ -367,7 +505,12 @@ export const lessonExamples = {
         "A change in the brand’s own price shifts its demand curve"
       ],
       "correct": 2,
-      "explanation": "A narrower market offers more close substitutes."
+      "explanation": "A narrower market offers more close substitutes.",
+      "clue": "one brand of salt",
+      "coach": "Think of a shopper who sees a price increase on a single brand. Which alternatives are still available if every brand of salt becomes more expensive?",
+      "notes": [
+        "rule:1"
+      ]
     },
     {
       "term": "Total revenue test",
@@ -383,7 +526,14 @@ export const lessonExamples = {
         "Quantity sold stays constant and total revenue falls"
       ],
       "correct": 3,
-      "explanation": "The percentage increase in quantity exceeds the percentage decrease in price."
+      "explanation": "The percentage increase in quantity exceeds the percentage decrease in price.",
+      "clue": "elastic throughout a small price cut",
+      "coach": "Start with revenue = price × quantity. A price cut changes the two factors in opposite directions; elasticity tells you which change dominates.",
+      "notes": [
+        "goals",
+        "apply:1",
+        "apply:2"
+      ]
     },
     {
       "term": "Elasticity versus slope",
@@ -399,7 +549,13 @@ export const lessonExamples = {
         "Near the low-price, high-quantity end"
       ],
       "correct": 3,
-      "explanation": "Point elasticity in magnitude equals the absolute quantity response per dollar times P/Q. The latter ratio is larger at the upper end."
+      "explanation": "Point elasticity in magnitude equals the absolute quantity response per dollar times P/Q. The latter ratio is larger at the upper end.",
+      "clue": "straight downward-sloping demand curve",
+      "coach": "Imagine two one-dollar price cuts at different points on the same line. The unit changes have the same slope, but the starting prices and quantities differ.",
+      "notes": [
+        "pitfalls",
+        "pitfall:0"
+      ]
     }
   ],
   "micro:2.4": [
@@ -417,7 +573,16 @@ export const lessonExamples = {
         "Unit elastic"
       ],
       "correct": 3,
-      "explanation": "Supply elasticity is 15 divided by 6, which exceeds one."
+      "explanation": "Supply elasticity is 15 divided by 6, which exceeds one.",
+      "clue": "6% higher",
+      "coach": "Write the ratio with the response in its numerator. Here the response is a percentage change in units offered, and the trigger is the percentage change in price.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfalls",
+        "apply:0",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Time to adjust",
@@ -433,7 +598,13 @@ export const lessonExamples = {
         "The price of land must fall"
       ],
       "correct": 0,
-      "explanation": "New capacity changes the quantity hotels can offer at a given price increase."
+      "explanation": "New capacity changes the quantity hotels can offer at a given price increase.",
+      "clue": "five years than over one weekend",
+      "coach": "Think about which inputs a hotel can change by Saturday and which can change before a new building opens.",
+      "notes": [
+        "goals",
+        "apply:1"
+      ]
     },
     {
       "term": "Perfectly inelastic supply",
@@ -449,7 +620,12 @@ export const lessonExamples = {
         "Horizontal at the marginal buyer’s valuation"
       ],
       "correct": 0,
-      "explanation": "Quantity supplied stays at 800 for every price, so its percentage response is zero."
+      "explanation": "Quantity supplied stays at 800 for every price, so its percentage response is zero.",
+      "clue": "all 800 are offered for sale regardless of price",
+      "coach": "Place quantity on the horizontal axis. Try plotting two different prices while keeping the number of posters fixed.",
+      "notes": [
+        "pitfall:1"
+      ]
     }
   ],
   "micro:2.5": [
@@ -467,7 +643,16 @@ export const lessonExamples = {
         "−0.5, complements"
       ],
       "correct": 4,
-      "explanation": "Calculate −4/8. A negative cross-price elasticity indicates joint use."
+      "explanation": "Calculate −4/8. A negative cross-price elasticity indicates joint use.",
+      "clue": "Coffee prices rise 8%",
+      "coach": "The price belongs to coffee and the quantity belongs to filters. Keep their directions when forming the cross-price ratio.",
+      "notes": [
+        "goal",
+        "pitfalls",
+        "rule:0",
+        "apply:0",
+        "apply:1"
+      ]
     },
     {
       "term": "Income elasticity",
@@ -483,7 +668,15 @@ export const lessonExamples = {
         "A 2% increase"
       ],
       "correct": 0,
-      "explanation": "Multiply −0.4 by 5%. The negative result identifies an inferior good."
+      "explanation": "Multiply −0.4 by 5%. The negative result identifies an inferior good.",
+      "clue": "Income rises 5%",
+      "coach": "Start from the signed elasticity. Multiply it by the percentage income change, then interpret the sign as a change in trips.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "rule:1",
+        "apply:2"
+      ]
     }
   ],
   "micro:2.6": [
@@ -501,7 +694,15 @@ export const lessonExamples = {
         "$13"
       ],
       "correct": 2,
-      "explanation": "Only the first two buy. Their surpluses are $8 and $3."
+      "explanation": "Only the first two buy. Their surpluses are $8 and $3.",
+      "clue": "At a price of $10",
+      "coach": "Compare each buyer’s value with the ticket price. Sum the value above price only for buyers willing to purchase.",
+      "notes": [
+        "goal",
+        "pitfalls",
+        "rule:0",
+        "pitfall:1"
+      ]
     },
     {
       "term": "Producer surplus",
@@ -517,7 +718,12 @@ export const lessonExamples = {
         "$6"
       ],
       "correct": 2,
-      "explanation": "Only two units sell. Their producer surplus is (9−3)+(9−6)."
+      "explanation": "Only two units sell. Their producer surplus is (9−3)+(9−6).",
+      "clue": "selling price of $9",
+      "coach": "Each unit trades only if its cost is no higher than $9. Compare the price and the unit cost for each trade that occurs.",
+      "notes": [
+        "rule:1"
+      ]
     },
     {
       "term": "Gains from trade",
@@ -533,7 +739,14 @@ export const lessonExamples = {
         "A $14 production cost is avoided"
       ],
       "correct": 3,
-      "explanation": "The unit creates $5 of value net of resources used, independently of how that gain is divided."
+      "explanation": "The unit creates $5 of value net of resources used, independently of how that gain is divided.",
+      "clue": "valued by a buyer at $14",
+      "coach": "Look at this one trade from both sides. Compare the buyer’s benefit with the resources used to supply it.",
+      "notes": [
+        "apply",
+        "goals",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Surplus areas",
@@ -550,7 +763,10 @@ export const lessonExamples = {
       ],
       "correct": 0,
       "explanation": "The demand and supply intercepts differ by $8. The triangle has base 8 units, so its area is ½×8×8.",
-      "figure": "market-surplus"
+      "figure": "market-surplus",
+      "clue": "total surplus at equilibrium",
+      "coach": "Trace the region between demand and supply up to Q = 8. Its height at the vertical axis uses both intercepts; the $6 price divides the region into two parts.",
+      "notes": []
     }
   ],
   "micro:2.7": [
@@ -568,7 +784,14 @@ export const lessonExamples = {
         "Upward, because the shortage is 25 units"
       ],
       "correct": 4,
-      "explanation": "At that price buyers want 25 more units than sellers offer and bid the price up."
+      "explanation": "At that price buyers want 25 more units than sellers offer and bid the price up.",
+      "clue": "sellers offer 95 units and buyers want 120",
+      "coach": "Keep the $7 price fixed for the first comparison. Determine who cannot complete their desired trades before predicting the pressure on price.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "rule:1"
+      ]
     },
     {
       "term": "Simultaneous shifts",
@@ -584,7 +807,16 @@ export const lessonExamples = {
         "Equilibrium quantity rises"
       ],
       "correct": 4,
-      "explanation": "Both shifts increase quantity. Their effects on price oppose each other."
+      "explanation": "Both shifts increase quantity. Their effects on price oppose each other.",
+      "clue": "both increase by unknown amounts",
+      "coach": "Shift demand first and supply second. Compare the signs of their separate effects on price and quantity before combining them.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "rule:2"
+      ]
     }
   ],
   "micro:2.8": [
@@ -602,7 +834,14 @@ export const lessonExamples = {
         "112"
       ],
       "correct": 2,
-      "explanation": "Buyers want 70 units but sellers make only 42 available."
+      "explanation": "Buyers want 70 units but sellers make only 42 available.",
+      "clue": "how many units can trade",
+      "coach": "At the ceiling a sale needs both a willing buyer and a willing seller. Compare the two quantities at that same price.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "pitfall:1"
+      ]
     },
     {
       "term": "Tax incidence",
@@ -618,7 +857,15 @@ export const lessonExamples = {
         "Only the collecting agency"
       ],
       "correct": 3,
-      "explanation": "Buyers have fewer ways to reduce their purchases, so their price rises by more than sellers’ net price falls."
+      "explanation": "Buyers have fewer ways to reduce their purchases, so their price rises by more than sellers’ net price falls.",
+      "clue": "tax is collected from sellers",
+      "coach": "Separate who sends the payment from who can more easily change quantity when the price moves. Relative elasticity governs the burden.",
+      "notes": [
+        "pitfalls",
+        "rule:2",
+        "apply:2",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Tax revenue and deadweight loss",
@@ -634,7 +881,14 @@ export const lessonExamples = {
         "$30 and $120"
       ],
       "correct": 1,
-      "explanation": "Revenue is 3×40. The lost-trade triangle has area ½×3×10."
+      "explanation": "Revenue is 3×40. The lost-trade triangle has area ½×3×10.",
+      "clue": "reduces sales from 50 to 40",
+      "coach": "Draw the tax wedge. Use the units still sold for the revenue rectangle and the trades that disappear for the lost-surplus triangle.",
+      "notes": [
+        "goals",
+        "apply:0",
+        "apply:1"
+      ]
     },
     {
       "term": "Per-unit subsidy",
@@ -650,7 +904,9 @@ export const lessonExamples = {
         "The subsidy always accrues entirely to buyers"
       ],
       "correct": 2,
-      "explanation": "The subsidy creates a wedge that encourages trades beyond the original equilibrium."
+      "explanation": "The subsidy creates a wedge that encourages trades beyond the original equilibrium.",
+      "clue": "subsidy per unit sold",
+      "coach": "Draw two prices at the new quantity: what the buyer pays and what the seller receives after adding the subsidy."
     },
     {
       "term": "Binding price floor",
@@ -666,7 +922,12 @@ export const lessonExamples = {
         "0"
       ],
       "correct": 1,
-      "explanation": "A floor above equilibrium leaves excess supply of 80−55. Private buyers take only 55 units."
+      "explanation": "A floor above equilibrium leaves excess supply of 80−55. Private buyers take only 55 units.",
+      "clue": "With no government purchase",
+      "coach": "Look at the excess offered at the floor price. Households are the only buyers in this example.",
+      "notes": [
+        "rule:1"
+      ]
     }
   ],
   "micro:2.9": [
@@ -684,7 +945,13 @@ export const lessonExamples = {
         "45"
       ],
       "correct": 2,
-      "explanation": "Imports fill the gap of 90−35 bikes."
+      "explanation": "Imports fill the gap of 90−35 bikes.",
+      "clue": "local firms make 35",
+      "coach": "At the world price compare domestic purchases with domestic production. Trade supplies the part not produced at home.",
+      "notes": [
+        "goal",
+        "rule"
+      ]
     },
     {
       "term": "Tariffs and quotas",
@@ -700,7 +967,13 @@ export const lessonExamples = {
         "Foreign governments automatically"
       ],
       "correct": 3,
-      "explanation": "License holders can buy at the world price and sell at the higher domestic price."
+      "explanation": "License holders can buy at the world price and sell at the higher domestic price.",
+      "clue": "import licenses to domestic traders for free",
+      "coach": "Follow one license. Who can buy sugar at the world price and resell it at the higher domestic price?",
+      "notes": [
+        "pitfall",
+        "goals"
+      ]
     },
     {
       "term": "Export gains and losses",
@@ -716,7 +989,9 @@ export const lessonExamples = {
         "Only importers gain"
       ],
       "correct": 1,
-      "explanation": "Export opportunities raise the domestic price. Producer surplus rises and consumer surplus falls."
+      "explanation": "Export opportunities raise the domestic price. Producer surplus rises and consumer surplus falls.",
+      "clue": "world price above its former domestic price",
+      "coach": "Use the same higher price for local producers and consumers. Then compare how each side’s surplus changes."
     },
     {
       "term": "Tariff revenue",
@@ -732,7 +1007,13 @@ export const lessonExamples = {
         "$50"
       ],
       "correct": 4,
-      "explanation": "Post-tariff imports are 70−45=25. Each imported lamp yields $2 of revenue."
+      "explanation": "Post-tariff imports are 70−45=25. Each imported lamp yields $2 of revenue.",
+      "clue": "$2 per imported lamp",
+      "coach": "Separate imported lamps from all lamps sold at home. Only goods crossing the border generate tariff revenue.",
+      "notes": [
+        "apply",
+        "pitfalls"
+      ]
     }
   ],
   "micro:3.1": [
@@ -766,7 +1047,13 @@ export const lessonExamples = {
             "60"
           ]
         ]
-      }
+      },
+      "clue": "at five workers",
+      "coach": "Read both rows of the table. Use the change from four to five workers for marginal product and the five-worker row alone for average product.",
+      "notes": [
+        "goal",
+        "apply"
+      ]
     },
     {
       "term": "Diminishing marginal returns",
@@ -782,7 +1069,14 @@ export const lessonExamples = {
         "Total product rises only when marginal product rises"
       ],
       "correct": 3,
-      "explanation": "The third cook adds seven meals. Diminishing returns describe the change in that increment."
+      "explanation": "The third cook adds seven meals. Diminishing returns describe the change in that increment.",
+      "clue": "a third adds 7",
+      "coach": "Separate the sign of the third cook’s contribution from its size relative to the second cook’s contribution.",
+      "notes": [
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "How marginal product changes the average",
@@ -798,7 +1092,12 @@ export const lessonExamples = {
         "The new worker adds more than the old average"
       ],
       "correct": 4,
-      "explanation": "The marginal contribution is above 10 even though it is lower than the previous marginal contribution."
+      "explanation": "The marginal contribution is above 10 even though it is lower than the previous marginal contribution.",
+      "clue": "fewer than the previous worker added",
+      "coach": "There are two benchmarks here: the previous worker’s contribution and the current average of 10. Which one governs the new average?",
+      "notes": [
+        "goals"
+      ]
     }
   ],
   "micro:3.2": [
@@ -816,7 +1115,14 @@ export const lessonExamples = {
         "$23"
       ],
       "correct": 3,
-      "explanation": "Variable cost is $230−$80. Divide $150 by 10 units."
+      "explanation": "Variable cost is $230−$80. Divide $150 by 10 units.",
+      "clue": "At zero output",
+      "coach": "Identify the cost that persists when production stops. Remove it from total cost before calculating the amount per unit at output 10.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "rule:1"
+      ]
     },
     {
       "term": "Marginal and average cost",
@@ -832,7 +1138,13 @@ export const lessonExamples = {
         "Total cost falls by $3"
       ],
       "correct": 3,
-      "explanation": "Adding a below-average observation pulls the average down even as total cost rises."
+      "explanation": "Adding a below-average observation pulls the average down even as total cost rises.",
+      "clue": "The next unit costs $9",
+      "coach": "Treat the next unit as one additional observation in an average. Compare its cost with the old $12 average.",
+      "notes": [
+        "goals",
+        "apply:0"
+      ]
     },
     {
       "term": "Calculating marginal cost",
@@ -848,7 +1160,12 @@ export const lessonExamples = {
         "$28"
       ],
       "correct": 1,
-      "explanation": "The $28 increase in cost buys four more units."
+      "explanation": "The $28 increase in cost buys four more units.",
+      "clue": "from 16 to 20 units",
+      "coach": "The cost increase covers several units. Match the change in total cost with the change in output over exactly the same interval.",
+      "notes": [
+        "rule:2"
+      ]
     },
     {
       "term": "Fixed costs and the cost curves",
@@ -864,7 +1181,14 @@ export const lessonExamples = {
         "AVC alone"
       ],
       "correct": 3,
-      "explanation": "Rent is fixed. It enters total and average fixed cost without changing the marginal cost of another unit."
+      "explanation": "Rent is fixed. It enters total and average fixed cost without changing the marginal cost of another unit.",
+      "clue": "annual rent increases",
+      "coach": "Compare the extra rent at ten loaves and at eleven. Separate its effect on total cost per loaf from its effect on the cost of the eleventh loaf.",
+      "notes": [
+        "pitfall",
+        "pitfalls",
+        "apply:1"
+      ]
     }
   ],
   "micro:3.3": [
@@ -882,7 +1206,14 @@ export const lessonExamples = {
         "Diseconomies of scale"
       ],
       "correct": 1,
-      "explanation": "Cost grows less than output, so cost per unit falls."
+      "explanation": "Cost grows less than output, so cost per unit falls.",
+      "clue": "After adjusting all inputs",
+      "coach": "This is a long-run comparison. Compare cost per unit before and after the doubling rather than comparing the two total bills.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfalls"
+      ]
     },
     {
       "term": "Diseconomies of scale",
@@ -898,7 +1229,14 @@ export const lessonExamples = {
         "Lower marginal cost causes cost per unit to rise"
       ],
       "correct": 0,
-      "explanation": "Managerial complexity can raise long-run average cost as the firm expands."
+      "explanation": "Managerial complexity can raise long-run average cost as the firm expands.",
+      "clue": "layers of approval",
+      "coach": "Ask what becomes more expensive per unit as the organization grows. All inputs can change, so a short-run fixed-input story does not apply.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "goals"
+      ]
     }
   ],
   "micro:3.4": [
@@ -916,7 +1254,14 @@ export const lessonExamples = {
         "$62,000"
       ],
       "correct": 2,
-      "explanation": "Accounting profit is $35,000. Subtracting the forgone salary leaves $8,000."
+      "explanation": "Accounting profit is $35,000. Subtracting the forgone salary leaves $8,000.",
+      "clue": "forgoes a $27,000 salary",
+      "coach": "The income the owner gives up has no cash invoice. Decide whether the economist’s measure of cost includes it before subtracting costs from revenue.",
+      "notes": [
+        "goal",
+        "rule",
+        "apply"
+      ]
     },
     {
       "term": "Normal profit",
@@ -932,7 +1277,14 @@ export const lessonExamples = {
         "Its revenue equals explicit costs only"
       ],
       "correct": 2,
-      "explanation": "Zero economic profit includes a normal return to owner-supplied resources."
+      "explanation": "Zero economic profit includes a normal return to owner-supplied resources.",
+      "clue": "normal return to its owners",
+      "coach": "Treat the owner’s time and funds as resources that could earn a return elsewhere. Consider what zero profit means after that return has been counted as a cost.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     }
   ],
   "micro:3.5": [
@@ -950,7 +1302,16 @@ export const lessonExamples = {
         "1 unit"
       ],
       "correct": 1,
-      "explanation": "The third unit adds $1 of profit. The fourth would subtract $3."
+      "explanation": "The third unit adds $1 of profit. The fourth would subtract $3.",
+      "clue": "$14 per unit",
+      "coach": "Compare the $14 from each successive sale with that unit’s own cost. Keep adding units only while they increase total profit.",
+      "notes": [
+        "goal",
+        "apply",
+        "goals",
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "Marginal adjustment",
@@ -966,7 +1327,13 @@ export const lessonExamples = {
         "Set output where ATC is highest"
       ],
       "correct": 2,
-      "explanation": "At the margin, cutting output saves more in cost than it sacrifices in revenue."
+      "explanation": "At the margin, cutting output saves more in cost than it sacrifices in revenue.",
+      "clue": "MR of $18 and rising MC of $23",
+      "coach": "Work backward by one unit: how much revenue would be lost, and how much cost would be saved?",
+      "notes": [
+        "pitfall",
+        "rule:1"
+      ]
     }
   ],
   "micro:3.6": [
@@ -984,7 +1351,13 @@ export const lessonExamples = {
         "$12"
       ],
       "correct": 3,
-      "explanation": "Below $9 every positive output fails to cover its variable costs. At $9 the firm is indifferent."
+      "explanation": "Below $9 every positive output fails to cover its variable costs. At $9 the firm is indifferent.",
+      "clue": "strictly preferable in the short run",
+      "coach": "Compare the offered prices with minimum AVC. At equality the firm is indifferent, which matters because the question asks for a strict preference.",
+      "notes": [
+        "goal",
+        "apply"
+      ]
     },
     {
       "term": "Operating at a loss",
@@ -1000,7 +1373,14 @@ export const lessonExamples = {
         "Operate and lose $50"
       ],
       "correct": 3,
-      "explanation": "Operating covers variable cost and $20 of fixed cost. Shutting down loses the entire $50."
+      "explanation": "Operating covers variable cost and $20 of fixed cost. Shutting down loses the entire $50.",
+      "clue": "owes $50 in fixed cost",
+      "coach": "Calculate the loss from closing and from operating separately. The fixed bill is owed under either decision.",
+      "notes": [
+        "pitfall",
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "Long-run exit",
@@ -1016,7 +1396,13 @@ export const lessonExamples = {
         "Remain because all fixed costs are sunk forever"
       ],
       "correct": 0,
-      "explanation": "In the long run all inputs can be released. Remaining cannot cover their opportunity costs."
+      "explanation": "In the long run all inputs can be released. Remaining cannot cover their opportunity costs.",
+      "clue": "when all commitments expire",
+      "coach": "At that horizon all inputs can be changed. Compare the persistent price with the lowest sustainable cost per unit.",
+      "notes": [
+        "goals",
+        "rule:1"
+      ]
     }
   ],
   "micro:3.7": [
@@ -1034,7 +1420,16 @@ export const lessonExamples = {
         "Horizontal at the market price"
       ],
       "correct": 4,
-      "explanation": "One grower can sell its output at the market price but cannot profitably charge more for identical wheat."
+      "explanation": "One grower can sell its output at the market price but cannot profitably charge more for identical wheat.",
+      "clue": "one small competitive grower",
+      "coach": "Separate the market for all wheat from the demand facing a single grower who takes the market price as given.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "Entry and long-run equilibrium",
@@ -1050,7 +1445,13 @@ export const lessonExamples = {
         "Market demand shifts left until price equals zero"
       ],
       "correct": 2,
-      "explanation": "New sellers add supply. Economic profit disappears as price returns to break-even."
+      "explanation": "New sellers add supply. Economic profit disappears as price returns to break-even.",
+      "clue": "constant-cost competitive industry",
+      "coach": "Follow entry through market supply and price, then check whether the price still leaves room for positive economic profit.",
+      "notes": [
+        "apply",
+        "rule:1"
+      ]
     },
     {
       "term": "Profit rectangle",
@@ -1066,7 +1467,9 @@ export const lessonExamples = {
         "$880"
       ],
       "correct": 1,
-      "explanation": "Each unit earns $3 above average total cost. The rectangle has height $3 and width 80 units."
+      "explanation": "Each unit earns $3 above average total cost. The rectangle has height $3 and width 80 units.",
+      "clue": "profit-maximizing 80 units",
+      "coach": "Picture a rectangle: its width is units sold, and its height is selling price minus average total cost."
     }
   ],
   "micro:4.1": [
@@ -1084,7 +1487,15 @@ export const lessonExamples = {
         "Free entry alone"
       ],
       "correct": 3,
-      "explanation": "Product differences give each seller some pricing power."
+      "explanation": "Product differences give each seller some pricing power.",
+      "clue": "when both have many firms",
+      "coach": "Firm count is held constant. Look for the feature that lets a customer prefer one seller’s version of the product.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Price and marginal revenue",
@@ -1100,7 +1511,13 @@ export const lessonExamples = {
         "It lowers the price on earlier units to sell an extra unit"
       ],
       "correct": 4,
-      "explanation": "Revenue earned on the extra unit is partly offset by revenue lost on earlier units."
+      "explanation": "Revenue earned on the extra unit is partly offset by revenue lost on earlier units.",
+      "clue": "marginal revenue be below its selling price",
+      "coach": "For a single-price seller, lowering the price to sell one more unit also changes revenue on units it could already sell.",
+      "notes": [
+        "rule",
+        "apply"
+      ]
     }
   ],
   "micro:4.2": [
@@ -1118,7 +1535,15 @@ export const lessonExamples = {
         "40 units at $11"
       ],
       "correct": 2,
-      "explanation": "The MR–MC intersection selects quantity. Buyers’ willingness to pay on demand determines the price."
+      "explanation": "The MR–MC intersection selects quantity. Buyers’ willingness to pay on demand determines the price.",
+      "clue": "At 40 units demand gives a price",
+      "coach": "Use MR and MC to locate output. Then switch to the demand curve at that output to read what buyers pay.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Monopoly deadweight loss",
@@ -1134,7 +1559,13 @@ export const lessonExamples = {
         "Some unproduced units are valued above their marginal cost"
       ],
       "correct": 4,
-      "explanation": "A transfer changes who gets surplus. It does not create the mutually beneficial units missing from output."
+      "explanation": "A transfer changes who gets surplus. It does not create the mutually beneficial units missing from output.",
+      "clue": "profit is transferred to consumers afterward",
+      "coach": "Separate a redistribution of money from a change in the number of trades. Ask which forgone units would have produced gains from trade.",
+      "notes": [
+        "apply",
+        "goals"
+      ]
     },
     {
       "term": "Natural monopoly",
@@ -1150,7 +1581,9 @@ export const lessonExamples = {
         "Long-run average cost falls over the relevant range of market demand"
       ],
       "correct": 4,
-      "explanation": "With average cost falling across the relevant range, splitting network output between firms duplicates costly infrastructure."
+      "explanation": "With average cost falling across the relevant range, splitting network output between firms duplicates costly infrastructure.",
+      "clue": "local water network",
+      "coach": "Picture two networks laying pipes on the same streets. Compare their cost per household with one network serving the entire local market."
     }
   ],
   "micro:4.3": [
@@ -1168,7 +1601,15 @@ export const lessonExamples = {
         "Peak-load pricing explained by higher cost"
       ],
       "correct": 0,
-      "explanation": "The theater separates buyers by group and limits resale despite the same service cost."
+      "explanation": "The theater separates buyers by group and limits resale despite the same service cost.",
+      "clue": "identical seats at the same show",
+      "coach": "Keep the service and its cost fixed. The ID check tells you how the theater separates buyers into groups.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Perfect price discrimination",
@@ -1184,7 +1625,13 @@ export const lessonExamples = {
         "Until price is identical for all buyers"
       ],
       "correct": 3,
-      "explanation": "An extra sale no longer requires a price cut on earlier sales. The seller captures the surplus on each unit."
+      "explanation": "An extra sale no longer requires a price cut on earlier sales. The seller captures the surplus on each unit.",
+      "clue": "perfect price discrimination",
+      "coach": "Ask what revenue the seller can collect on one additional unit if it can charge that buyer their full willingness to pay.",
+      "notes": [
+        "apply",
+        "goals"
+      ]
     }
   ],
   "micro:4.4": [
@@ -1202,7 +1649,12 @@ export const lessonExamples = {
         "Industry entry makes all products identical"
       ],
       "correct": 0,
-      "explanation": "Entry shifts an incumbent’s demand inward until its price just covers average total cost."
+      "explanation": "Entry shifts an incumbent’s demand inward until its price just covers average total cost.",
+      "clue": "positive profit at local specialty cafés",
+      "coach": "Follow the next café that opens. What happens to an incumbent’s customers at each price when there are more close substitutes?",
+      "notes": [
+        "rule"
+      ]
     },
     {
       "term": "Excess capacity",
@@ -1218,7 +1670,16 @@ export const lessonExamples = {
         "P<AVC and the firm stays open"
       ],
       "correct": 0,
-      "explanation": "Demand is tangent to ATC on its downward-sloping portion. Break-even and minimum average cost occur at different quantities."
+      "explanation": "Demand is tangent to ATC on its downward-sloping portion. Break-even and minimum average cost occur at different quantities.",
+      "clue": "long-run monopolistic competition",
+      "coach": "Use two conditions together: free entry removes economic profit and each firm still faces downward-sloping demand. Compare the tangency with minimum ATC.",
+      "notes": [
+        "goal",
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     }
   ],
   "micro:4.5": [
@@ -1236,7 +1697,13 @@ export const lessonExamples = {
         "Advertise"
       ],
       "correct": 4,
-      "explanation": "Compare 8 with 3 and 12 with 9. Advertising pays more in both cases."
+      "explanation": "Compare 8 with 3 and 12 with 9. Advertising pays more in both cases.",
+      "clue": "If the rival stays quiet",
+      "coach": "Hold the rival’s action fixed for each comparison. Check which action pays better in both the advertising and the quiet case.",
+      "notes": [
+        "rule:0",
+        "pitfall:1"
+      ]
     },
     {
       "term": "Nash equilibrium",
@@ -1271,7 +1738,17 @@ export const lessonExamples = {
             "(4, 4)"
           ]
         ]
-      }
+      },
+      "clue": "Payoffs are (seller A, seller B)",
+      "coach": "Within a column compare the first payoff for A; within a row compare the second payoff for B. Look for a cell where neither seller wants to switch alone.",
+      "notes": [
+        "goal",
+        "apply",
+        "goals",
+        "pitfalls",
+        "rule:1",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Collusion incentives",
@@ -1287,7 +1764,10 @@ export const lessonExamples = {
         "Demand for the industry vanishes"
       ],
       "correct": 2,
-      "explanation": "An action can raise one firm’s payoff while making the pair worse off."
+      "explanation": "An action can raise one firm’s payoff while making the pair worse off.",
+      "clue": "while the rival complies",
+      "coach": "Hold the rival at the agreed price. Compare the gain from attracting extra buyers with the loss in margin on each sale.",
+      "notes": []
     }
   ],
   "micro:5.1": [
@@ -1305,7 +1785,9 @@ export const lessonExamples = {
         "Workers’ supply creates demand independently of sales"
       ],
       "correct": 3,
-      "explanation": "The input is valuable because it helps produce a service customers buy."
+      "explanation": "The input is valuable because it helps produce a service customers buy.",
+      "clue": "delivery hours before a holiday",
+      "coach": "Trace the demand for labor back to the product being delivered. Think about what changed in customers’ demand for flowers."
     },
     {
       "term": "Marginal revenue product",
@@ -1321,7 +1803,17 @@ export const lessonExamples = {
         "$7"
       ],
       "correct": 1,
-      "explanation": "MRP equals marginal product times marginal revenue. Here marginal revenue equals price."
+      "explanation": "MRP equals marginal product times marginal revenue. Here marginal revenue equals price.",
+      "clue": "each sold for $6",
+      "coach": "The worker’s extra units are a physical quantity. Convert them into additional revenue using the price in the output market.",
+      "notes": [
+        "goal",
+        "rule",
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     }
   ],
   "micro:5.2": [
@@ -1339,7 +1831,15 @@ export const lessonExamples = {
         "Only labor supply moves left"
       ],
       "correct": 3,
-      "explanation": "A picker’s output now earns more revenue, raising MRP at each employment level."
+      "explanation": "A picker’s output now earns more revenue, raising MRP at each employment level.",
+      "clue": "With worker productivity constant",
+      "coach": "One source of labor demand is held fixed. Follow the change in the price received per basket into the revenue earned from an extra picker.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "apply:0"
+      ]
     },
     {
       "term": "Factor supply",
@@ -1355,7 +1855,14 @@ export const lessonExamples = {
         "The wage rises and employment falls"
       ],
       "correct": 0,
-      "explanation": "At each wage more nurses offer labor. The equilibrium moves along the existing demand curve."
+      "explanation": "At each wage more nurses offer labor. The equilibrium moves along the existing demand curve.",
+      "clue": "More licensed nurses move into a city",
+      "coach": "Use the city’s nursing market as the diagram. Identify which side of that market the incoming nurses join.",
+      "notes": [
+        "goals",
+        "pitfalls",
+        "apply:1"
+      ]
     }
   ],
   "micro:5.3": [
@@ -1373,7 +1880,14 @@ export const lessonExamples = {
         "2"
       ],
       "correct": 0,
-      "explanation": "The third adds $1 net. The fourth would cost $11 more than the revenue added."
+      "explanation": "The third adds $1 net. The fourth would cost $11 more than the revenue added.",
+      "clue": "$50 a day",
+      "coach": "Read down the revenue increments one worker at a time. Compare each increment with the extra wage bill for one hire.",
+      "notes": [
+        "goal",
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Market wage and firm MFC",
@@ -1389,7 +1903,15 @@ export const lessonExamples = {
         "It can hire another worker at the market wage without changing earlier workers’ pay"
       ],
       "correct": 4,
-      "explanation": "The firm takes the wage as given even if labor supply to the whole market slopes upward."
+      "explanation": "The firm takes the wage as given even if labor supply to the whole market slopes upward.",
+      "clue": "small competitive employer",
+      "coach": "Ask whether hiring one more person changes the wage paid to existing employees when the firm takes the wage as given.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "Least-cost input mix",
@@ -1405,7 +1927,9 @@ export const lessonExamples = {
         "Cut both inputs by the same percentage"
       ],
       "correct": 1,
-      "explanation": "At the margin a dollar shifted into labor adds 6 units while a dollar removed from capital sacrifices 3."
+      "explanation": "At the margin a dollar shifted into labor adds 6 units while a dollar removed from capital sacrifices 3.",
+      "clue": "fixed budget more productive",
+      "coach": "Move one dollar of spending from one input to the other. Compare the extra output per dollar at the current input mix."
     }
   ],
   "micro:5.4": [
@@ -1423,7 +1947,12 @@ export const lessonExamples = {
         "$2"
       ],
       "correct": 2,
-      "explanation": "The payroll rises from $48 to $70. The change includes raises for the first four workers."
+      "explanation": "The payroll rises from $48 to $70. The change includes raises for the first four workers.",
+      "clue": "must pay $14 each",
+      "coach": "Write the total wage bill at four workers and again at five. The word “each” tells you who receives the higher wage.",
+      "notes": [
+        "rule"
+      ]
     },
     {
       "term": "Monopsony wage",
@@ -1439,7 +1968,16 @@ export const lessonExamples = {
         "$30"
       ],
       "correct": 0,
-      "explanation": "Labor supply gives the wage needed to attract 30 workers. MFC includes the cost of raising pay on prior workers."
+      "explanation": "Labor supply gives the wage needed to attract 30 workers. MFC includes the cost of raising pay on prior workers.",
+      "clue": "supply curve shows $16",
+      "coach": "MRP and MFC locate how many workers to hire. At that employment, identify which curve tells you the wage required to attract workers.",
+      "notes": [
+        "goal",
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     }
   ],
   "micro:6.1": [
@@ -1457,7 +1995,15 @@ export const lessonExamples = {
         "All seats must be free"
       ],
       "correct": 3,
-      "explanation": "The current margin leaves gains available from extra trips while benefit exceeds cost."
+      "explanation": "The current margin leaves gains available from extra trips while benefit exceeds cost.",
+      "clue": "An additional bus trip",
+      "coach": "Compare the benefit and cost of the extra trip only. Existing bus trips need not be reassessed to make this decision.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "goals"
+      ]
     },
     {
       "term": "Lost surplus",
@@ -1473,7 +2019,13 @@ export const lessonExamples = {
         "$4"
       ],
       "correct": 3,
-      "explanation": "The forgone net gains are $7 and $4."
+      "explanation": "The forgone net gains are $7 and $4.",
+      "clue": "Two forgone trades",
+      "coach": "Pair each buyer’s benefit with that unit’s own cost, then combine the gains the two missing trades would have created.",
+      "notes": [
+        "apply",
+        "pitfalls"
+      ]
     }
   ],
   "micro:6.2": [
@@ -1491,7 +2043,12 @@ export const lessonExamples = {
         "No externality exists because no money changes hands"
       ],
       "correct": 0,
-      "explanation": "The neighboring farm receives a benefit the gardener does not capture."
+      "explanation": "The neighboring farm receives a benefit the gardener does not capture.",
+      "clue": "on a neighboring farm without payment",
+      "coach": "Follow the benefit beyond the gardener’s own property. Ask which benefit appears in the social calculation but is absent from the gardener’s private return.",
+      "notes": [
+        "goal"
+      ]
     },
     {
       "term": "Corrective tax",
@@ -1507,7 +2064,15 @@ export const lessonExamples = {
         "$9"
       ],
       "correct": 2,
-      "explanation": "Social marginal cost is $13, so a $4 tax closes the gap."
+      "explanation": "Social marginal cost is $13, so a $4 tax closes the gap.",
+      "clue": "$4 of uncompensated marginal damage",
+      "coach": "Compare the private and social cost of the same extra unit. The gap between them is the signal a corrective tax needs to convey.",
+      "notes": [
+        "pitfalls",
+        "rule:0",
+        "apply:0",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Positive externality",
@@ -1523,7 +2088,15 @@ export const lessonExamples = {
         "Subsidize each dose by its marginal external benefit at efficient output"
       ],
       "correct": 4,
-      "explanation": "Private demand omits benefits to others. A per-dose subsidy can induce the missing vaccinations."
+      "explanation": "Private demand omits benefits to others. A per-dose subsidy can induce the missing vaccinations.",
+      "clue": "benefits others as well as recipients",
+      "coach": "Compare private willingness to pay for a dose with its benefit including protection for other people. Use that gap to determine the direction of the incentive.",
+      "notes": [
+        "goals",
+        "rule:1",
+        "apply:1",
+        "pitfall:1"
+      ]
     }
   ],
   "micro:6.3": [
@@ -1541,7 +2114,15 @@ export const lessonExamples = {
         "Private good"
       ],
       "correct": 3,
-      "explanation": "The fish are rival in use and access is nonexcludable."
+      "explanation": "The fish are rival in use and access is nonexcludable.",
+      "clue": "one catch leaves fewer fish",
+      "coach": "Test the two properties independently: can people be kept out, and does one person’s catch reduce what others can catch?",
+      "notes": [
+        "goal",
+        "pitfall",
+        "pitfalls",
+        "rule:1"
+      ]
     },
     {
       "term": "Free-rider problem",
@@ -1557,7 +2138,13 @@ export const lessonExamples = {
         "A second listener doubles operating cost"
       ],
       "correct": 1,
-      "explanation": "Nonexcludability gives each household an incentive to let others pay."
+      "explanation": "Nonexcludability gives each household an incentive to let others pay.",
+      "clue": "neighborhood fail to fund a storm siren",
+      "coach": "Think about a household that decides not to contribute. Would it still hear the siren if its neighbors paid?",
+      "notes": [
+        "goals",
+        "rule:0"
+      ]
     },
     {
       "term": "Public-good demand",
@@ -1573,7 +2160,12 @@ export const lessonExamples = {
         "$17"
       ],
       "correct": 3,
-      "explanation": "All three use the same sensor. Their benefits sum to $17, exceeding cost by $3."
+      "explanation": "All three use the same sensor. Their benefits sum to $17, exceeding cost by $3.",
+      "clue": "one extra flood warning sensor",
+      "coach": "Each household benefits from the same sensor. Combine the households’ values for that unit before comparing them with its cost.",
+      "notes": [
+        "apply"
+      ]
     }
   ],
   "micro:6.4": [
@@ -1591,7 +2183,16 @@ export const lessonExamples = {
         "ATC rises, while MC and the profit-maximizing output stay the same"
       ],
       "correct": 4,
-      "explanation": "The fee adds fixed cost. It leaves the MR–MC output decision unchanged."
+      "explanation": "The fee adds fixed cost. It leaves the MR–MC output decision unchanged.",
+      "clue": "annual license fee unrelated to sales",
+      "coach": "Compare the license payment with and without one extra unit of output. A change in total profit and a change in the best output are distinct effects.",
+      "notes": [
+        "goal",
+        "rule",
+        "apply",
+        "pitfall",
+        "goals"
+      ]
     },
     {
       "term": "Monopoly regulation",
@@ -1607,7 +2208,12 @@ export const lessonExamples = {
         "MC necessarily exceeds ATC"
       ],
       "correct": 0,
-      "explanation": "The efficient price covers marginal cost but leaves a shortfall at the chosen output."
+      "explanation": "The efficient price covers marginal cost but leaves a shortfall at the chosen output.",
+      "clue": "declining ATC over market demand",
+      "coach": "Place marginal cost relative to average cost on the declining part of ATC. Then check whether charging MC covers average cost.",
+      "notes": [
+        "pitfalls"
+      ]
     }
   ],
   "micro:6.5": [
@@ -1625,7 +2231,16 @@ export const lessonExamples = {
         "B’s income distribution is more unequal"
       ],
       "correct": 4,
-      "explanation": "At each population cutoff the lower-income group in B gets a smaller share of total income."
+      "explanation": "At each population cutoff the lower-income group in B gets a smaller share of total income.",
+      "clue": "for every interior population share",
+      "coach": "At the same cumulative population share, compare how much income each curve assigns to that group. The noncrossing condition lets this comparison hold across the distribution.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "goals",
+        "apply:1"
+      ]
     },
     {
       "term": "Income distribution",
@@ -1641,7 +2256,12 @@ export const lessonExamples = {
         "45%"
       ],
       "correct": 2,
-      "explanation": "The middle quintile spans the 40th to 60th percentiles. Subtract the two cumulative shares."
+      "explanation": "The middle quintile spans the 40th to 60th percentiles. Subtract the two cumulative shares.",
+      "clue": "poorest 60% receive 31%",
+      "coach": "Both figures are cumulative. Isolate the households between the 40th and 60th percentiles by comparing the two totals.",
+      "notes": [
+        "apply:0"
+      ]
     },
     {
       "term": "Redistribution",
@@ -1657,7 +2277,12 @@ export const lessonExamples = {
         "The Gini coefficient rises"
       ],
       "correct": 3,
-      "explanation": "Lower-income cumulative shares rise while the total stays fixed; inequality falls."
+      "explanation": "Lower-income cumulative shares rise while the total stays fixed; inequality falls.",
+      "clue": "household ranks fixed",
+      "coach": "Follow the cumulative income of each group after the transfer. Holding ranks fixed lets you compare the same households at every percentile.",
+      "notes": [
+        "pitfalls"
+      ]
     }
   ],
   "macro:1.1": [
@@ -1675,7 +2300,14 @@ export const lessonExamples = {
         "Unlimited productive capacity"
       ],
       "correct": 1,
-      "explanation": "Price is not the test for scarcity. The available water cannot satisfy all desired uses."
+      "explanation": "Price is not the test for scarcity. The available water cannot satisfy all desired uses.",
+      "clue": "cannot meet both irrigation and drinking needs",
+      "coach": "Ignore the posted price for a moment. Compare the water available with the uses the village wants it to serve.",
+      "notes": [
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Opportunity cost",
@@ -1691,7 +2323,14 @@ export const lessonExamples = {
         "The cost equals all possible projects added together"
       ],
       "correct": 0,
-      "explanation": "The real sacrifice is the next-best feasible use of the site."
+      "explanation": "The real sacrifice is the next-best feasible use of the site.",
+      "clue": "best feasible alternative",
+      "coach": "Picture the site just before the clinic is built. Which single project would have gone there if the clinic had been rejected?",
+      "notes": [
+        "goal",
+        "apply",
+        "goals"
+      ]
     }
   ],
   "macro:1.2": [
@@ -1709,7 +2348,13 @@ export const lessonExamples = {
         "12 meals"
       ],
       "correct": 0,
-      "explanation": "Four machines cost twelve meals, giving three meals per machine."
+      "explanation": "Four machines cost twelve meals, giving three meals per machine.",
+      "clue": "one more machine",
+      "coach": "Calculate the meals forgone and the machines gained over the same move. The requested units tell you which change belongs in the denominator.",
+      "notes": [
+        "goal",
+        "apply"
+      ]
     },
     {
       "term": "Recovery versus growth",
@@ -1725,7 +2370,14 @@ export const lessonExamples = {
         "From inside the PPC toward it"
       ],
       "correct": 4,
-      "explanation": "Reemployment raises actual production while the capacity frontier is unchanged."
+      "explanation": "Reemployment raises actual production while the capacity frontier is unchanged.",
+      "clue": "same technology and workforce",
+      "coach": "Separate what the factories can produce from how much of that capacity is currently in use.",
+      "notes": [
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Increasing opportunity cost",
@@ -1741,7 +2393,12 @@ export const lessonExamples = {
         "The price of grain must fall"
       ],
       "correct": 1,
-      "explanation": "Differences in resource suitability make later transfers more costly."
+      "explanation": "Differences in resource suitability make later transfers more costly.",
+      "clue": "each extra tractor",
+      "coach": "Imagine moving farmland and workers out of grain production in stages. Which resources would be easiest to switch first, and which would be left for later?",
+      "notes": [
+        "goals"
+      ]
     }
   ],
   "macro:1.3": [
@@ -1759,7 +2416,15 @@ export const lessonExamples = {
         "North, at one-third bag per hat"
       ],
       "correct": 0,
-      "explanation": "A hat uses the time for three bags in North and two bags in South."
+      "explanation": "A hat uses the time for three bags in North and two bags in South.",
+      "clue": "labor hours per bag",
+      "coach": "Compare hats in units of bags forgone. For each country, divide the hours for one hat by the hours needed for a bag.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Gains from specialization",
@@ -1775,7 +2440,13 @@ export const lessonExamples = {
         "8 radios per ton"
       ],
       "correct": 1,
-      "explanation": "Lake receives more than three radios, while Hill gives up fewer than seven."
+      "explanation": "Lake receives more than three radios, while Hill gives up fewer than seven.",
+      "clue": "strict gain to both countries",
+      "coach": "Use radios per ton as the unit throughout. Check any offered price against each country’s own cost of producing wheat.",
+      "notes": [
+        "apply",
+        "goals"
+      ]
     }
   ],
   "macro:1.4": [
@@ -1793,7 +2464,15 @@ export const lessonExamples = {
         "A rightward demand shift"
       ],
       "correct": 0,
-      "explanation": "The only changed determinant is the ticket’s own price."
+      "explanation": "The only changed determinant is the ticket’s own price.",
+      "clue": "with tastes and income fixed",
+      "coach": "Put tickets on the demand diagram. Decide whether the changed variable is already on one axis or is a determinant held outside the diagram.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "goals"
+      ]
     },
     {
       "term": "Demand shifters",
@@ -1809,7 +2488,13 @@ export const lessonExamples = {
         "It shifts left"
       ],
       "correct": 2,
-      "explanation": "Buying now avoids the expected higher future price."
+      "explanation": "Buying now avoids the expected higher future price.",
+      "clue": "next month",
+      "coach": "Distinguish the date of the expected price change from the date of the purchasing decision. Storage lets buyers shift purchases between those dates.",
+      "notes": [
+        "apply",
+        "pitfalls"
+      ]
     }
   ],
   "macro:1.5": [
@@ -1827,7 +2512,14 @@ export const lessonExamples = {
         "Quantity supplied rose only along a fixed curve"
       ],
       "correct": 2,
-      "explanation": "The comparison holds price fixed, identifying a shift in supply."
+      "explanation": "The comparison holds price fixed, identifying a shift in supply.",
+      "clue": "at all other prices too",
+      "coach": "Compare offers before and after at exactly $4. Now ask whether the difference could be a movement between two prices on the same curve.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Production technology",
@@ -1843,7 +2535,14 @@ export const lessonExamples = {
         "Supply shifts right"
       ],
       "correct": 4,
-      "explanation": "Lower unit production cost makes more output profitable at the same price."
+      "explanation": "Lower unit production cost makes more output profitable at the same price.",
+      "clue": "labor required to pack each crate",
+      "coach": "At the same wage, compare labor cost per crate under the two processes. Then consider the quantity sellers would offer at the old crate price.",
+      "notes": [
+        "rule",
+        "apply",
+        "goals"
+      ]
     }
   ],
   "macro:1.6": [
@@ -1885,7 +2584,13 @@ export const lessonExamples = {
             "100"
           ]
         ]
-      }
+      },
+      "clue": "clear this market",
+      "coach": "Read across each price row. At the clearing price the quantities in the two columns refer to exactly the same number of units.",
+      "notes": [
+        "goal",
+        "rule:0"
+      ]
     },
     {
       "term": "Joint supply and demand changes",
@@ -1901,7 +2606,14 @@ export const lessonExamples = {
         "Equilibrium quantity rises"
       ],
       "correct": 3,
-      "explanation": "Stronger demand and weaker supply both raise price. Their effects on quantity differ."
+      "explanation": "Stronger demand and weaker supply both raise price. Their effects on quantity differ.",
+      "clue": "while an input becomes more expensive",
+      "coach": "Shift buyers’ demand for the normal good and sellers’ supply independently. See which axis gives the same direction in both steps.",
+      "notes": [
+        "apply",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Price adjustment",
@@ -1917,7 +2629,13 @@ export const lessonExamples = {
         "An increase in the price raises the number of buyers"
       ],
       "correct": 2,
-      "explanation": "A surplus puts downward pressure on price and triggers movements along both curves."
+      "explanation": "A surplus puts downward pressure on price and triggers movements along both curves.",
+      "clue": "goods accumulate in warehouses",
+      "coach": "At the posted price compare sales with the stock firms meant to sell. Ask what firms can change to clear the unsold inventory.",
+      "notes": [
+        "pitfall",
+        "rule:1"
+      ]
     }
   ],
   "macro:2.1": [
@@ -1935,7 +2653,14 @@ export const lessonExamples = {
         "A household buys a used car from a neighbor"
       ],
       "correct": 1,
-      "explanation": "A new machine is current production of physical capital. Ownership transfers alone add no output."
+      "explanation": "A new machine is current production of physical capital. Ownership transfers alone add no output.",
+      "clue": "current domestic investment",
+      "coach": "Check each purchase for when and where production occurred. “Investment” in GDP refers to newly produced capital, inventories, or residential construction.",
+      "notes": [
+        "pitfall",
+        "rule:2",
+        "apply:0"
+      ]
     },
     {
       "term": "Expenditure GDP",
@@ -1951,7 +2676,14 @@ export const lessonExamples = {
         "80"
       ],
       "correct": 3,
-      "explanation": "GDP is 70+18+25+12−15. Imports remove production that occurred abroad."
+      "explanation": "GDP is 70+18+25+12−15. Imports remove production that occurred abroad.",
+      "clue": "imports 15",
+      "coach": "Start with expenditure by households, firms and government. Track which spending was on foreign production and which domestic goods were bought abroad.",
+      "notes": [
+        "goals",
+        "pitfalls",
+        "apply:1"
+      ]
     },
     {
       "term": "Circular flow",
@@ -1967,7 +2699,14 @@ export const lessonExamples = {
         "Transfer payments from government"
       ],
       "correct": 1,
-      "explanation": "Households supply factors in the resource market and receive income in return."
+      "explanation": "Households supply factors in the resource market and receive income in return.",
+      "clue": "pays wages to a cook",
+      "coach": "Draw two arrows between the household and the restaurant. Label one with the cook’s labor service and the other with the payment.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "rule:1"
+      ]
     }
   ],
   "macro:2.2": [
@@ -1985,7 +2724,15 @@ export const lessonExamples = {
         "Leisure time is longer"
       ],
       "correct": 0,
-      "explanation": "The measure divides real output by population and does not show distribution or nonmarket welfare."
+      "explanation": "The measure divides real output by population and does not show distribution or nonmarket welfare.",
+      "clue": "real GDP per capita alone",
+      "coach": "Think about the numerator and denominator of this average. Which differences between two economies would leave both numbers untouched?",
+      "notes": [
+        "goal",
+        "rule",
+        "apply",
+        "goals"
+      ]
     },
     {
       "term": "Nonmarket production",
@@ -2001,7 +2748,13 @@ export const lessonExamples = {
         "Tutoring counts only if government provides it"
       ],
       "correct": 3,
-      "explanation": "The purchased service disappears from measured output even if learning is unchanged."
+      "explanation": "The purchased service disappears from measured output even if learning is unchanged.",
+      "clue": "equally effective unpaid tutoring",
+      "coach": "Hold the lesson and its quality constant. What changed about whether there is a market transaction to record?",
+      "notes": [
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:2.3": [
@@ -2039,7 +2792,15 @@ export const lessonExamples = {
             "50"
           ]
         ]
-      }
+      },
+      "clue": "unemployment rate",
+      "coach": "In the table, build the denominator from people who have jobs and people actively seeking them. Use the “outside” row to check the boundary.",
+      "notes": [
+        "goal",
+        "pitfalls",
+        "rule:0",
+        "apply:0"
+      ]
     },
     {
       "term": "Types of unemployment",
@@ -2055,7 +2816,13 @@ export const lessonExamples = {
         "Frictional due only to a brief job search"
       ],
       "correct": 3,
-      "explanation": "A persistent mismatch between available skills and job requirements is structural unemployment."
+      "explanation": "A persistent mismatch between available skills and job requirements is structural unemployment.",
+      "clue": "skills no longer match local vacancies",
+      "coach": "Ask whether a recovery in overall spending alone would make this worker qualified for the available jobs.",
+      "notes": [
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Discouraged workers",
@@ -2071,7 +2838,12 @@ export const lessonExamples = {
         "Unemployment falls and participation rises"
       ],
       "correct": 0,
-      "explanation": "One person leaves both unemployment and the labor force; the adult population stays fixed."
+      "explanation": "One person leaves both unemployment and the labor force; the adult population stays fixed.",
+      "clue": "stops searching",
+      "coach": "Cross one person out of the unemployed group and the labor force. Leave the adult population unchanged when comparing the two rates.",
+      "notes": [
+        "pitfall"
+      ]
     },
     {
       "term": "Labor-force participation",
@@ -2087,7 +2859,12 @@ export const lessonExamples = {
         "88.9%"
       ],
       "correct": 2,
-      "explanation": "The labor force includes 180 people. Divide by the eligible population of 240."
+      "explanation": "The labor force includes 180 people. Divide by the eligible population of 240.",
+      "clue": "60 other eligible adults",
+      "coach": "Make two totals: people working or seeking work, and all eligible adults. Decide which belongs below the line for a participation rate.",
+      "notes": [
+        "apply:1"
+      ]
     }
   ],
   "macro:2.4": [
@@ -2105,7 +2882,13 @@ export const lessonExamples = {
         "125"
       ],
       "correct": 4,
-      "explanation": "The index is (200/160)×100."
+      "explanation": "The index is (200/160)×100.",
+      "clue": "fixed basket",
+      "coach": "Compare the price of the same goods in the two years. Use the year whose assigned index is 100 as the reference.",
+      "notes": [
+        "goal",
+        "rule:0"
+      ]
     },
     {
       "term": "Inflation rate",
@@ -2121,7 +2904,14 @@ export const lessonExamples = {
         "5%"
       ],
       "correct": 3,
-      "explanation": "The five-point index change is 5/125 of the previous index."
+      "explanation": "The five-point index change is 5/125 of the previous index.",
+      "clue": "from 125 to 130",
+      "coach": "First find the increase in index points. Divide by the starting index to express the increase as a rate.",
+      "notes": [
+        "apply",
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Index limitations",
@@ -2137,7 +2927,13 @@ export const lessonExamples = {
         "It automatically doubles apple quantities"
       ],
       "correct": 2,
-      "explanation": "The fixed mix does not capture the savings available from substitution."
+      "explanation": "The fixed mix does not capture the savings available from substitution.",
+      "clue": "unchanged basket",
+      "coach": "Compare a shopper who can substitute apples with an index that keeps pricing the original pears.",
+      "notes": [
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Disinflation",
@@ -2153,7 +2949,9 @@ export const lessonExamples = {
         "Deflation with a falling price level"
       ],
       "correct": 0,
-      "explanation": "Prices continue to rise, but the rate of inflation slows."
+      "explanation": "Prices continue to rise, but the rate of inflation slows.",
+      "clue": "8% in one year and 3% in the next",
+      "coach": "Keep the price level separate from its growth rate. Sketch the level after each year before choosing a term."
     }
   ],
   "macro:2.5": [
@@ -2171,7 +2969,16 @@ export const lessonExamples = {
         "Only holders of currency"
       ],
       "correct": 3,
-      "explanation": "Repayments buy less than expected, reducing the borrower’s real burden."
+      "explanation": "Repayments buy less than expected, reducing the borrower’s real burden.",
+      "clue": "fixed-rate loan",
+      "coach": "Trace the purchasing power of the contracted repayment. Compare what the lender receives in real terms with what both parties expected.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Real wages",
@@ -2187,7 +2994,12 @@ export const lessonExamples = {
         "It rises by 2%"
       ],
       "correct": 0,
-      "explanation": "Wage growth trails inflation by about two percentage points."
+      "explanation": "Wage growth trails inflation by about two percentage points.",
+      "clue": "nominal wage rises 3%",
+      "coach": "Think of the wage as a basket of goods. Compare how quickly the wage and the price of that basket grow.",
+      "notes": [
+        "apply"
+      ]
     }
   ],
   "macro:2.6": [
@@ -2205,7 +3017,13 @@ export const lessonExamples = {
         "540"
       ],
       "correct": 1,
-      "explanation": "Divide nominal GDP by 1.20 to express output at base-year prices."
+      "explanation": "Divide nominal GDP by 1.20 to express output at base-year prices.",
+      "clue": "deflator is 120 with base 100",
+      "coach": "Convert the index to a price factor before using it to express the current-dollar figure in base-year dollars.",
+      "notes": [
+        "rule:1",
+        "apply:1"
+      ]
     },
     {
       "term": "Current versus base-year prices",
@@ -2221,7 +3039,14 @@ export const lessonExamples = {
         "Nominal GDP rises and real GDP is unchanged"
       ],
       "correct": 4,
-      "explanation": "Base-year prices hold the price weights fixed for real GDP."
+      "explanation": "Base-year prices hold the price weights fixed for real GDP.",
+      "clue": "quantities of every final domestic good stay fixed",
+      "coach": "Value the same output twice, first at current prices and then at prices fixed in the base year.",
+      "notes": [
+        "goal",
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "GDP deflator",
@@ -2237,7 +3062,15 @@ export const lessonExamples = {
         "110"
       ],
       "correct": 4,
-      "explanation": "The index is (nominal GDP/real GDP)×100. A 110 index is 10% above the base-year price level."
+      "explanation": "The index is (nominal GDP/real GDP)×100. A 110 index is 10% above the base-year price level.",
+      "clue": "in the same units",
+      "coach": "Compare the value of the same production at current and base-year prices. Scale their ratio so the base year reads 100.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "rule:2",
+        "apply:0"
+      ]
     }
   ],
   "macro:2.7": [
@@ -2255,7 +3088,14 @@ export const lessonExamples = {
         "The difference between actual and potential GDP"
       ],
       "correct": 0,
-      "explanation": "A trough marks the transition from contraction to expansion."
+      "explanation": "A trough marks the transition from contraction to expansion.",
+      "clue": "trough of a business cycle",
+      "coach": "Sketch a contraction followed by an expansion. Locate the turning point in the level of activity and distinguish it from either phase.",
+      "notes": [
+        "goal",
+        "apply",
+        "rule:0"
+      ]
     },
     {
       "term": "Cyclical unemployment",
@@ -2271,7 +3111,15 @@ export const lessonExamples = {
         "It becomes structural unemployment automatically"
       ],
       "correct": 0,
-      "explanation": "Weak demand reduces hiring below the level consistent with full employment."
+      "explanation": "Weak demand reduces hiring below the level consistent with full employment.",
+      "clue": "economy-wide sales fall",
+      "coach": "Look at the reason for the job losses. Ask whether more spending could bring these positions back without retraining or job matching.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "rule:1"
+      ]
     }
   ],
   "macro:3.1": [
@@ -2289,7 +3137,16 @@ export const lessonExamples = {
         "Potential GDP falls automatically"
       ],
       "correct": 2,
-      "explanation": "Higher demand for money at a given supply raises borrowing costs, reducing interest-sensitive spending."
+      "explanation": "Higher demand for money at a given supply raises borrowing costs, reducing interest-sensitive spending.",
+      "clue": "nominal money supply fixed",
+      "coach": "Follow the higher cost of a typical basket into demand for transaction balances, the interest rate, and interest-sensitive purchases.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "pitfalls",
+        "apply:1"
+      ]
     },
     {
       "term": "Autonomous spending",
@@ -2305,7 +3162,13 @@ export const lessonExamples = {
         "LRAS moves left"
       ],
       "correct": 1,
-      "explanation": "Investment is a component of demand, so desired output rises at every price level."
+      "explanation": "Investment is a component of demand, so desired output rises at every price level.",
+      "clue": "at every price level",
+      "coach": "Compare planned investment before and after at a single price level. That comparison identifies whether to move along AD or redraw it.",
+      "notes": [
+        "goals",
+        "apply:0"
+      ]
     }
   ],
   "macro:3.2": [
@@ -2323,7 +3186,14 @@ export const lessonExamples = {
         "$40 billion"
       ],
       "correct": 0,
-      "explanation": "The multiplier is 1/(1−0.75)=4. Multiply the initial $8 billion by four."
+      "explanation": "The multiplier is 1/(1−0.75)=4. Multiply the initial $8 billion by four.",
+      "clue": "$8 billion of extra government purchases",
+      "coach": "The first round of purchases enters demand in full. Apply the MPC to each subsequent round of income and spending.",
+      "notes": [
+        "goal",
+        "goals",
+        "rule:0"
+      ]
     },
     {
       "term": "Tax multiplier",
@@ -2339,7 +3209,15 @@ export const lessonExamples = {
         "$15 billion"
       ],
       "correct": 4,
-      "explanation": "The tax multiplier is −0.6/0.4=−1.5. Apply it to a tax change of −10."
+      "explanation": "The tax multiplier is −0.6/0.4=−1.5. Apply it to a tax change of −10.",
+      "clue": "$10 billion lump-sum tax cut",
+      "coach": "Work out the first consumption increase from the tax saving before applying the spending multiplier.",
+      "notes": [
+        "apply",
+        "pitfalls",
+        "rule:1",
+        "pitfall:0"
+      ]
     },
     {
       "term": "Size of leakages",
@@ -2355,7 +3233,12 @@ export const lessonExamples = {
         "Every saved dollar immediately doubles investment"
       ],
       "correct": 1,
-      "explanation": "Larger leakages shorten the chain of induced consumption."
+      "explanation": "Larger leakages shorten the chain of induced consumption.",
+      "clue": "save more of each extra dollar",
+      "coach": "Follow one household’s additional dollar of income into the next household’s receipts. Only the part spent continues the chain.",
+      "notes": [
+        "pitfall:1"
+      ]
     },
     {
       "term": "Balanced-budget multiplier",
@@ -2371,7 +3254,9 @@ export const lessonExamples = {
         "−$24 billion"
       ],
       "correct": 2,
-      "explanation": "Purchases add 5×6 and the tax rise subtracts 4×6, leaving a net gain of 6."
+      "explanation": "Purchases add 5×6 and the tax rise subtracts 4×6, leaving a net gain of 6.",
+      "clue": "purchases and lump-sum taxes each rise",
+      "coach": "Write one first-round effect for purchases and one for taxes. Even with equal dollar amounts, the first-round effects on spending differ."
     }
   ],
   "macro:3.3": [
@@ -2389,7 +3274,14 @@ export const lessonExamples = {
         "Selling prices rise relative to a key input cost"
       ],
       "correct": 4,
-      "explanation": "Higher revenue relative to sticky costs increases the incentive to produce."
+      "explanation": "Higher revenue relative to sticky costs increases the incentive to produce.",
+      "clue": "nominal wages are fixed",
+      "coach": "Compare the selling price of an extra unit with its short-run labor cost after the price increase.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall"
+      ]
     },
     {
       "term": "Supply shocks",
@@ -2405,7 +3297,14 @@ export const lessonExamples = {
         "AD shifts right by definition"
       ],
       "correct": 3,
-      "explanation": "Firms can supply more real output at each price level."
+      "explanation": "Firms can supply more real output at each price level.",
+      "clue": "Imported energy becomes cheaper",
+      "coach": "Start on the producers’ side because fuel is an input. Move the affected curve and read the new intersection with unchanged AD.",
+      "notes": [
+        "apply",
+        "goals",
+        "pitfalls"
+      ]
     }
   ],
   "macro:3.4": [
@@ -2423,7 +3322,16 @@ export const lessonExamples = {
         "Long-run real output depends on productive resources and technology"
       ],
       "correct": 4,
-      "explanation": "Flexible input prices leave long-run capacity independent of the price level."
+      "explanation": "Flexible input prices leave long-run capacity independent of the price level.",
+      "clue": "long-run aggregate supply curve vertical",
+      "coach": "Imagine doubling all nominal prices and wages while leaving workers, machines and technology unchanged. Ask what limits sustainable real output.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "pitfalls",
+        "rule:1",
+        "apply:0"
+      ]
     },
     {
       "term": "Shifts of LRAS",
@@ -2439,7 +3347,14 @@ export const lessonExamples = {
         "A decrease in aggregate demand alone"
       ],
       "correct": 3,
-      "explanation": "Greater productivity raises the output attainable with available inputs."
+      "explanation": "Greater productivity raises the output attainable with available inputs.",
+      "clue": "shifts LRAS to the right",
+      "coach": "Test whether each change lets the economy sustain more production at full employment, even after wages and prices adjust.",
+      "notes": [
+        "goals",
+        "rule:0",
+        "apply:1"
+      ]
     }
   ],
   "macro:3.5": [
@@ -2457,7 +3372,15 @@ export const lessonExamples = {
         "A 4% inflationary gap"
       ],
       "correct": 2,
-      "explanation": "Actual output is 20 below potential. Dividing by 500 gives 4%."
+      "explanation": "Actual output is 20 below potential. Dividing by 500 gives 4%.",
+      "clue": "As a percentage of potential output",
+      "coach": "Take the difference between observed and potential output. Use the full-employment benchmark as the base and keep track of which value is smaller.",
+      "notes": [
+        "goal",
+        "apply",
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Short-run equilibrium",
@@ -2473,7 +3396,13 @@ export const lessonExamples = {
         "All frictional unemployment disappears"
       ],
       "correct": 2,
-      "explanation": "Below-potential production adds cyclical unemployment to frictional and structural unemployment."
+      "explanation": "Below-potential production adds cyclical unemployment to frictional and structural unemployment.",
+      "clue": "to the left of LRAS",
+      "coach": "Read the two output coordinates along the horizontal axis. Link the production shortfall to the labor firms need.",
+      "notes": [
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "Reading an AD–AS equilibrium",
@@ -2490,7 +3419,12 @@ export const lessonExamples = {
       ],
       "correct": 2,
       "explanation": "The short-run curves intersect at 80 billion; LRAS marks 100 billion. The shortfall is 20 billion.",
-      "figure": "output-gap"
+      "figure": "output-gap",
+      "clue": "reach potential from the short-run equilibrium",
+      "coach": "Project the AD–SRAS intersection down to the GDP axis. Then read the output under LRAS and compare the two horizontal coordinates.",
+      "notes": [
+        "pitfall"
+      ]
     }
   ],
   "macro:3.6": [
@@ -2508,7 +3442,14 @@ export const lessonExamples = {
         "Output rises and the price level falls"
       ],
       "correct": 3,
-      "explanation": "Higher aggregate demand moves equilibrium up the short-run supply curve."
+      "explanation": "Higher aggregate demand moves equilibrium up the short-run supply curve.",
+      "clue": "households spend more",
+      "coach": "Begin with the change in spending rather than the observed price level. Trace the new intersection along the upward-sloping short-run supply curve.",
+      "notes": [
+        "goal",
+        "goals",
+        "rule:0"
+      ]
     },
     {
       "term": "Stagflation",
@@ -2524,7 +3465,15 @@ export const lessonExamples = {
         "An increase in consumption"
       ],
       "correct": 3,
-      "explanation": "An adverse supply shock reduces output available at each price level."
+      "explanation": "An adverse supply shock reduces output available at each price level.",
+      "clue": "price level and unemployment rise",
+      "coach": "Check each proposed shock against both the price and output evidence. A candidate that explains only one of them is insufficient.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "pitfalls",
+        "rule:1"
+      ]
     }
   ],
   "macro:3.7": [
@@ -2542,7 +3491,14 @@ export const lessonExamples = {
         "Weak labor demand lowers nominal wages and SRAS shifts right"
       ],
       "correct": 4,
-      "explanation": "Lower unit labor costs allow higher output at each price level."
+      "explanation": "Lower unit labor costs allow higher output at each price level.",
+      "clue": "eventually flexible wages",
+      "coach": "Start with slack in the labor market. Follow wage adjustment into unit costs and SRAS while keeping aggregate demand fixed.",
+      "notes": [
+        "goal",
+        "apply",
+        "goals"
+      ]
     },
     {
       "term": "Inflationary self-adjustment",
@@ -2558,7 +3514,14 @@ export const lessonExamples = {
         "The natural rate permanently falls"
       ],
       "correct": 2,
-      "explanation": "A tight labor market puts upward pressure on wages until output returns to potential."
+      "explanation": "A tight labor market puts upward pressure on wages until output returns to potential.",
+      "clue": "Starting above potential",
+      "coach": "First ask what tight labor markets do to negotiated wages. Then trace how the new contracts change firms’ costs at any price level.",
+      "notes": [
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:3.8": [
@@ -2576,7 +3539,14 @@ export const lessonExamples = {
         "Buy bonds through the central bank"
       ],
       "correct": 0,
-      "explanation": "Lower purchases reduce AD. Bond operations belong to monetary policy."
+      "explanation": "Lower purchases reduce AD. Bond operations belong to monetary policy.",
+      "clue": "discretionary action",
+      "coach": "Identify a deliberate budget change and follow its effect on AD. An inflationary gap places actual output above potential.",
+      "notes": [
+        "goal",
+        "rule",
+        "apply:0"
+      ]
     },
     {
       "term": "Closing the gap",
@@ -2592,7 +3562,15 @@ export const lessonExamples = {
         "$3 billion"
       ],
       "correct": 1,
-      "explanation": "Divide the target output change by the multiplier."
+      "explanation": "Divide the target output change by the multiplier.",
+      "clue": "$24 billion below potential",
+      "coach": "The gap is the intended final output change. Work backward through the multiplier to find the required initial purchase.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "apply:1"
+      ]
     }
   ],
   "macro:3.9": [
@@ -2610,7 +3588,15 @@ export const lessonExamples = {
         "More unemployed workers qualify for existing benefits"
       ],
       "correct": 4,
-      "explanation": "The payment rises under existing law when labor-market conditions worsen."
+      "explanation": "The payment rises under existing law when labor-market conditions worsen.",
+      "clue": "automatic stabilizer",
+      "coach": "Imagine the legislature takes no new vote as output falls. Which existing rule would still change taxes or transfers?",
+      "notes": [
+        "goal",
+        "apply",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Disposable-income cushioning",
@@ -2626,7 +3612,13 @@ export const lessonExamples = {
         "Government purchases rise dollar for dollar"
       ],
       "correct": 0,
-      "explanation": "Part of each extra dollar becomes tax revenue, damping induced consumption."
+      "explanation": "Part of each extra dollar becomes tax revenue, damping induced consumption.",
+      "clue": "unchanged progressive tax schedule",
+      "coach": "Follow an extra dollar of income through the existing tax brackets to disposable income, then to consumption.",
+      "notes": [
+        "rule",
+        "goals"
+      ]
     }
   ],
   "macro:4.1": [
@@ -2644,7 +3636,12 @@ export const lessonExamples = {
         "A building offered for sale"
       ],
       "correct": 0,
-      "explanation": "Checking balances are immediately spendable at face value."
+      "explanation": "Checking balances are immediately spendable at face value.",
+      "clue": "unexpected bill today",
+      "coach": "Imagine paying the bill immediately. Compare the time, cost, and risk of turning each asset into spendable money.",
+      "notes": [
+        "rule:0"
+      ]
     },
     {
       "term": "Bond prices and yields",
@@ -2660,7 +3657,16 @@ export const lessonExamples = {
         "It can no longer be traded"
       ],
       "correct": 3,
-      "explanation": "Its fixed cash flows must sell at a lower price to offer a competitive yield."
+      "explanation": "Its fixed cash flows must sell at a lower price to offer a competitive yield.",
+      "clue": "existing fixed-coupon bond",
+      "coach": "Keep the old bond’s payment fixed. Think about the price that would make that payment competitive with new bonds.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "rule:1"
+      ]
     },
     {
       "term": "Risk and return",
@@ -2676,7 +3682,13 @@ export const lessonExamples = {
         "A share is an ownership claim with a residual payoff"
       ],
       "correct": 4,
-      "explanation": "Bondholders are creditors with contractual claims. Common shareholders receive what is left after prior claims."
+      "explanation": "Bondholders are creditors with contractual claims. Common shareholders receive what is left after prior claims.",
+      "clue": "common share",
+      "coach": "Ask who owns a residual claim on profits and who has a contractual claim on interest. Compare how the two investors bear risk.",
+      "notes": [
+        "goal",
+        "rule:2"
+      ]
     }
   ],
   "macro:4.2": [
@@ -2694,7 +3706,14 @@ export const lessonExamples = {
         "3%"
       ],
       "correct": 0,
-      "explanation": "The approximate Fisher relationship subtracts expected inflation from the nominal rate."
+      "explanation": "The approximate Fisher relationship subtracts expected inflation from the nominal rate.",
+      "clue": "expected inflation is 3%",
+      "coach": "Use the information available when the loan is agreed. Separate the nominal payment from its expected loss of purchasing power.",
+      "notes": [
+        "goal",
+        "rule",
+        "goals"
+      ]
     },
     {
       "term": "Realized real return",
@@ -2710,7 +3729,14 @@ export const lessonExamples = {
         "It stayed at 4%"
       ],
       "correct": 3,
-      "explanation": "Expected real cost was about 4%. Realized cost is about 1%."
+      "explanation": "Expected real cost was about 4%. Realized cost is about 1%.",
+      "clue": "Actual inflation is 5%",
+      "coach": "Calculate the anticipated real cost and the realized real cost using the same contracted nominal rate, then compare them.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:4.3": [
@@ -2728,7 +3754,14 @@ export const lessonExamples = {
         "Medium of exchange only"
       ],
       "correct": 0,
-      "explanation": "The dollar supplies a common measuring unit for prices."
+      "explanation": "The dollar supplies a common measuring unit for prices.",
+      "clue": "compare prices without barter ratios",
+      "coach": "Here the seller is posting prices before any payment occurs. Identify what the common dollar measure lets shoppers do.",
+      "notes": [
+        "goal",
+        "rule",
+        "apply"
+      ]
     },
     {
       "term": "Money versus credit",
@@ -2744,7 +3777,14 @@ export const lessonExamples = {
         "It cannot be used to buy goods"
       ],
       "correct": 0,
-      "explanation": "Using the card creates a debt. It does not itself constitute a money balance."
+      "explanation": "Using the card creates a debt. It does not itself constitute a money balance.",
+      "clue": "credit card",
+      "coach": "Follow the purchase through the card statement to the later payment. Distinguish the borrowing arrangement from the money used to settle it.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Monetary base",
@@ -2760,7 +3800,9 @@ export const lessonExamples = {
         "$105"
       ],
       "correct": 0,
-      "explanation": "The base is currency in public hands plus bank reserves. Checkable deposits are bank liabilities, not additional base money."
+      "explanation": "The base is currency in public hands plus bank reserves. Checkable deposits are bank liabilities, not additional base money.",
+      "clue": "banks hold $15 in reserves",
+      "coach": "Sort the three balances by issuer and holder. Bank reserves and the public’s checking deposits are different claims."
     }
   ],
   "macro:4.4": [
@@ -2778,7 +3820,9 @@ export const lessonExamples = {
         "$360"
       ],
       "correct": 3,
-      "explanation": "Required reserves are $40, leaving $24 above the requirement."
+      "explanation": "Required reserves are $40, leaving $24 above the requirement.",
+      "clue": "10% required reserve ratio",
+      "coach": "Apply the ratio to deposits to find required reserves. Compare that amount with the reserves the bank actually holds."
     },
     {
       "term": "Deposit expansion",
@@ -2794,7 +3838,14 @@ export const lessonExamples = {
         "$150"
       ],
       "correct": 4,
-      "explanation": "An extra $30 of bank reserves supports at most $30/0.20 of deposits. The seller here is a bank, not a depositor."
+      "explanation": "An extra $30 of bank reserves supports at most $30/0.20 of deposits. The seller here is a bank, not a depositor.",
+      "clue": "buys $30 of bonds from a bank",
+      "coach": "Track the initial change in reserves and check whether deposits rise in the initial transaction. Then apply the stated full-lending and redeposit assumptions.",
+      "notes": [
+        "apply",
+        "goals",
+        "rule:2"
+      ]
     },
     {
       "term": "Limits of the multiplier",
@@ -2810,7 +3861,13 @@ export const lessonExamples = {
         "All banks lend every available dollar"
       ],
       "correct": 3,
-      "explanation": "Cash leakages and idle excess reserves interrupt the sequence of loans and redeposits."
+      "explanation": "Cash leakages and idle excess reserves interrupt the sequence of loans and redeposits.",
+      "clue": "actual deposit expansion",
+      "coach": "Check what the simple maximum assumes at each lending round. Think about cash withdrawals and reserves that banks choose to keep.",
+      "notes": [
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Bank balance sheets",
@@ -2826,7 +3883,14 @@ export const lessonExamples = {
         "Reserves fall $100 and deposits rise $100"
       ],
       "correct": 1,
-      "explanation": "The bank receives an asset and owes a matching sum to its depositor."
+      "explanation": "The bank receives an asset and owes a matching sum to its depositor.",
+      "clue": "deposits $100 in currency",
+      "coach": "Use the bank’s point of view. Trace the incoming cash on one side of its balance sheet and the promise to the depositor on the other.",
+      "notes": [
+        "goal",
+        "rule:0",
+        "rule:1"
+      ]
     }
   ],
   "macro:4.5": [
@@ -2844,7 +3908,13 @@ export const lessonExamples = {
         "Higher income automatically destroys reserves"
       ],
       "correct": 2,
-      "explanation": "At the old interest rate desired balances exceed supply. Rates rise until the market clears."
+      "explanation": "At the old interest rate desired balances exceed supply. Rates rise until the market clears.",
+      "clue": "higher real income",
+      "coach": "More transactions change desired money balances. Locate the new money-demand curve against the unchanged money supply.",
+      "notes": [
+        "rule",
+        "goals"
+      ]
     },
     {
       "term": "Money market equilibrium",
@@ -2860,7 +3930,15 @@ export const lessonExamples = {
         "Money demand shifts left by the same amount"
       ],
       "correct": 3,
-      "explanation": "At the old rate there is excess money. Bond purchases bid up bond prices and lower yields."
+      "explanation": "At the old rate there is excess money. Bond purchases bid up bond prices and lower yields.",
+      "clue": "money demand stays fixed",
+      "coach": "At the old nominal rate compare the quantity of money people want with the new supply. Follow the portfolio adjustment back to equilibrium.",
+      "notes": [
+        "goal",
+        "apply",
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:4.6": [
@@ -2878,7 +3956,13 @@ export const lessonExamples = {
         "Reserves rise, rates rise and investment decreases"
       ],
       "correct": 0,
-      "explanation": "Added reserves ease monetary conditions. Lower borrowing costs support investment and AD."
+      "explanation": "Added reserves ease monetary conditions. Lower borrowing costs support investment and AD.",
+      "clue": "limited-reserves system",
+      "coach": "Trace the bond purchase through bank reserves, borrowing costs, and firms’ investment decisions in that order.",
+      "notes": [
+        "goal",
+        "rule:0"
+      ]
     },
     {
       "term": "Ample-reserves policy",
@@ -2894,7 +3978,13 @@ export const lessonExamples = {
         "Reduce personal taxes"
       ],
       "correct": 0,
-      "explanation": "A higher return on reserve balances raises the rate banks are willing to accept on comparable overnight lending."
+      "explanation": "A higher return on reserve balances raises the rate banks are willing to accept on comparable overnight lending.",
+      "clue": "higher overnight policy rate",
+      "coach": "In an ample-reserves system compare overnight lending with the return banks can obtain by simply holding reserve balances.",
+      "notes": [
+        "goals",
+        "rule:1"
+      ]
     },
     {
       "term": "Policy transmission and output gaps",
@@ -2910,7 +4000,12 @@ export const lessonExamples = {
         "Higher borrowing costs discourage investment and interest-sensitive consumption, lowering AD"
       ],
       "correct": 4,
-      "explanation": "Two components of spending weaken. Lower aggregate demand reduces pressure on output and the price level."
+      "explanation": "Two components of spending weaken. Lower aggregate demand reduces pressure on output and the price level.",
+      "clue": "tighter monetary policy",
+      "coach": "Follow borrowing costs into consumption and investment. Then compare the resulting spending level with full-employment output.",
+      "notes": [
+        "apply"
+      ]
     },
     {
       "term": "Reserve regimes",
@@ -2926,7 +4021,13 @@ export const lessonExamples = {
         "Supply intersects the steep scarce-reserves region"
       ],
       "correct": 3,
-      "explanation": "An additional reserve balance has little scarcity value there. The administered rate provides the main policy lever."
+      "explanation": "An additional reserve balance has little scarcity value there. The administered rate provides the main policy lever.",
+      "clue": "small addition of reserves",
+      "coach": "Locate the ample-reserves intersection on the reserves-demand curve. Its local slope tells you how far the rate moves when supply changes.",
+      "notes": [
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:4.7": [
@@ -2944,7 +4045,14 @@ export const lessonExamples = {
         "The real rate rises and lending falls"
       ],
       "correct": 3,
-      "explanation": "The larger supply of funds lowers the borrowing cost and supports additional investment."
+      "explanation": "The larger supply of funds lowers the borrowing cost and supports additional investment.",
+      "clue": "Households save more at each real interest rate",
+      "coach": "Treat households as suppliers of funds. At the old rate compare the funds available with firms’ unchanged borrowing plans.",
+      "notes": [
+        "goal",
+        "rule",
+        "goals"
+      ]
     },
     {
       "term": "Investment demand",
@@ -2960,7 +4068,14 @@ export const lessonExamples = {
         "Every invention reduces productivity"
       ],
       "correct": 0,
-      "explanation": "Competition to finance more worthwhile projects shifts loanable-funds demand right."
+      "explanation": "Competition to finance more worthwhile projects shifts loanable-funds demand right.",
+      "clue": "profitable inventions",
+      "coach": "Ask how much firms would want to borrow for investment at the old real rate. Then allow the rate to clear the market.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:5.1": [
@@ -2978,7 +4093,15 @@ export const lessonExamples = {
         "Lower potential output"
       ],
       "correct": 2,
-      "explanation": "Public purchases rise directly; lower interest rates encourage private spending."
+      "explanation": "Public purchases rise directly; lower interest rates encourage private spending.",
+      "clue": "increases purchases and the central bank cuts its policy rate",
+      "coach": "Trace government spending and interest-sensitive spending separately. Look for the outcome on which both channels agree.",
+      "notes": [
+        "goal",
+        "rule",
+        "goals",
+        "apply:0"
+      ]
     },
     {
       "term": "Offsetting policies",
@@ -2994,7 +4117,14 @@ export const lessonExamples = {
         "Both necessarily lower output"
       ],
       "correct": 3,
-      "explanation": "Fiscal expansion supports output while monetary contraction restrains it. Borrowing and tightening both push rates upward."
+      "explanation": "Fiscal expansion supports output while monetary contraction restrains it. Borrowing and tightening both push rates upward.",
+      "clue": "Without relative magnitudes",
+      "coach": "List the interest-rate and output effects of each policy side by side. Keep only predictions whose directions agree.",
+      "notes": [
+        "pitfall",
+        "pitfalls",
+        "apply:1"
+      ]
     }
   ],
   "macro:5.2": [
@@ -3012,7 +4142,12 @@ export const lessonExamples = {
         "Inflation rises and unemployment falls"
       ],
       "correct": 4,
-      "explanation": "Stronger demand raises short-run inflation pressure and employment."
+      "explanation": "Stronger demand raises short-run inflation pressure and employment.",
+      "clue": "Expected inflation is fixed",
+      "coach": "Use the AD increase to infer the changes in unemployment and actual inflation. Then check whether the SRPC itself needs to shift.",
+      "notes": [
+        "apply:0"
+      ]
     },
     {
       "term": "Expected inflation",
@@ -3028,7 +4163,15 @@ export const lessonExamples = {
         "Wage and price setters build higher expected inflation into contracts at each unemployment rate"
       ],
       "correct": 4,
-      "explanation": "For a given unemployment rate, contracts now embody faster nominal wage and price increases."
+      "explanation": "For a given unemployment rate, contracts now embody faster nominal wage and price increases.",
+      "clue": "higher expected inflation",
+      "coach": "Keep unemployment at the same horizontal coordinate. Ask how wage bargains and price setting respond to changed expectations there.",
+      "notes": [
+        "goal",
+        "goals",
+        "rule:0",
+        "apply:1"
+      ]
     },
     {
       "term": "Long-run Phillips curve",
@@ -3044,7 +4187,13 @@ export const lessonExamples = {
         "Always zero"
       ],
       "correct": 2,
-      "explanation": "A vertical LRPC indicates no permanent inflation–unemployment trade-off."
+      "explanation": "A vertical LRPC indicates no permanent inflation–unemployment trade-off.",
+      "clue": "expectations fully adjust",
+      "coach": "Compare actual with expected inflation after contracts have adjusted. Decide whether any surprise remains to sustain a long-run unemployment gap.",
+      "notes": [
+        "pitfalls",
+        "rule:1"
+      ]
     },
     {
       "term": "Adverse supply shocks",
@@ -3060,7 +4209,12 @@ export const lessonExamples = {
         "The long-run curve becomes horizontal"
       ],
       "correct": 2,
-      "explanation": "The adverse supply shock worsens the short-run trade-off and shifts the SRPC upward."
+      "explanation": "The adverse supply shock worsens the short-run trade-off and shifts the SRPC upward.",
+      "clue": "oil shock raises costs",
+      "coach": "Follow the input-cost shock through SRAS. Translate the implied inflation–unemployment combination into its location relative to the original SRPC.",
+      "notes": [
+        "pitfall"
+      ]
     }
   ],
   "macro:5.3": [
@@ -3078,7 +4232,13 @@ export const lessonExamples = {
         "1,000"
       ],
       "correct": 3,
-      "explanation": "Nominal spending is 1,000. Dividing by 500 real units gives a price level of 2."
+      "explanation": "Nominal spending is 1,000. Dividing by 500 real units gives a price level of 2.",
+      "clue": "velocity is 4",
+      "coach": "Use nominal spending on the left of the quantity equation. The question asks for the price component, so separate it from real output on the right.",
+      "notes": [
+        "goal",
+        "rule:0"
+      ]
     },
     {
       "term": "Long-run money growth",
@@ -3094,7 +4254,16 @@ export const lessonExamples = {
         "9%"
       ],
       "correct": 1,
-      "explanation": "From MV=PY, inflation is approximately money growth minus real output growth when velocity is stable."
+      "explanation": "From MV=PY, inflation is approximately money growth minus real output growth when velocity is stable.",
+      "clue": "velocity is constant",
+      "coach": "Write the quantity equation in growth rates. Separate the portion of money growth absorbed by real output growth.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "rule:1"
+      ]
     }
   ],
   "macro:5.4": [
@@ -3112,7 +4281,16 @@ export const lessonExamples = {
         "Debt equals this year’s deficit"
       ],
       "correct": 3,
-      "explanation": "A positive deficit adds to the accumulated debt even when the annual addition shrinks."
+      "explanation": "A positive deficit adds to the accumulated debt even when the annual addition shrinks.",
+      "clue": "positive but smaller deficit",
+      "coach": "Think of debt as a running balance. First determine the direction of this year’s addition, then compare its size with last year’s.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Budget balance",
@@ -3128,7 +4306,12 @@ export const lessonExamples = {
         "It rises by 6 billion"
       ],
       "correct": 4,
-      "explanation": "Total outlays are 102. The deficit of 6 is added to debt."
+      "explanation": "Total outlays are 102. The deficit of 6 is added to debt.",
+      "clue": "interest payments are 12",
+      "coach": "Build government outlays by including purchases, transfers, and debt interest. Compare total outlays with revenue before updating the stock of debt.",
+      "notes": [
+        "apply"
+      ]
     }
   ],
   "macro:5.5": [
@@ -3146,7 +4329,15 @@ export const lessonExamples = {
         "Government borrowing directly increases all private saving"
       ],
       "correct": 3,
-      "explanation": "Public borrowing competes with private projects for available saving."
+      "explanation": "Public borrowing competes with private projects for available saving.",
+      "clue": "no capital inflows",
+      "coach": "In this closed financing pool, trace additional government borrowing through the real interest rate to projects private firms can afford.",
+      "notes": [
+        "goal",
+        "rule",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Capital accumulation",
@@ -3162,7 +4353,13 @@ export const lessonExamples = {
         "A higher capital stock at every date"
       ],
       "correct": 2,
-      "explanation": "Fewer additions to productive capital slow growth relative to the alternative path."
+      "explanation": "Fewer additions to productive capital slow growth relative to the alternative path.",
+      "clue": "machines for several years",
+      "coach": "Follow the missing purchases into the future stock of productive capital, then into the economy’s capacity.",
+      "notes": [
+        "apply",
+        "pitfall"
+      ]
     }
   ],
   "macro:5.6": [
@@ -3180,7 +4377,15 @@ export const lessonExamples = {
         "It rises 10%"
       ],
       "correct": 3,
-      "explanation": "Output per worker rises from 6 to 6.3, a 5% increase."
+      "explanation": "Output per worker rises from 6 to 6.3, a 5% increase.",
+      "clue": "employment rises from 100 to 110",
+      "coach": "Calculate output per worker separately for the two dates. Comparing aggregate output alone mixes productivity gains with additional employment.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "goals",
+        "apply:1"
+      ]
     },
     {
       "term": "Technology and capacity",
@@ -3196,7 +4401,14 @@ export const lessonExamples = {
         "The PPC shifts outward and LRAS shifts right"
       ],
       "correct": 4,
-      "explanation": "The economy can sustain more real output at full employment."
+      "explanation": "The economy can sustain more real output at full employment.",
+      "clue": "same labor and capital",
+      "coach": "Hold inputs fixed and compare the goods they can produce year after year. Distinguish lasting capacity from temporary higher utilization.",
+      "notes": [
+        "rule",
+        "pitfalls",
+        "apply:0"
+      ]
     }
   ],
   "macro:5.7": [
@@ -3214,7 +4426,14 @@ export const lessonExamples = {
         "Every nominal wage must fall"
       ],
       "correct": 3,
-      "explanation": "New skills raise output per worker with the same other productive inputs."
+      "explanation": "New skills raise output per worker with the same other productive inputs.",
+      "clue": "workers’ technical skills",
+      "coach": "Hold the number of workers constant. Trace a trained worker’s output per hour into the economy’s potential output.",
+      "notes": [
+        "goal",
+        "apply",
+        "rule:0"
+      ]
     },
     {
       "term": "Physical capital incentives",
@@ -3230,7 +4449,15 @@ export const lessonExamples = {
         "It reduces the marginal product of capital"
       ],
       "correct": 3,
-      "explanation": "A larger stock of productive equipment can raise sustainable output."
+      "explanation": "A larger stock of productive equipment can raise sustainable output.",
+      "clue": "investment tax credit",
+      "coach": "Follow the change in the after-tax cost of a machine into investment today and the capital stock available in later years.",
+      "notes": [
+        "pitfall",
+        "goals",
+        "pitfalls",
+        "rule:1"
+      ]
     }
   ],
   "macro:6.1": [
@@ -3248,7 +4475,15 @@ export const lessonExamples = {
         "A financial-account inflow from selling the bond"
       ],
       "correct": 3,
-      "explanation": "Interest is primary income received from abroad. The bond purchase or sale is a separate financial transaction."
+      "explanation": "Interest is primary income received from abroad. The bond purchase or sale is a separate financial transaction.",
+      "clue": "receives interest from a foreign bond",
+      "coach": "Distinguish income paid by an asset from a transaction that changes ownership of the asset itself.",
+      "notes": [
+        "goal",
+        "goals",
+        "rule:0",
+        "apply:0"
+      ]
     },
     {
       "term": "Financial account",
@@ -3264,7 +4499,15 @@ export const lessonExamples = {
         "A financial capital inflow"
       ],
       "correct": 4,
-      "explanation": "The foreign investor acquires a domestic financial claim. No current output is sold."
+      "explanation": "The foreign investor acquires a domestic financial claim. No current output is sold.",
+      "clue": "buys an existing domestic corporate bond",
+      "coach": "Trace who now owns the financial claim. No new production or interest payment is described in this transaction.",
+      "notes": [
+        "pitfall",
+        "pitfalls",
+        "rule:1",
+        "apply:1"
+      ]
     },
     {
       "term": "Trade balance",
@@ -3280,7 +4523,10 @@ export const lessonExamples = {
         "+14 and +4"
       ],
       "correct": 2,
-      "explanation": "Net exports equal 44−58. Adding net income of 10 gives a current-account balance of −4."
+      "explanation": "Net exports equal 44−58. Adding net income of 10 gives a current-account balance of −4.",
+      "clue": "Net income from abroad is +10",
+      "coach": "Calculate the goods-and-services balance first. Add only the income and transfers that belong in the broader current account.",
+      "notes": []
     },
     {
       "term": "Balancing international accounts",
@@ -3296,7 +4542,9 @@ export const lessonExamples = {
         "A guaranteed trade surplus"
       ],
       "correct": 0,
-      "explanation": "The economy receives net financing from abroad by selling claims or drawing down foreign assets."
+      "explanation": "The economy receives net financing from abroad by selling claims or drawing down foreign assets.",
+      "clue": "current-account deficit",
+      "coach": "Think about how residents cover net payments abroad. Under the stated exclusions, the offsetting entry must appear elsewhere in the international accounts."
     }
   ],
   "macro:6.2": [
@@ -3314,7 +4562,15 @@ export const lessonExamples = {
         "12%"
       ],
       "correct": 1,
-      "explanation": "One euro buys $0.12 more than before. Divide by its former dollar value of $1.20."
+      "explanation": "One euro buys $0.12 more than before. Divide by its former dollar value of $1.20.",
+      "clue": "US dollars per euro",
+      "coach": "One euro is the object being priced. Measure the dollar change against the original dollars needed to buy that same euro.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "pitfalls"
+      ]
     },
     {
       "term": "Converting a foreign price",
@@ -3330,7 +4586,13 @@ export const lessonExamples = {
         "It rises by $6"
       ],
       "correct": 2,
-      "explanation": "The dollar cost falls from 40×1.25=$50 to 40×1.10=$44."
+      "explanation": "The dollar cost falls from 40×1.25=$50 to 40×1.10=$44.",
+      "clue": "40 euros",
+      "coach": "Convert the fixed euro price into dollars twice at the two quoted rates, then compare the dollar bills.",
+      "notes": [
+        "apply",
+        "goals"
+      ]
     }
   ],
   "macro:6.3": [
@@ -3348,7 +4610,15 @@ export const lessonExamples = {
         "A Canadian tourist buys yen to pay for a Japanese hotel"
       ],
       "correct": 4,
-      "explanation": "Foreign buyers must obtain yen to pay for Japanese output priced in yen."
+      "explanation": "Foreign buyers must obtain yen to pay for Japanese output priced in yen.",
+      "clue": "demand for yen",
+      "coach": "Name the currency the buyer must obtain to complete each proposed transaction. The nationality of the buyer alone is not decisive.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "pitfalls",
+        "rule:0"
+      ]
     },
     {
       "term": "Currency supply",
@@ -3364,7 +4634,14 @@ export const lessonExamples = {
         "Dollar supply shifts right and the dollar depreciates"
       ],
       "correct": 4,
-      "explanation": "Importers offer more dollars for sale. Each dollar then commands fewer won."
+      "explanation": "Importers offer more dollars for sale. Each dollar then commands fewer won.",
+      "clue": "dollars for won",
+      "coach": "Keep dollars as the currency on the horizontal axis. Follow what the US buyers give up when acquiring won.",
+      "notes": [
+        "apply",
+        "goals",
+        "rule:1"
+      ]
     }
   ],
   "macro:6.4": [
@@ -3382,7 +4659,14 @@ export const lessonExamples = {
         "Foreign demand rises and the domestic currency depreciates"
       ],
       "correct": 0,
-      "explanation": "Foreign investors exchange into the domestic currency to buy the higher-yielding assets."
+      "explanation": "Foreign investors exchange into the domestic currency to buy the higher-yielding assets.",
+      "clue": "relative to foreign rates",
+      "coach": "With risk and exchange expectations held fixed, follow the relative return into demand for domestic assets and the currency needed to buy them.",
+      "notes": [
+        "goal",
+        "rule",
+        "goals"
+      ]
     },
     {
       "term": "Relative price levels",
@@ -3398,7 +4682,14 @@ export const lessonExamples = {
         "Foreign prices fall to zero"
       ],
       "correct": 1,
-      "explanation": "Foreign buyers need less domestic currency when they buy fewer domestic goods."
+      "explanation": "Foreign buyers need less domestic currency when they buy fewer domestic goods.",
+      "clue": "nominal exchange rates initially unchanged",
+      "coach": "Compare domestic and foreign goods in the same currency at the original exchange rate. Trace spending switches into currency demand or supply.",
+      "notes": [
+        "apply",
+        "pitfall",
+        "pitfalls"
+      ]
     }
   ],
   "macro:6.5": [
@@ -3416,7 +4707,16 @@ export const lessonExamples = {
         "Net exports rise and AD shifts left"
       ],
       "correct": 2,
-      "explanation": "Home exports become more expensive abroad, while foreign goods become cheaper for home buyers."
+      "explanation": "Home exports become more expensive abroad, while foreign goods become cheaper for home buyers.",
+      "clue": "sufficient time for trade quantities to adjust",
+      "coach": "Consider the price of exports to foreigners and imports to residents separately. Combine the two quantity responses in net exports.",
+      "notes": [
+        "goal",
+        "rule",
+        "pitfall",
+        "goals",
+        "pitfalls"
+      ]
     },
     {
       "term": "Depreciation and export demand",
@@ -3432,7 +4732,12 @@ export const lessonExamples = {
         "Trade becomes independent of prices"
       ],
       "correct": 3,
-      "explanation": "Depreciation lowers the foreign-currency cost, encouraging foreign demand."
+      "explanation": "Depreciation lowers the foreign-currency cost, encouraging foreign demand.",
+      "clue": "price fixed in home currency",
+      "coach": "Put yourself in a foreign customer’s position. Convert the same posted home price before and after depreciation.",
+      "notes": [
+        "apply"
+      ]
     }
   ],
   "macro:6.6": [
@@ -3450,7 +4755,15 @@ export const lessonExamples = {
         "Import physical machinery as the only possible response"
       ],
       "correct": 3,
-      "explanation": "The higher foreign real return attracts financial investment abroad."
+      "explanation": "The higher foreign real return attracts financial investment abroad.",
+      "clue": "Foreign real interest rates rise",
+      "coach": "Trace the resident’s asset purchase first, then identify the direction of the financial capital flow from the domestic country’s perspective.",
+      "notes": [
+        "goal",
+        "pitfall",
+        "goals",
+        "rule:0"
+      ]
     },
     {
       "term": "Capital inflows and domestic rates",
@@ -3466,7 +4779,14 @@ export const lessonExamples = {
         "It forces the central bank to cut nominal rates"
       ],
       "correct": 0,
-      "explanation": "A larger pool of funds lets domestic savers and borrowers clear the market at a lower real rate."
+      "explanation": "A larger pool of funds lets domestic savers and borrowers clear the market at a lower real rate.",
+      "clue": "inflow of foreign saving",
+      "coach": "Add foreign savers to the lenders in the domestic loanable-funds market and compare supply with demand at the old real rate.",
+      "notes": [
+        "apply",
+        "pitfalls",
+        "rule:1"
+      ]
     }
   ]
 };
