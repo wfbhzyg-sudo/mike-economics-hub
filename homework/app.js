@@ -19,7 +19,7 @@ import {createWorkspaceUI} from "./workspace-ui.js";
 import {offlineAnswers,hasItemScores,bindOfflineOriginals} from "./offline-answers.js";
 import {assignmentRecords,assignmentState,questionTotals,usesTotalOnlyEditor} from "./learning-model.js";
 import {createLearningUI} from "./learning-ui.js";
-import {createSelfPracticeUI} from "./self-practice.js";
+import {createSelfPracticeUI} from "./self-practice.js?v=mock-entry-20261123";
 // Keep the floating assistant above the on-screen keyboard on student pages.
 if (window.visualViewport) {
   const viewport = window.visualViewport;
@@ -1089,6 +1089,17 @@ async function render(scroll = true) {
     if (scroll) {main.scrollTo({ top: 0, behavior: "instant" });main.focus({preventScroll:true});state.restoreView?.();}
   } catch (e) {
     if (!state.user || version !== state.routeVersion) return;
+    if (!embedded && route === 'self-practice' && e instanceof ReferenceError) {
+      console.error('Self-practice view failed to render', e);
+      state.viewCleanup?.();
+      state.viewCleanup = null;
+      const retryLabel = id === 'attempt' ? '重新打开试卷' : '重新打开页面';
+      const back = id ? link('self-practice', '返回自主模考') : link('assignments', '返回作业列表');
+      main.innerHTML = `<section class="paper">${head('', '自主模考')}<p role="alert">模考页面加载异常，请重新打开。</p><div class="form-actions"><button id="retry" class="primary">${retryLabel}</button>${back}</div></section>`;
+      // A same-document render keeps the failing module in the browser's module map.
+      click('#retry', () => location.reload());
+      return;
+    }
     main.innerHTML = `<section class="paper">${head("WORKSPACE", "暂时无法打开")}<p class="error" role="alert">${h(e.message)}</p><div class="form-actions"><button id="retry" class="primary">重试</button>${link("assignments", "返回作业列表")}</div></section>`;
     click("#retry", () => render());
   } finally {
