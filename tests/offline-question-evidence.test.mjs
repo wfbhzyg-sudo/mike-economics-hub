@@ -91,3 +91,14 @@ test('a corrected occurrence remains findable when the same bank question was mi
  assert.equal(verified.length,1);assert.equal(verified[0].assignmentId,done.assignmentId);
  assert.equal(verified[0].mistakeCount,1);assert.deepEqual(verified[0].occurrences,[]);
 });
+
+test('correction topics include every matching occurrence and keep untagged unit questions accessible',async()=>{
+ const {matchingMistakes,mistakeTopic,mistakeTopicOptions}=await import('../homework/mistake-navigation.js');
+ const row=(course,topic)=>({course,lessonReference:{unit:course+'-unit-2',topic},knowledge:'Topic '+topic+' · Demand'});
+ const group={...row('macro','2.2'),occurrences:[row('micro','2.10'),row('micro','2.2'),row('micro','3.1')]};
+ const scoped=matchingMistakes([group],m=>m.course==='micro');
+ assert.deepEqual(mistakeTopicOptions(scoped),[['2.2','Demand'],['2.10','Demand'],['','']]);
+ assert.equal(matchingMistakes(scoped,m=>mistakeTopic(m)==='2.2')[0].mistakeCount,1);
+ assert.equal(mistakeTopic({source:'mock',topic:'2.6',libraryUnit:'micro-unit-2'}),'2.6');
+ assert.equal(mistakeTopic({libraryUnit:'macro-unit-2',assignmentTitle:'3.1 FRQ'}),'');
+});

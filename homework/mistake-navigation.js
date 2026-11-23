@@ -29,3 +29,27 @@ export function matchingMistakes(groups, matches) {
   }
   return visible;
 }
+
+// A unit is too broad to stand in for a topic, especially on Progress Checks.
+export function mistakeTopic(row) {
+  const reference = row.lessonReference;
+  const topic = reference?.topic || row.topic;
+  if (!/^[1-6]\.\d{1,2}$/.test(topic || '')) return '';
+  const unit = reference?.unit || row.libraryUnit || '';
+  return /^((micro|macro)-unit-)[1-6]$/.test(unit) && unit.at(-1) !== topic[0] ? '' : topic;
+}
+
+export function mistakeTopicOptions(scoped) {
+  const topics = new Map();
+  for (const group of scoped) {
+    for (const row of [group, ...(group.occurrences || [])]) {
+      const topic = mistakeTopic(row);
+      const [prefix, title] = String(row.knowledge || '').split(/\s+·\s+/, 2);
+      if (!topics.has(topic) || !topics.get(topic)) {
+        topics.set(topic, topic && prefix === 'Topic ' + topic ? title || '' : '');
+      }
+    }
+  }
+  return [...topics.entries()].sort(([a], [b]) =>
+    !a ? 1 : !b ? -1 : a.localeCompare(b, 'en', {numeric:true}));
+}

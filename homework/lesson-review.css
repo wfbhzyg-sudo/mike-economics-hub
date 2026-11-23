@@ -235,3 +235,32 @@
 .lf-example > p[data-focus="rule"] { margin: 2px 0 10px; }
 .lf-transfer:not([hidden]) { border-inline-start: 2px solid #9bb6ac; padding-inline-start: 10px; margin-top: 6px; color: #385448; }
 .lf-transfer p + p { margin-top: 5px; }
+
+/* The two originals share the reading width, above the correction draft. */
+.correction-workspace.frq-workspace .correction-layout {
+  grid-template-columns: minmax(0,1fr);
+}
+.frq-workspace .correction-reference {
+  position: static;
+  container-type: inline-size;
+}
+.frq-pair {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
+.frq-pair > section { min-width: 0; }
+.frq-pair > section + section { border-inline-start: 1px solid #d3e0ec; padding-inline-start: 12px; }
+.frq-pair h3 { margin: 0 0 6px; font-size: .92rem; color: #173957; }
+.frq-pair .correction-prompt { overflow-wrap: anywhere; white-space: pre-wrap; }
+@container (max-width: 680px) {
+  .frq-pair { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .frq-pair > section + section { border-inline-start: 0; padding-inline-start: 0; border-top: 1px solid #d3e0ec; padding-top: 8px; }
+  .frq-pair > section > div { max-height: 46dvh; overflow: auto; }
+}
+.learning-filters.mistake-nav-filters { display: grid; grid-template-columns: minmax(10rem,1.3fr) minmax(9rem,1fr) minmax(7rem,.65fr); }
+.mistake-nav-filters .field,.mistake-nav-filters select { min-width: 0; width: 100%; }
+@media(max-width:680px) {
+  .learning-filters.mistake-nav-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .mistake-nav-filters .field:first-child { grid-column: 1/-1; }
+}
