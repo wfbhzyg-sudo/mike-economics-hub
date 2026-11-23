@@ -5,7 +5,7 @@ import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,classKey,singleClassCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
-import {assignmentRecords,usesTotalOnlyEditor} from '../homework/learning-model.js';
+import {assignmentRecords,assignmentState,usesTotalOnlyEditor} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
 import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
@@ -50,7 +50,7 @@ const safeUser = (u) => ({
 });
 export const publicAssignment = (a) => ({
   correctionCredit:a.correctionCredit===true, performanceTransfer:a.performanceTransfer===true,
-  offline: Boolean(a.offline), maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
+  offline: Boolean(a.offline), makeupMode:a.makeupMode||null, maxPoints: scoreMaximum(a), declaredMax:a.declaredMax??null, maxAdjusted:Boolean(a.maxAdjusted),
   id: a.id, format:a.format||"upload", opensAt:a.opensAt||null,timeLimitMinutes:a.timeLimitMinutes||0,assessmentMode:a.assessmentMode||"practice",
   title: a.title,
   published: Boolean(a.published),
@@ -73,7 +73,7 @@ export const publicAssignment = (a) => ({
   deletedAt: a.deletedAt || null,
 });
 const publicSubmission = (s) => ({
-  id: s.id, createdAt: s.createdAt, manualScoreEntry: Boolean(s.manualScoreEntry), offlineEvidence:s.offlineEvidence ? {total:s.offlineEvidence.total,maxPoints:s.offlineEvidence.maxPoints}:undefined,
+  id: s.id, createdAt: s.createdAt, offlineMakeup:s.offlineMakeup, manualScoreEntry: Boolean(s.manualScoreEntry), offlineEvidence:s.offlineEvidence ? {total:s.offlineEvidence.total,maxPoints:s.offlineEvidence.maxPoints}:undefined,
   assignmentId: s.assignmentId,
   text: s.text,
   files: s.files,
@@ -257,6 +257,14 @@ export async function createHomework({externalAuth} = {}) {
     ['question','library'].includes(file.purpose) && questions?.some(q=>q.questionImages?.includes(file.id));
   const authorizeFile = async (file,user,availableClasses) => {
     if (file.owner === user.id) return true;
+    // PDF metadata, page bytes and reading position all use this path when opening a paper.
+    if(user.role==='student' && file.purpose==='question' && file.mime==='application/pdf'){
+      const allowed=await db.query(`SELECT 1 FROM ${db.table} WHERE kind='assignment'
+        AND data->>'published'='true' AND data->>'deletedAt' IS NULL
+        AND (data->'classIds') ?| $1::text[]
+        AND coalesce(data#>'{publishedPaper,questionFiles}',data->'questionFiles') ? $2 LIMIT 1`,[user.classIds||[],file.id]);
+      if(allowed.rowCount)return true;
+    }
     // Source slices are shared by a few class assignments. Check those rows before scanning the library.
     if(file.purpose==='library'&&file.mime?.startsWith('image/')&&file.offlineAssignmentIds?.length){
       const matches=await db.query(`SELECT 1 FROM ${db.table}
@@ -1068,7 +1076,7 @@ export async function createHomework({externalAuth} = {}) {
             const image=f.paperPreview;
             const stream=method==='HEAD'?null:await files.read({id:image.key});
             res.writeHead(200,{'Content-Type':'image/png','Content-Length':image.size,'Cache-Control':'private, no-store'});
-            if(stream)stream.pipe(res);else res.end();
+            if(stream){stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy?.());stream.pipe(res);}else res.end();
             return true;
           }
           const download = url.searchParams.has('download');
@@ -1244,9 +1252,14 @@ export async function createHomework({externalAuth} = {}) {
                 assert(attempts.some(t=>t.startedAt || t.submittedId),'开始作答后可导出本次试卷',409);
               }
             }
-            assert(!a.offline && a.format!=='score','这份线下成绩没有在线题面',409);
+            assert(a.makeupMode==='questions'||(!a.offline&&a.format!=='score'),'这份线下成绩没有在线题面',409);
             await sendQuestionPaper(req,res,user,'assignment:'+a.id+':'+a.version,paperOf(a),a.rubric);
             return true;
+          }
+          if(method==='GET' && url.searchParams.get('view')==='submit' && user.role==='student'){
+            const scope={studentId:user.id,assignmentId:a.id};
+            const attempts=await recover(await db.find('submission',scope),scope,[a]);
+            return (json(res,{assignment:publicAssignment(a),submissions:attempts.map(publicSubmission)}),true);
           }
           if (method === "GET")
             return (
@@ -1464,8 +1477,10 @@ export async function createHomework({externalAuth} = {}) {
             if (previous && previous.status !== "draft") return previous;
             assert(b.draft||b.paperVersion===undefined||Number(b.paperVersion)===paperOf(a).version,'题纸已更新，请先重新打开作业查看新版；已保存的作答会保留',409);
             const earlier=(await db.find('submission',{studentId:user.id,assignmentId:a.id},c)).filter(s=>s.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt));
+            const offline=a.offline||a.format==='score';
+            if(offline)assert(a.makeupMode==='upload' && assignmentState(a,earlier).canSubmit,'这份作业未开放上传补交或已有成绩',409);
             assert(!late||a.allowLate||b.draft||earlier[0]?.status==='returned','已超过截止时间，请联系教师开放补交');
-            assert(b.draft||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
+            assert(offline||b.draft||a.allowResubmit!==false||!earlier.length||earlier[0].status==='returned','这份作业不允许再次提交，请联系老师');
             await files.validate(b.files || [], user.id, "submission", c);
             const content = boundedText(b.text, 40000, "作业文字");
             assert(
@@ -1482,14 +1497,20 @@ export async function createHomework({externalAuth} = {}) {
               text: content,
               files: b.files || [],
               paperSnapshot:structuredClone(paperOf(a)),
-              classIds:[...user.classIds],late,
+              classIds:[...user.classIds],late, ...(offline?{offlineMakeup:{mode:'upload',maxPoints:a.makeupMaxPoints}}:{}),
               status: "draft",
               createdAt: previous?.createdAt || now(),
               updatedAt: now(),
             };
             if (!b.draft) {
               s.submittedAt = now();
-              await queueGrade(s, a, c);
+              if(offline){
+                assert(a.makeupMaxPoints>0,'请教师确认这份作业的满分',409);
+                s.status='needs_review';s.version=a.version;s.jobId=null;s.teacherReviewDraft=null;
+                s.rubricSnapshot=[{id:'total',type:'short',prompt:'本次补交作答',maxPoints:a.makeupMaxPoints}];
+                s.suggestedGrade=manualAssignmentScore(s.rubricSnapshot);
+                await db.put('submission',s,c);
+              }else await queueGrade(s, a, c);
             } else await db.put("submission", s, c);
             return s;
           }, 'submission:'+user.id+':'+b.assignmentId);
@@ -1507,7 +1528,7 @@ export async function createHomework({externalAuth} = {}) {
           }
           if(method==='GET'&&route[2]==='paper-pdf'){
             const a=await db.get(s.assignmentId);
-            assert(!a?.offline && a?.format!=='score','这份线下成绩没有在线题面',409);
+            assert(s.offlineMakeup?.mode==='questions'||(!a?.offline&&a?.format!=='score'),'这份线下成绩没有在线题面',409);
             const sameVersion=a && a.version===s.version;
             const historic=(!s.paperSnapshot || !s.rubricSnapshot?.length) && !sameVersion
               ? await db.get(s.assignmentId+':v'+s.version) : null;
@@ -1562,7 +1583,7 @@ export async function createHomework({externalAuth} = {}) {
           }
           if (method === "GET"){
             const detail=user.role==="teacher" ? {...s} : publicSubmission(s);
-            if(user.role==="student" && s.offlineEvidence)detail.questions=offlineResultQuestions(s,detail.questions);
+            if(user.role==="student" && (s.offlineEvidence||s.offlineMakeup?.mode==='questions'))detail.questions=offlineResultQuestions(s,detail.questions);
             if(user.role==="teacher" && !detail.studentName){
               const student=(await availableStudents()).find(person=>person.id===s.studentId);
               detail.studentName=student?.name || (await db.get(s.studentId))?.name || "历史学生";
@@ -1593,6 +1614,7 @@ export async function createHomework({externalAuth} = {}) {
               assert(!a.deletedAt,"请先恢复作业再继续批阅",409);
               assert(a.version > 0, "尚未确认参考答案");
               assert(current.status!=='returned','此提交已退回',409);
+              assert(current.offlineMakeup?.mode!=='upload','请直接为上传的补交作答录分',409);
               await queueGrade(current, a, c);
               await db.audit(user.id, "regrade", s.id, c);
             });
@@ -1630,7 +1652,7 @@ export async function createHomework({externalAuth} = {}) {
             await db.tx(async c=>{
               const current=await requireSubmission(s.id,user,c);
               const assignment=await requireAssignment(current.assignmentId,user,c);
-              assert(!current.manualScoreEntry && !assignment.offline && assignment.format!=='score','线下录分没有学生提交',409);
+              assert(current.offlineMakeup||(!current.manualScoreEntry && !assignment.offline && assignment.format!=='score'),'线下录分没有学生提交',409);
               const latest=(await db.find('submission',{studentId:current.studentId,assignmentId:current.assignmentId},c))
                 .filter(item=>item.status!=='draft').sort((a,b)=>Date.parse(b.submittedAt)-Date.parse(a.submittedAt))[0];
               assert(latest?.id===current.id,'请打开最近一次提交',409);

@@ -65,7 +65,7 @@ export function createStore(connectionString, schema = "homework") {
         'id',s.id,'assignmentId',s.data->'assignmentId','studentId',s.data->'studentId',
         'studentName',COALESCE(s.data->'studentName',u.data->'name'),'classIds',s.data->'classIds',
         'status',s.data->'status','submittedAt',s.data->'submittedAt','createdAt',s.data->'createdAt',
-        'manualScoreEntry',s.data->'manualScoreEntry','version',s.data->'version',
+        'manualScoreEntry',s.data->'manualScoreEntry','offlineMakeup',s.data->'offlineMakeup','version',s.data->'version',
         'reviewRequests',CASE WHEN s.data->'reviewRequests' @> '[{"status":"open"}]'::jsonb THEN '[{"status":"open"}]'::jsonb ELSE '[]'::jsonb END,
         'publishedGrade',CASE WHEN jsonb_typeof(s.data->'publishedGrade')='object' THEN jsonb_build_object(
           'total',s.data#>'{publishedGrade,total}','maxPoints',s.data#>'{publishedGrade,maxPoints}') END

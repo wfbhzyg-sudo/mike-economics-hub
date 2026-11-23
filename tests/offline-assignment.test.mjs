@@ -32,3 +32,16 @@ test('online score-only feedback opens per-question review while manually entere
   assert.equal(usesTotalOnlyEditor({}, {manualScoreEntry:true,publishedGrade:{total:0,questions:[]}}),true);
   assert.equal(usesTotalOnlyEditor({format:'score'}, {publishedGrade:g}),true);
 });
+
+test('overdue offline makeups route by paper, respect recorded zero and stop after hand-in',()=>{
+  for(const [mode,route] of [['questions','mcq/'],['upload','submit/']]){
+    const a={...offline,allowLate:true,allowResubmit:false,makeupMode:mode};
+    const row={id:'s1',assignmentId:a.id,submittedAt:'2026-11-21T00:00:00Z'};
+    assert.equal(studentAssignmentAction(a,[]).target,route+a.id);
+    assert.equal(studentAssignmentAction({...a,allowLate:false},[]).target,null);
+    assert.equal(studentAssignmentAction(a,[{...row,status:'published',publishedGrade:{total:null,maxPoints:10}}]).target,route+a.id);
+    assert.equal(assignmentState(a,[{...row,status:'published',publishedGrade:{total:0,maxPoints:10}}]).canSubmit,false);
+    assert.equal(studentAssignmentAction(a,[{...row,status:'needs_review',offlineMakeup:{mode}}]).target,'result/s1');
+    assert.equal(studentAssignmentAction(a,[{...row,status:'returned',offlineMakeup:{mode}}]).target,route+a.id);
+  }
+});

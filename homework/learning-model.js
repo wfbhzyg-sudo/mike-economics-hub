@@ -42,8 +42,13 @@ export function assignmentState(a, submissions, time=Date.now()) {
   const canSubmit=!closed&&(!latest||latest.status==='returned'||a.allowResubmit!==false);
   const base={latest,draft,canSubmit};
   if(offline){
-    const recorded=latest?.status==='published'&&latest.publishedGrade?.total!=null;
-    return {...base,key:recorded?'done':'offline',label:recorded?'已录分':'待老师录分'};
+    const recorded=attempts.find(s=>s.status==='published'&&s.publishedGrade?.total!=null);
+    if(recorded)return {...base,latest:latest?.status==='published'&&latest.publishedGrade?.total!=null?latest:recorded,canSubmit:false,key:'done',label:'已录分'};
+    if(latest?.offlineMakeup && !['published','returned'].includes(latest.status))
+      return {...base,canSubmit:false,key:'processing',label:submissionLabel(latest.status)};
+    if(a.allowLate && a.makeupMode && (!a.opensAt || Date.parse(a.opensAt)<=time))
+      return {...base,canSubmit:true,key:'todo',label:draft?'草稿待提交':'可补交'};
+    return {...base,canSubmit:false,key:'offline',label:'待老师录分'};
   }
   if(latest?.status==='returned')return {...base,key:'todo',label:submissionLabel('returned')};
   if(draft&&canSubmit)return {...base,key:'todo',label:'草稿待提交'};
@@ -55,6 +60,7 @@ export function assignmentState(a, submissions, time=Date.now()) {
 
 // Numeric-only feedback is also used for online work with real per-question answers.
 export function usesTotalOnlyEditor(assignment,submission){
+  if(submission?.offlineMakeup)return false;
   if(assignment?.offline||assignment?.format==='score')return true;
   if(!submission?.manualScoreEntry&&!submission?.publishedGrade?.scoreOnly)return false;
   return !submission?.choices&&!submission?.text?.trim()&&!submission?.files?.length

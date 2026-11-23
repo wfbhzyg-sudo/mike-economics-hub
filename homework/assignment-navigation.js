@@ -5,6 +5,10 @@ export function studentAssignmentAction(assignment, submissions, time = Date.now
   const info = assignmentState(assignment, submissions, time);
   const offline = Boolean(assignment.offline||assignment.format==='score');
   const opensLater = !info.latest && assignmentOpensLater(assignment, time);
+  if(offline && info.canSubmit){
+    return {info,target:(assignment.makeupMode==='questions'?'mcq/':'submit/')+assignment.id,action:info.draft||assignment.attemptProgress?'继续补交':'补交作业',opensLater,label:info.label};
+  }
+  if(offline && info.key==='processing')return {info,target:'result/'+info.latest.id,action:'查看提交',opensLater,label:info.label};
   const target = offline ? (info.key==='done' ? 'result/'+info.latest.id : null)
     : opensLater ? null : info.latest && info.latest.status !== 'returned' && !(info.draft && info.canSubmit)
     ? 'result/' + info.latest.id : 'submit/' + assignment.id;

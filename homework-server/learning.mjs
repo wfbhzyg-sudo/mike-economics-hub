@@ -9,7 +9,7 @@ export const visibleQuestions = (s) => {
 };
 // Answer keys belong only to the student's published, imported result detail.
 export function offlineResultQuestions(submission, visible) {
-  if (submission.status !== 'published' || !submission.offlineEvidence) return visible;
+  if (submission.status !== 'published' || !(submission.offlineEvidence||submission.offlineMakeup?.mode==='questions')) return visible;
   const marked = new Set((submission.publishedGrade?.questions || []).filter(q => Number.isFinite(q.score)).map(q => String(q.id)));
   const snapshot = new Map((submission.rubricSnapshot || []).map(q => [String(q.id), q]));
   return visible.map(q => {
@@ -30,6 +30,10 @@ export function publishedResult(s, result, actor, at, note='', source='teacher',
   s.publishedGrade={...result,questions:result.questions.map(q=>({...q,type:s.rubricSnapshot.find(r=>r.id===q.id)?.type||'short'})),
     teacherNote:note,publishedAt:at,answerVersion:s.version,revision:(s.gradeHistory?.length||0)+1,source,model,
     questionsSnapshot:visibleQuestions({...s,publishedGrade:null})};
+  if(s.offlineMakeup?.mode==='questions' && s.offlineMakeup.maxPoints>0 && result.maxPoints>0 && Number.isFinite(result.total)){
+    s.publishedGrade.total=Math.round(result.total/result.maxPoints*s.offlineMakeup.maxPoints*1e6)/1e6;
+    s.publishedGrade.maxPoints=s.offlineMakeup.maxPoints;
+  }
   s.status='published';s.updatedAt=at;
   s.reviewRequests=(s.reviewRequests||[]).map(r=>r.status==='open'?{...r,status:'resolved',resolvedAt:at,resolvedBy:actor}:r);
   return s;

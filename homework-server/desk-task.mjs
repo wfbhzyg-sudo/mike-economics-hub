@@ -45,15 +45,18 @@ export async function deskTask(db,user,now=Date.now()){
   const [assignments,submissions]=await Promise.all([
     db.query(`SELECT id,data->>'title' AS title,data->>'dueAt' AS "dueAt",
       data->>'opensAt' AS "opensAt",data->>'allowLate'='true' AS "allowLate",
-      (data->>'allowResubmit') IS DISTINCT FROM 'false' AS "allowResubmit"
+      (data->>'allowResubmit') IS DISTINCT FROM 'false' AS "allowResubmit",
+      data->>'makeupMode' AS "makeupMode",data->>'format' AS format,data->>'offline'='true' AS offline
       FROM ${table} WHERE kind='assignment' AND data->>'published'='true'
-        AND data->>'deletedAt' IS NULL AND data->>'offline' IS DISTINCT FROM 'true'
-        AND data->>'format' IS DISTINCT FROM 'score' AND (data->'classIds') ?| $1::text[]
+        AND data->>'deletedAt' IS NULL AND (data->'classIds') ?| $1::text[]
+        AND ((data->>'offline' IS DISTINCT FROM 'true' AND data->>'format' IS DISTINCT FROM 'score')
+             OR (data->>'allowLate'='true' AND data->>'makeupMode' IN ('questions','upload')))
       ORDER BY created DESC,id`,[user.classIds]),
     db.query(`SELECT id,data->>'assignmentId' AS "assignmentId",data->>'status' AS status,
-      data->>'submittedAt' AS "submittedAt",data->>'updatedAt' AS "updatedAt",data->>'createdAt' AS "createdAt"
-      FROM ${table} WHERE kind='submission' AND data->>'studentId'=$1
-        AND data->>'manualScoreEntry' IS DISTINCT FROM 'true'`,[user.id]),
+      data->>'submittedAt' AS "submittedAt",data->>'updatedAt' AS "updatedAt",data->>'createdAt' AS "createdAt",
+      data->>'manualScoreEntry'='true' AS "manualScoreEntry",data ? 'offlineMakeup' AS "offlineMakeup",
+      CASE WHEN data#>>'{publishedGrade,total}' IS NOT NULL THEN jsonb_build_object('total',data#>'{publishedGrade,total}') END AS "publishedGrade"
+      FROM ${table} WHERE kind='submission' AND data->>'studentId'=$1`,[user.id]),
   ]);
   const byWork=Map.groupBy(submissions.rows,s=>s.assignmentId);
   const pending=assignments.rows.filter(a=>!assignmentOpensLater(a,now)&&assignmentState(a,byWork.get(a.id)||[],now).key==='todo');
