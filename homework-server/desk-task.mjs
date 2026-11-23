@@ -1,3 +1,5 @@
+import {audienceSql} from './assignment-audience.mjs';
+import {classKey} from '../homework/course-scope.js';
 import {assignmentState} from '../homework/learning-model.js';
 import {assignmentOpensLater} from '../homework/assignment-navigation.js';
 
@@ -48,8 +50,8 @@ export async function deskTask(db,user,now=Date.now(),effectiveZeros=rows=>rows)
       (data->>'allowResubmit') IS DISTINCT FROM 'false' AS "allowResubmit",
       data->>'makeupMode' AS "makeupMode",data->>'format' AS format,data->>'offline'='true' AS offline
       FROM ${table} WHERE kind='assignment' AND data->>'published'='true'
-        AND data->>'deletedAt' IS NULL AND (data->'classIds') ?| $1::text[]
-      ORDER BY created DESC,id`,[user.classIds]),
+        AND data->>'deletedAt' IS NULL AND (data->'classIds') ?| $1::text[] AND ${audienceSql('$2','$3')}
+      ORDER BY created DESC,id`,[user.classIds,user.classIds.map(classKey),user.id]),
     db.query(`SELECT id,data->>'assignmentId' AS "assignmentId",data->>'status' AS status,
       data->>'submittedAt' AS "submittedAt",data->>'updatedAt' AS "updatedAt",data->>'createdAt' AS "createdAt",
       data->>'manualScoreEntry'='true' AS "manualScoreEntry",data ? 'offlineMakeup' AS "offlineMakeup",

@@ -1,3 +1,4 @@
+import {audienceClasses} from '../homework/assignment-audience.js';
 import {correctionFeedback} from './correction-feedback.mjs';
 import {deepseek} from './ai.mjs';
 import {hash, id, now} from './store.mjs';
@@ -397,7 +398,7 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const b=await requireAssignment(route[1],user,c);
     const item=route[2]||'', classId=classKey(query.get('classId'));
     assert(b.published&&!b.deletedAt&&b.classIds?.some(id=>classKey(id)===classId),'该讨论不属于这个班级',403);
-    const canAccess=user.role==='teacher'?(await ctx.availableClasses()).some(c=>classKey(c.id)===classId):member(user.classIds,classId);
+    const canAccess=user.role==='teacher'?(await ctx.availableClasses()).some(c=>classKey(c.id)===classId):audienceClasses(b,user).some(id=>classKey(id)===classId);
     assert(canAccess,'仅该班教师和学生可以查看',403);
     const q=b.rubric?.find(q=>q.id===item);
     assert(!item||q,'未找到这道题',404);

@@ -1,3 +1,4 @@
+import {audienceSql} from './assignment-audience.mjs';
 import pg from "pg";
 import {
   randomUUID,
@@ -118,8 +119,8 @@ export function createStore(connectionString, schema = "homework") {
           SELECT person FROM jsonb_array_elements(CASE WHEN jsonb_typeof(data#>'{recipients,students}')='array' THEN data#>'{recipients,students}' ELSE '[]'::jsonb END) person WHERE person->>'id'=$2 LIMIT 1
         ) snapshot ON true
         WHERE kind='assignment' AND data->>'teacherId'=$1 AND data->>'published'='true' AND data->>'deletedAt' IS NULL
-          AND (data->'classIds' ?| $3::text[] OR a.id=ANY($4::text[]) OR snapshot.person IS NOT NULL)`,
-        [teacherId, studentId, classIds, submittedIds]);
+          AND ((data->'classIds' ?| $3::text[] AND ${audienceSql('$5','$2')}) OR a.id=ANY($4::text[]) OR snapshot.person IS NOT NULL)`,
+        [teacherId, studentId, classIds, submittedIds, [...new Set(classIds.map(id=>id.replace(/^bookself-class:/,'')))]]);
       return result.rows.map(row => row.work);
     },
     async submissionsForTeacherStudent(teacherId, studentId, client = pool) {

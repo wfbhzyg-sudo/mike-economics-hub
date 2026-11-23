@@ -229,7 +229,7 @@ export function mountLearningOverview(ctx, initialData) {
 
     const assignments = scopedAssignments(data, {classId: filter.classId, unit: filter.unit, period: filter.period, assignmentId: filter.assignmentId});
     const students = scopedStudents(data, {classId: filter.classId, assignments});
-    const rows = buildRows(data, students, assignments);
+    const rows = buildRows(data, students, assignments, filter.classId);
     const stats = overviewStats(rows, assignments);
     const studentIds=new Set(students.map(student=>student.id));
     const diagnosticData={...data,submissions:data.submissions.filter(s=>studentIds.has(s.studentId))};
@@ -1156,7 +1156,7 @@ function renderDetail() {
     function showRoster() {
       currentWork = work.value;
       const assignment = data.assignments.find(a => a.id === currentWork);
-      cells = assignment ? buildRows(data,scopedStudents(data,{classId:cls.value,assignments:[assignment]}),[assignment])
+      cells = assignment ? buildRows(data,scopedStudents(data,{classId:cls.value,assignments:[assignment]}),[assignment],cls.value)
         .map(row => row.cells[0]).filter(cell => cell && (cell.required || cell.record?.grade))
         .sort((a,b) => a.student.name.localeCompare(b.student.name,'zh-CN')) : [];
       const fallback = assignment && scoreMaximum(assignment,data.submissions.filter(s=>s.assignmentId===assignment.id).map(s=>s.publishedGrade));

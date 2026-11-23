@@ -1,3 +1,4 @@
+import {audiencePicker,bindAudiencePicker} from './audience-picker.js';
 import {selectedCourse,rememberCourse} from './course-scope.js';
 import {gradingFields,readGradingPoints} from './library-grading.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
@@ -191,11 +192,22 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
   draft??={};
   const clientId=draft.clientId||crypto.randomUUID();
   try{const classes=(await api('classes')).classes,selectedQuestions=(await getQuestions()).filter(q=>ids.includes(q.id));if(disposed)return;
-   openSheet('布置给班级',`<form class="lib-publish"><label>作业名称<input name="title" required maxlength="120" value="${h(draft.title||title||topic.id+' '+(topic.name||topic.title))}"></label><p>${ids.length} 题 · ${h(unitLabel)}</p>${gradingFields(selectedQuestions,h)}<fieldset><legend>班级</legend><div class="lib-classes">${classes.map(c=>`<label><input name="class" type="checkbox" value="${h(c.id)}" ${draft.classIds?.includes(c.id)?'checked':''}>${h(c.name)}</label>`).join('')}</div></fieldset><label>截止时间<input name="dueAt" type="datetime-local" value="${h(draft.dueAt||'')}"></label><details><summary>更多设置</summary><div class="lib-form-grid"><label>开始时间<input name="opensAt" type="datetime-local" value="${h(draft.opensAt||'')}"></label><label>限时（分钟）<input name="durationMinutes" type="number" min="1" max="240" value="${h(draft.durationMinutes||'')}"></label><label><input name="allowLate" type="checkbox" ${draft.allowLate?'checked':''}>允许补交</label><label><input name="allowResubmit" type="checkbox" ${draft.allowResubmit?'checked':''}>允许重交</label></div></details><p class="lib-publish-policy">批改完成后自动出分。</p><p role="alert"></p><button class="primary" type="submit">确认布置</button></form>`,d=>{
-    const form=d.querySelector('form'),button=form.querySelector('[type=submit]');
-    const values=()=>({...Object.fromEntries(new FormData(form)),classIds:[...form.querySelectorAll('[name=class]:checked')].map(x=>x.value),allowLate:form.elements.allowLate.checked,allowResubmit:form.elements.allowResubmit.checked,clientId,maxPointsByQuestion:readGradingPoints(form)});
-    form.oninput=()=>{const v=values();remember(key,v);button.disabled=!v.classIds.length;};form.oninput();
-    form.onsubmit=async e=>{e.preventDefault();const v=values();remember(key,v);button.disabled=true;try{const {assignment}=await post('library/publish',{...v,unitId,...(skillTopic?{skillTopic}:{}),questionIds:ids,dueAt:v.dueAt?new Date(v.dueAt).toISOString():null,opensAt:v.opensAt?new Date(v.opensAt).toISOString():null,durationMinutes:v.durationMinutes?Number(v.durationMinutes):null,gradingMode:'manual'});sessionStorage.removeItem(key);d.close();toast('已布置：'+assignment.title);}catch(err){form.querySelector('[role=alert]').textContent=err.message;}finally{button.disabled=false;}};
+   openSheet('作业安排',`<form class="lib-publish"><label>作业名称<input name="title" required maxlength="120" value="${h(draft.title||title||topic.id+' '+(topic.name||topic.title))}"></label><p>${ids.length} 题 · ${h(unitLabel)}</p>${gradingFields(selectedQuestions,h)}${audiencePicker(classes,draft,h)}<label>截止时间<input name="dueAt" type="datetime-local" value="${h(draft.dueAt||'')}"></label><details><summary>更多设置</summary><div class="lib-form-grid"><label>开始时间<input name="opensAt" type="datetime-local" value="${h(draft.opensAt||'')}"></label><label>限时（分钟）<input name="durationMinutes" type="number" min="1" max="240" value="${h(draft.durationMinutes||'')}"></label><label><input name="allowLate" type="checkbox" ${draft.allowLate?'checked':''}>允许补交</label><label><input name="allowResubmit" type="checkbox" ${draft.allowResubmit?'checked':''}>允许重交</label></div></details><p class="lib-publish-policy">批改完成后自动出分。</p><p role="alert"></p><button class="primary" type="submit">确认布置</button></form>`,d=>{
+    const form=d.querySelector('form'), publishButton=form.querySelector('[type=submit]');
+    const draftButton=document.createElement('button');draftButton.type='submit';draftButton.name='draft';draftButton.textContent='保存草稿';draftButton.className='secondary';publishButton.before(draftButton);
+    const err=form.querySelector('[role=alert]')||form.appendChild(document.createElement('p'));err.setAttribute('role','alert');
+    const readAudience=bindAudiencePicker(form.querySelector('.audience-picker'),{classes,value:draft,escape:h,students:()=>api('students'),change:()=>form.oninput()});
+    const values=()=>({...Object.fromEntries(new FormData(form)),...readAudience(),allowLate:form.elements.allowLate.checked,allowResubmit:form.elements.allowResubmit.checked,clientId,maxPointsByQuestion:readGradingPoints(form)});
+    form.oninput=()=>remember(key,values());
+    form.onsubmit=async e=>{
+     e.preventDefault();const v=values(),saveDraft=e.submitter===draftButton;err.textContent='';
+     if(!saveDraft&&(!v.classIds.length||Object.values(v.individualRecipients).some(ids=>!ids.length))){err.textContent='请选择班级或学生';return;}
+     remember(key,v);publishButton.disabled=draftButton.disabled=true;
+     try{
+      const {assignment}=await post('library/publish',{...v,draft:saveDraft,unitId,...(skillTopic?{skillTopic}:{}),questionIds:ids,dueAt:v.dueAt?new Date(v.dueAt).toISOString():null,opensAt:v.opensAt?new Date(v.opensAt).toISOString():null,timeLimitMinutes:v.durationMinutes?Number(v.durationMinutes):null,gradingMode:'manual'});
+      sessionStorage.removeItem(key);d.close();toast(saveDraft?'草稿已保存':'作业已发布');go((saveDraft?'edit/':'overview/')+assignment.id);
+     }catch(e){err.textContent=e.message;publishButton.disabled=draftButton.disabled=false;}
+    };
    });
   }catch(e){error(e);}
  }

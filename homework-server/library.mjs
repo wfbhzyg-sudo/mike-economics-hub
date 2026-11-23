@@ -1,3 +1,4 @@
+import {assignmentAudience} from './assignment-audience.mjs';
 import {lessonFocus} from '../homework/lesson-focus.js';
 import {lessonExamples} from './lesson-mcq-data.mjs';
 import {expandedLessonFocus} from './lesson-focus-data.mjs';
@@ -92,6 +93,20 @@ async function questionPDF(owner,question) {
   const chunks = []; for await (const chunk of await files.read(found.file)) chunks.push(chunk);
   return { ...found, pdf: await openPDF(Buffer.concat(chunks)) };
 }
+async function publishPaper(a, user, students, c) {
+ const publishedAt=now();
+ Object.assign(a,{published:true,status:'ready',version:1,publishedAt,updatedAt:publishedAt,
+   recipients:captureRecipients(a.classIds,students,publishedAt,a.individualRecipients)});
+ delete a.libraryDraft;
+ a.publishedPaper=capturePaper(a,a.rubric,1);
+ await db.put('assignment',a,c);
+ await db.put('answer-version',{id:a.id+':v1',assignmentId:a.id,version:1,rubric:a.rubric,paper:a.publishedPaper,answerFiles:[],confirmedBy:user.id,confirmedAt:publishedAt},c);
+ const chapters=a.rubric.filter(q=>q.libraryChapter).map(q=>({id:q.id,fingerprint:questionFingerprint(q),chapters:[q.libraryChapter]}));
+ await db.put('review-links',{id:'review-links:'+hash(a.id),assignmentId:a.id,defaults:[],questions:chapters,revision:1},c);
+ await db.audit(user.id,'library_publish',a.id,c);
+ return a;
+}
+
 async function handle({req,res,route,method,user,json,availableClasses,availableStudents}){
  if(route[0]!=='library')return false;
  const bdy=async()=>{try{return JSON.parse((await readBody(req,3*1024*1024)).toString())}catch(e){if(e.status)throw e;assert(false,'无法读取保存内容')}};
@@ -428,8 +443,28 @@ async function handle({req,res,route,method,user,json,availableClasses,available
    json(res, {release});
    return true;
  }
+ if(route[1]==='drafts'&&route[2]&&route[3]==='publish'&&method==='POST'){
+  teacher();const b=await bdy();
+  const [classes,students]=await Promise.all([availableClasses(),availableStudents()]);
+  const a=await db.tx(async c=>{
+   const a=await requireAssignment(route[2],user,c);
+   assert(!a.deletedAt,'请先恢复作业',409);
+   if(a.published&&a.libraryDraftPublished)return a;
+   assert(a.libraryDraft && !a.published,'没有这份题库草稿',409);
+   assert(Number(b.editRevision||0)===Number(a.editRevision||0),'草稿已在另一处修改，请重新打开',409);
+   const audience=assignmentAudience(b,classes,students);
+   const title=text(b.title,120);assert(title,'请填写作业名称');
+   Object.assign(a,audience,validateTiming(b),{title,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,
+     editRevision:(a.editRevision||0)+1,libraryDraftPublished:true});
+   return publishPaper(a,user,students,c);
+  });
+  json(res,{assignment:{id:a.id,title:a.title,published:a.published}});return true;
+ }
  if(route[1]==='publish'&&method==='POST'){
- teacher();const b=await bdy(),classes=await availableClasses();assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(c=>plainClass(c.id)===plainClass(x))),'请选择自己的班级');assert(typeof b.clientId==='string'&&b.clientId.length>=16&&b.clientId.length<=100,'发布标识无效');let title=text(b.title,120);assert(title,'请填写作业名称');
+ teacher();const b=await bdy(), draft=b.draft===true;
+ const [classes,students]=await Promise.all([availableClasses(),draft&&!Object.keys(b.individualRecipients||{}).length?[]:availableStudents()]);
+ const audience=assignmentAudience(b,classes,students,{allowEmpty:draft});
+ assert(typeof b.clientId==='string'&&b.clientId.length>=16&&b.clientId.length<=100,'发布标识无效');let title=text(b.title,120);assert(title,'请填写作业名称');
  const units=await db.list('library-unit'),unitMap=new Map(units.map(u=>[u.id,u]));
  const bankQuestions=await db.list('library-question'),chosen=validateSelection(b.questionIds,bankQuestions);
  const pointOverrides=b.maxPointsByQuestion||{};for(const q of chosen){if(automaticGradeReady(q))continue;const points=Number(pointOverrides[q.id]??q.maxPoints??(q.type==='choice'?1:NaN));assert(Number.isFinite(points)&&points>0&&points<=100,'请填写待核对题目的满分（0–100 之间）');}
@@ -447,12 +482,21 @@ async function handle({req,res,route,method,user,json,availableClasses,available
  }
  const courseIds=[...new Set(unitIds.map(unitId=>unitId.split('-')[0]))];
  const courseLabel=courseIds.length===1?(courseIds[0]==='macro'?'AP 宏观经济学':'AP 微观经济学'):'AP 经济学';
- const timing=validateTiming(b),students=await availableStudents();
- const a=await db.tx(async c=>{const key='library-publish:'+hash(user.id+b.clientId),prior=await db.get(key,c);if(prior){const saved=await db.get(prior.assignmentId,c);if(saved)return saved;}
+ const timing=validateTiming({...b,timeLimitMinutes:b.timeLimitMinutes??b.durationMinutes});
+ const key='library-publish:'+hash(user.id+b.clientId);
+ const a=await db.tx(async c=>{const prior=await db.get(key,c);if(prior){const saved=await db.get(prior.assignmentId,c);if(saved)return saved;}
  const rubric=chosen.map((q,i)=>{const unit=unitMap.get(q.unitId),manualGradingRequired=!automaticGradeReady(q),maxPoints=manualGradingRequired?Number(pointOverrides[q.id]??q.maxPoints??1):(q.maxPoints||1);return {id:String(i+1),manualGradingRequired,libraryReviewStatus:q.status,skill:q.skill||'',type:q.type,prompt:q.type==='short'?(q.searchText||''):'',sliceOnly:true,options:q.type==='choice'?libraryOptions(q).map(label=>({label,text:''})):[],correctOptions:q.type==='choice'&&!manualGradingRequired?[q.answer]:[],choiceMode:'single',answer:manualGradingRequired?'':q.answer||q.criteria,maxPoints,criteria:q.criteria||(q.type==='choice'&&!manualGradingRequired?'与已确认的答案一致得分':''),scoringPoints:q.scoringPoints||[],questionImages:q.questionImages,sourcePages:q.source+' · 原题 '+q.number+' · p.'+(Array.isArray(q.sourcePages)?q.sourcePages:[q.sourcePages||1]).join(', '),knowledge:q.topic?('Topic '+q.topic+' · '+(unit?.topics||[]).find(t=>t.id===q.topic)?.title||''):q.collection==='exam'?q.source:(unit?.title||''),lessonUnit:q.unitId,lessonTopic:q.topic||'',libraryChapter:q.chapterKey||'',libraryQuestionId:q.id,libraryVersion:q.version||1};});
  const publishedAt=now();
- const a={id:id(),type:'assignment',teacherId:user.id,title,...(skillTopic?{libraryPackTopic:skillTopic}:{}),course:courseLabel,classIds:[...new Set(b.classIds.map(x=>'bookself-class:'+plainClass(x)))],...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:true,status:'ready',version:1,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:publishedAt,publishedAt,recipients:captureRecipients(b.classIds,students),libraryUnit:unitIds.length===1&&!chosen.some(q=>q.collection==='exam')?primary.id:null,librarySourceUnit:unitIds.length===1?primary.id:'mixed',libraryUnits:unitIds,libraryCollection:chosen.some(q=>q.collection==='exam')?'exam':'unit',libraryCourse:courseIds.length===1?courseIds[0]:'mixed',libraryVersion:unitIds.length===1?primary.version:null};a.publishedPaper=capturePaper(a,rubric,1);
- await db.put('assignment',a,c);await db.put('answer-version',{id:a.id+':v1',assignmentId:a.id,version:1,rubric,paper:a.publishedPaper,answerFiles:[],confirmedBy:user.id,confirmedAt:publishedAt},c);await db.put('review-links',{id:'review-links:'+hash(a.id),assignmentId:a.id,defaults:[],questions:rubric.filter(q=>q.libraryChapter).map(q=>({id:q.id,fingerprint:questionFingerprint(q),chapters:[q.libraryChapter]})),revision:1},c);await db.put('library-publication',{id:key,assignmentId:a.id,createdAt:now()},c);await db.audit(user.id,'library_publish',a.id,c);return a;});json(res,{assignment:{id:a.id,title:a.title}},201);return true;}
+ const a={id:id(),type:'assignment',teacherId:user.id,title,...(skillTopic?{libraryPackTopic:skillTopic}:{}),course:courseLabel,...audience,...timing,assessmentMode:b.assessmentMode==='exam'?'exam':'practice',format:rubric.some(q=>q.type==='short')?'mixed':'mcq',instructions:'阅读原题并作答。简答题可以手写、输入或上传照片。',questionFiles:[...new Set(rubric.flatMap(q=>q.questionImages))],answerFiles:[],answerText:'',rubric,draftRubric:structuredClone(rubric),published:false,status:'draft',version:0,allowLate:b.allowLate===true,allowResubmit:b.allowResubmit===true,gradingMode:b.gradingMode==='auto'?'auto':'manual',createdAt:publishedAt,libraryUnit:unitIds.length===1&&!chosen.some(q=>q.collection==='exam')?primary.id:null,librarySourceUnit:unitIds.length===1?primary.id:'mixed',libraryUnits:unitIds,libraryCollection:chosen.some(q=>q.collection==='exam')?'exam':'unit',libraryCourse:courseIds.length===1?courseIds[0]:'mixed',libraryVersion:unitIds.length===1?primary.version:null};
+ if(draft){
+  a.libraryDraft=true;a.editRevision=0;
+  await db.put('assignment',a,c);await db.audit(user.id,'library_draft',a.id,c);
+ }else await publishPaper(a,user,students,c);
+ await db.put('library-publication',{id:key,assignmentId:a.id,createdAt:now()},c);
+ return a;
+ },key);
+ json(res,{assignment:{id:a.id,title:a.title,published:a.published}},201);return true;
+ }
  if(route[1]==='notes'){
  const query=new URL(req.url,'http://local').searchParams,b=method==='GET'?Object.fromEntries(query):await bdy();let scope;
  if(b.resourceId){const u=await unitFor(user,b.unitId);let r=u.resources.find(r=>r.fileId===b.resourceId),canonical=r?canonicalResourcePage(r,b.page):null;if(!canonical){r=u.resources.find(r=>r.sourceFileId===b.resourceId);const page=Number(b.page),max=Number(r?.sourcePages||r?.pages||0);if(r&&Number.isInteger(page)&&page>=1&&page<=max)canonical={fileId:b.resourceId,page};}assert(r&&canonical&&(user.role==='teacher'||r.audience!=='teacher'),'无法查看这份资料',403);scope='resource:'+canonical.fileId+':'+canonical.page;}

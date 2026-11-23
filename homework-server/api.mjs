@@ -1,3 +1,4 @@
+import {validateTiming} from './mcq-model.mjs';
 import {createCorrectionReview,applyRecovery,attachReview,reviewView} from './correction-review.mjs';
 import {studentPerformance,performanceAdvice} from './student-performance.mjs';
 import {deskTask,deskSubmissions} from './desk-task.mjs';
@@ -38,6 +39,8 @@ import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } f
 import {visibleQuestions, offlineResultQuestions, publishedResult, mistakeRows, reviewDraft} from './learning.mjs';
 import {buildInsightFacts, canViewReport, draftInsight, insightData, insightScope, insightVersion, publishTarget} from './insights.mjs';
 import {exportWork} from './export.mjs';
+import {assignmentAudience,studentCanAccessAssignment,audienceSql} from './assignment-audience.mjs';
+import {audienceClasses} from '../homework/assignment-audience.js';
 import {captureRecipients,assignmentRoster,rosterCounts} from './roster.mjs';
 import {capturePaper,paperOf,questionLocation} from './paper.mjs';
 const safeUser = (u) => ({
@@ -188,7 +191,7 @@ export async function createHomework({externalAuth} = {}) {
     assert(
       user.role === "teacher"
         ? a.teacherId === user.id
-        : !a.deletedAt && a.published && a.classIds.some((x) => user.classIds?.includes(x)),
+        : studentCanAccessAssignment(a,user),
       "没有访问这份作业的权限",
       403,
     );
@@ -270,9 +273,9 @@ export async function createHomework({externalAuth} = {}) {
     if(file.purpose==='library'&&file.mime?.startsWith('image/')&&file.offlineAssignmentIds?.length){
       const matches=await db.query(`SELECT 1 FROM ${db.table}
         WHERE kind='assignment' AND id=ANY($1::text[]) AND data->>'published'='true'
-        AND data->>'deletedAt' IS NULL AND data->'classIds' ?| $2::text[]
+        AND data->>'deletedAt' IS NULL AND ${audienceSql('$2','$4')}
         AND EXISTS(SELECT 1 FROM jsonb_array_elements(data->'rubric') q WHERE q->'questionImages' ? $3)
-        LIMIT 1`,[file.offlineAssignmentIds,user.role==='student'?(user.classIds||[]):[],file.id]);
+        LIMIT 1`,[file.offlineAssignmentIds,user.role==='student'?(user.classIds||[]).map(id=>id.replace(/^bookself-class:/,'')):[],file.id,user.id]);
       if(matches.rowCount)return true;
     }
     if(await library.canReadFile(file,user))return true;
@@ -283,7 +286,7 @@ export async function createHomework({externalAuth} = {}) {
         ((paperOf(a).questionFiles || []).includes(file.id) || containsQuestionSlice(a.rubric,file)) &&
         (user.role === "teacher"
           ? a.teacherId === user.id
-          : a.published && a.classIds.some((x) => user.classIds?.includes(x)))
+          : studentCanAccessAssignment(a,user))
       )
         return true;
     for(const s of await db.find('submission',{studentId:user.id}))
@@ -740,7 +743,7 @@ export async function createHomework({externalAuth} = {}) {
       const accessibleWork = async (c) => {
         const allAssignments=user.role==='teacher'?await db.find('assignment',{teacherId:user.id},c):await db.list('assignment',c);
         const allSubmissions=await db.find('submission',user.role==='teacher'?{assignmentId:allAssignments.map(a=>a.id)}:{studentId:user.id},c);
-        const assignments=allAssignments.filter(a=>user.role==='teacher'?a.teacherId===user.id:(a.published&&a.classIds.some(x=>user.classIds.includes(x)))||allSubmissions.some(s=>s.studentId===user.id&&s.assignmentId===a.id));
+        const assignments=allAssignments.filter(a=>user.role==='teacher'?a.teacherId===user.id:(studentCanAccessAssignment(a,user))||allSubmissions.some(s=>s.studentId===user.id&&s.assignmentId===a.id&&s.status!=='draft'));
         const submissions=allSubmissions.filter(s=>user.role==='teacher'?assignments.some(a=>a.id===s.assignmentId):s.studentId===user.id);
         return {assignments,submissions};
       };
@@ -974,8 +977,9 @@ export async function createHomework({externalAuth} = {}) {
         const assignmentIndex=new Map(assignments.map(a=>[a.id,a]));
         const performance=user.role==='student'&&url.searchParams.get('performance')==='1'?await performanceOf(work,classes,mistakes):undefined;
         return (json(res,{classes,insights,students,performance,assignments:assignments.map(a=>{const publicData=publicAssignment(a);
+          if(user.role==='student'){const eligible=audienceClasses(a,user);if(eligible.length)publicData.classIds=eligible;}
           if(user.role==='teacher')publicData.questions?.forEach((q,i)=>{const ref=a.rubric[i];q.sourcePages=ref.sourcePages||'';q.correctOptions=ref.manualGradingRequired?[]:ref.correctOptions||[];});
-          return {...publicData,audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>{
+          return {...publicData,...(user.role==='teacher'?{individualRecipients:a.individualRecipients}:{}),audience:user.role==='teacher'?{confirmedAt:a.recipients?.at||null,students:(a.recipients?.students||[]).map(u=>({id:u.id,classIds:u.classIds}))}:{confirmedAt:a.recipients?.at||null,required:Boolean(a.recipients?.students?.some(u=>u.id===user.id&&u.classIds.some(c=>a.classIds.includes(c))))}}}),submissions:submissions.filter(x=>user.role==='student'||x.status!=='draft').map(x=>{
             const a=assignmentIndex.get(x.assignmentId)||{};
             if(!x.offlineEvidence)return {...publicSubmission(x),studentId:x.studentId,assignment:publicAssignment(a)};
             // The class-wide response already includes each assignment's question list once.
@@ -1150,12 +1154,12 @@ export async function createHomework({externalAuth} = {}) {
             return (json(res, {assignments}), true);
           }
           const all = (await db.list("assignment")).filter(a =>
-            a.published && a.classIds.some(x => user.classIds.includes(x)));
+            studentCanAccessAssignment(a,user));
           const attempts=(await db.find('mcq-attempt',{studentId:user.id})).filter(t=>!t.submittedId);
           return (
             json(res, {
               assignments:
-                all.filter(a=>!a.deletedAt).map(a=>({...publicAssignment(a),attemptProgress:attempts.find(t=>t.assignmentId===a.id&&t.version===a.version)?{started:true,answered:Object.values(attempts.find(t=>t.assignmentId===a.id&&t.version===a.version).answers).filter(Boolean).length}:null})),
+                all.map(a=>({...publicAssignment(a),classIds:audienceClasses(a,user),attemptProgress:attempts.find(t=>t.assignmentId===a.id&&t.version===a.version)?{started:true,answered:Object.values(attempts.find(t=>t.assignmentId===a.id&&t.version===a.version).answers).filter(Boolean).length}:null})),
             }),
             true
           );
@@ -1165,12 +1169,7 @@ export async function createHomework({externalAuth} = {}) {
           const b = await body(req);
           assert(text(b.title, 120), "请填写作业标题");
           const classes = await availableClasses();
-          assert(
-            Array.isArray(b.classIds) &&
-              b.classIds.length &&
-              b.classIds.every((x) => classes.some((c) => c.id === x)),
-            "请选择自己的班级",
-          );
+          const audience=assignmentAudience(b,classes,Object.keys(b.individualRecipients||{}).length?await availableStudents():[]);
           assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),"截止时间格式不正确");
           await files.validate(b.questionFiles||[],user.id,"question");
           if(b.draftToken!==undefined)assert(typeof b.draftToken==='string'&&/^[a-zA-Z0-9-]{8,80}$/.test(b.draftToken),'草稿标识无效');
@@ -1181,7 +1180,7 @@ export async function createHomework({externalAuth} = {}) {
             title: text(b.title, 120),
             course: text(b.course, 80) || "经济学",
             instructions: text(b.instructions, 20000),
-            classIds: b.classIds,
+            ...audience,
             dueAt: b.dueAt ? new Date(b.dueAt).toISOString() : null,
             questionFiles: b.questionFiles||[],
             mainQuestionFile:b.questionFiles?.[0]||null,readingScope:boundedText(b.readingScope,500,"完成范围"),submissionGuide:boundedText(b.submissionGuide,1000,"提交要求"),
@@ -1236,13 +1235,15 @@ export async function createHomework({externalAuth} = {}) {
               const assignment=await requireAssignment(a.id,user,c);
               assert(assignment.published&&!assignment.deletedAt,'请先发布或恢复作业',409);
               if(classEntry)assert((assignment.offline || assignment.format==='score') && assignment.classIds.some(id=>key(id)===classId),'请选择这个班级已布置的线下作业',409);
-              const assigned=new Set(assignment.classIds.map(key));
-              const eligible=u=>u.classIds?.some(id=>classEntry ? key(id)===classId : assigned.has(key(id)));
+              const eligible=u=>audienceClasses(assignment,u).some(id=>!classEntry||key(id)===classId);
               const results=[];
               for(const b of entries){
-                const member=students.find(u=>u.id===b.studentId && eligible(u)) || assignment.recipients?.students?.find(u=>u.id===b.studentId && eligible(u));
+                const attempts=await db.find('submission',{assignmentId:a.id,studentId:b.studentId},c);
+                const historical=attempts.find(s=>s.status!=='draft' && (!classEntry || s.classIds?.some(id=>key(id)===classId)));
+                const member=students.find(u=>u.id===b.studentId && eligible(u)) ||
+                  assignment.recipients?.students?.find(u=>u.id===b.studentId && eligible(u)) ||
+                  (historical && {id:historical.studentId,name:historical.studentName,classIds:historical.classIds});
                 assert(member,'学生不在这份作业的所选班级中',403);
-                const attempts=await db.find('submission',{assignmentId:a.id,studentId:member.id},c);
                 const record=assignmentRecords(attempts,[assignment])[0];
                 const current=record?.effective || record?.latest;
                 assert((b.submissionId||null)===(current?.id||null),'成绩版本已更新，请刷新后再修改',409);
@@ -1273,27 +1274,31 @@ export async function createHomework({externalAuth} = {}) {
           if(method==='GET' && url.searchParams.get('view')==='submit' && user.role==='student'){
             const scope={studentId:user.id,assignmentId:a.id};
             const attempts=await recover(await db.find('submission',scope),scope,[a]);
-            return (json(res,{assignment:publicAssignment(a),submissions:attempts.map(publicSubmission)}),true);
+            return (json(res,{assignment:{...publicAssignment(a),classIds:audienceClasses(a,user)},submissions:attempts.map(publicSubmission)}),true);
           }
           if (method === "GET")
             return (
               json(res, {
-                assignment: user.role === "teacher" ? a : publicAssignment(a),
+                assignment: user.role === "teacher" ? a : {...publicAssignment(a),classIds:audienceClasses(a,user)},
               }),
               true
             );
           teacher();
           const b = await body(req);
           if(route[2]==='metadata'&&method==='PUT'){
-            const classes=await availableClasses();
+            const [classes,students]=await Promise.all([availableClasses(),availableStudents()]);
             await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);
               assert(!current.deletedAt,'请先从回收站恢复作业',409);
               assert(Number(b.editRevision||0)===Number(current.editRevision||0),'作业已在另一处修改，当前输入仍保留，请重新打开核对',409);
               assert(text(b.title,120),'请填写作业名称');
-              assert(Array.isArray(b.classIds)&&b.classIds.length&&b.classIds.every(x=>classes.some(k=>k.id===x)),'请选择自己的班级');
+              const individualRecipients=b.individualRecipients ?? Object.fromEntries(Object.entries(current.individualRecipients||{}).filter(([key])=>b.classIds?.some(id=>String(id).replace(/^bookself-class:/,'')===key)));
+              const audience=assignmentAudience({...b,individualRecipients},classes,students,{allowEmpty:!current.published&&!!current.libraryDraft,priorRecipients:current.individualRecipients});
               assert(!b.dueAt||Number.isFinite(Date.parse(b.dueAt)),'截止时间格式不正确');
-              current.metadataHistory||=[];current.metadataHistory.push({title:current.title,course:current.course,classIds:current.classIds,dueAt:current.dueAt,gradingMode:current.gradingMode,allowLate:current.allowLate,allowResubmit:current.allowResubmit,at:now(),actor:user.id});
-              Object.assign(current,{title:boundedText(b.title,120,'作业名称'),course:b.course===undefined?current.course:boundedText(b.course,80,'课程'),classIds:b.classIds,dueAt:b.dueAt?new Date(b.dueAt).toISOString():null,gradingMode:b.gradingMode==='auto'?'auto':'manual',allowLate:Boolean(b.allowLate),allowResubmit:b.allowResubmit!==false,editRevision:(current.editRevision||0)+1,updatedAt:now()});
+              const audienceChanged=JSON.stringify(audience)!==JSON.stringify({classIds:current.classIds,individualRecipients:current.individualRecipients||{}});
+              current.metadataHistory||=[];current.metadataHistory.push({title:current.title,course:current.course,classIds:current.classIds,individualRecipients:current.individualRecipients,dueAt:current.dueAt,gradingMode:current.gradingMode,allowLate:current.allowLate,allowResubmit:current.allowResubmit,at:now(),actor:user.id});
+              if(current.libraryDraft)Object.assign(current,validateTiming(b));
+              Object.assign(current,{title:boundedText(b.title,120,'作业名称'),course:b.course===undefined?current.course:boundedText(b.course,80,'课程'),...audience,dueAt:b.dueAt?new Date(b.dueAt).toISOString():null,gradingMode:b.gradingMode==='auto'?'auto':'manual',allowLate:Boolean(b.allowLate),allowResubmit:b.allowResubmit!==false,editRevision:(current.editRevision||0)+1,updatedAt:now()});
+              if(current.published&&audienceChanged)current.recipients=captureRecipients(current.classIds,[...(current.recipients?.students||[]).filter(u=>!students.some(s=>s.id===u.id)),...students],now(),current.individualRecipients);
               await db.put('assignment',current,c);await db.audit(user.id,'edit_assignment',a.id,c);
             });return (json(res,{assignment:await db.get(a.id)}),true);
           }
@@ -1314,7 +1319,7 @@ export async function createHomework({externalAuth} = {}) {
             const classes=await availableClasses();let copy;
             await db.tx(async c=>{const current=await requireAssignment(a.id,user,c);const classIds=current.classIds.filter(x=>classes.some(k=>k.id===x));
               assert(classIds.length,'请先确认原班级仍在你的班级列表中');
-              copy={id:id(),type:'assignment',teacherId:user.id,title:('副本 · '+current.title).slice(0,120),course:current.course,classIds,dueAt:null,instructions:current.instructions,questionFiles:[...current.questionFiles],mainQuestionFile:current.mainQuestionFile,readingScope:current.readingScope,submissionGuide:current.submissionGuide,answerFiles:[...current.answerFiles],answerText:current.answerText,draftRubric:structuredClone(current.draftRubric||current.rubric||[]),sourceRevision:0,editRevision:0,gradingMode:current.gradingMode,allowLate:false,allowResubmit:current.allowResubmit!==false,version:0,published:false,status:'draft',format:current.format,timeLimitMinutes:current.timeLimitMinutes,assessmentMode:current.assessmentMode,copiedFrom:current.id,createdAt:now()};
+              copy={id:id(),type:'assignment',teacherId:user.id,title:('副本 · '+current.title).slice(0,120),course:current.course,classIds,dueAt:null,instructions:current.instructions,questionFiles:[...current.questionFiles],mainQuestionFile:current.mainQuestionFile,readingScope:current.readingScope,submissionGuide:current.submissionGuide,answerFiles:[...current.answerFiles],answerText:current.answerText,draftRubric:structuredClone(current.draftRubric||current.rubric||[]),sourceRevision:0,editRevision:0,gradingMode:current.gradingMode,allowLate:false,allowResubmit:current.allowResubmit!==false,version:0,published:false,status:'draft',format:current.format,individualRecipients:current.individualRecipients,timeLimitMinutes:current.timeLimitMinutes,assessmentMode:current.assessmentMode,copiedFrom:current.id,createdAt:now()};
               await db.put('assignment',copy,c);await db.audit(user.id,'duplicate_assignment',copy.id,c);
             });return (json(res,{assignment:copy},201),true);
           }
@@ -1393,7 +1398,7 @@ export async function createHomework({externalAuth} = {}) {
               assert(q.questionImages?.length,'导入作业中的新题需要先关联学生题面，请通过 PDF 导入创建题目');
               if(q.type==='choice')assert(q.choiceMode!=='multiple'&&q.options?.length>=2&&q.correctOptions?.length===1&&q.options.some(o=>o.label===q.correctOptions[0]),'请选择已有 A–E 选项中的一个正确答案');
             }
-            const recipients = !a.published && a.version===0 ? captureRecipients(a.classIds,await availableStudents()) : null;
+            const recipients = !a.published && a.version===0 ? captureRecipients(a.classIds,await availableStudents(),now(),a.individualRecipients) : null;
             await db.tx(async (c) => {
               const current = await requireAssignment(a.id, user, c);
               assert(!current.deletedAt,"请先恢复作业再修改",409);
@@ -1433,7 +1438,7 @@ export async function createHomework({externalAuth} = {}) {
               current.draftRubric = questions;
               current.status = "ready";
               current.jobId = null;
-              if(recipients && !current.recipients){assert(JSON.stringify(current.classIds)===JSON.stringify(recipients.classIds),'班级已在另一处修改，请重新确认发布',409);current.recipients=recipients;}
+              if(recipients && !current.recipients){assert(JSON.stringify(current.classIds)===JSON.stringify(recipients.classIds)&&JSON.stringify(current.individualRecipients)===JSON.stringify(a.individualRecipients),'班级已在另一处修改，请重新确认发布',409);current.recipients=recipients;}
               current.published = true;
               await db.put("assignment", current, c);
               await db.audit(
@@ -1518,7 +1523,7 @@ export async function createHomework({externalAuth} = {}) {
               text: content,
               files: b.files || [],
               paperSnapshot:structuredClone(paperOf(a)),
-              classIds:[...user.classIds],late, ...(policy.zeroRetryOf?{retryOf:policy.zeroRetryOf}:{}), ...(offline?{offlineMakeup:{mode:'upload',maxPoints:makeupMax}}:{}),
+              classIds:audienceClasses(a,user),late, ...(policy.zeroRetryOf?{retryOf:policy.zeroRetryOf}:{}), ...(offline?{offlineMakeup:{mode:'upload',maxPoints:makeupMax}}:{}),
               status: "draft",
               createdAt: previous?.createdAt || now(),
               updatedAt: now(),

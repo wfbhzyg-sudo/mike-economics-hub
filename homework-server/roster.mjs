@@ -1,10 +1,11 @@
+import {audienceClasses} from '../homework/assignment-audience.js';
 const newer=(s,old)=>!old || ((s.submittedAt||s.createdAt||'').localeCompare(old.submittedAt||old.createdAt||'') || s.id.localeCompare(old.id))>0;
 const key=id=>String(id||'').replace(/^bookself-class:/,'');
 const assignedClasses=(assigned,member=[])=>assigned.filter(id=>member.some(c=>key(c)===key(id)));
 // Assignment recipients are an historical obligation, not a second class system.
 // Current class members are required automatically; snapshots preserve historical membership.
-export function captureRecipients(classIds, students, at = new Date().toISOString()) {
-  return { at, classIds: [...classIds], students: students.filter(u => assignedClasses(classIds,u.classIds).length).map(u => ({id:u.id,name:u.name,username:u.username || '',classIds:assignedClasses(classIds,u.classIds)})) };
+export function captureRecipients(classIds, students, at = new Date().toISOString(), individualRecipients) {
+  return { at, classIds: [...classIds], students: students.filter(u => audienceClasses({classIds,individualRecipients},u).length).map(u => ({id:u.id,name:u.name,username:u.username || '',classIds:audienceClasses({classIds,individualRecipients},u)})) };
 }
 export function assignmentRoster(assignment, students, submissions) {
   const offline=Boolean(assignment.offline||assignment.format==='score');
@@ -16,11 +17,10 @@ export function assignmentRoster(assignment, students, submissions) {
     if(newer(s,prior)) attempts.set(s.studentId,s);
   }
   const snapshots=new Map((assignment.recipients?.students||[]).map(u=>[u.id,u]));
-  const expected=new Map((assignment.recipients?.students||[]).filter(u=>assignedClasses(assignment.classIds,u.classIds).length).map(u=>[u.id,u]));
-  for(const u of students)if(assignedClasses(assignment.classIds,u.classIds).length)expected.set(u.id,u);
+  const expected=new Map((assignment.recipients?.students||[]).filter(u=>audienceClasses(assignment,u).length).map(u=>[u.id,u]));
+  for(const u of students)if(audienceClasses(assignment,u).length)expected.set(u.id,u);
   const people=new Map(expected);
-  for(const u of students)if(assignedClasses(assignment.classIds,u.classIds).length)people.set(u.id,u);
-  for(const [id,s] of attempts)if(!people.has(id))people.set(id,{id,name:active.get(id)?.name||s.studentName||'学生',classIds:s.classIds||[],historical:true});
+  for(const [id,s] of new Map([...published,...attempts]))if(!people.has(id))people.set(id,{id,name:active.get(id)?.name||s.studentName||'学生',classIds:s.classIds||[],historical:true});
   const rows=[...people.values()].map(person=>{
     const effective=published.get(person.id),submission=offline&&!attempts.get(person.id)?.offlineMakeup?effective:attempts.get(person.id),u=active.get(person.id)||person;
     const hasGrade=effective?.publishedGrade?.total!=null;
@@ -28,7 +28,7 @@ export function assignmentRoster(assignment, students, submissions) {
       (!submission || effective.id===submission.id || newer(effective,submission));
     const required=Boolean(assignment.published && expected.has(person.id));
     const scoreReady=Boolean(submission?.suggestedGrade?.questions?.length && submission.suggestedGrade.questions.every(q=>Number.isFinite(q.score)));
-    return {id:u.id,name:u.name,username:u.username||'',classIds:assignedClasses(assignment.classIds,[...(u.classIds||[]),...(snapshots.get(u.id)?.classIds||[]),...(submission?.classIds||[])]),historical:!active.has(u.id),required,
+    return {id:u.id,name:u.name,username:u.username||'',classIds:assignedClasses(assignment.classIds,[...audienceClasses(assignment,u),...audienceClasses(assignment,snapshots.get(u.id)||u),...(submission?.classIds||[])]),historical:!active.has(u.id),required,
       zeroRetry,state:offline?(hasGrade?'recorded':required?'unrecorded':'unassigned'):(!zeroRetry&&submission&&submission.status!=='returned'?'submitted':required?'missing':'unassigned'),submissionId:submission?.id||null,
       offlineMakeup:Boolean(submission?.offlineMakeup),hasItemScores:Boolean(effective?.publishedGrade?.questions?.some(q=>Number.isFinite(q.score))),
       submittedAt:submission?.submittedAt||null,status:submission?.status||null,scoreReady,

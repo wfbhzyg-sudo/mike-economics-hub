@@ -1,10 +1,15 @@
+import {classKey} from './course-scope.js';
+import {audienceClasses} from './assignment-audience.js';
 import {submissionLabel} from './ui-labels.js';
 import {assignmentRecords,gradeSummary} from './learning-model.js';
 export const rateOf=g=>g?.maxPoints>0&&Number.isFinite(g.total)?Math.round(g.total/g.maxPoints*1000)/10:null;
 export const workDate=a=>a.dueAt||a.createdAt||'';
 export function visibleAssignments(data){const used=new Set(data.submissions.filter(s=>s.status!=='draft').map(s=>s.assignmentId));return data.assignments.filter(a=>(a.published!==false&&!a.deletedAt)||used.has(a.id)).sort((a,b)=>workDate(a).localeCompare(workDate(b))||a.id.localeCompare(b.id));}
-export function cellFor(a,student,record,time=Date.now()){
- const rate=rateOf(record?.grade),latest=record?.latest,inClass=student.classIds?.some(c=>a.classIds?.includes(c)),required=a.published!==false&&(inClass||a.audience?.required||a.audience?.students?.some(u=>u.id===student.id)),known=a.audience?.confirmedAt;
+export function cellFor(a,student,record,time=Date.now(),scopeClass=''){
+ const scoped=scopeClass&&Object.keys(a.individualRecipients||{}).length>0;
+ const matches=id=>!scoped||classKey(id)===classKey(scopeClass);
+ if(scoped&&record&&!(record.effective?.classIds||record.latest.classIds)?.some(matches))record=undefined;
+ const rate=rateOf(record?.grade),latest=record?.latest,inClass=audienceClasses(a,student).some(matches),required=a.published!==false&&(inClass||a.audience?.required||a.audience?.students?.some(u=>u.id===student.id&&(!scoped||u.classIds?.some(matches)))),known=a.audience?.confirmedAt;
  let status,label;if(record?.grade?.absent){status='absent';label='留空';}else if(rate!==null){status='graded';label=rate+'%';}
  else if(latest){status=['needs_review','returned','failed'].includes(latest.status)?'attention':'pending';label=submissionLabel(latest.status);}
  else if(required&&a.opensAt&&Date.parse(a.opensAt)>time){status='todo';label='尚未开放';}
@@ -12,7 +17,7 @@ export function cellFor(a,student,record,time=Date.now()){
  else{status='unassigned';label='—';}
  return {assignment:a,student,record,rate,status,label,required:Boolean(required),audienceKnown:Boolean(known),pendingUpdate:Boolean(record?.pendingUpdate),late:Boolean(latest?.late)};
 }
-export function cellsFor(data,student,assignments=visibleAssignments(data)){const map=new Map(assignmentRecords(data.submissions.filter(s=>s.studentId===student.id),data.assignments).map(r=>[r.assignmentId,r]));return assignments.map(a=>cellFor(a,student,map.get(a.id)));}
+export function cellsFor(data,student,assignments=visibleAssignments(data),scopeClass=''){const map=new Map(assignmentRecords(data.submissions.filter(s=>s.studentId===student.id),data.assignments).map(r=>[r.assignmentId,r]));return assignments.map(a=>cellFor(a,student,map.get(a.id),Date.now(),scopeClass));}
 export function cellSummary(cells){return gradeSummary(cells.map(c=>c.record).filter(Boolean));}
 export function progressChange(cells){const rates=cells.filter(c=>c.rate!==null).map(c=>c.rate);if(rates.length<6)return null;return Math.round((rates.slice(-3).reduce((a,b)=>a+b,0)-rates.slice(-6,-3).reduce((a,b)=>a+b,0))/3*10)/10;}
 export function timeRange(mode,from='',to='',now=new Date()){

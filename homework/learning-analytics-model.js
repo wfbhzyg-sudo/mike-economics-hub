@@ -67,10 +67,10 @@ function countsAsSubmitted(cell){
   return Boolean(cell.record && !cell.record.latest.manualScoreEntry);
 }
 
-export function buildRows(data, students, assignments) {
+export function buildRows(data, students, assignments, scopeClass = '') {
   const scope = new Set(assignments.map(assignment => assignment.id));
   return students.map(student => {
-    const cells = cellsFor(data, student, assignments);
+    const cells = cellsFor(data, student, assignments, scopeClass);
     const summary = cellSummary(cells);
     const submitted = cells.filter(countsAsSubmitted).length;
     const published = cells.filter(cell => cell.rate !== null).length;

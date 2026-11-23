@@ -1,3 +1,4 @@
+import {audiencePicker,bindAudiencePicker} from '/homework/audience-picker.js';
 import {studentReportUrl} from '../homework/student-report-link.js';
 import {teacherEvidenceReader,showTeacherEvidence} from '../homework/learning-evidence.js';
 import {singleClassCourse,classKey} from '../homework/course-scope.js';
@@ -262,7 +263,7 @@ function drawBankCart(){
   const list=host.querySelector('.bank-cart-list');if(list)list.scrollTop=scroll;
  }
  const bar=$('#bank-mobile-cart');if(bar){bar.hidden=cart.count===0&&!undoSelection;bar.querySelector('[data-bank-count]').textContent=cart.count;bar.querySelector('[data-bank-points]').textContent=cart.unset?'满分待确认':cart.points+' 分';}
- $('#bank-publish').disabled=cart.count===0;$('#bank-publish').textContent=cart.count?'组卷 · '+cart.count+' 题':'组卷并布置';
+ $('#bank-publish').disabled=cart.count===0;$('#bank-publish').textContent=cart.count?'组卷 · '+cart.count+' 题':'组卷';
  $('[data-bank-publish-quick]')?.toggleAttribute('disabled',cart.count===0);
 }
 function drawBankList(){
@@ -292,11 +293,25 @@ function openBankPublish(){
  const classes=state.meta.classes.filter(c=>!c.archived);
  const clientId=crypto.randomUUID(),dlg=document.createElement('dialog');dlg.className='tw-dialog bank-publish-dialog';
  dlg.addEventListener('close',()=>dlg.remove(),{once:true});
- dlg.innerHTML=`<form class="tw-dialog-form"><h2>从题库组卷并布置</h2><p class="tw-note">已选 ${items.length} 道题，保存的是此刻的题目快照；题库后续修改不会改变这份作业。</p>${gradingFields(items,h)}<label class="tw-field"><span>作业名称</span><input name="title" required maxlength="120" value="${h(items.length>1?'题库组卷 · '+new Date().toISOString().slice(0,10):'题库练习')}"></label><fieldset class="bank-class-field"><legend>布置到班级</legend>${classes.map(c=>`<label class="tw-check"><input type="checkbox" name="classIds" value="${c.id}" ${c.id===state.classId?'checked':''}>${h(c.name)}</label>`).join('')}</fieldset><label class="tw-field"><span>截止时间（可选）</span><input name="dueAt" type="datetime-local"></label><label class="tw-check"><input type="checkbox" name="allowLate" checked><span>允许逾期提交</span></label><p class="tw-form-error" role="alert"></p><div class="tw-dialog-actions"><button type="button" class="tw-button" data-bank-cancel>取消</button><button class="tw-button tw-primary" type="submit">发布作业</button></div></form>`;
+ dlg.innerHTML=`<form class="tw-dialog-form"><h2>题库组卷</h2><p class="tw-note">已选 ${items.length} 道题</p>
+ ${gradingFields(items,h)}<label class="tw-field"><span>作业名称</span><input name="title" required maxlength="120" value="${h(items.length>1?'题库组卷 · '+new Date().toISOString().slice(0,10):'题库练习')}"></label>
+ ${audiencePicker(classes,{},h)}
+ <label class="tw-field"><span>截止时间（可选）</span><input name="dueAt" type="datetime-local"></label>
+ <label class="tw-check"><input type="checkbox" name="allowLate" checked><span>允许补交</span></label><p class="tw-form-error" role="alert"></p>
+ <div class="tw-dialog-actions"><button type="button" class="tw-button" data-bank-cancel>取消</button><button type="submit" name="draft" class="tw-button">保存草稿</button><button class="tw-button tw-primary" type="submit">发布作业</button></div></form>`;
  document.body.append(dlg);dlg.showModal();dlg.querySelector('[data-bank-cancel]').onclick=()=>dlg.close();
- dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,btn=f.querySelector('[type=submit]'),err=f.querySelector('.tw-form-error');err.textContent='';const classIds=[...f.querySelectorAll('[name=classIds]:checked')].map(x=>x.value);if(!classIds.length){err.textContent='请至少选择一个班级';return;}btn.disabled=true;btn.textContent='正在发布…';
-  try{await hw('library/publish',{method:'POST',body:{clientId,maxPointsByQuestion:readGradingPoints(f),title:f.elements.title.value.trim(),classIds,dueAt:f.elements.dueAt.value?new Date(f.elements.dueAt.value).toISOString():null,allowLate:f.elements.allowLate.checked,questionIds:items.map(q=>q.id)}});dlg.close();dlg.remove();bankState.selected.clear();undoSelection=null;try{localStorage.removeItem(draftKey(bankOwner));}catch{}toast('作业已发布，学生可在作业列表看到');location.hash='work/assignments';}
-  catch(error){err.textContent=error.message;btn.disabled=false;btn.textContent='发布作业';}
+ const readAudience=bindAudiencePicker(dlg.querySelector('.audience-picker'),{classes,value:{},escape:h,students:()=>hw('students')});
+ dlg.querySelector('form').onsubmit=async e=>{
+  e.preventDefault();const f=e.currentTarget,err=f.querySelector('.tw-form-error'),draft=e.submitter?.name==='draft';
+  const audience=readAudience();err.textContent='';
+  if(!draft&&(!audience.classIds.length||Object.values(audience.individualRecipients).some(ids=>!ids.length))){err.textContent='请选择班级或学生';return;}
+  const buttons=[...f.querySelectorAll('button[type=submit]')];buttons.forEach(b=>b.disabled=true);
+  try{
+   const {assignment}=await hw('library/publish',{method:'POST',body:{clientId,draft,...audience,maxPointsByQuestion:readGradingPoints(f),title:f.elements.title.value.trim(),dueAt:f.elements.dueAt.value?new Date(f.elements.dueAt.value).toISOString():null,allowLate:f.elements.allowLate.checked,questionIds:items.map(q=>q.id)}});
+   dlg.close();bankState.selected.clear();undoSelection=null;try{localStorage.removeItem(draftKey(bankOwner));}catch{}
+   toast(draft?'草稿已保存':'作业已发布');
+   location.hash=draft?'work/edit/'+assignment.id:'work/assignments';
+  }catch(error){err.textContent=error.message;buttons.forEach(b=>b.disabled=false);}
  };
 }
 function drawBankFacets(){
@@ -333,7 +348,7 @@ async function bank(){
  }
  const hasAudit=bankState.questions.some(q=>q.canEdit!==false);
  main.innerHTML=`<div class="bank-head"><div class="bank-seg">${bankCourses.map(([id,label])=>`<button type="button" data-bank-course="${id}">${label}</button>`).join('')}</div>
-  <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷并布置</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#library">课程教学包</a></div></details></div></div>
+  <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#library">课程教学包</a></div></details></div></div>
   <div id="bank-filter-anchor"><div class="bank-workspace-filters" role="group" aria-label="筛选题目">
   <select id="bank-unit" aria-label="单元"></select><select id="bank-topic" aria-label="Topic"></select>
   <select id="bank-type" aria-label="题型"><option value="">全部题型</option><option value="choice">MCQ</option><option value="short">FRQ</option></select>
@@ -343,7 +358,7 @@ async function bank(){
   <div class="bank-layout bank-workspace-layout"><section class="bank-results" aria-labelledby="bank-result-title">
   <div class="bank-search"><strong id="bank-result-title">匹配题目</strong><button type="button" class="tw-button" data-bank-filters aria-haspopup="dialog">筛选</button><input type="search" id="bank-search" aria-label="搜索题库" placeholder="搜索题干、知识点或题号" value="${h(bankState.q)}"><span id="bank-count" role="status"></span></div>
   <p id="bank-current-filters" hidden></p><div id="bank-list" class="bank-list" tabindex="0" aria-label="题目列表"></div><div id="bank-pager" class="bank-pager"></div></section><aside class="bank-cart" id="bank-cart" aria-label="作业选题"></aside></div>
-  <div class="bank-mobile-cart" id="bank-mobile-cart" hidden><button type="button" class="tw-button" data-bank-show-cart>已选 <strong data-bank-count>0</strong> 道 ›</button><span data-bank-points>0 分</span><button type="button" class="tw-button tw-primary" data-bank-publish-quick>组卷并布置</button></div>
+  <div class="bank-mobile-cart" id="bank-mobile-cart" hidden><button type="button" class="tw-button" data-bank-show-cart>已选 <strong data-bank-count>0</strong> 道 ›</button><span data-bank-points>0 分</span><button type="button" class="tw-button tw-primary" data-bank-publish-quick>组卷</button></div>
   <dialog id="bank-cart-dialog" class="tw-dialog bank-cart-dialog" aria-label="作业选题"><header><strong>作业选题</strong><button type="button" class="tw-button" data-bank-close-cart>关闭</button></header><div data-bank-cart-body></div></dialog>`;
  $('#bank-type').value=bankState.type;$('#bank-status').value=bankState.status;
  drawBankFacets();drawBankList();drawBankCart();
