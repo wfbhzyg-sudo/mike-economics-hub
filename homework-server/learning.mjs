@@ -1,4 +1,4 @@
-import {correctionFeedback} from './correction-feedback.mjs';
+import {correctionFeedback, referenceChoices} from './correction-feedback.mjs';
 import {questionLessonReference} from './lesson-reference.mjs';
 import {reviewLinksFor} from './review-links.mjs';
 import {questionLocation} from './paper.mjs';
@@ -7,6 +7,18 @@ export const visibleQuestions = (s) => {
  const original = new Map((s.rubricSnapshot || []).map(q => [q.id, q]));
  return (s.publishedGrade?.questionsSnapshot || s.rubricSnapshot || []).map(q=>({id:q.id,prompt:q.prompt,type:q.type||'short',maxPoints:q.maxPoints,knowledge:q.knowledge||'',options:q.options||[],questionImages:q.questionImages||[],paperLocation:questionLocation(s.paperSnapshot,q.id),lessonReference:questionLessonReference({...original.get(q.id),...q},s.paperSnapshot)}));
 };
+// Answer keys belong only to the student's published, imported result detail.
+export function offlineResultQuestions(submission, visible) {
+  if (submission.status !== 'published' || !submission.offlineEvidence) return visible;
+  const marked = new Set((submission.publishedGrade?.questions || []).filter(q => Number.isFinite(q.score)).map(q => String(q.id)));
+  const snapshot = new Map((submission.rubricSnapshot || []).map(q => [String(q.id), q]));
+  return visible.map(q => {
+    const ref = snapshot.get(String(q.id));
+    if (!ref || ref.manualGradingRequired || !marked.has(String(q.id))) return q;
+    if (q.type === 'choice') return {...q, correctOptions: referenceChoices(ref)};
+    return {...q, referenceAnswer: typeof ref.answer === 'string' ? ref.answer.trim() : ''};
+  });
+}
 export function reviewDraft(s, entry, actor, at) {
   const draft=s.teacherReviewDraft;
   // Choice-only submissions have no AI job. Missing job IDs do not imply an existing draft.

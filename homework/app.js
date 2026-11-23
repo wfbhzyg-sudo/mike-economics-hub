@@ -750,18 +750,19 @@ async function resultPage(id) {
  function recapQuestion(row,index){
    const q=snapshots.get(String(row.id)),images=q?.questionImages||[],choice=s.choices?.[row.id],response=s.responses?.[row.id];
    const picked=choice||row.selectedOptions?.join('、');
-   const answer=q?.correctOptions?.join('、');
+   const answer=q?.correctOptions?.join('、')||(s.offlineEvidence?'待核对':'');
    const options=(q?.options||[]).filter(o=>o.text);
    const hasOriginal=q?.prompt||images.length||options.length;
    const label=q?.knowledge||(!images.length?q?.prompt?.slice(0,85):'');
    const appeal=(s.reviewRequests||[]).some(r=>r.questionId===row.id&&r.status==='open')?'<p class="status-line">已申请复核，当前成绩会保留到老师处理完成。</p>':`<form data-appeal="${h(row.id)}" class="stack">${area('需要老师核对什么','reason','','required maxlength="1500" placeholder="说明需要核对的步骤…"')}<p class="form-error" role="alert"></p><button class="secondary" type="submit">申请复核</button></form>`;
    return `<details class="result-question recap-question" id="recap-question-${index+1}" data-review-id="${h(row.id)}" data-loss="${hasLoss(row)}" data-correct="${row.score===row.maxPoints}" ${opened.has(String(row.id))?'open':''}>
-    <summary><span class="recap-number">第 ${index+1} 题</span>${label?`<span class="recap-label">${h(label)}</span>`:''}${resultBadge({...row,unanswered:q?.type==='choice'&&!picked})}</summary>
+    <summary><span class="recap-number">第 ${index+1} 题</span>${label?`<span class="recap-label">${h(label)}</span>`:''}${resultBadge({...row,choice:q?.type==='choice',unanswered:q?.type==='choice'&&!picked})}</summary>
     <div class="question-detail recap-detail">
      ${hasOriginal?`<div class="recap-paper"><div class="recap-paper-head"><strong>原题</strong><div class="recap-toolbar"><div data-recap-mark></div>${images.length?'<button type="button" data-recap-zoom aria-pressed="false">放大</button>':''}</div></div>
       <div class="result-original">${q?.prompt?`<p class="instructions">${h(q.prompt)}</p>`:''}${images.map((file,i)=>`<img loading="lazy" decoding="async" src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${index+1} 题原题片段 ${i+1}，共 ${images.length} 个">`).join('')}${!images.length?options.map(o=>`<p>${h(o.label)}. ${h(o.text)}</p>`).join(''):''}</div></div>`:''}
      ${q?.type==='choice'?`<div class="recap-answers"><div><span>我的作答</span><strong>${h(picked||'未作答')}</strong></div>${answer?`<div><span>参考答案</span><strong>${h(answer)}</strong></div>`:''}</div>`:''}
      ${response?`<div class="original-response"><strong>我的作答</strong>${response.text?`<p class="instructions">${h(response.text)}</p>`:''}${fileMarkup(response.files||[])}</div>`:''}
+     ${s.offlineEvidence&&q?.type==='short'?`<div class="recap-feedback"><strong>参考答案</strong><p class="instructions">${h(q.referenceAnswer||'待核对')}</p>${!response?.text&&!response?.files?.length?'<p class="hint">原表未提供作答原文。</p>':''}</div>`:''}
      ${s.offlineEvidence&&row.pointResults?.length?`<div class="recap-feedback"><strong>原卷分项得分</strong><p>${row.pointResults.map(p=>`(${h(p.id)}) ${h(p.earned)} / ${h(p.maxPoints)}`).join(' · ')}</p></div>`:''}
      ${row.feedback?`<div class="recap-feedback"><strong>教师反馈</strong><p class="instructions">${h(row.feedback)}</p></div>`:''}
      <div class="recap-actions"><div data-recap-lesson></div><details class="recap-menu"><summary>更多操作 <span aria-hidden="true">⋯</span></summary><div class="recap-menu-content"><div data-recap-study></div>${row.evidence?`<details class="evidence"><summary>查看历史作答依据</summary><p class="instructions">${h(row.evidence)}</p></details>`:''}<details class="review-appeal"><summary>申请评分复核</summary>${appeal}</details></div></details>

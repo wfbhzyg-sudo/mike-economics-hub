@@ -12,6 +12,7 @@ export function questionResult({score, maxPoints, unanswered = false, correct}) 
 
 export function resultBadge(result) {
   const {score,maxPoints}=result;
-  const {key,symbol,label}=questionResult(result);
+  const {key,symbol,label:scoreLabel}=questionResult(result);
+  const label=result.choice&&key==='correct'?'正确':result.choice&&key==='wrong'?'错误':scoreLabel;
   return `<span class="question-result-badge" data-result="${key}"><span aria-hidden="true">${symbol}</span> ${label}${Number.isFinite(score)&&maxPoints>0?' · '+score+'/'+maxPoints:''}</span>`;
 }

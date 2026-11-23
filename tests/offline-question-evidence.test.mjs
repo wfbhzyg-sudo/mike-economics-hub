@@ -65,3 +65,18 @@ test('offline zero counts as a recorded submission and a cleared grade stays out
   assert.equal(summary.average,total===null?null:total*10);
  }
 });
+
+test('only published and graded offline items expose answers in the individual result',async()=>{
+  const {offlineResultQuestions,visibleQuestions}=await import('../homework-server/learning.mjs');
+  const short={id:'2',type:'short',answer:'The index is 130.',criteria:'private rubric',maxPoints:1};
+  const pending={...q,id:'3',manualGradingRequired:true};
+  const optional={...q,id:'4'};
+  const record={...s,rubricSnapshot:[q,short,pending,optional],publishedGrade:{...s.publishedGrade,questions:[{id:'1',score:0},{id:'2',score:0},{id:'3',score:0},{id:'4',score:null}]}};
+  const bare=visibleQuestions(record);
+  assert(!bare.some(row=>'correctOptions' in row || 'referenceAnswer' in row));
+  const detail=offlineResultQuestions(record,bare);
+  assert.deepEqual(detail[0].correctOptions,['B']);assert.equal(detail[1].referenceAnswer,short.answer);
+  assert(!('criteria' in detail[1]));assert(!('correctOptions' in detail[2]));assert(!('correctOptions' in detail[3]));
+  assert.equal(offlineResultQuestions({...record,status:'draft'},bare),bare);
+  assert.equal(offlineResultQuestions({...record,offlineEvidence:null},bare),bare);
+});

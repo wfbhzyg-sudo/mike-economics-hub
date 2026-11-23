@@ -34,7 +34,7 @@ import {
 } from "./store.mjs";
 import { createFiles, readBody, MAX_FILE } from "./files.mjs";
 import { HttpError, assert, text, boundedText, rubric, grade, automaticGrade } from "./validation.mjs";
-import {visibleQuestions, publishedResult, mistakeRows, reviewDraft} from './learning.mjs';
+import {visibleQuestions, offlineResultQuestions, publishedResult, mistakeRows, reviewDraft} from './learning.mjs';
 import {buildInsightFacts, canViewReport, draftInsight, insightData, insightScope, insightVersion, publishTarget} from './insights.mjs';
 import {exportWork} from './export.mjs';
 import {captureRecipients,assignmentRoster,rosterCounts} from './roster.mjs';
@@ -1554,6 +1554,7 @@ export async function createHomework({externalAuth} = {}) {
           }
           if (method === "GET"){
             const detail=user.role==="teacher" ? {...s} : publicSubmission(s);
+            if(user.role==="student" && s.offlineEvidence)detail.questions=offlineResultQuestions(s,detail.questions);
             if(user.role==="teacher" && !detail.studentName){
               const student=(await availableStudents()).find(person=>person.id===s.studentId);
               detail.studentName=student?.name || (await db.get(s.studentId))?.name || "历史学生";
