@@ -1,5 +1,6 @@
+import {unitIdentity} from './subject-catalog.js';
 export function libraryLocation(units, last, unitArg = '', topicArg = '', modeArg = '') {
-  const explicitUnit = /^(micro|macro)-unit-[1-6]$/.test(unitArg);
+  const explicitUnit = Boolean(unitIdentity(unitArg));
   const resume = !unitArg && units.some(unit => unit.id === last.unit);
   const unitId = explicitUnit ? unitArg : unitArg ? 'micro-unit-2' : resume ? last.unit : units.find(unit=>unit.id==='micro-unit-2')?.id || units[0]?.id;
   return {unitId, topicId:explicitUnit ? topicArg : unitArg || (resume ? last.topic : ''),

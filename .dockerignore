@@ -5,7 +5,8 @@ node_modules
 .env.*
 README.md
 
-tests
+tests/*
+!tests/subject-compatibility.test.mjs
 test-results
 **/node_modules
 *.log

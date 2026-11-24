@@ -1,6 +1,7 @@
-import {resultParts,skillNames} from './student-report.mjs';
+import {subjectInfo} from '../homework/subject-catalog.js';
+import {resultParts} from './student-report.mjs';
 
-const subjects = {micro:'微观',macro:'宏观',mixed:'综合',unknown:'未分类'};
+const subjects = {mixed:'综合',unknown:'未分类'};
 const round = n => Math.round(n*10)/10;
 
 // The model receives compact, scoped facts. Each observation can be reproduced
@@ -8,7 +9,7 @@ const round = n => Math.round(n*10)/10;
 export function openingEvidence(report) {
   const facts=[];
   for(const course of report.courses){
-    const subject=subjects[course.course];
+    const subject=subjectInfo(course.course)?.short||subjects[course.course];
     if(!subject)continue;
     const add=(key,text)=>facts.push({id:course.course+'.'+key,text});
     const graded=course.graded;
@@ -21,7 +22,7 @@ export function openingEvidence(report) {
     }
     if(graded>0&&Number.isFinite(course.average))add('average','本期 '+graded+' 份已出分的'+subject+'作业，平均得分率为 '+course.average+'%');
     for(const axis of course.evidence?.axes||[]){
-      const name=skillNames[axis.skill-1];
+      const name=subjectInfo(course.course)?.skills[axis.skill-1]?.name;
       if(name&&axis.count>0&&axis.band)add('skill'+axis.skill,subject+'的「'+name+'」已有 '+axis.count+' 道独立题记录，课堂表现为第 '+axis.band+' 档');
     }
     if(Number.isFinite(course.evidence?.first))add('independent',subject+'独立首答得分率为 '+course.evidence.first+'%');

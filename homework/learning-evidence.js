@@ -1,7 +1,7 @@
+import {subjectInfo} from './subject-catalog.js';
 import {courseLabel} from './course-scope.js';
 
 const number=n=>String(Math.round(n*100)/100);
-const skills=[['原理与模型','Principles and Models'],['解读','Interpretation'],['分析推演','Manipulation'],['绘图','Graphing and Visuals']];
 const colors=['#ce746f','#dc9a58','#c4a338','#a2bb72','#4b9177'];
 
 export function scoreSources(grade){
@@ -17,27 +17,29 @@ export function verificationMarkup(review,h){
 }
 
 export function skillRadarSvg(axes){
+  if(axes.length<3)return '';
   const levels=Array.from({length:5},(_,i)=>(i+1)*12);
-  const point=(i,r)=>[[74,74-r],[74+r,74],[74,74+r],[74-r,74]][i];
+  const point=(i,r)=>[Math.round(74+r*Math.sin(2*Math.PI*i/axes.length)),Math.round(74-r*Math.cos(2*Math.PI*i/axes.length))];
   const polygon=radius=>axes.map((_,i)=>point(i,radius).join(',')).join(' ');
   const points=axes.map((axis,i)=>axis.band===null?null:point(i,axis.band*12));
   const segments=axes.map((_,i)=>{
-    const end=points[(i+1)%4],start=points[i];
+    const end=points[(i+1)%axes.length],start=points[i];
     return start&&end?`<polyline points="${start.join(',')} ${end.join(',')}" />`:'';
   }).join('');
   return `<svg class="evidence-radar" aria-hidden="true" viewBox="0 0 148 148">
-    <g class="evidence-grid">${levels.map(level=>`<polygon points="${polygon(level)}" />`).join('')}<path d="M14 74H134M74 14V134" /></g>
+    <g class="evidence-grid">${levels.map(level=>`<polygon points="${polygon(level)}" />`).join('')}${axes.map((_,i)=>`<path d="M74 74L${point(i,60).join(' ')}" />`).join('')}</g>
     ${points.every(Boolean)?`<polygon class="evidence-radar-fill" points="${points.map(p=>p.join(',')).join(' ')}" />`:''}
     <g class="evidence-radar-lines">${segments}</g>
-    ${axes.map((axis,i)=>{const [x,y]=points[i]||point(i,60);return `<text x="${[74,143,74,5][i]}" y="${[10,78,146,78][i]}" text-anchor="middle" class="evidence-axis-index">${i+1}</text><circle cx="${x}" cy="${y}" r="4" ${axis.band===null?'class="evidence-radar-empty"':`fill="${colors[axis.band-1]}"`} />`;}).join('')}
+    ${axes.map((axis,i)=>{const [x,y]=points[i]||point(i,60);return `<text x="${point(i,69)[0]}" y="${point(i,68)[1]+4}" text-anchor="middle" class="evidence-axis-index">${i+1}</text><circle cx="${x}" cy="${y}" r="4" ${axis.band===null?'class="evidence-radar-empty"':`fill="${colors[axis.band-1]}"`} />`;}).join('')}
   </svg>`;
 }
 
 export function performanceMarkup(value,h,link,{teacher=false}={}){
   if(!value)return '';
   const {index,axes,corrections}=value;
+  const skills=subjectInfo(value.course)?.skills||[];
   const axis=value.focus?axes[value.focus-1]:null;
-  const advice=axis?`${index?.level===5?'巩固':'先练'}${skills[axis.skill-1][0]}`:'';
+  const advice=axis?`${index?.level===5?'巩固':'先练'}${skills[axis.skill-1]?.name||''}`:'';
   return `<section class="evidence-performance" aria-label="${courseLabel(value.course)}学习表现">
     <div class="evidence-progress"><h2>学习表现${teacher?' <small>'+courseLabel(value.course)+'</small>':''}</h2>
       <div class="evidence-index">${index?`<strong>${index.value}</strong><span>第 ${index.level} 档 · 课堂参考</span>`:'<strong>积累样本中</strong>'}</div>
@@ -50,7 +52,7 @@ export function performanceMarkup(value,h,link,{teacher=false}={}){
       ${teacher?'<small class="evidence-scope">本教师可见作业 · 全时段</small>':''}
       <details><summary>查看计算依据</summary><p>独立首答 ${value.first??'待积累'} · 订正后迁移 ${value.transfer??'待积累'}<br>通过订正 ${corrections.done} / ${corrections.total} 道</p></details>
     </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${skillRadarSvg(axes)}<div>
-      ${axes.map((item,i)=>`<details ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i][0]} <small>${skills[i][1]}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
+      ${axes.map((item,i)=>`<details ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i]?.name||''} <small>${skills[i]?.english||''}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
         <p>${item.count} 道独立题${item.comprehensiveAssessments?' · 综合测验覆盖 '+item.comprehensiveAssessments+' 次':''}${item.value!==null?` · 得分率 ${item.value}%`:''}</p>
         ${item.references.slice(0,4).map(r=>`<div class="evidence-item">${teacher?h(r.title):r.score<r.max?link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.title)):h(r.title)}<span>第 ${h(r.questionId)} 题 · ${r.score}/${r.max}</span></div>`).join('')}</details>`).join('')}
     </div></div></div>

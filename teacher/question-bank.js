@@ -1,3 +1,4 @@
+import {isSubject} from '../homework/subject-catalog.js';
 import {highlightText,escapeHTML as h} from '../homework/search-text.js';
 
 export function draftKey(userId) {
@@ -13,7 +14,7 @@ export function readBankDraft(storage, userId, questions) {
     if(byId.has(id)) selected.set(id,byId.get(id));
   }
   const filters=record?.filters||{};
-  return {selected,course:['micro','macro'].includes(filters.course)?filters.course:'all',
+  return {selected,course:isSubject(filters.course)?filters.course:'all',
     unit:typeof filters.unit==='string'?filters.unit:'',topic:typeof filters.topic==='string'?filters.topic:'',
     type:['choice','short'].includes(filters.type)?filters.type:'',status:['ready','needs_review'].includes(filters.status)?filters.status:'all'};
 }

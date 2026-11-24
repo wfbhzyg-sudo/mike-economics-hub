@@ -1,3 +1,4 @@
+import {namedSubject,subjectInfo} from '../homework/subject-catalog.js';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {assert} from './validation.mjs';
@@ -34,14 +35,16 @@ const aliases={
 };
 export function matchedChapterKeys(question,course=''){
  const tags=String(question.knowledge||'').split(/[;,；、·|\n]/).map(normal).filter(Boolean);if(!tags.length)return [];
- const hint=/宏观|macro/i.test(course)?'ap-macroeconomics':/微观|micro/i.test(course)?'ap-microeconomics':null;
+ const subject=subjectInfo(namedSubject(course));
+ if(subject&&!subject.bookself)return [];
+ const hint=subject?.bookself;
  const exact=BOOKSELF_CHAPTERS.filter(c=>(!hint||c.book===hint)&&tags.some(t=>t===normal(c.title)||t===normal(c.id)||t===c.key));
  const matched=BOOKSELF_CHAPTERS.filter(c=>(!hint||c.book===hint)&&aliases[c.id]?.some(a=>tags.includes(normal(a))));
  return [...new Set([...exact,...matched].map(c=>c.key))].slice(0,3);
 }
 export function reviewLinksFor(question,assignment,binding){
  const own=binding?.questions?.find(x=>x.id===question.id&&x.fingerprint===questionFingerprint(question));
- const inferred=matchedChapterKeys(question,assignment.course);
+ const inferred=matchedChapterKeys(question,assignment.libraryCourse||assignment.course);
  const defaults=binding?.defaults||[];const keys=own?own.chapters:defaults.length?defaults:inferred;
  return {links:keys.map(chapterLink).filter(Boolean),source:own?'teacher':defaults.length?'assignment':inferred.length?'knowledge':'none'};
 }

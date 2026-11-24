@@ -1,0 +1,14 @@
+name: Subject compatibility
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-curriculum.mjs
+      - run: node --test tests/subject-compatibility.test.mjs

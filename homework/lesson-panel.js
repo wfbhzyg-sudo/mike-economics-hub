@@ -1,3 +1,4 @@
+import {unitIdentity,topicUnitNumber,isSubject} from './subject-catalog.js';
 import {exampleMarkup,bindExamples} from './lesson-examples.js';
 import {namedCourse} from './course-scope.js';
 import {reviewLinksMarkup} from './review-links.js';
@@ -14,17 +15,17 @@ const anchors = [
 export function focusMarkup(focus, {canPin = false} = {}) {
   if (!focus) return '<p class="lesson-panel-status">This topic’s study notes are being prepared.</p>';
   const primaryTerm = focus.terms?.[0]?.[0];
-  const source = focus.source;
+  const source = focus.source||{};
   const citation = source.filePage
-    ? `${source.book} · PDF p. ${source.filePage} · printed p. ${source.printedPage}`
-    : `${source.book} · ${source.path.join(' › ')}`;
+    ? [source.book,'PDF p. '+source.filePage,source.printedPage&&'printed p. '+source.printedPage].filter(Boolean).join(' · ')
+    : [source.book,...(source.path||[])].filter(Boolean).join(' › ');
   const sections = {
-    goals: [...new Set([focus.goal, ...focus.goals])],
-    rule: [focus.rule],
-    apply: [focus.apply],
-    pitfall: [...new Set([focus.pitfall, ...focus.pitfalls])],
+    goals: [...new Set([focus.goal, ...(focus.goals||[])].filter(Boolean))],
+    rule: [focus.rule].filter(Boolean),
+    apply: [focus.apply].filter(Boolean),
+    pitfall: [...new Set([focus.pitfall, ...(focus.pitfalls||[])].filter(Boolean))],
   };
-  const text = value => {
+  const text = (value='') => {
     const pos = primaryTerm ? value.toLowerCase().indexOf(primaryTerm.toLowerCase()) : -1;
     return pos === -1 ? escape(value) : escape(value.slice(0, pos)) +
       '<strong><u>' + escape(value.slice(pos, pos + primaryTerm.length)) + '</u></strong>' +
@@ -34,18 +35,18 @@ export function focusMarkup(focus, {canPin = false} = {}) {
     return `<article class="lesson-focus-content" lang="en">
       <p class="lf-intro">${text(focus.concept || focus.goal)}</p>
       ${exampleMarkup(focus.examples,escape,{focus,canPin})}
-      <p class="lesson-focus-source">${escape(citation)}</p>
+      ${citation?`<p class="lesson-focus-source">${escape(citation)}</p>`:''}
     </article>`;
   }
   return `<article class="lesson-focus-content" lang="en">
-    <div class="lesson-focus-terms">${focus.terms.map(([term, zh]) =>
+    <div class="lesson-focus-terms">${(focus.terms||[]).map(([term, zh]) =>
       `<span><strong><u>${escape(term)}</u></strong> <span lang="zh-CN">${escape(zh)}</span></span>`).join('')}</div>
     ${exampleMarkup(focus.examples,escape)}
-    ${anchors.map(([id, title]) => `<section id="focus-${id}" data-focus=${id} tabindex="-1"><h2>${title}</h2>
+    ${anchors.filter(([id])=>sections[id].length).map(([id, title]) => `<section id="focus-${id}" data-focus=${id} tabindex="-1"><h2>${title}</h2>
       ${sections[id].length > 1 ? '<ul>' + sections[id].map(item => '<li>' + text(item) + '</li>').join('') + '</ul>' : '<p>' + text(sections[id][0]) + '</p>'}
       ${canPin && (id === 'rule' || id === 'apply') ? `<button type="button" class="lesson-pin" data-pin="${id}" lang="zh-CN">固定这条重点</button>` : ''}
     </section>`).join('')}
-    <p class="lesson-focus-source">${escape(citation)}</p>
+    ${citation?`<p class="lesson-focus-source">${escape(citation)}</p>`:''}
   </article>`;
 }
 
@@ -63,10 +64,11 @@ function referenceFor(question, context) {
   const supplied = question.lessonReference || {};
   const explicit = question.libraryUnit || question.unitId || supplied.unit || context.libraryUnit;
   const course = namedCourse(context.course || question.course);
-  const topic = question.topic || supplied.topic || String(question.knowledge || '').match(/^Topic\s+([1-6]\.\d+)(?=\s|$)/i)?.[1] || '';
-  const unit = /^(micro|macro)-unit-[1-6]$/.test(explicit || '') ? explicit :
-    /^[1-6]\.\d+$/.test(topic) && ['macro','micro'].includes(course) ? `${course}-unit-${topic[0]}` : '';
-  return {unit, topic, bank: supplied.bank || ''};
+  const topic = question.topic || supplied.topic || String(question.knowledge || '').match(/^Topic\s+(\d+\.\d+)(?=\s|$)/i)?.[1] || '';
+  const unit = unitIdentity(explicit) ? explicit :
+    topicUnitNumber(topic) && isSubject(course) ? `${course}-unit-${topicUnitNumber(topic)}` : '';
+  const identity=unitIdentity(unit);
+  return {unit:identity?unit:'', topic:identity?.number===topicUnitNumber(topic)?topic:'', bank:supplied.bank||''};
 }
 
 export function mountLessonLinks(root, api) {
@@ -152,8 +154,8 @@ export function mountLessonLinks(root, api) {
     button.type = 'button';
     button.className = 'lesson-link';
     button.setAttribute('aria-haspopup','dialog');
-    const topicTitle = String(question?.knowledge || '').match(/^Topic\s+[1-6]\.\d+\s*·\s*(.+)/i)?.[1];
-    const label = context.compact ? '' : reference.topic ? [reference.topic,topicTitle].filter(Boolean).join(' ') : reference.unit ? 'Unit ' + reference.unit.at(-1) : '';
+    const topicTitle = String(question?.knowledge || '').match(/^Topic\s+\d+\.\d+\s*·\s*(.+)/i)?.[1];
+    const label = context.compact ? '' : reference.topic ? [reference.topic,topicTitle].filter(Boolean).join(' ') : reference.unit ? 'Unit ' + unitIdentity(reference.unit)?.number : '';
     button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5h5a4 4 0 0 1 4 4v12a4 4 0 0 0-4-4H3zM21 5h-5a4 4 0 0 0-4 4v12a4 4 0 0 1 4-4h5z"/></svg><span>查看重点' + (label ? ' · ' + escape(label) : '') + '</span>';
     if (context.compact && reference.topic) button.title = '查看重点 · ' + reference.topic;
     button.onclick = () => {

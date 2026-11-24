@@ -1,3 +1,4 @@
+import {unitIdentity,topicUnitNumber} from './subject-catalog.js';
 import {courseLabel} from './course-scope.js';
 
 export function mistakeNavigation(link, h, {current, subjects, subject}) {
@@ -34,9 +35,10 @@ export function matchingMistakes(groups, matches) {
 export function mistakeTopic(row) {
   const reference = row.lessonReference;
   const topic = reference?.topic || row.topic;
-  if (!/^[1-6]\.\d{1,2}$/.test(topic || '')) return '';
+  if (!topicUnitNumber(topic)) return '';
   const unit = reference?.unit || row.libraryUnit || '';
-  return /^((micro|macro)-unit-)[1-6]$/.test(unit) && unit.at(-1) !== topic[0] ? '' : topic;
+  const identity=unitIdentity(unit);
+  return identity && identity.number !== topicUnitNumber(topic) ? '' : topic;
 }
 
 export function mistakeTopicOptions(scoped) {

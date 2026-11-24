@@ -1,3 +1,4 @@
+import {courseLabel as displayCourse} from '../homework/course-scope.js';
 import {splitChoiceCorrection} from '../homework/choice-correction.js';
 import {optionLabels,publicOptionText} from './self-practice-model.mjs';
 import {questionHasTopic} from '../homework/library-packs.js';
@@ -60,12 +61,14 @@ export function createSelfPractice({db,sendQuestionPaper}) {
   }
 
   async function catalog(user, course) {
-    const units = await studentUnits(user, course);
+    const visible = await studentUnits(user);
+    const units = visible.filter(unit=>!course||courseOf(unit)===course);
     const questions = await eligibleByUnit(units);
     const entries = buildCatalog({units, questionsByUnit: questions, course});
     const total = entries.reduce((sum, entry) => sum + entry.questionCount, 0);
     return {
       course,
+      courses: [...new Set(visible.map(courseOf).filter(Boolean))],
       units: entries,
       availability: buildAvailability({units, questionsByUnit: questions}),
       questionCount: total,
@@ -371,7 +374,7 @@ export function createSelfPractice({db,sendQuestionPaper}) {
         assert(['active','submitted'].includes(attempt.status),'开始模考后可导出本次试卷',409);
         const created=Date.parse(attempt.createdAt);
         const stamp=Number.isFinite(created)?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(created).replace(':','时')+'分':'';
-        const title=[(attempt.course==='macro'?'AP 宏观':'AP 微观')+'自主模考',stamp].filter(Boolean).join(' · ');
+        const title=[displayCourse(attempt.course)+'自主模考',stamp].filter(Boolean).join(' · ');
         await sendQuestionPaper(ctx.req,res,user,'mock:'+id,{title},attempt.questions.map(publicQuestion));
         return true;
       }

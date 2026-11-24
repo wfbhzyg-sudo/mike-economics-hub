@@ -1,10 +1,11 @@
+import {unitCourse} from '../homework/subject-catalog.js';
 import {assert} from './validation.mjs';
 const ownerKey=value=>String(value||'').replace(/^bookself:/,'');
 const titleKey=value=>String(value||'').replace(/^AP (?:Micro|Macro)\s*·\s*/i,'').replace(/\s*·\s*原始题卷$/,'').trim();
 export async function resolveQuestionSource(db,user,question){
  const sources=(await db.list('library-source')).filter(s=>ownerKey(s.owner)===ownerKey(user.id));
  const exact=question.sourceId?sources.find(s=>s.id===question.sourceId):null;
- let candidates=exact?[exact]:sources.filter(s=>titleKey(s.title)===titleKey(question.source)&&(s.unitId===question.unitId||(s.collection==='exam'&&s.course===question.unitId.split('-')[0])));
+ let candidates=exact?[exact]:sources.filter(s=>titleKey(s.title)===titleKey(question.source)&&(s.unitId===question.unitId||(s.collection==='exam'&&s.course===unitCourse(question.unitId))));
  if(!candidates.length){
    const unit=await db.get(question.unitId);
    if(ownerKey(unit?.owner)===ownerKey(user.id)){

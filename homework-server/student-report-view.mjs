@@ -1,3 +1,4 @@
+import {subjectInfo} from '../homework/subject-catalog.js';
 import {publicOpening,recordOpening} from './student-report-opening.mjs';
 import {readFile} from 'node:fs/promises';
 import {resultParts} from './student-report.mjs';
@@ -53,6 +54,7 @@ export function reportPanels(report,facts,state={}){
 
 export async function renderStudentReport(report,facts=buildReportAnalysis(report),state={}){
   const [base,mobile,paper]=await styles,courses=report.courses,note=report.latestNote;
+  const reportTitle=courses.every(c=>!subjectInfo(c.course)||subjectInfo(c.course).family==='economics')?'经济学学习报告':'学习报告';
   const scope=[report.period,report.unit,report.assignmentTitle].filter(Boolean).join(' · ');
   const panels=reportPanels(report,facts,state);
   const exhibit=(title,fig)=>`<article class="card figure"><div class="cardhead"><h2>${title}</h2>${fig===trendFigure?'<small class="legend">┄ 首次　━ 最终</small>':'<small>1–5 档</small>'}</div><div class="${fig===trendFigure?'trends':'radars'}">${courses.map(c=>'<section class="exhibits '+c.course+'"><h3>'+html(c.label)+'</h3>'+fig(c,true)+'</section>').join('')}</div></article>`;
@@ -63,9 +65,9 @@ export async function renderStudentReport(report,facts=buildReportAnalysis(repor
     if(report.includeMock&&mock)entries.push('自主模考 '+c.mockHistory.length+' 次。最近一次正确率 '+rate(mock.rate)+(Number.isFinite(mock.seconds)?'，用时 '+Math.floor(mock.seconds/60)+' 分 '+Math.floor(mock.seconds%60)+' 秒':'')+'。');
     return entries.length?['<article class="card notes '+c.course+'"><h3>'+html(c.label)+'学习记录</h3><p>'+html(entries.join(''))+'</p></article>']:[];
   });
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · 经济学学习报告 · ${date(report.at)}</title><style>${base}</style><style id="report-mobile" media="screen and (max-width:700px)">${mobile}</style><style id="report-paper" media="print">${paper}</style><script defer src="/teacher/student-report-actions.js?v=opening1"></script></head><body><main data-version="${facts.version}" data-revision="${panels.revision}" data-ai="${panels.hasAI?'ready':(facts.opening.length||Object.values(facts.candidates).some(a=>a.length))?'available':'empty'}">
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(report.name)} · ${reportTitle} · ${date(report.at)}</title><style>${base}</style><style id="report-mobile" media="screen and (max-width:700px)">${mobile}</style><style id="report-paper" media="print">${paper}</style><script defer src="/teacher/student-report-actions.js?v=opening1"></script></head><body><main data-version="${facts.version}" data-revision="${panels.revision}" data-ai="${panels.hasAI?'ready':(facts.opening.length||Object.values(facts.candidates).some(a=>a.length))?'available':'empty'}">
     <div class="strap"><b>Mike <span>经济一页通</span></b><nav class="actions"><button id="save">下载网页</button><button id="print">打印 / PDF</button></nav></div>
-    <header class="header"><div class="identity"><h1>经济学学习报告</h1><div><strong>${html(report.name)}</strong><span class="classes">${report.classNames.map(n=>'<i>'+html(n)+'</i>').join(' · ')||'班级待确认'}</span></div></div><div class="dateline"><time>${date(report.at)}</time><b>${html(scope)}</b></div></header>
+    <header class="header"><div class="identity"><h1>${reportTitle}</h1><div><strong>${html(report.name)}</strong><span class="classes">${report.classNames.map(n=>'<i>'+html(n)+'</i>').join(' · ')||'班级待确认'}</span></div></div><div class="dateline"><time>${date(report.at)}</time><b>${html(scope)}</b></div></header>
     <section class="opening" aria-labelledby="opening-title"><div><h2 id="opening-title">阶段评语</h2><small id="opening-source">${panels.openingSource}</small></div><p id="opening-text">${html(panels.opening)}</p>
       <div class="actions ai-state" role="status"><span id="status"></span><button id="retry" hidden>重新整理分析</button></div></section>
     <section class="overview">${courses.map(summary).join('')||'<p>当前范围暂无学习记录。</p>'}</section>

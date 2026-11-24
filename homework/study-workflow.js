@@ -1,3 +1,4 @@
+import {subjectIds,subjectInfo} from './subject-catalog.js';
 import {coursesFor,selectedCourse,rememberCourse,courseLabel,singleClassCourse} from './course-scope.js';
 import {mistakeNavigation,bindMistakeNavigation} from './mistake-navigation.js';
 import {viewMemory} from './view-memory.js';
@@ -312,7 +313,7 @@ export async function renderMockStatistics({main,api,state}){
   const initial=baseline;
   main.innerHTML=`<div class="study-stats"><form class="study-stat-filter"><div class="study-filters study-scope-row">
     <label>班级 <select name="classId"><option value="">全部任教班级</option>${initial.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
-    <label data-course-field>学科 <select name="course"><option value="">全部学科</option><option value="micro">AP 微观</option><option value="macro">AP 宏观</option></select></label>
+    <label data-course-field>学科 <select name="course"><option value="">全部学科</option>${subjectIds.map(id=>`<option value="${id}">${subjectInfo(id).label}</option>`).join('')}</select></label>
     <label>学生 <select name="studentId"><option value="">全部学生</option></select></label>
     <span class="mock-course-label" data-fixed-course hidden></span>
     </div><div class="mock-range-tools"><details class="study-filter-panel"><summary>日期和更多筛选</summary><div class="study-filters study-extra-filters"><label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>

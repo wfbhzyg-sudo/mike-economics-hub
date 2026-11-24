@@ -6,7 +6,10 @@ RUN npm ci --omit=dev --no-audit --no-fund
 COPY --chown=node:node assets ./assets
 COPY --chown=node:node demo ./demo
 COPY --chown=node:node homework ./homework
+COPY --chown=node:node scripts/check-curriculum.mjs ./scripts/check-curriculum.mjs
 COPY --chown=node:node homework-server ./homework-server
+COPY --chown=node:node tests/subject-compatibility.test.mjs ./tests/subject-compatibility.test.mjs
+RUN node scripts/check-curriculum.mjs && node --test tests/subject-compatibility.test.mjs
 COPY --chown=node:node auth ./auth
 COPY --chown=node:node teacher ./teacher
 COPY --chown=node:node teacher-server.mjs ./

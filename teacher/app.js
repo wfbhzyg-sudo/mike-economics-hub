@@ -1,7 +1,8 @@
+import {subjectIds,subjectInfo,unitCourse} from '../homework/subject-catalog.js';
 import {audiencePicker,bindAudiencePicker} from '/homework/audience-picker.js';
 import {studentReportUrl} from '../homework/student-report-link.js';
 import {teacherEvidenceReader,showTeacherEvidence} from '../homework/learning-evidence.js';
-import {singleClassCourse,classKey} from '../homework/course-scope.js';
+import {subjectSwitcher,singleClassCourse,classKey} from '../homework/course-scope.js';
 import {bindDisclosureMenus} from '../homework/disclosure-menu.js';
 import {renderMockStatistics} from '/homework/study-workflow.js';
 import {accuracyBadge} from '../homework/score-bands.js';
@@ -132,7 +133,7 @@ async function classes(){
  const memory=viewMemory(state.user.id+':classes:'+state.classId+':'+state.book);
  const current=classroom();const [data,membership]=current?await Promise.all([api('teacher/performance?'+qs({class:current.id,book:state.book})),hw('students')]):[null,null];
  if(version!==state.version)return;
- main.innerHTML=`<div class="class-workspace"><aside class="class-workspace-nav"><div class="tw-section-head"><h2>我的班级</h2><span class="tw-note">${state.meta.classes.length} 个班</span></div><div class="tw-class-list">${state.meta.classes.map(c=>`<article class="tw-class-row" data-current="${c.id===state.classId}"><div><h3><button type="button" class="class-name-link" data-class-view="${c.id}" aria-label="查看${h(c.name)}名单" aria-pressed="${c.id===state.classId}">${h(c.name)} <span aria-hidden="true">›</span></button> ${c.archived?badge('已归档'):''}</h3><p>${c.students} 位学生${singleClassCourse(c)?' · '+(singleClassCourse(c)==='macro'?'AP 宏观':'AP 微观'):''}</p></div><div class="tw-actions tw-class-actions"><details class="tw-class-more"><summary class="tw-button tw-small" aria-label="${h(c.name)}的更多操作" title="班级操作">⋯</summary><div class="tw-class-menu"><button data-add-student="${c.id}">添加学生</button><button data-copy="${h(c.code)}">复制班级码</button><button data-rename="${c.id}">重命名班级</button><button data-archive="${c.id}">${c.archived?'恢复班级':'归档班级'}</button></div></details></div></article>`).join('')||'<p class="tw-muted">还没有班级。创建后把班级码交给学生注册即可。</p>'}</div><details class="tw-new-class"><summary>新建班级</summary><form class="tw-inline-form" id="create-class">${field('新班级名称','name','','text','required maxlength="80" placeholder="例如：AP 宏观 3 班"')}<button class="tw-button" type="submit">创建班级</button><p class="tw-form-error" role="alert"></p></form></details></aside><div class="class-workspace-main">${data?`<section class="class-roster">
+ main.innerHTML=`<div class="class-workspace"><aside class="class-workspace-nav"><div class="tw-section-head"><h2>我的班级</h2><span class="tw-note">${state.meta.classes.length} 个班</span></div><div class="tw-class-list">${state.meta.classes.map(c=>`<article class="tw-class-row" data-current="${c.id===state.classId}"><div><h3><button type="button" class="class-name-link" data-class-view="${c.id}" aria-label="查看${h(c.name)}名单" aria-pressed="${c.id===state.classId}">${h(c.name)} <span aria-hidden="true">›</span></button> ${c.archived?badge('已归档'):''}</h3><p>${c.students} 位学生${singleClassCourse(c)?' · '+subjectInfo(singleClassCourse(c)).label:''}</p></div><div class="tw-actions tw-class-actions"><details class="tw-class-more"><summary class="tw-button tw-small" aria-label="${h(c.name)}的更多操作" title="班级操作">⋯</summary><div class="tw-class-menu"><button data-add-student="${c.id}">添加学生</button><button data-copy="${h(c.code)}">复制班级码</button><button data-rename="${c.id}">重命名班级</button><button data-archive="${c.id}">${c.archived?'恢复班级':'归档班级'}</button></div></details></div></article>`).join('')||'<p class="tw-muted">还没有班级。创建后把班级码交给学生注册即可。</p>'}</div><details class="tw-new-class"><summary>新建班级</summary><form class="tw-inline-form" id="create-class">${field('新班级名称','name','','text','required maxlength="80" placeholder="例如：AP 宏观 3 班"')}<button class="tw-button" type="submit">创建班级</button><p class="tw-form-error" role="alert"></p></form></details></aside><div class="class-workspace-main">${data?`<section class="class-roster">
   <div class="class-roster-head"><div><label class="class-mobile-switch"><span class="tw-note">班级</span><select id="class-mobile-switch" aria-label="切换班级">${state.meta.classes.map(c=>`<option value="${h(c.id)}" ${c.id===current.id?'selected':''}>${h(c.name)}${c.archived?' · 已归档':''}</option>`).join('')}</select></label><h2 id="class-roster-title" tabindex="-1">${h(current.name)} <small>${current.students} 人</small></h2><p>班级码 <strong class="tw-class-code">${h(current.code)}</strong> <button class="tw-text" type="button" data-copy="${h(current.code)}">复制</button></p></div><button class="tw-button tw-primary" type="button" data-add-student="${current.id}">添加学生</button></div>
   <div class="class-roster-tools"><strong>学生名单</strong><div class="tw-filter">${field('查找学生','studentSearch','','search','id="student-search" placeholder="姓名或账号"')}</div><details class="tw-class-more class-roster-more"><summary class="tw-button tw-small" aria-label="更多名单操作">⋯</summary><div class="tw-class-menu"><button data-rename="${current.id}">重命名班级</button><button data-archive="${current.id}">${current.archived?'恢复班级':'归档班级'}</button><button class="tw-button tw-small" id="export-class">导出学情数据（JSON）</button></div></details></div>
   <div id="roster-table" class="class-roster-scroll" tabindex="0" aria-label="学生名单"></div></section>`:'<p class="tw-note">创建班级后，可在这里管理学生名单。</p>'}</div></div>${createStudentDialog()}${accountDrawer()}`;
@@ -246,9 +247,9 @@ function persistBank() {
  catch { toast('浏览器无法保存选题，离开前请完成组卷。'); }
 }
 const bankTypeLabel={choice:'选择题',short:'简答题'};
-const bankCourses=[['all','全部学科'],['micro','AP 微观'],['macro','AP 宏观']];
+const bankCourses=[['all','全部学科'],...subjectIds.map(id=>[id,subjectInfo(id).label])];
 function bankUnits(){
- return (bankState.catalog?.units||[]).filter(u=>!u.archived&&(bankState.course==='all'||u.id.startsWith(bankState.course+'-')));
+ return (bankState.catalog?.units||[]).filter(u=>!u.archived&&(bankState.course==='all'||unitCourse(u)===bankState.course));
 }
 function bankFiltered(all){
  const {course,unit,topic,type,status}=bankState;
@@ -339,7 +340,7 @@ function drawBankFacets(){
  const options=active?[active]:units;
  const groups=options.map(u=>`<optgroup label="${h(u.title)}">${u.topics.map(t=>`<option value="${h(u.id+'|'+t.id)}">${h(t.id+' '+(t.name||t.title||''))}</option>`).join('')}</optgroup>`).join('');
  const unit=$('#bank-unit'),topic=$('#bank-topic');
- unit.innerHTML='<option value="">全部单元</option>'+units.map(u=>`<option value="${h(u.id)}">${h(bankState.course==='all'?(bankCourses.find(([id])=>u.id.startsWith(id+'-'))?.[1]||'')+' · '+bankUnitLabel(u.title):bankUnitLabel(u.title))}</option>`).join('');
+ unit.innerHTML='<option value="">全部单元</option>'+units.map(u=>`<option value="${h(u.id)}">${h(bankState.course==='all'?(bankCourses.find(([id])=>unitCourse(u)===id)?.[1]||'')+' · '+bankUnitLabel(u.title):bankUnitLabel(u.title))}</option>`).join('');
  unit.value=bankState.unit;
  topic.innerHTML='<option value="">全部 Topic</option>'+groups+'<option value="unmapped">未归类</option>';
  topic.value=bankState.topic;
@@ -365,7 +366,7 @@ async function bank(){
   bankState.selected=new Map([...bankState.selected.keys()].filter(id=>latest.has(id)).map(id=>[id,latest.get(id)]));
  }
  const hasAudit=bankState.questions.some(q=>q.canEdit!==false);
- main.innerHTML=`<div class="bank-head"><div class="bank-seg">${bankCourses.map(([id,label])=>`<button type="button" data-bank-course="${id}">${label}</button>`).join('')}</div>
+ main.innerHTML=`<div class="bank-head">${subjectSwitcher(bankCourses.map(([id])=>id),bankState.course,{className:'bank-seg',attribute:'bank-course'})}
   <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#library">课程教学包</a></div></details></div></div>
   <div id="bank-filter-anchor"><div class="bank-workspace-filters" role="group" aria-label="筛选题目">
   <select id="bank-unit" aria-label="单元"></select><select id="bank-topic" aria-label="Topic"></select>

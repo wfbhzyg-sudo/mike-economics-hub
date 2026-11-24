@@ -1,3 +1,4 @@
+import {subjectIds,subjectInfo} from '../homework/subject-catalog.js';
 import {assignmentCourse} from '../homework/course-scope.js';
 import {scoreBand} from '../homework/score-bands.js';
 
@@ -8,7 +9,7 @@ const numbers=()=>({earned:0,possible:0,raw:0,count:0});
 const add=(point,earned,possible,weight)=>{
   point.earned+=earned*weight;point.possible+=possible*weight;point.raw+=possible;point.count++;
 };
-const sameSkill=value=>String(value||'').match(/^([1-4])(?:[A-Z]|\b)/i)?.[1]||'';
+const sameSkill=value=>String(value||'').match(/^([1-9]\d*)(?:[A-Z]|\b)/i)?.[1]||'';
 
 function independentGrade(s){
   if(s.publishedGrade?.total===null || s.status==='returned')return null;
@@ -41,21 +42,22 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
     const item=bank.get(q?.libraryQuestionId);
     const bankSkill=item&&(item.version||1)===(q.libraryVersion||1)?item.skill:null;
     const skill=sameSkill(q?.skill||bankSkill);
-    return q?.type==='choice'&&skill!=='4'?skill:'';
+    return q?.type==='choice'?skill:'';
   };
-  const questionSkills=(info,q)=>{
+  const questionSkills=(info,q,definitions)=>{
     const choiceSkill=bindings(info);
-    if(choiceSkill)return [{skill:choiceSkill,score:q.score,max:q.maxPoints,pointId:''}];
+    if(choiceSkill&&definitions[Number(choiceSkill)-1]?.choice)return [{skill:choiceSkill,score:q.score,max:q.maxPoints,pointId:''}];
     if(info?.type!=='short')return [];
     return (info.scoringPoints||[]).flatMap(p=>{
       const skill=sameSkill(p.skill),earned=q.pointResults?.find(item=>item.id===p.id)?.earned;
-      return skill&&Number.isFinite(earned)&&earned>=0&&earned<=p.maxPoints?[{skill,score:earned,max:p.maxPoints,pointId:p.id}]:[];
+      return skill&&definitions[Number(skill)-1]&&Number.isFinite(earned)&&earned>=0&&earned<=p.maxPoints?[{skill,score:earned,max:p.maxPoints,pointId:p.id}]:[];
     });
   };
-  return ['micro','macro'].map(course=>{
+  return subjectIds.map(course=>{
+    const definitions=subjectInfo(course).skills;
     const first=numbers(),transfer=numbers();
     let comprehensiveAssessments=0;
-    const skills=Array.from({length:4},()=>({...numbers(),questions:new Set(),references:[]}));
+    const skills=Array.from({length:definitions.length},()=>({...numbers(),questions:new Set(),references:[]}));
     const available=assignments.filter(a=>a.published&&!a.deletedAt&&assignmentCourse(a,classes)===course);
     const aIds=new Set(available.map(a=>a.id)),verified=new Map();
     for(const m of mistakes){
@@ -65,7 +67,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
       if(entry?.s.id!==m.submissionId||!q)continue;
       const base=entry.grade.questions.find(q=>q.id===m.questionId);
       if(!base)continue;
-      for(const category of new Set(questionSkills(q,base).filter(p=>p.score<p.max).map(p=>p.skill))){
+      for(const category of new Set(questionSkills(q,base,definitions).filter(p=>p.score<p.max).map(p=>p.skill))){
         const times=verified.get(category)||[];
         times.push({date:m.verification.finishedAt,key:q.libraryQuestionId||q.prompt?.trim(),assignmentId:m.assignmentId});
         verified.set(category,times);
@@ -87,7 +89,7 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
       for(const [i,q] of (grade.questions||[]).entries()){
         if(!Number.isFinite(q.score)||!(q.maxPoints>0)||q.score<0||q.score>q.maxPoints)continue;
         const info=meta.get(q.id),qid=info?.libraryQuestionId||info?.prompt?.trim()||a.id+':'+q.id;
-        const samples=questionSkills(info,q);
+        const samples=questionSkills(info,q,definitions);
         if(a.performanceTransfer){
           const categories=Map.groupBy(samples,p=>p.skill);
           for(const [skill,items] of categories){
@@ -123,9 +125,8 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
   });
 }
 
-const skillText=['原理与模型','解读','分析推演','绘图'];
 export async function performanceAdvice({db,decrypt,studentId,value}){
-  const skill=skillText[(value?.focus||0)-1];
+  const skill=subjectInfo(value?.course)?.skills[(value?.focus||0)-1]?.name;
   if(!skill)return {text:'做完更多独立练习后，可以查看各项技能的表现。'};
   const axis=value.axes[value.focus-1];
   const fallback={text:'先打开「'+skill+'」查看失分依据，再独立完成一道同技能的新题。'};
@@ -137,7 +138,7 @@ export async function performanceAdvice({db,decrypt,studentId,value}){
   try{
     const {deepseek}=await import('./ai.mjs');
     const result=await deepseek(db,decrypt,[
-      {role:'system',content:'根据已汇总的 AP 经济学技能证据，生成一句中文练习建议，最多 100 字。只推荐可独立完成的一步，解释做什么。不要推断知识点、评价人格、预测公开考试成绩或给任何题的答案。输出 JSON {"text":"…"}。'},
+      {role:'system',content:'根据已汇总的本学科技能证据，生成一句中文练习建议，最多 100 字。只推荐可独立完成的一步，解释做什么。不要推断知识点、评价人格、预测公开考试成绩或给任何题的答案。输出 JSON {"text":"…"}。'},
       {role:'user',content:JSON.stringify(evidence)},
     ],{json:true,maxTokens:200,signal:AbortSignal.timeout(15_000)});
     if(typeof result?.text!=='string'||!result.text.trim()||result.text.length>120)return fallback;

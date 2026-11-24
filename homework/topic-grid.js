@@ -1,3 +1,4 @@
+import {courseLabel as displayCourse} from './course-scope.js';
 import {scoreBand} from './score-bands.js';
 
 export function topicGrid(topics, h, {mine = false, personal = false} = {}) {
@@ -13,7 +14,7 @@ export function topicGrid(topics, h, {mine = false, personal = false} = {}) {
   }
   const order=(a,b)=>a.localeCompare(b,undefined,{numeric:true});
   return `<div class="topic-map"><p class="topic-legend">填充高度 · ${personal?'已作答 ÷ 可计分题次':mine?'已答比例':'参与覆盖率'}　颜色 · 正确率</p>${[...subjects.entries()].map(([course,units])=>
-    `<section class="topic-subject">${!mine?`<h3>${course==='macro'?'AP 宏观':course==='micro'?'AP 微观':'其他学科'}</h3>`:''}${[...units.entries()].sort(([a],[b])=>order(a,b)).map(([unit,ts])=>
+    `<section class="topic-subject">${!mine?`<h3>${displayCourse(course)}</h3>`:''}${[...units.entries()].sort(([a],[b])=>order(a,b)).map(([unit,ts])=>
       `<div class="topic-unit"><strong>${h(unit)}</strong><div class="topic-tiles">${ts.sort((a,b)=>order(a.label,b.label)).map(t=>{
         const coverage=personal?(t.samples?Math.round(t.answered/t.samples*100):null):t.roster?Math.min(100,Math.round(t.participants/t.roster*100)):null;
         const rate=scoreBand(t.total?t.correct/t.total*100:null);

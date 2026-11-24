@@ -1,3 +1,4 @@
+import {unitIdentity} from '../homework/subject-catalog.js';
 import {assert,text} from './validation.mjs';
 
 export const BOARD_KINDS = ['discovery', 'key', 'question', 'resource', 'teacher'];
@@ -7,7 +8,7 @@ export const BOARD_MAX_IMAGES = 4;
 export const BOARD_MAX_PDFS = 1;
 
 export function boardWallKey(unitId, topicId) {
-  assert(/^(micro|macro)-unit-[1-6]$/.test(unitId), '教学包编号无效', 400);
+  assert(unitIdentity(unitId), '教学包编号无效', 400);
   return `${unitId}:${topicId || 'all'}`;
 }
 

@@ -1,0 +1,24 @@
+/* Shared by both workspaces, including the embedded homework screens. */
+:root {
+  --work-focus:var(--ui-focus);
+  --work-gap:clamp(4px,.6vw,8px);
+  --work-tag-blue:#accff7;
+  --work-tag-green:#a5dfb4;
+  --work-tag-purple:#ebe4f4;
+  --work-tag-amber:#f3e8cf;
+  --work-tag-slate:#e6ebee;
+}
+:is(.course-scope,.lib-course-tabs,.sp-course,.bank-seg)[data-subject-switch] {
+  display:flex; align-items:center; gap:var(--work-gap);
+  max-inline-size:100%; min-inline-size:0; flex-wrap:nowrap; overflow-x:auto;
+  overscroll-behavior-x:contain; scroll-padding-inline:4px;
+}
+[data-subject-switch] > button { flex:0 0 auto; max-inline-size:100%; overflow-wrap:anywhere; }
+[data-subject-switch] > button:focus-visible { outline:2px solid var(--work-focus); outline-offset:-3px; }
+.subject-tag[data-subject-tone] { overflow-wrap:anywhere; max-inline-size:100%; white-space:normal; }
+.subject-tag[data-subject-tone=blue]{background:var(--work-tag-blue)}
+.subject-tag[data-subject-tone=green]{background:var(--work-tag-green)}
+.subject-tag[data-subject-tone=purple]{background:var(--work-tag-purple)}
+.subject-tag[data-subject-tone=amber]{background:var(--work-tag-amber)}
+.subject-tag[data-subject-tone=slate]{background:var(--work-tag-slate)}
+@media (pointer:coarse) { [data-subject-switch] > button {min-block-size:var(--ui-hit-size,44px)} }

@@ -1,4 +1,5 @@
-import {resultParts, skillNames} from './student-report.mjs';
+import {subjectInfo} from '../homework/subject-catalog.js';
+import {resultParts} from './student-report.mjs';
 import {workDate} from '../homework/grade-journey-model.js';
 
 export const html = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -44,16 +45,18 @@ export function trendFigure(course,compact=false) {
 }
 
 export function radarFigure(course) {
+  const skillNames=(subjectInfo(course.course)?.skills||[]).map(skill=>skill.name);
+  if(skillNames.length<3||skillNames.length>6)return '<figure class="radar"><figcaption>技能分布</figcaption>'+skillNames.map((name,i)=>html(name)+' · '+(course.evidence?.axes?.[i]?.band??'待积累')).join('　')+'</figure>';
   const axes=skillNames.map((_,i)=>course.evidence?.axes.find(a=>a.skill===i+1));
   const cx=130,cy=80,r=57;
-  const pos=(i,level)=>[cx+[0,1,0,-1][i]*r*level/5,cy+[-1,0,1,0][i]*r*level/5].map(num);
+  const pos=(i,level)=>[cx+Math.sin(i*2*Math.PI/axes.length)*r*level/5,cy-Math.cos(i*2*Math.PI/axes.length)*r*level/5].map(num);
   const points=axes.map((a,i)=>a?.band>=1?pos(i,a.band):null);
   const rings=[1,2,3,4,5].map(k=>`<polygon class="ring" points="${axes.map((_,i)=>pos(i,k).join(',')).join(' ')}"/>`).join('');
-  const edges=points.map((p,i)=>{const q=points[(i+1)%4];return p&&q?`M${p.join(' ')}L${q.join(' ')}`:'';}).filter(Boolean).join(' ');
-  const anchors=[[130,15,'middle'],[195,84,'start'],[130,158,'middle'],[65,84,'end']];
+  const edges=points.map((p,i)=>{const q=points[(i+1)%axes.length];return p&&q?`M${p.join(' ')}L${q.join(' ')}`:'';}).filter(Boolean).join(' ');
+  const anchors=axes.length===4?[[130,15,'middle'],[195,84,'start'],[130,158,'middle'],[65,84,'end']]:axes.map((_,i)=>{const [x,y]=pos(i,6);return [x,y+4,x>135?'start':x<125?'end':'middle'];});
   const labels=axes.map((a,i)=>`<text x="${anchors[i][0]}" y="${anchors[i][1]}" text-anchor="${anchors[i][2]}" class="axis-name">${skillNames[i]}<tspan class="axis-value"> ${a?.band??'—'}</tspan></text>`).join('');
   return `<figure class="radar"><figcaption>技能分布 <small>1–5 档</small></figcaption>
-  <svg viewBox="0 0 260 166" role="img" aria-label="${html(axes.map((a,i)=>skillNames[i]+(a?.band?'第'+a.band+'档':'样本不足')).join('，'))}">${rings}<path class="grid" d="M130 23V137M73 80H187"/>
+  <svg viewBox="0 0 260 166" role="img" aria-label="${html(axes.map((a,i)=>skillNames[i]+(a?.band?'第'+a.band+'档':'样本不足')).join('，'))}">${rings}${axes.map((_,i)=>`<path class="grid" d="M130 80L${pos(i,5).join(' ')}"/>`).join('')}
   ${points.every(Boolean)?`<polygon class="radar-area" points="${points.map(p=>p.join(',')).join(' ')}"/>`:''}<path class="final-line" d="${edges}"/>
   ${points.map(p=>p?`<circle class="final-dot" cx="${p[0]}" cy="${p[1]}" r="3.1"/>`:'').join('')}${labels}</svg>
   ${points.some(p=>!p)?'<p class="caption">— 样本不足</p>':''}</figure>`;

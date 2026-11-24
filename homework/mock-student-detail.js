@@ -143,7 +143,7 @@ export function createMockStudentDetail({table, api, filters}) {
     const track=region.querySelector('.mock-history-track'), status=region.querySelector('[data-history-status]');
     const clear=region.querySelector('[data-clear-topic]');
     clear.hidden=!focusTopic&&!focusQuestion;
-    clear.textContent=focusQuestion?'已筛重复失分题 ×':focusTopic?focusTopic.replace(/^micro:/,'微观 ').replace(/^macro:/,'宏观 ')+' ×':'';
+    clear.textContent=focusQuestion?'已筛重复失分题 ×':focusTopic?focusTopic.replace(/^([^:]+):/,(_,id)=>courseLabel(id)+' ')+' ×':'';
     status.textContent=data.matchedCount?`${data.matchedCount} 次交卷 · 左新右旧`:'此范围暂无交卷';
     if(append)track.insertAdjacentHTML('beforeend',data.attempts.map(attemptCard).join(''));
     else{track.innerHTML=data.attempts.map(attemptCard).join('');track.scrollLeft=0;}

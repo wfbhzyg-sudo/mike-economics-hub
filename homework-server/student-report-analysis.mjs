@@ -1,13 +1,13 @@
+import {subjectInfo} from '../homework/subject-catalog.js';
 import {openingEvidence,modelOpening} from './student-report-opening.mjs';
 import {deepseek} from './ai.mjs';
 import {hash} from './store.mjs';
-import {resultParts,skillNames} from './student-report.mjs';
+import {resultParts} from './student-report.mjs';
 import {assert} from './validation.mjs';
 
 export const slots = ['S','W','O','T','now','plan','quick','later'];
 const day = 24*60*60*1000;
 const localDate = new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'});
-const practice=['用自己的话说明原理，再换一个条件检验判断。','圈出发生变化的量，说明图表怎样支持你的判断。','写清变化的起点、中间环节和最后的结果。','重画图形，依次核对轴名、曲线和均衡点。'];
 
 // Candidates keep private work titles and identifiers on the server. The model sees only structured observations.
 export function buildReportAnalysis(report) {
@@ -20,15 +20,16 @@ export function buildReportAnalysis(report) {
       candidates[slot].push({ref,course:c.course,subject,kind,title,text,basis,assignmentId,metrics,rank});
     }
     for(const axis of c.evidence?.axes||[]){
+      if(!subjectInfo(c.course)?.skills[axis.skill-1])continue;
       if(!axis.band||!Number.isFinite(axis.value))continue;
-      const name=skillNames[axis.skill-1],strong=axis.band>=4;
+      const name=subjectInfo(c.course)?.skills[axis.skill-1]?.name,strong=axis.band>=4;
       const sample=axis.references?.find(q=>strong?q.score===q.max:q.score<q.max);
       const basis=name+'得分率 '+axis.value+'%，共 '+axis.count+' 道独立题。'+(sample?'《'+sample.title+'》第 '+sample.questionNumber+' 题。':'');
       const metrics={skill:name,band:axis.band,percent:axis.value,count:axis.count};
       if(strong)add('S','独立题技能优势',name+'已有积累',name+'达到第 '+axis.band+' 档，已有 '+axis.count+' 道独立题作为依据。',basis,sample?.assignmentId,metrics,axis.value);
       else if(sample){
-        add('W','技能失分',name+'还有提升空间',name+'目前在第 '+axis.band+' 档。'+practice[axis.skill-1],basis,sample.assignmentId,metrics,100-axis.value);
-        add('plan','技能练习','巩固'+name,practice[axis.skill-1],basis,sample.assignmentId,metrics,100-axis.value);
+        add('W','技能失分',name+'还有提升空间',name+'目前在第 '+axis.band+' 档。'+subjectInfo(c.course).skills[axis.skill-1].practice,basis,sample.assignmentId,metrics,100-axis.value);
+        add('plan','技能练习','巩固'+name,subjectInfo(c.course).skills[axis.skill-1].practice,basis,sample.assignmentId,metrics,100-axis.value);
       }
     }
     for(const m of c.practiceItems||[]){
@@ -111,7 +112,7 @@ export async function personalizeReport(db,decrypt,scope,facts,request=deepseek)
     if(!facts.opening.length&&!Object.values(input).some(items=>items.length))return {};
     input.openingEvidence=facts.opening;
     const result=await request(db,decrypt,[
-      {role:'system',content:'你为学生写 AP 经济学学习报告。S/W/O/T 是优势、待加强、可用机会、近期风险。now/plan/quick/later 是重要紧急、重要不紧急、非重要紧急、非重要不紧急。逐格选择该格一条最有教学意义的既有证据，各格兼顾宏微观，不重复相同建议。返回 JSON 对象，键为有证据的格名，值为 {"ref":"给定编号","advice":"一句可执行的中文练习建议"}。每条建议不超过40字，只描述动作，不添加数字、知识点、成绩、时间、链接或新的事实。空格省略。另外，openingEvidence 是本期学生的分科学习记录，自主模考与作业分别统计。根据这些记录分析整份报告。如有记录，额外返回 opening:{"observations":["给定的事实id"],"nextStep":"面向学生的一句建议"}。选择一条最能说明进展的事实，必要时再选同科或另一科一条互补的事实。事实会自动原样显示。nextStep 限40字，直接用自然、鼓励的中文，给出与这些事实契合的下一步练习动作。直接对学生说话，省略署名、模型名称和工具来源。不复述数字，不虚构知识点、原因、测验安排或未来成绩。只有总分时避免推断具体技能，无时间序列不判断趋势。'},
+      {role:'system',content:'你为学生写学科学习报告。S/W/O/T 是优势、待加强、可用机会、近期风险。now/plan/quick/later 是重要紧急、重要不紧急、非重要紧急、非重要不紧急。逐格选择该格一条最有教学意义的既有证据，各格兼顾报告包含的学科，不重复相同建议。返回 JSON 对象，键为有证据的格名，值为 {"ref":"给定编号","advice":"一句可执行的中文练习建议"}。每条建议不超过40字，只描述动作，不添加数字、知识点、成绩、时间、链接或新的事实。空格省略。另外，openingEvidence 是本期学生的分科学习记录，自主模考与作业分别统计。根据这些记录分析整份报告。如有记录，额外返回 opening:{"observations":["给定的事实id"],"nextStep":"面向学生的一句建议"}。选择一条最能说明进展的事实，必要时再选同科或另一科一条互补的事实。事实会自动原样显示。nextStep 限40字，直接用自然、鼓励的中文，给出与这些事实契合的下一步练习动作。直接对学生说话，省略署名、模型名称和工具来源。不复述数字，不虚构知识点、原因、测验安排或未来成绩。只有总分时避免推断具体技能，无时间序列不判断趋势。'},
       {role:'user',content:JSON.stringify(input)}
     ],{json:true,maxTokens:1150,signal:AbortSignal.timeout(22000)});
     const selections={};

@@ -1,3 +1,4 @@
+import {unitCourse} from './subject-catalog.js';
 import {verificationMarkup} from './learning-evidence.js';
 import {renderBookmarks} from './study-workflow.js';
 import {assignmentCourse,courseLabel,coursesFor,selectedCourse,rememberCourse} from './course-scope.js';
@@ -183,7 +184,7 @@ export function createLearningUI(ctx){
     return;
   }
   const memory=viewMemory(state.user.id+':mistakes');const assignmentsById=new Map(data.assignments.map(a=>[a.id,a]));
-  const subjectOf=m=>m.lessonReference?.unit?.match(/^(micro|macro)-unit-[1-6]$/)?.[1] ||
+  const subjectOf=m=>unitCourse(m.lessonReference?.unit) ||
     (m.source==='mock' ? m.course : assignmentCourse(assignmentsById.get(m.assignmentId)||m,data.classes||[]));
   const occurrences=data.mistakes.flatMap(m=>[m,...(m.occurrences||[])]);
   const subjects=[...new Set([...coursesFor(data.assignments,data.classes||[]),...occurrences.map(subjectOf)])];

@@ -1,3 +1,5 @@
+import {unitCourse} from '../homework/subject-catalog.js';
+import {courseLabel as displayCourse} from '../homework/course-scope.js';
 import {audienceClasses} from '../homework/assignment-audience.js';
 import {correctionFeedback} from './correction-feedback.mjs';
 import {deepseek} from './ai.mjs';
@@ -41,7 +43,7 @@ export function mockMistakes(attempts, notes, drafts) {
       corrections.sort((left,right)=>String(left.createdAt).localeCompare(String(right.createdAt)));
       return [{
         correctionFeedback:correctionFeedback({type:'choice',answer:q.correctOption || snapshot.get(q.id)?.answer},corrections.at(-1)),
-        assignmentId:a.id, questionId:q.id, questionNumber:i+1, assignmentTitle:'自主模考 · '+(a.course==='macro'?'AP 宏观':'AP 微观'),
+        assignmentId:a.id, questionId:q.id, questionNumber:i+1, assignmentTitle:'自主模考 · '+displayCourse(a.course),
         source:'mock', libraryQuestionId:q.id, bankVersion:snapshot.get(q.id)?.version,
         course:a.course, topic:q.topic || snapshot.get(q.id)?.topic, libraryUnit:snapshot.get(q.id)?.unitId || null, type:'choice', prompt:q.prompt,
         knowledge:q.knowledge || q.topic || '', questionImages:q.questionImages || [],
@@ -262,10 +264,10 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
       const attempts=allHistory?authorized:current;
       const withinTopic=allHistory?'':topic;
       const catalog=units.filter(unit=>{
-        const c=unit.id.split('-')[0];
+        const c=unitCourse(unit);
         return course?course===c:classCourses.has('')||classCourses.has(c);
       }).flatMap(unit=>(unit.topics||[]).filter(t=>!withinTopic||t.id===withinTopic).map(t=>({
-        course:unit.id.split('-')[0],label:t.id,title:t.title||t.name||t.id,bookself:topicBookself(t)?.href||'',
+        course:unitCourse(unit),label:t.id,title:t.title||t.name||t.id,bookself:topicBookself(t)?.href||'',
       })));
       const notes=new Map();
       for(const note of mistakes){
@@ -304,8 +306,8 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     for(const a of stored)if(a.status==='active'&&inFilters(a,a.startedAt)&&(!a.deadlineAt||Date.parse(a.deadlineAt)>Date.now())&&(a.questions||[]).some(matches))rows.get(a.studentId).active++;
     const classCourses=new Set(scopedClasses.map(c=>singleClassCourse(c)));
     const includeCourse=c=>course?c===course:(classCourses.has(null)||classCourses.has(undefined)||classCourses.has('')||classCourses.has(c));
-    const expected=(await db.list('library-unit')).filter(u=>includeCourse(u.id.split('-')[0])).flatMap(u=>{
-      const c=u.id.split('-')[0];
+    const expected=(await db.list('library-unit')).filter(u=>includeCourse(unitCourse(u))).flatMap(u=>{
+      const c=unitCourse(u);
       return (u.topics||[]).filter(t=>matches({topic:t.id})).map(t=>({course:c,label:t.id,title:t.title||t.name||t.id,roster:selected.filter(s=>scopedClasses.some(cls=>member(s.classIds,cls.id)&&(!singleClassCourse(cls)||singleClassCourse(cls)===c))).length}));
     });
     const catalog=new Map(expected.map(t=>[t.course+':'+t.label,{...t,correct:0,total:0,participants:0}]));

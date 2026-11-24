@@ -1,3 +1,4 @@
+import {unitCourse,isSubject} from '../homework/subject-catalog.js';
 import {releaseAppliesToUnit} from './library-model.mjs';
 import {createHash} from 'node:crypto';
 import {questionHasTopic} from '../homework/library-packs.js';
@@ -28,9 +29,7 @@ export function belongsToClass(ids, classId) {
 }
 
 export function courseOf(unitOrId) {
-  const id = typeof unitOrId === 'string' ? unitOrId : unitOrId?.id;
-  const match = /^(micro|macro)-unit-[1-6]$/.exec(String(id || ''));
-  return match ? match[1] : '';
+  return unitCourse(unitOrId);
 }
 
 export function visibleUnitsForStudent(units, user, releases) {
@@ -74,7 +73,7 @@ export function questionEligible(question, {unit, imageExists} = {}) {
 
 export function fingerprint(question) {
   const base = [question.source || '', question.number || ''].join('|');
-  return base.trim() === '|' ? String(question.id || '') : base;
+  return base.trim() === '|' ? String(question.id || '') : JSON.stringify([unitCourse(question.unitId),base]);
 }
 
 export function shuffle(items, random = Math.random) {
@@ -118,14 +117,14 @@ export function buildCatalog({units, questionsByUnit, course}) {
     if (!total) continue;
     result.push({unitId: unit.id, title: unit.title || unit.id, course: courseOf(unit), topics, questionCount: total});
   }
-  return result.sort((a, b) => a.unitId.localeCompare(b.unitId));
+  return result.sort((a, b) => a.unitId.localeCompare(b.unitId,'en',{numeric:true}));
 }
 
 export function validateCreate(body, {allowedTopics} = {}) {
   const clientId = String(body?.clientId || '').trim();
   if (!/^[A-Za-z0-9_.:-]{8,80}$/.test(clientId)) throw new PracticeError(400, '练习编号无效，请刷新后重试');
   const course = String(body?.course || '');
-  if (!['micro', 'macro'].includes(course)) throw new PracticeError(400, '请选择 AP 微观或 AP 宏观');
+  if (!isSubject(course)) throw new PracticeError(400, '请选择有效学科');
   if (!Array.isArray(body?.topicIds) || !body.topicIds.length) throw new PracticeError(400, '请至少选择一个章节');
   const topicIds = [...new Set(body.topicIds.map((id) => String(id)))];
   if (topicIds.length > 80) throw new PracticeError(400, '一次最多选择 80 个章节');

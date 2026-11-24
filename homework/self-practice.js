@@ -1,3 +1,4 @@
+import {subjectIds,subjectInfo,isSubject} from './subject-catalog.js';
 import {paperDownload} from './paper-download.js';
 import {readingPositions} from './reading-positions.js';
 import {feedbackMarkup} from './choice-correction.js';
@@ -8,11 +9,11 @@ import {resultBadge} from './result-badge.js';
 import {questionView,answerNavigation,bindQuestionPaper,questionIndexMarkup,bindQuestionIndex} from './question-view.js';
 import {questionMarker} from './question-marker.js';
 import {studyControls} from './study-workflow.js';
-import {selectedCourse,rememberCourse} from './course-scope.js';
+import {courseLabel as courseName,selectedCourse,rememberCourse,subjectSwitcher} from './course-scope.js';
 const DAY = 86_400_000;
 const CREATE_KEY = 'sp:create';
 const LOCAL_KEY = 'sp:attempt:';
-const courseName = (course) => (course === 'macro' ? 'AP 宏观' : 'AP 微观');
+
 
 function formatClock(seconds) {
   const value = Math.max(0, Math.floor(seconds));
@@ -58,7 +59,7 @@ export function createSelfPracticeUI(ctx) {
 
   function readCreate(course) {
     const legacy=readJSON(CREATE_KEY+':'+state.user.id,{});
-    course=course||selectedCourse(state.user.id,['micro','macro'],legacy.course==='macro'?'macro':'micro');
+    course=course||selectedCourse(state.user.id,subjectIds,isSubject(legacy.course)?legacy.course:subjectIds[0]);
     return {...{course,topics:[],count:10,timer:'countup',minutes:25},...(legacy.course===course?legacy:{}),...readJSON(CREATE_KEY+':'+state.user.id+':'+course,{}),course};
   }
   function saveCreate(value) {
@@ -85,6 +86,9 @@ export function createSelfPracticeUI(ctx) {
       return;
     }
     if(version!==creationVersion)return;
+    const availableCourses=new Set([...(catalog.courses||[]),...attempts.map(a=>a.course)]);
+    const tabs=subjectIds.filter(id=>availableCourses.has(id));
+    if(tabs.length&&!tabs.includes(settings.course))return creation(tabs[0]);
     attempts=attempts.filter(a=>a.course===settings.course);
 
     const units = catalog.units || [];
@@ -96,10 +100,7 @@ export function createSelfPracticeUI(ctx) {
     main.innerHTML = `<section class="paper sp-create" data-page="create">
   <header class="sp-create-head">
     <div><h1>自主模考</h1><p class="sp-sub">模考不计入班级成绩。</p></div>
-    <div class="sp-course" role="tablist" aria-label="选择学科">
-      <button type="button" role="tab" data-course="micro" aria-selected="${settings.course === 'micro'}">AP 微观</button>
-      <button type="button" role="tab" data-course="macro" aria-selected="${settings.course === 'macro'}">AP 宏观</button>
-    </div>
+    ${subjectSwitcher(tabs.length?tabs:[settings.course],settings.course,{className:'sp-course',attribute:'course',label:'选择学科',tabs:true})}
   </header>
   <div class="sp-create-grid">
     <section class="sp-card sp-picker" aria-labelledby="sp-pick-title">
@@ -553,7 +554,7 @@ export function createSelfPracticeUI(ctx) {
         <section class="sp-card sp-score-card">
           <div class="sp-score"><strong>${accuracyBadge(result.percent)}</strong><span>${result.total} / ${result.maxPoints}</span></div>
           <div class="sp-score-meta"><span>用时 ${duration(result.durationSeconds)}</span><span>共 ${result.questions.length} 题</span></div>
-          <p class="sp-band" data-band="${result.percent < 20 ? 1 : result.percent < 40 ? 2 : result.percent < 60 ? 3 : result.percent < 80 ? 4 : 5}">练习分档，非官方 AP 预测分</p>
+          <p class="sp-band" data-band="${result.percent < 20 ? 1 : result.percent < 40 ? 2 : result.percent < 60 ? 3 : result.percent < 80 ? 4 : 5}">${subjectInfo(attempt.course)?.apReference?'练习分档，非官方 AP 预测分':'本次练习分档'}</p>
           <div class="sp-actions"><button type="button" class="primary" data-again>同范围再来一套</button><a class="secondary" href="#self-practice">调整范围</a></div>
         </section>
         <section class="sp-card sp-topic-card"><h2>章节表现</h2>${topicGrid(result.topics.map(t=>({label:t.topic,correct:t.correct,total:t.count,roster:t.count,

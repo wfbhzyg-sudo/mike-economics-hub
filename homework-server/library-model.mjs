@@ -16,7 +16,7 @@ export function cleanDrawing(b){
  }
  return {pages,text:boundedText(b.text,12000,'笔记'),revision:Number(b.revision),...(annotations?{annotations}:{})};
 }
-export function publicUnit(u){return {id:u.id,title:u.title,version:u.version,topics:u.topics.map(({teacherNotes,...t})=>t),resources:u.resources.filter(r=>r.audience!=='teacher'),questionCount:u.questionCount};}
+export function publicUnit(u){return {id:u.id,title:u.title,version:u.version,topics:(u.topics||[]).map(({teacherNotes,focus,...t})=>t),resources:(u.resources||[]).filter(r=>r.audience!=='teacher'),questionCount:u.questionCount};}
 export function validateSelection(ids,questions,{requireReady=false}={}){
  assert(Array.isArray(ids)&&ids.length>0&&new Set(ids).size===ids.length,'请选择至少一道题，题目不能重复');
  const byId=new Map(questions.map(q=>[q.id,q]));

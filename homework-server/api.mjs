@@ -1,3 +1,4 @@
+import {isSubject} from '../homework/subject-catalog.js';
 import {validateTiming} from './mcq-model.mjs';
 import {createCorrectionReview,applyRecovery,attachReview,reviewView} from './correction-review.mjs';
 import {studentPerformance,performanceAdvice} from './student-performance.mjs';
@@ -970,7 +971,7 @@ export async function createHomework({externalAuth} = {}) {
       if(route[0]==='learning'&&route[1]==='performance-advice'&&method==='POST'){
         assert(user.role==='student','请使用学生账号',403);
         const {course}=await body(req);
-        assert(['micro','macro'].includes(course),'学科无效');
+        assert(isSubject(course),'学科无效');
         const work=await accessibleWork();
         const reviews=await correctionReview.reviews({studentId:user.id});
         const byQuestion=new Map(reviews.map(r=>[JSON.stringify([r.submissionId,r.questionId]),r]));
@@ -990,7 +991,7 @@ export async function createHomework({externalAuth} = {}) {
           const row=attachReview(m,item,grades.get(m.submissionId));
           return item&&item.status!=='passed'?{...row,correctionFeedback:null}:row;
         };
-        const assignments=work.assignments.map(a=>{const course=assignmentCourse(a,classes);return !namedCourse(a.course)&&['micro','macro'].includes(course)?{...a,course:courseLabel(course)}:a;});
+        const assignments=work.assignments.map(a=>{const course=assignmentCourse(a,classes);return !namedCourse(a.course)&&isSubject(course)?{...a,course:courseLabel(course)}:a;});
         const roster=user.role==='teacher'?(externalAuth?await externalAuth.students(auth.signed):(await db.list('user')).filter(u=>u.role==='student'&&u.classIds?.some(x=>assignments.some(a=>a.classIds.includes(x))))):[];
         const users=user.role==='teacher'?await db.list('user'):[];
         const students=roster.map(u=>({id:u.id,name:u.name,username:u.username||'',classIds:u.classIds}));

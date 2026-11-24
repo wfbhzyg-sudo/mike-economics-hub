@@ -1,3 +1,4 @@
+import {subjectIds,subjectInfo} from '../homework/subject-catalog.js';
 import {classKey, courseLabel, assignmentCourse, singleClassCourse} from '../homework/course-scope.js';
 import {assignmentHistory, PERIODS, periodRange} from '../homework/learning-analytics-model.js';
 import {gradeSummary} from '../homework/learning-model.js';
@@ -10,13 +11,8 @@ import {assert} from './validation.mjs';
 
 const shares = (ids, key) => ids?.some(id => classKey(id) === classKey(key));
 const num = value => Math.round(value * 10) / 10;
-export const skillNames = ['原理与模型', '解读', '分析推演', '绘图'];
-const exercises = [
-  '换一个题设条件，说说原来的判断还成不成立，以及哪个原理能解释它。',
-  '圈出题中发生变化的量，再用一句话说明图或表里的数字怎样支持你的判断。',
-  '从题设的变化写到最后的结果，每一步补上它影响下一步的原因。',
-  '遮住原图，先标横纵轴，再画曲线并标出题目问到的点。对照原图，检查位置和移动方向。',
-];
+
+
 
 export async function readStudentReport({db, teacherId, query, availableClasses, availableStudents, correctionReview, at = new Date()}) {
   const id = query.get('student'), scope = classKey(query.get('class')), unit = query.get('unit') || '';
@@ -63,7 +59,7 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
   const history = assignmentHistory({submissions},person,assignments.map(a=>({...a,audience:{required:true}})));
   const groups = new Set([...assignments.map(a=>assignmentCourse(a,classes)),...mockAttempts.map(a=>a.course)]);
   if(!unit && !assignmentId) for(const c of classScope) if(singleClassCourse(c)) groups.add(singleClassCourse(c));
-  const courses = ['micro','macro','mixed','unknown'].filter(c=>groups.has(c)).map(course => {
+  const courses = [...subjectIds,'mixed','unknown'].filter(c=>groups.has(c)).map(course => {
     const cells = history.filter(c => assignmentCourse(c.assignment,classes) === course);
     const scopeIds = new Set(cells.map(c => c.assignment.id));
     const errors = mistakes.filter(m => scopeIds.has(m.assignmentId));
@@ -79,8 +75,8 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
       const skill=evidence.axes.find(axis=>axis.skill===evidence.focus);
       const ref=skill.references.find(q=>q.score<q.max) || skill.references[0];
       advice.push({
-        title:ref?'《'+ref.title+'》第 '+ref.questionNumber+' 题':skillNames[skill.skill-1],
-        detail:exercises[skill.skill-1]
+        title:ref?'《'+ref.title+'》第 '+ref.questionNumber+' 题':subjectInfo(course)?.skills[skill.skill-1]?.name,
+        detail:subjectInfo(course)?.skills[skill.skill-1]?.practice
       });
     }
     if(pending.length && !advice.length){
