@@ -81,6 +81,12 @@ test('overview-only grades and mock-only results support an opening without inve
   const state=await reportState(db,'student',f);
   assert.equal(state.opening,modelOpening(answer,f.opening));
   const page=await renderStudentReport(r,f,state);
-  assert(page.includes(state.opening));assert(page.includes('DeepSeek 评语'));
+  assert(page.includes(state.opening));assert(!/deep[\s-]*seek/i.test(page));
+  const legacy=await renderStudentReport(r,f,{...state,opening:'微观得分率为 80%。DeepSeek 建议：先画出均衡点。'});
+  assert(!/deepseek/i.test(legacy));assert(legacy.includes('微观得分率为 80%。先画出均衡点。'));
+  const fallback=await renderStudentReport(r,f,{...state,opening:'来自 DEEPSEEK。'});
+  assert(!/deepseek/i.test(fallback));assert(fallback.includes(recordOpening(f.opening)));
+  assert.match(modelOpening({...answer,nextStep:'DeepSeek 建议你先标出均衡点。'},f.opening),/。你先标出均衡点。$/);
+  assert.equal(modelOpening({...answer,nextStep:'先画图，再询问 DeepSeek。'},f.opening),'本期 1 份已出分的微观作业，平均得分率为 0%。宏观最近一次自主模考正确率为 75%。');
   assert(page.indexOf('id="opening-title"')<page.indexOf('<section class="overview">'));
 });

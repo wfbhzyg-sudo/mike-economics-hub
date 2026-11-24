@@ -1,4 +1,4 @@
-import {recordOpening} from './student-report-opening.mjs';
+import {publicOpening,recordOpening} from './student-report-opening.mjs';
 import {readFile} from 'node:fs/promises';
 import {resultParts} from './student-report.mjs';
 import {radarFigure,trendFigure,html} from './student-report-figures.mjs';
@@ -48,7 +48,7 @@ function evidenceTable(report,items){
 export function reportPanels(report,facts,state={}){
   const items={...selectedItems(facts,state.ai,state.edits),...teacherTasks(state.tasks||[],report.at)};
   return {swot:['S','W','O','T'].map(k=>analysisCard(k,items[k],report)).join(''),tasks:['now','plan','quick','later'].map(k=>analysisCard(k,items[k],report)).join(''),
-    opening:state.opening||recordOpening(facts.opening),openingSource:state.opening?'DeepSeek 评语':'学习记录摘要',works:evidenceTable(report,items),revision:state.revision||0,hasAI:Boolean(state.hasAI)};
+    opening:publicOpening(state.opening)||recordOpening(facts.opening),openingSource:state.opening?'':'学习记录摘要',works:evidenceTable(report,items),revision:state.revision||0,hasAI:Boolean(state.hasAI)};
 }
 
 export async function renderStudentReport(report,facts=buildReportAnalysis(report),state={}){

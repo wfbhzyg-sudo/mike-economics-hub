@@ -44,6 +44,17 @@ export function recordOpening(facts) {
   return observation.text+'。';
 }
 
+// Reports may reopen a cached comment created before the wording changed.
+export function publicOpening(text) {
+  const provider = /deep[\s-]*seek|深度求索/i;
+  if (!text || !provider.test(text)) return text;
+  const attribution = /^\s*(?:根据\s*)?(?:deep[\s-]*seek|深度求索)\s*(?:的)?(?:分析认为|分析|建议|评语|认为|提示)?\s*(?:[：:，,]\s*|(?=你|先|可以|从|试着|继续))/i;
+  return (text.match(/[^。！？!?\n]+[。！？!?]*|\n+/gu) || [])
+    .map(sentence => sentence.replace(attribution, ''))
+    .filter(sentence => !provider.test(sentence))
+    .join('').trim().replace(/^[。！？!?\s]+/u,'');
+}
+
 export function modelOpening(result,facts) {
   const ids=result?.observations;
   if(!Array.isArray(ids)||ids.length<1||ids.length>2||new Set(ids).size!==ids.length)return null;
@@ -52,5 +63,5 @@ export function modelOpening(result,facts) {
   const action=typeof result.nextStep==='string'?result.nextStep.trim():'';
   // All numerical statements belong to the verified observations, not the free-text advice.
   if(!action||action.length>52||!/[\u3400-\u9fff]/u.test(action)||/[\d０-９%％<>\r\n]|https?:|一定能|预测考分|注定/.test(action))return null;
-  return observations.map(f=>f.text).join('。')+'。'+action.replace(/[。！？.!?]+$/u,'')+'。';
+  return publicOpening(observations.map(f=>f.text).join('。')+'。'+action.replace(/[。！？.!?]+$/u,'')+'。');
 }
