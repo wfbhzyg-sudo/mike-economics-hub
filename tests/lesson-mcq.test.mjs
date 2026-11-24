@@ -52,3 +52,21 @@ test('figure and table answer keys agree with the values in their stimuli', () =
   assert.equal(game.options[game.correct],'Low, Low');
   assert.deepEqual(game.table.rows[1],['Low','(10, 2)','(4, 4)']);
 });
+
+test('the focus endpoint serves the same complete chapter to teachers and released students with legacy records',async()=>{
+  const {createLibrary}=await import('../homework-server/library.mjs');
+  const unit={id:'micro-unit-2',type:'library-unit',owner:'teacher-test',topics:[{id:'2.3',title:'Elasticity',focus:'需求价格弹性。'}],resources:[]};
+  const db={get:async id=>id===unit.id?unit:undefined,list:async()=>[{unitId:unit.id,owner:unit.owner,classIds:['class-a']}]};
+  const library=createLibrary({db});
+  async function read(user){
+    let data;
+    await library.handle({method:'GET',user,route:['library','focus'],req:{url:'/library/focus?unit=micro-unit-2&topic=2.3'},json:(_,value)=>{data=value;}});
+    return data;
+  }
+  const teacher=await read({role:'teacher',id:unit.owner});
+  const student=await read({role:'student',classIds:['class-a']});
+  assert.deepEqual(student.focus,teacher.focus);
+  assert.equal(teacher.focus.rule,expandedLessonFocus['micro:2.3'].rule);
+  assert.deepEqual(student.focus.examples,lessonExamples['micro:2.3']);
+  await assert.rejects(read({role:'student',classIds:['other-class']}),e=>e.status===403);
+});

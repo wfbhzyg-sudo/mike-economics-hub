@@ -74,3 +74,24 @@ test('class releases, file identity and optional textbook links remain subject s
  assert.deepEqual(matchedChapterKeys({knowledge:'elasticity'},extra.id),[]);
  assert(matchedChapterKeys({knowledge:'elasticity'},'micro').length>0);
 });
+
+test('old AP topic summaries retain the complete lesson and its exercises in both workspaces',async()=>{
+ const {topicLesson}=await import('../homework-server/lesson-content.mjs');
+ const {lessonExamples}=await import('../homework-server/lesson-mcq-data.mjs');
+ const {focusMarkup}=await import('../homework/lesson-panel.js');
+ for(const [key,examples] of Object.entries(lessonExamples)){
+  const [subject,id]=key.split(':'),unit=subject+'-unit-'+id.split('.')[0];
+  const lesson=topicLesson(unit,{id,focus:'旧版本导入的单元目录摘要'});
+  assert(lesson.rule && lesson.goals.length,key);
+  assert.deepEqual(lesson.examples,examples,key);
+  const html=focusMarkup(lesson);
+  assert.equal((html.match(/data-lf-card=/g)||[]).length,examples.length,key);
+ }
+ const lesson=topicLesson('micro-unit-2',{id:'2.1',focus:{goal:'New goal', examples:[]}});
+ assert.equal(lesson.goal,'New goal');
+ assert.equal(lesson.examples.length,lessonExamples['micro:2.1'].length);
+ assert.equal(topicLesson('qa-science-unit-12',undefined),null);
+ assert.deepEqual(topicLesson('qa-science-unit-12',{id:'12.1',focus:'Read this diagram'}),{goal:'Read this diagram'});
+ assert.match(focusMarkup(topicLesson('qa-science-unit-12',{id:'12.1',focus:{concept:'Coordinates'}})),/Coordinates/);
+ assert.match(focusMarkup('Read this diagram'),/Read this diagram/);
+});

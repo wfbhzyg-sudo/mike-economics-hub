@@ -13,6 +13,7 @@ const anchors = [
 ];
 
 export function focusMarkup(focus, {canPin = false} = {}) {
+  if (typeof focus === 'string') focus = focus.trim() ? {goal:focus.trim()} : null;
   if (!focus) return '<p class="lesson-panel-status">This topic’s study notes are being prepared.</p>';
   const primaryTerm = focus.terms?.[0]?.[0];
   const source = focus.source||{};
@@ -20,7 +21,7 @@ export function focusMarkup(focus, {canPin = false} = {}) {
     ? [source.book,'PDF p. '+source.filePage,source.printedPage&&'printed p. '+source.printedPage].filter(Boolean).join(' · ')
     : [source.book,...(source.path||[])].filter(Boolean).join(' › ');
   const sections = {
-    goals: [...new Set([focus.goal, ...(focus.goals||[])].filter(Boolean))],
+    goals: [...new Set([focus.goal || (!focus.goals?.length ? focus.concept : ''), ...(focus.goals||[])].filter(Boolean))],
     rule: [focus.rule].filter(Boolean),
     apply: [focus.apply].filter(Boolean),
     pitfall: [...new Set([focus.pitfall, ...(focus.pitfalls||[])].filter(Boolean))],

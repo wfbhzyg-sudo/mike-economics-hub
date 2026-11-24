@@ -1,8 +1,6 @@
 import {unitIdentity,unitCourse,subjectInfo} from '../homework/subject-catalog.js';
 import {assignmentAudience} from './assignment-audience.mjs';
-import {lessonFocus} from '../homework/lesson-focus.js';
-import {lessonExamples} from './lesson-mcq-data.mjs';
-import {expandedLessonFocus} from './lesson-focus-data.mjs';
+import {topicLesson} from './lesson-content.mjs';
 import {classKey,namedCourse} from '../homework/course-scope.js';
 import {questionHasTopic,matchLegacySkillPack} from '../homework/library-packs.js';
 import {automaticGradeReady,libraryOptions} from '../homework/library-grading.js';
@@ -138,12 +136,10 @@ async function handle({req,res,route,method,user,json,availableClasses,available
    }
    assert(unitId, '这道题还没有关联章节', 404);
    const unit = await unitFor(user, unitId);
-   const topics = (unit.topics || []).map(t => ({id:t.id, title:t.title || t.name}));
+   const savedTopics = unit.topics || [];
+   const topics = savedTopics.map(t => ({id:t.id, title:t.title || t.name}));
    const topic = topics.find(t => t.id === topicId);
-   const key = unitCourse(unitId) + ':' + topic?.id;
-   const expanded = expandedLessonFocus[key];
-   const original = lessonFocus[key];
-   const focus = unit.topics?.find(t=>t.id===topicId)?.focus ?? (expanded && original ? {...original, ...expanded, examples:lessonExamples[key] || []} : null);
+   const focus = topicLesson(unitId, savedTopics.find(t => t.id === topicId));
    const hasTextbook = Boolean(topic && unit.resources?.some(resource => resource.kind === 'textbook' &&
      (!resource.topicId || resource.topicId === topic.id) && (user.role === 'teacher' || resource.audience !== 'teacher')));
    json(res, {unit:{id:unit.id,title:unit.title}, topics, topic:topic || null, focus, hasTextbook});
