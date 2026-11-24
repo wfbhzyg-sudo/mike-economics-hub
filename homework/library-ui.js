@@ -4,7 +4,7 @@ import {selectedCourse,rememberCourse,subjectSwitcher} from './course-scope.js';
 import {gradingFields,readGradingPoints} from './library-grading.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {studentAssignmentAction} from './assignment-navigation.js';
-import {libraryLocation,packReference,packQuestions} from './library-navigation.js';
+import {libraryLocation,libraryCourseTarget,topicResource,assignmentInUnit,packReference,packQuestions} from './library-navigation.js';
 import {highlightText} from './search-text.js';
 import {bindExamples} from './lesson-examples.js';
 import {focusMarkup,revealFocus} from './lesson-panel.js';
@@ -28,6 +28,11 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  const releaseCount=()=>new Set(releases.flatMap(r=>r.classIds)).size;
  const releaseText=()=>releaseCount()?'资料开放 · '+releaseCount()+' 班':'资料未开放';
  const previewRef=mode==='preview'?packReference(viewDetail):null;
+ if(topicId && topicId!=='all' && !unit.topics.some(t=>t.id===topicId)){
+  const base='#'+(location.pathname.startsWith('/teacher')?'work/':'')+'library/'+encodeURIComponent(unitId);
+  main.innerHTML=`<section class="library-work"><h1>${h(unit.title)}</h1><p role="status">本单元目录中找不到主题 ${h(topicId)}，请选择要查看的主题。</p><nav class="lesson-directory" aria-label="本单元的主题">${unit.topics.map(t=>`<a href="${base}/${encodeURIComponent(t.id)}">${h(t.id+' '+(t.name||t.title||''))}</a>`).join('')}</nav></section>`;
+  return;
+ }
  const topic=unit.topics.find(t=>t.id===topicId)||unit.topics[0]||{id:'all',title:unit.title},group=unitCourse(unitId),unitLabel='Unit '+unitIdentity(unitId).number,unitScope=topicId==='all'||!unit.topics.length;
  if(!teacher)rememberCourse(state.user.id,group);
  remember('lib-last:'+state.user.id,{unit:unitId,topic:topicId==='all'?'all':topic.id,mode,detail:viewDetail});
@@ -46,7 +51,7 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  placeActions();desktopLayout.addEventListener('change',placeActions,{signal:events.signal});
  if(state.libraryTabFocus){const next=state.libraryTabFocus;delete state.libraryTabFocus;if(next.unit===unitId&&next.mode===activeMode)state.restoreView=()=>{const button=[...main.querySelectorAll('[data-view]')].find(b=>b.dataset.view===activeMode);button?.focus({preventScroll:true});button?.scrollIntoView({block:'nearest',inline:'nearest'});};}
  closeContextMenus=bindDisclosureMenus(main,'.lib-context-more');
- const bindTree=root=>{root.querySelectorAll('[data-unit-topic]').forEach(b=>b.onclick=()=>{const [u,t]=b.dataset.unitTopic.split('/');navGo(u,t,b.dataset.targetMode||(['progress','exams','preview'].includes(mode)?'packs':mode==='project'?'slides':mode));});root.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{const u=units.find(u=>unitCourse(u)===b.dataset.course);if(u)navGo(u.id,['progress','exams'].includes(mode)?'all':'',mode==='preview'?'packs':mode==='project'?'slides':mode);});root.querySelector('[data-exams]')?.addEventListener('click',()=>navGo(group+'-unit-1','all','exams'));};
+ const bindTree=root=>{root.querySelectorAll('[data-unit-topic]').forEach(b=>b.onclick=()=>{const [u,t]=b.dataset.unitTopic.split('/');navGo(u,t,b.dataset.targetMode||(['progress','exams','preview'].includes(mode)?'packs':mode==='project'?'slides':mode));});root.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{const u=units.find(u=>unitCourse(u)===b.dataset.course);if(u)navGo(...libraryCourseTarget(u,mode,previewRef?.collection));});root.querySelector('[data-exams]')?.addEventListener('click',()=>navGo(group+'-unit-1','all','exams'));};
  bindTree(main);
  $('[data-directory]').onclick=()=>{const open=$('.library-work').classList.toggle('directory-open');$('[data-directory]').setAttribute('aria-expanded',String(open));};
  main.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{const m=b.dataset.view;if(m==='packs'&&unitScope){go(route('all',mode==='exams'||previewRef?.collection==='exam'?'exams':'progress'));return;}go(route(unitScope&&m==='bank'?'all':topic.id,m));});
@@ -305,9 +310,9 @@ export async function showLibrary({main,state,api,post,put,go,toast},unitOrTopic
  }
  async function practice(){
   const [{assignments},{submissions}]=await Promise.all([api('assignments'),api('submissions')]);if(disposed)return;
-  const rows=assignments.filter(a=>a.libraryUnit===unitId||(a.libraryCollection==='exam'&&a.libraryCourse===group));
+  const rows=assignments.filter(a=>assignmentInUnit(a,unitId));
   const date=value=>new Date(value).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
   content.innerHTML=`<div class="lib-practice-list">${rows.map(a=>{const item=studentAssignmentAction(a,submissions),link=item.target?href(item.target):null;return `<article data-state="${item.info.key}"><div><strong>${link?`<a href="${link}">${h(a.title)}</a>`:h(a.title)}</strong><p><span class="lib-status" data-ready="${item.info.key==='done'}">${h(item.label)}</span><span>${item.opensLater?'开放 '+date(a.opensAt):a.dueAt?'截止 '+date(a.dueAt):'不限截止时间'}</span>${a.libraryCollection==='exam'?'<span>Course-wide paper</span>':''}</p></div>${link?`<a class="lib-button" href="${link}">${h(item.action)}</a>`:`<button disabled>${h(item.action)}</button>`}</article>`;}).join('')||'<p class="lib-empty">本单元暂无已布置的作业。老师发布后会显示在这里。</p>'}</div>`;
  }
- try{if(['slides','textbook','project'].includes(mode)){const kind=mode==='textbook'?'textbook':'slides',resource=unit.resources.find(r=>r.kind===kind&&r.topicId===topic.id)||unit.resources.find(r=>r.kind===kind);if(!resource)throw Error('本课资料尚未准备好');readerCleanup=await mountLibraryReader(content,{resource,unitId,topic,kind,project:mode==='project',state,api,post,put,toast});if(disposed)readerCleanup?.();}else if(teacher&&mode==='bank')await bank(viewDetail==='frq'?{type:'short',topic:''}:{});else if(teacher&&mode==='preview'){if(!previewRef)throw Error('作业包入口已更新，请从作业包列表重新打开');const items=buildPacks(await getQuestions(),{topic:topic.id,course:group,unitLabel,collection:previewRef.collection}),item=items.find(p=>p.id===previewRef.id);if(!item)throw Error('作业包内容已更新，请返回列表重新选择');await bank({ids:item.questionIds,topic:'',type:'',title:item.title,skillTopic:item.skillTopic,context:viewDetail,collection:previewRef.collection});}else if(teacher&&['packs','progress','exams'].includes(mode))await packs(mode==='packs'?'topic':mode==='exams'?'exam':'progress');else if(!teacher&&mode==='practice')await practice();else overview();}catch(e){error(e);}
+ try{if(['slides','textbook','project'].includes(mode)){const kind=mode==='textbook'?'textbook':'slides',resource=topicResource(unit.resources,kind,topic.id);if(!resource)throw Error('本课资料尚未准备好');readerCleanup=await mountLibraryReader(content,{resource,unitId,topic,kind,project:mode==='project',state,api,post,put,toast});if(disposed)readerCleanup?.();}else if(teacher&&mode==='bank')await bank(viewDetail==='frq'?{type:'short',topic:''}:{});else if(teacher&&mode==='preview'){if(!previewRef)throw Error('作业包入口已更新，请从作业包列表重新打开');const items=buildPacks(await getQuestions(),{topic:topic.id,course:group,unitLabel,collection:previewRef.collection}),item=items.find(p=>p.id===previewRef.id);if(!item)throw Error('作业包内容已更新，请返回列表重新选择');await bank({ids:item.questionIds,topic:'',type:'',title:item.title,skillTopic:item.skillTopic,context:viewDetail,collection:previewRef.collection});}else if(teacher&&['packs','progress','exams'].includes(mode))await packs(mode==='packs'?'topic':mode==='exams'?'exam':'progress');else if(!teacher&&mode==='practice')await practice();else overview();}catch(e){error(e);}
 }

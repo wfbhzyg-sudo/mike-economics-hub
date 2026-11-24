@@ -95,3 +95,30 @@ test('old AP topic summaries retain the complete lesson and its exercises in bot
  assert.match(focusMarkup(topicLesson('qa-science-unit-12',{id:'12.1',focus:{concept:'Coordinates'}})),/Coordinates/);
  assert.match(focusMarkup('Read this diagram'),/Read this diagram/);
 });
+
+test('old course-switch bookmarks and new tab switches keep their intended content',async()=>{
+ const {libraryCourseTarget,topicResource,assignmentInUnit}=await import('../homework/library-navigation.js');
+ for(const tab of ['slides','textbook','packs','bank','practice','progress','exams']){
+  assert.equal(libraryLocation([unit],{},unit.id,tab).mode,tab);
+  const [id,topic,mode]=libraryCourseTarget(unit,tab);
+  assert.deepEqual(libraryLocation([unit],{},id,topic,mode),{unitId:unit.id,topicId:['progress','exams'].includes(tab)?'all':'12.1',mode:tab});
+ }
+ assert.deepEqual(libraryCourseTarget(unit,'preview','progress'),[unit.id,'all','progress']);
+ const other={kind:'slides',topicId:'12.2'},shared={kind:'slides'},exact={kind:'slides',topicId:'12.1'};
+ assert.equal(topicResource([other,shared,exact],'slides','12.1'),exact);
+ assert.equal(topicResource([other,shared],'slides','12.1'),shared);
+ assert.equal(topicResource([other],'slides','12.1'),undefined);
+ assert(assignmentInUnit({libraryUnits:['micro-unit-2',unit.id]},unit.id));
+ assert(assignmentInUnit({questions:[{lessonReference:{unit:unit.id}}]},unit.id));
+ assert.equal(assignmentInUnit({libraryUnit:'micro-unit-2'},unit.id),false);
+});
+
+test('historical item references survive mixed assignments and agree across both clients', async()=>{
+ const client=(await import('../homework/lesson-reference.js')).questionLessonReference;
+ assert.equal(client,questionLessonReference);
+ const snapshot={lessonUnit:unit.id,lessonTopic:'12.1',libraryQuestionId:'q1',libraryUnit:'micro-unit-2'};
+ assert.deepEqual(client(snapshot,{libraryUnit:'micro-unit-2'}),{unit:unit.id,topic:'12.1',bank:'q1'});
+ assert.deepEqual(client({lessonReference:{unit:unit.id,topic:'12.1'},topic:'2.2'}),{unit:unit.id,topic:'12.1',bank:''});
+ assert.deepEqual(client({libraryQuestionId:'q1'},{course:'mixed'}),{unit:'',topic:'',bank:'q1'});
+ assert.equal(client({libraryUnit:'macro-unit-1',lessonTopic:'2.3'}).topic,'');
+});

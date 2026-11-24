@@ -1,6 +1,6 @@
-import {unitIdentity,topicUnitNumber,isSubject} from './subject-catalog.js';
+import {unitIdentity} from './subject-catalog.js';
 import {exampleMarkup,bindExamples} from './lesson-examples.js';
-import {namedCourse} from './course-scope.js';
+import {questionLessonReference} from './lesson-reference.js';
 import {reviewLinksMarkup} from './review-links.js';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -61,17 +61,6 @@ export function revealFocus(root, id) {
   return target;
 }
 
-function referenceFor(question, context) {
-  const supplied = question.lessonReference || {};
-  const explicit = question.libraryUnit || question.unitId || supplied.unit || context.libraryUnit;
-  const course = namedCourse(context.course || question.course);
-  const topic = question.topic || supplied.topic || String(question.knowledge || '').match(/^Topic\s+(\d+\.\d+)(?=\s|$)/i)?.[1] || '';
-  const unit = unitIdentity(explicit) ? explicit :
-    topicUnitNumber(topic) && isSubject(course) ? `${course}-unit-${topicUnitNumber(topic)}` : '';
-  const identity=unitIdentity(unit);
-  return {unit:identity?unit:'', topic:identity?.number===topicUnitNumber(topic)?topic:'', bank:supplied.bank||''};
-}
-
 export function mountLessonLinks(root, api) {
   let dialog, request, opener, media, current;
   function close(restore = false) {
@@ -111,7 +100,7 @@ export function mountLessonLinks(root, api) {
         const path = '#library/' + encodeURIComponent(data.unit.id) + '/' + encodeURIComponent(data.topic.id);
         body.insertAdjacentHTML('beforeend', `<div class="lesson-panel-links">
           <a target="_blank" rel="noopener" href="/homework/${path}">打开教学包 ↗</a>
-          ${data.hasTextbook ? `<a target="_blank" rel="noopener" href="/homework/${path}/textbook">查看教材原页 ↗</a>` : ''}
+          ${data.hasTextbook ? `<a target="_blank" rel="noopener" href="/homework/?lessonStart=${encodeURIComponent(data.unit.id+'/'+data.topic.id)}${path}/textbook">查看教材原页 ↗</a>` : ''}
         </div>`);
       }
       if (current.review) body.insertAdjacentHTML('beforeend', reviewLinksMarkup(current.review,escape,{compact:true}));
@@ -150,7 +139,7 @@ export function mountLessonLinks(root, api) {
   }
   function mount(host, question, context = {}) {
     if (!host || !root.contains(host)) return;
-    const reference = referenceFor(question || {}, context);
+    const reference = questionLessonReference(question || {}, context);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'lesson-link';

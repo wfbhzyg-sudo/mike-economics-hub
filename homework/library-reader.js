@@ -2,25 +2,48 @@ import {pdfPageText} from './library-navigation.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {pdfLibrary,openPDF} from './pdf-reader.js';
 import {mountInk} from './ink.js';
-import {sourceResourcePage} from './library-page-map.js';
+import {sourceResourcePage,resourceTopicRange} from './library-page-map.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const documents=new Map();
 async function acquire(fileId,userId){
- const key=userId+':'+fileId;let item=documents.get(key);
- if(!item){const lib=await pdfLibrary();item={task:openPDF(fileId,lib),used:0,at:Date.now()};documents.set(key,item);}
- item.used++;item.at=Date.now();clearTimeout(item.timer);
- try{const pdf=await item.task.promise;return {pdf,release(){item.used--;item.at=Date.now();item.timer=setTimeout(()=>{if(!item.used){documents.delete(key);void item.task.destroy().catch(()=>{});}},90000);for(const [k,v] of documents)if(documents.size>2&&!v.used){clearTimeout(v.timer);documents.delete(k);void v.task.destroy().catch(()=>{});}}};}
- catch(e){documents.delete(key);item.used--;throw e;}
+ const key=userId+':'+fileId;
+ let item=documents.get(key);
+ if(!item){
+  item={used:0};
+  item.ready=pdfLibrary().then(lib=>{item.task=openPDF(fileId,lib);return item.task.promise;});
+  documents.set(key,item);
+ }
+ item.used++;clearTimeout(item.timer);
+ function evict(k,v){if(v.used||documents.get(k)!==v)return;clearTimeout(v.timer);documents.delete(k);void v.task?.destroy().catch(()=>{});}
+ try{
+  const pdf=await item.ready;let released=false;
+  return {pdf,release(){
+   if(released)return;
+   released=true;item.used--;
+   if(!item.used)item.timer=setTimeout(()=>evict(key,item),90000);
+   for(const [k,v] of documents)if(documents.size>2)evict(k,v);
+  }};
+ }catch(e){item.used--;evict(key,item);throw e;}
 }
 export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,project=false,state,api,post,put,toast}){
  const teacher=state.user.role==='teacher',playLabel=teacher?'开始授课':'专注阅读';
  const events=new AbortController(),renders=new Set();let stopped=false,lease,ink,activeFrame,renderVersion=0,page,requested,zoom=1,channel,timer,full=false,repaint=Promise.resolve(),resizeObserver,resizeTimer,textMode=false,textVersion=0;
- let activeFileId=r.fileId,activePages=r.pages,usedFallback=false,fallingBack=false,fallbackNotice='';
- const posKey=`lib-position:${state.user.id}:${r.fileId}:${topic.id}`,range=topic[kind]||[1,r.pages];
- let saved;try{saved=JSON.parse(localStorage.getItem(posKey)||'null')}catch{}
+ const activePages=r.pages;let activeFileId=r.fileId,usedFallback=false;
+ const filePage=n=>usedFallback?sourceResourcePage(r,n)?.page:n;
+ const posKey=`lib-position:${state.user.id}:${r.fileId}:${topic.id}`,range=resourceTopicRange(r,topic[kind]);
+ const url=new URL(location.href),reference=kind==='textbook' && url.searchParams.get('lessonStart')===unitId+'/'+topic.id;
+ if(reference){
+  url.searchParams.delete('lessonStart');
+  history.replaceState({...history.state,lessonReader:posKey},'',url);
+ }
+ const fromQuestion=history.state?.lessonReader===posKey;
+ let saved;
+ try{
+  if(!reference)saved=JSON.parse((fromQuestion?sessionStorage:localStorage).getItem(posKey)||'null');
+ }catch{}
  const restored=typeof saved==='number'?saved:saved?.page;
  page=Number.isInteger(restored)&&restored>=1&&restored<=r.pages?restored:range[0];requested=page;zoom=Math.max(1,Math.min(3,Number(saved?.zoom)||1));
- root.innerHTML=`<section class="lib-reader ${project?'lib-project':''}" data-kind="${kind}" tabindex="0" aria-label="${kind==='slides'?'课件':'教材'}阅读器"><div class="lib-reader-tools"><button data-prev aria-label="上一页">‹</button><details class="lib-page-menu"><summary aria-label="页码与页面目录"><span data-page-label>${page}</span> / <span data-page-total>${activePages}</span> ▾</summary><div class="lib-page-popover"><label>前往页码<input data-page type="number" min="1" max="${activePages}" value="${page}"></label><div class="lib-page-thumbs"></div></div></details><button data-next aria-label="下一页">›</button><span class="lib-tool-separator"></span><button data-zoom aria-pressed="false">放大</button><button data-focus>${project?'退出投影':'专注'}</button>${kind==='slides'&&!project?`<button class="primary" data-play>${playLabel}</button>`:''}<details class="lib-reader-more"><summary aria-label="更多阅读操作">···</summary><div><button data-zoom-compact aria-pressed="false">放大</button><button data-focus-compact>专注阅读</button><button data-transcript aria-pressed="false">查看本页文字</button>${!project?'<button data-full>全屏</button>':''}<a href="/api/homework/files/${encodeURIComponent(r.fileId)}?download=1">下载原件</a>${state.user.role==='teacher'&&kind==='slides'&&!project?'<button data-project>打开投影窗口</button>':''}</div></details><span data-status role="status"></span><a data-project-fallback hidden target="_blank" rel="noopener">打开投影页 ↗</a></div><div class="lib-pdf-area" tabindex="0" aria-label="原页阅读区域"><div class="lib-page-stage"></div><article class="lib-page-text" tabindex="0" aria-label="当前页面文字" hidden></article></div><p class="lib-reader-error" role="alert"></p><button data-retry hidden>重新读取当前页</button></section>`;
+ root.innerHTML=`<section class="lib-reader ${project?'lib-project':''}" data-kind="${kind}" tabindex="0" aria-label="${kind==='slides'?'课件':'教材'}阅读器"><div class="lib-reader-tools"><button data-prev aria-label="上一页">‹</button><details class="lib-page-menu"><summary aria-label="页码与页面目录"><span data-page-label>${page}</span> / <span data-page-total>${activePages}</span> ▾</summary><div class="lib-page-popover"><label>前往页码<input data-page type="number" min="1" max="${activePages}" value="${page}"></label><div class="lib-page-thumbs"></div></div></details><button data-next aria-label="下一页">›</button><span class="lib-tool-separator"></span><button data-zoom aria-pressed="false">放大</button><button data-focus>${project?'退出投影':'专注'}</button>${kind==='slides'&&!project?`<button class="primary" data-play>${playLabel}</button>`:''}<details class="lib-reader-more"><summary aria-label="更多阅读操作">···</summary><div><button data-zoom-compact aria-pressed="false">放大</button><button data-focus-compact>专注阅读</button><button data-transcript aria-pressed="false">查看本页文字</button>${!project?'<button data-full>全屏</button>':''}<a data-reader-download href="/api/homework/files/${encodeURIComponent(r.fileId)}?download=1">下载原件</a>${state.user.role==='teacher'&&kind==='slides'&&!project?'<button data-project>打开投影窗口</button>':''}</div></details><span data-status role="status"></span><a data-project-fallback hidden target="_blank" rel="noopener">打开投影页 ↗</a></div><div class="lib-pdf-area" tabindex="0" aria-label="原页阅读区域"><div class="lib-page-stage"></div><article class="lib-page-text" tabindex="0" aria-label="当前页面文字" hidden></article></div><p class="lib-reader-error" role="alert"></p><button data-retry hidden>重新读取当前页</button></section>`;
  const $=s=>root.querySelector(s),reader=$('.lib-reader'),area=$('.lib-pdf-area'),stage=$('.lib-page-stage'),status=$('[data-status]');
  const closeMenus=bindDisclosureMenus(reader,'.lib-page-menu,.lib-reader-more');
  const locked=[];
@@ -29,13 +52,13 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
  // Install cleanup before awaiting a PDF so navigation can cancel a slow open.
  root.libraryDispose=dispose;
  function fail(e){if(stopped||e.name==='RenderingCancelledException')return;$('.lib-reader-error').textContent=e.message||'读取失败，请重试';$('[data-retry]').hidden=false;status.textContent='读取失败';}
- function persist(){try{localStorage.setItem(posKey,JSON.stringify({page,zoom,offset:area.scrollTop}))}catch{}}
+ function persist(){try{(fromQuestion?sessionStorage:localStorage).setItem(posKey,JSON.stringify({page,zoom,offset:area.scrollTop}))}catch{}}
  function focus(on){full=on;const play=$('[data-play]');if(play)play.textContent=on&&teacher?'授课中':playLabel;lockBackground(on||project);reader.classList.toggle('lib-expanded',on);document.body.classList.toggle('library-focused',on);$('[data-focus]').textContent=on?'退出专注':project?'退出投影':'专注';$('[data-focus-compact]').textContent=on?'退出专注':'专注阅读';wake();}
  function wake(){clearTimeout(timer);reader.classList.remove('controls-hidden');if(full||project)timer=setTimeout(()=>{if(reader.querySelector('details[open],.ink-text-editor:not([hidden])')||reader.querySelector('.lib-reader-tools:focus-within,.ink-tools:focus-within')||reader.dataset.drawing==='true')return;reader.classList.add('controls-hidden');},2500);}
  reader.addEventListener('pointermove',wake,{signal:events.signal,passive:true});reader.addEventListener('pointerdown',wake,{signal:events.signal,passive:true});reader.addEventListener('focusin',wake,{signal:events.signal});reader.addEventListener('focusout',wake,{signal:events.signal});
  async function readText(n){
   const generation=++textVersion,output=$('.lib-page-text');output.textContent='正在读取本页文字…';output.setAttribute('aria-busy','true');
-  try{const p=await lease.pdf.getPage(n),content=await p.getTextContent();if(stopped||generation!==textVersion)return;output.textContent=pdfPageText(content.items)||'本页没有可提取的文字。可切回原页或下载原件查看图表与扫描内容。';}
+  try{const p=await lease.pdf.getPage(filePage(n)),content=await p.getTextContent();if(stopped||generation!==textVersion)return;output.textContent=pdfPageText(content.items)||'本页没有可提取的文字。可切回原页或下载原件查看图表与扫描内容。';}
   catch{if(!stopped&&generation===textVersion)output.textContent='文字暂未读取，请切回原页后重试。';}
   finally{if(!stopped&&generation===textVersion)output.setAttribute('aria-busy','false');}
  }
@@ -45,22 +68,34 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
   const generation=++renderVersion;let nextInk,frame;
   status.textContent='载入中…';$('.lib-reader-error').textContent='';$('[data-retry]').hidden=true;
   try{
-   const p=await lease.pdf.getPage(n);if(stopped||generation!==renderVersion)return;
+   const p=await lease.pdf.getPage(filePage(n));if(stopped||generation!==renderVersion)return;
    frame=document.createElement('div');frame.className='lib-page-frame lib-preparing';stage.append(frame);
-   if(kind==='textbook'&&!project){const v=p.getViewport({scale:1});nextInk=await mountInk(frame,{api,put,post,userId:state.user.id,scope:{unitId,resourceId:usedFallback?r.sourceFileId:r.fileId,page:n},background:c=>paint(p,c),aspect:v.width/v.height});}
+   if(kind==='textbook'&&!project){const v=p.getViewport({scale:1});nextInk=await mountInk(frame,{api,put,post,userId:state.user.id,scope:{unitId,resourceId:r.fileId,page:n},background:c=>paint(p,c),aspect:v.width/v.height});}
    else{const c=document.createElement('canvas');c.className='lib-slide-canvas';c.setAttribute('aria-label',`第 ${n} 页`);frame.append(c);await paint(p,c);}
    if(stopped||generation!==renderVersion){nextInk?.destroy();frame.remove();return;}
    const oldInk=ink;oldInk?.checkpoint();void oldInk?.save().catch(()=>toast('上一页批注尚未同步，本机草稿已保留'));
    oldInk?.destroy();activeFrame?.remove();ink=nextInk;activeFrame=frame;frame.classList.remove('lib-preparing');page=n;requested=n;
    area.scrollTop=restore?(saved?.offset||0):0;area.scrollLeft=0;stage.style.setProperty('--reader-zoom',zoom);stage.classList.toggle('zoom',zoom>1);
-   const zoomButton=$('[data-zoom]');zoomButton.textContent=zoom>1?'适应宽度':'放大';zoomButton.setAttribute('aria-pressed',String(zoom>1));$('[data-zoom-compact]').textContent=zoomButton.textContent;$('[data-zoom-compact]').setAttribute('aria-pressed',String(zoom>1));$('[data-page]').value=page;$('[data-page-label]').textContent=page;$('[data-page-total]').textContent=activePages;$('[data-page]').max=activePages;$('[data-prev]').disabled=page<=1;$('[data-next]').disabled=page>=activePages;status.textContent=fallbackNotice;persist();
+   const zoomButton=$('[data-zoom]');zoomButton.textContent=zoom>1?'适应宽度':'放大';zoomButton.setAttribute('aria-pressed',String(zoom>1));$('[data-zoom-compact]').textContent=zoomButton.textContent;$('[data-zoom-compact]').setAttribute('aria-pressed',String(zoom>1));$('[data-page]').value=page;$('[data-page-label]').textContent=page;$('[data-page-total]').textContent=activePages;$('[data-page]').max=activePages;$('[data-prev]').disabled=page<=1;$('[data-next]').disabled=page>=activePages;status.textContent=usedFallback?`分章文件读取失败，已回退到原书第 ${filePage(n)} 页`:'';persist();
    if(textMode)void readText(page);channel?.postMessage({type:'page',page,resource:r.fileId});
    // Warm adjacent PDF page/operator caches only. No offscreen full-document canvas allocation.
-   for(const adjacent of [page+1,page-1])if(adjacent>0&&adjacent<=activePages)void lease.pdf.getPage(adjacent).then(p=>p.getOperatorList()).catch(()=>{});
-  }catch(e){nextInk?.destroy();frame?.remove();if(generation===renderVersion&&await recover(e))return;if(generation===renderVersion)fail(e);}
+   for(const adjacent of [page+1,page-1])if(adjacent>0&&adjacent<=activePages)void lease.pdf.getPage(filePage(adjacent)).then(p=>p.getOperatorList()).catch(()=>{});
+  }catch(e){nextInk?.destroy();frame?.remove();if(generation===renderVersion&&await recover(e,n))return;if(generation===renderVersion)fail(e);}
  }
- function refreshResolution(){const frame=activeFrame,n=page;repaint=repaint.catch(()=>{}).then(async()=>{if(stopped||!frame||frame!==activeFrame||!lease)return;const p=await lease.pdf.getPage(n);if(stopped||frame!==activeFrame)return;const canvas=frame.querySelector('.ink-background,.lib-slide-canvas');if(canvas)await paint(p,canvas);}).catch(fail);}
- async function recover(e){if(stopped||fallingBack||usedFallback||!r.sourceFileId||e?.name==='RenderingCancelledException')return false;fallingBack=true;try{lease?.release?.();lease=undefined;const target=sourceResourcePage(r,page);if(!target)return false;activeFileId=r.sourceFileId;activePages=target.pages||r.sourcePages||r.pages;usedFallback=true;page=requested=target.page;fallbackNotice=`分章文件读取失败，已回退到原书第 ${target.page} 页`;$('[data-page-total]').textContent=activePages;$('[data-page]').max=activePages;$('.lib-reader-error').textContent='';$('[data-retry]').hidden=true;lease=await acquire(activeFileId,state.user.id);await render(target.page,false);return true;}catch(fallbackError){fail(fallbackError);return true;}finally{fallingBack=false;}}
+ function refreshResolution(){const frame=activeFrame,n=page;repaint=repaint.catch(()=>{}).then(async()=>{if(stopped||!frame||frame!==activeFrame||!lease)return;const p=await lease.pdf.getPage(filePage(n));if(stopped||frame!==activeFrame)return;const canvas=frame.querySelector('.ink-background,.lib-slide-canvas');if(canvas)await paint(p,canvas);}).catch(fail);}
+ async function openDocument(){
+  const documentLease=await acquire(activeFileId,state.user.id);
+  if(stopped){documentLease.release();return false;}
+  lease=documentLease;return true;
+ }
+ async function recover(e,n){
+  if(stopped||usedFallback||e?.name==='RenderingCancelledException'||!sourceResourcePage(r,n))return false;
+  usedFallback=true;activeFileId=r.sourceFileId;requested=n;
+  lease?.release();lease=undefined;
+  $('[data-reader-download]').href='/api/homework/files/'+encodeURIComponent(activeFileId)+'?download=1';
+  try{if(await openDocument())await render(n,false);}catch(error){fail(error);}
+  return true;
+ }
  const change=n=>{if(!lease)return;if(!Number.isInteger(n)||n<1||n>activePages){$('[data-page]').value=page;return;}requested=n;return render(n);};
  $('[data-prev]').onclick=()=>change(requested-1);$('[data-next]').onclick=()=>change(requested+1);$('[data-page]').onchange=e=>{void change(+e.target.value);$('.lib-page-menu').open=false;};
  $('[data-zoom-compact]').onclick=()=>{$('.lib-reader-more').open=false;$('[data-zoom]').click();$('[data-zoom-compact]').textContent=$('[data-zoom]').textContent;$('[data-zoom-compact]').setAttribute('aria-pressed',String(zoom>1));};
@@ -69,7 +104,7 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
  $('[data-focus]').onclick=()=>{if(project){window.close();location.replace(`/teacher/#library/${unitId}/${topic.id}/slides`);}else focus(!full);};
  if($('[data-play]'))$('[data-play]').onclick=()=>{focus(true);reader.focus({preventScroll:true});};
  if($('[data-full]'))$('[data-full]').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await reader.requestFullscreen();}catch{focus(!full);}};
- async function load(){status.textContent='正在打开原件…';try{lease ||= await acquire(activeFileId,state.user.id);if(stopped){lease.release();return;}await render(requested,true);if(project)channel?.postMessage({type:'ready',resource:r.fileId});}catch(e){if(!await recover(e))fail(e);}}
+ async function load(){status.textContent='正在打开原件…';try{if(!lease && !await openDocument())return;await render(requested,true);if(project)channel?.postMessage({type:'ready',resource:r.fileId});}catch(e){if(!await recover(e,requested))fail(e);}}
  $('[data-retry]').onclick=()=>void load();
  reader.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!project)focus(false);reader.querySelectorAll('details').forEach(d=>d.open=false);return;}if(e.target.closest('input,textarea,select,button,summary')||!['ArrowLeft','ArrowRight','PageDown','PageUp'].includes(e.key))return;e.preventDefault();void change(requested+(['ArrowRight','PageDown'].includes(e.key)?1:-1));},{signal:events.signal});
  const connect=sid=>{channel?.close();channel=new BroadcastChannel('mike-project:'+sid);channel.onmessage=e=>{const m=e.data;if(m.resource!==r.fileId)return;if(m.type==='ready'&&!project){status.textContent='投影已连接';$('[data-project-fallback]').hidden=true;channel.postMessage({type:'page',resource:r.fileId,page});}if(project&&m.type==='page'&&m.page!==page&&Number.isInteger(m.page))void change(m.page);};};
@@ -79,6 +114,6 @@ export async function mountLibraryReader(root,{resource:r,unitId,topic,kind,proj
  // Repaint the existing canvas after rotation or focus mode; keep notes and scroll position intact.
  let renderedWidth=area.clientWidth;resizeObserver=new ResizeObserver(()=>{if(Math.abs(area.clientWidth-renderedWidth)<2)return;renderedWidth=area.clientWidth;clearTimeout(resizeTimer);resizeTimer=setTimeout(refreshResolution,160);});resizeObserver.observe(area);
  let thumbsLoaded=false;
- $('.lib-page-menu').addEventListener('toggle',async()=>{if(!lease||!$('.lib-page-menu').open||thumbsLoaded)return;thumbsLoaded=true;const wrap=$('.lib-page-thumbs');for(let n=range[0];n<=range[1];n++){if(stopped)return;const b=document.createElement('button');b.type='button';b.innerHTML=`<canvas aria-hidden="true"></canvas><span>${n}</span>`;b.setAttribute('aria-label','第 '+n+' 页');b.onclick=()=>{void change(n);$('.lib-page-menu').open=false;};wrap.append(b);try{const p=await lease.pdf.getPage(n);if(stopped)return;const v=p.getViewport({scale:100/p.getViewport({scale:1}).width}),c=b.querySelector('canvas');c.width=v.width;c.height=v.height;const t=p.render({canvasContext:c.getContext('2d'),viewport:v});renders.add(t);try{await t.promise;}finally{renders.delete(t);}}catch{}}},{signal:events.signal});
+ $('.lib-page-menu').addEventListener('toggle',async()=>{if(!lease||!$('.lib-page-menu').open||thumbsLoaded)return;thumbsLoaded=true;const wrap=$('.lib-page-thumbs');for(let n=range[0];n<=range[1];n++){if(stopped)return;const b=document.createElement('button');b.type='button';b.innerHTML=`<canvas aria-hidden="true"></canvas><span>${n}</span>`;b.setAttribute('aria-label','第 '+n+' 页');b.onclick=()=>{void change(n);$('.lib-page-menu').open=false;};wrap.append(b);try{const p=await lease.pdf.getPage(filePage(n));if(stopped)return;const v=p.getViewport({scale:100/p.getViewport({scale:1}).width}),c=b.querySelector('canvas');c.width=v.width;c.height=v.height;const t=p.render({canvasContext:c.getContext('2d'),viewport:v});renders.add(t);try{await t.promise;}finally{renders.delete(t);}}catch{}}},{signal:events.signal});
  area.addEventListener('scroll',persist,{signal:events.signal,passive:true});wake();return dispose;
 }

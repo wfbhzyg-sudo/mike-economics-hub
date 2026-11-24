@@ -22,3 +22,16 @@ export function sourceResourcePage(resource, page) {
     pages: Number(resource.sourcePages || resource.pages || 0),
   };
 }
+
+export function resourceTopicRange(resource, range) {
+  const total = Number(resource.pages);
+  if (Array.isArray(range)) {
+    const [first, last] = range;
+    if (Number.isInteger(first) && Number.isInteger(last) && first >= 1 && first <= last && last <= total) return [first, last];
+    if (Array.isArray(resource.pageMap)) {
+      const pages = resource.pageMap.flatMap((p, i) => p >= first && p <= last ? [i + 1] : []);
+      if (pages.length) return [pages[0], pages.at(-1)];
+    }
+  }
+  return [1, total];
+}

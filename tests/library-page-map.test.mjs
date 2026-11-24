@@ -30,3 +30,11 @@ test('resources without a source stay on their own file', () => {
   assert.deepEqual(canonicalResourcePage({fileId: 'book', pages: 2, sourcePages: 2}, 2), {fileId: 'book', page: 2});
   assert.equal(sourceResourcePage({fileId: 'book', pages: 2}, 2), null);
 });
+
+test('chapter reader ranges accept both historical source coordinates and current chapter coordinates',async()=>{
+  const {resourceTopicRange}=await import('../homework/library-page-map.js');
+  assert.deepEqual(resourceTopicRange(derived,[5,7]),[2,3]);
+  assert.deepEqual(resourceTopicRange(derived,[1,2]),[1,2]);
+  assert.deepEqual(resourceTopicRange(derived,[22,24]),[1,3]);
+  assert.deepEqual(resourceTopicRange({fileId:'whole',pages:20},[9,13]),[9,13]);
+});

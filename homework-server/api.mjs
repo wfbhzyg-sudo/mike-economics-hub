@@ -62,7 +62,7 @@ export const publicAssignment = (a) => ({
   published: Boolean(a.published),
   publishedAt: a.publishedAt || null,
   course: a.course,
-  libraryUnit:a.libraryUnit||null, libraryCollection:a.libraryCollection||null, libraryCourse:a.libraryCourse||null,
+  libraryUnit:a.libraryUnit||null, libraryUnits:a.libraryUnits||[], libraryCollection:a.libraryCollection||null, libraryCourse:a.libraryCourse||null,
   instructions: paperOf(a).instructions,
   questionFiles: paperOf(a).questionFiles,
   paper:paperOf(a),readingScope:paperOf(a).readingScope,submissionGuide:paperOf(a).submissionGuide,mainQuestionFile:paperOf(a).mainQuestionFile,
