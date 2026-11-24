@@ -27,7 +27,8 @@ export function createLearningUI(ctx){
   if(!student){main.innerHTML=`<section class="paper">${head('','未找到该学生','',link('gradebook','返回班级成绩'))}</section>`;return;}
   const view=mountGradeJourney(ctx,data,student,{teacher,back:teacher?'gradebook':'',mountPaper:(host,assignmentId,submissionId,onClose)=>mountAssignmentPaper(host,{assignmentId,submissionId,state,api,metadata,h,onClose}),mountCorrection:async(host,assignmentId,questionId,onClose)=>{
    const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};let closed=false;
-   const open=async(route)=>{if(closed)return;local.viewCleanup?.();local.viewCleanup=null;local.correctionNavigation=null;const version=++local.routeVersion;const [,a,q]=route.split('/').map(decodeURIComponent);const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(mode==='next'&&next)await open(next);}});await child.mistakes(a,q);if(closed||version!==local.routeVersion)return;focusCorrection(host);const b=host.querySelector('[data-inline-close]');if(b)b.onclick=async()=>{try{await onClose();}catch(e){toast(e.message);}};};
+   const refreshReceipt=()=>{void view.refreshReceipt().catch(()=>{if(!closed)toast('成绩暂未刷新，可在成绩页重新查看。');});};
+   const open=async(route)=>{if(closed)return;local.viewCleanup?.();local.viewCleanup=null;local.correctionNavigation=null;const version=++local.routeVersion;const [,a,q]=route.split('/').map(decodeURIComponent);const child=createLearningUI({...ctx,main:host,state:local,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onVerificationChange:refreshReceipt,onCorrectionSaved:async(next,mode)=>{refreshReceipt();if(mode==='next'&&next)await open(next);}});await child.mistakes(a,q);if(closed||version!==local.routeVersion)return;focusCorrection(host);const b=host.querySelector('[data-inline-close]');if(b)b.onclick=async()=>{try{await onClose();}catch(e){toast(e.message);}};};
    try{await open('mistakes/'+encodeURIComponent(assignmentId)+'/'+encodeURIComponent(questionId));}catch(error){closed=true;local.routeVersion++;local.viewCleanup?.();throw error;}return {flush:()=>local.correctionNavigation?.(),destroy(){closed=true;local.routeVersion++;local.viewCleanup?.();local.viewCleanup=null;}};
   }});state.viewCleanup=()=>view.destroy();
  }
@@ -135,7 +136,7 @@ export function createLearningUI(ctx){
         clearTimeout(reviewTimer);
         reviewTimer=setTimeout(async()=>{
           if(!form.isConnected)return;
-          try{const {review,feedback}=await api(endpoint+'/verification');if(review)m.verification=review;if(feedback)m.correctionFeedback=feedback;}
+          try{const {review,feedback}=await api(endpoint+'/verification');if(review){const previous=m.verification?.status;m.verification=review;if(form.isConnected&&previous!==review.status)ctx.onVerificationChange?.();}if(feedback)m.correctionFeedback=feedback;}
           catch{}
           if(form.isConnected)paintVerification();
         },3500);
@@ -168,7 +169,13 @@ export function createLearningUI(ctx){
       });
     });const inkDetails=$('[data-correction-ink]');inkDetails.ontoggle=async()=>{if(!inkDetails.open||inkDetails.dataset.loaded)return;inkDetails.dataset.loaded='true';try{const host=$('[data-ink-host]');const mounted=await mountInk(host,{api,post,put,userId:state.user.id,scope:{assignmentId:m.assignmentId,questionId:m.questionId,correctionId:m.submissionId},exportLabel:'保存为 PDF 并加入订正',exportHint:'添加后请点击保存订正。原成绩保持不变。',onExport:async file=>{up.append(file);$('.correction-attachments').open=true;autosave.changed();toast('手写 PDF 已加入订正附件')}});if(!host.isConnected)mounted.destroy();else correctionInk=mounted}catch(e){inkDetails.dataset.loaded='';toast(e.message)}};state.correctionNavigation=()=>autosave.flush();
     const reference=mountCorrectionReference($('.correction-reference'),{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact:Boolean(ctx.onCorrectionSaved),onEdit:()=>{const editor=$('.correction-editor');editor.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});editor.querySelector('[data-correct-choice][tabindex="0"], [name=correction]').focus({preventScroll:true});}});
-    {const heading=$('.correction-editor h2'),back=document.createElement('button');back.type='button';back.className='text-button correction-back-reference';back.textContent='查看原题';heading.append(back);back.onclick=()=>{if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();$('.correction-reference').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[data-reference=question]').click();$('[data-reference=question]').focus({preventScroll:true});};}
+    {const heading=$('.correction-editor h2'),back=document.createElement('button');back.type='button';back.className='text-button correction-back-reference';const field=$('#correction-form [name=correction]');
+     if(reference.openForWriting && field){
+       const row=document.createElement('div'),label=field.closest('label');
+       row.className='frq-writing-field';label.before(row);row.append(label,back);
+       back.textContent='对照原件';back.setAttribute('aria-haspopup','dialog');
+       back.onclick=()=>reference.openForWriting(field);
+     }else{back.textContent='查看原题';heading.append(back);back.onclick=()=>{if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();$('.correction-reference').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[data-reference=question]').click();$('[data-reference=question]').focus({preventScroll:true});};}}
     paintVerification();
     const cleanup=state.viewCleanup;state.viewCleanup=()=>{clearTimeout(reviewTimer);correctionInk?.destroy();reference.destroy();cleanup?.();};
     for(const [direction,target]of [['prev',queue[index-1]],['next',next]])$('[data-correction-nav='+direction+']').onclick=async e=>{if(!target)return;const button=e.currentTarget;button.disabled=true;try{await autosave.flush();go(route(target));}catch(error){toast(error.message);button.disabled=false;}};

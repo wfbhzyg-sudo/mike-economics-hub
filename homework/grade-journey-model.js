@@ -29,3 +29,18 @@ export function timeRange(mode,from='',to='',now=new Date()){
 export function inRange(a,range){const stamp=Date.parse(workDate(a));if(!Number.isFinite(stamp))return !range.from&&!range.to;return (!range.from||stamp>=Date.parse(range.from+'T00:00:00'))&&(!range.to||stamp<=Date.parse(range.to+'T23:59:59.999'));}
 export function csvValue(v){let s=String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
 export function gradeCSV(rows,assignments,data){const header=['学号/账号','姓名','作业ID','作业','状态','得分','满分','得分率','课堂AP参考','成绩版本','发布时间','首次得分','订正补回','教师调整'];const records=[header];for(const student of rows)for(const cell of cellsFor(data,student,assignments)){const g=cell.record?.grade;records.push([student.username||'',student.name,cell.assignment.id,cell.assignment.title,cell.status==='graded'?(cell.pendingUpdate?'已出分，新版本待更新':'已出分'):cell.label,g?.total??'',g?.maxPoints??'',cell.rate??'',cell.rate===null?'':Math.min(5,Math.floor(cell.rate/20)+1),g?(g.revision||1):'',g?.publishedAt||'',g?.scoreSources?.first??g?.total??'',g?.scoreSources?.recovered??(Number.isFinite(g?.total)?0:''),g?.scoreSources?.adjustment??'']);}return '\uFEFF'+records.map(r=>r.map(csvValue).join(',')).join('\r\n');}
+
+export function latestPublishedCell(cells) {
+  let latest = null, latestTime = -Infinity;
+  for (const cell of cells) {
+    if (cell.status !== 'graded') continue;
+    const submission = cell.record.effective;
+    const time = [submission.publishedGrade.publishedAt, submission.submittedAt, cell.assignment.createdAt]
+      .map(Date.parse).find(Number.isFinite) ?? -Infinity;
+    if (!latest || time > latestTime || (time === latestTime && submission.id > latest.record.effective.id)) {
+      latest = cell;
+      latestTime = time;
+    }
+  }
+  return latest;
+}

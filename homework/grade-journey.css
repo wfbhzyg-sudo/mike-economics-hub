@@ -59,3 +59,10 @@
   .gj-node { transition: none; }
   .gj-node.selected { box-shadow: 0 6px 16px rgba(7, 23, 45, .14); }
 }
+
+.gj-journey[data-student-results] .gj-focus-layout { display:block; }
+.gj-journey[data-student-results] > .gj-detail { margin-block:10px 12px; }
+.gj-journey[data-student-results] > .gj-detail .gj-result { flex-wrap:wrap; }
+.grade-current { font-size:.85rem; font-weight:600; }
+.receipt-next,.receipt-evidence { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-block:8px; }
+.receipt-next > span { color:#50482f; font-size:.88rem; }

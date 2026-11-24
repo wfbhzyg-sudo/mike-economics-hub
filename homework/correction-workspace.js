@@ -2,6 +2,59 @@ import {questionMarker} from './question-marker.js';
 import {correctionAnswerEvidence} from './choice-correction.js';
 import {mountPDFReader} from './pdf-reader.js';
 import {mountReviewGallery} from './review-gallery.js';
+// Keep both original viewers mounted while the student checks a page.
+function writingReference(root, pair, getReader) {
+  const dialog=document.createElement('dialog');
+  dialog.className='frq-writing-reference';
+  dialog.setAttribute('aria-label','对照原件');
+  dialog.innerHTML='<header><div role="group" aria-label="选择原件"><button type="button" data-original="0">原题</button><button type="button" data-original="1">我的原作答</button></div><button type="button" data-resume>返回订正</button></header><div class="frq-reading-stage"></div>';
+  root.append(dialog);
+  const marker=document.createComment('original viewers');
+  pair.before(marker);
+  const panels=[...pair.children], switches=[...dialog.querySelectorAll('[data-original]')];
+  let active=0, edit=null, frame=0;
+  function select(index) {
+    active=index;
+    switches.forEach((button,i)=>{
+      button.setAttribute('aria-pressed',String(i===index));
+      panels[i].inert=i!==index;
+    });
+  }
+  switches.forEach((button,i)=>button.onclick=()=>select(i));
+  function move(parent, before=null) {
+    const reader=getReader(), pos=reader?.position();
+    parent.insertBefore(pair,before);
+    cancelAnimationFrame(frame);
+    if(pos)frame=requestAnimationFrame(()=>reader.gotoPage(pos.page,pos.offset));
+  }
+  function finish(restoreFocus=true) {
+    if(!edit)return;
+    const saved=edit; edit=null;
+    panels.forEach(panel=>panel.inert=false);
+    move(marker.parentNode,marker.nextSibling);
+    if(dialog.open)dialog.close();
+    if(restoreFocus && saved.field.isConnected){
+      saved.field.focus({preventScroll:true});
+      saved.field.setSelectionRange(saved.start,saved.end,saved.direction);
+      saved.field.scrollTop=saved.offset;
+      if(saved.container)saved.container.scrollTop=saved.top;
+    }
+  }
+  dialog.querySelector('[data-resume]').onclick=()=>finish();
+  dialog.addEventListener('cancel',event=>{if(event.target===dialog){event.preventDefault();finish();}});
+  dialog.addEventListener('click',event=>{if(event.target===dialog)finish();});
+  return {
+    open(field) {
+      if(edit||!field)return;
+      const container=field.closest('main')||document.scrollingElement;
+      edit={field,container,top:container?.scrollTop,start:field.selectionStart,end:field.selectionEnd,direction:field.selectionDirection,offset:field.scrollTop};
+      dialog.showModal();
+      move(dialog.querySelector('.frq-reading-stage'));
+      select(active);switches[active].focus({preventScroll:true});
+    },
+    destroy(){finish(false);cancelAnimationFrame(frame);dialog.remove();marker.remove();}
+  };
+}
 export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact=false,onEdit}){
  let destroyed=false,reader=null,gallery=null,questionGallery=null;const tasks=new Map();
  const compare=m.type!=='choice';
@@ -45,11 +98,12 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
  const buttons=[...root.querySelectorAll('[role=tab]')];function select(id){buttons.forEach(b=>{const active=b.dataset.reference===id;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;$('#correction-panel-'+b.dataset.reference).hidden=!active;});load(id);if(compare&&id==='question')load('answer');}
  buttons.forEach((b,i)=>{b.onclick=()=>select(b.dataset.reference);b.onkeydown=e=>{let n;if(e.key==='ArrowRight')n=(i+1)%buttons.length;if(e.key==='ArrowLeft')n=(i+buttons.length-1)%buttons.length;if(e.key==='Home')n=0;if(e.key==='End')n=buttons.length-1;if(n!==undefined){e.preventDefault();buttons[n].focus();select(buttons[n].dataset.reference);}};});
  $('[data-collapse-reference]').onclick=e=>{const body=$('.correction-reference-body'),open=body.hidden;body.hidden=!open;e.currentTarget.setAttribute('aria-expanded',String(open));e.currentTarget.textContent=open?'收起参考区':'展开原题与原作答';};
- if(onEdit)$('[data-write-correction]').onclick=()=>onEdit?.();select('question');return {refreshHistory(){
+ const peek=compare?writingReference(root,$('.frq-pair'),()=>reader):null;
+ if(onEdit)$('[data-write-correction]').onclick=()=>onEdit?.();select('question');return {openForWriting:peek?.open,refreshHistory(){
   const tab=$('[data-reference=history]'),panel=$('#correction-panel-history');
   tab.textContent='订正记录 · '+m.corrections.length;
   delete panel.dataset.ready;if(!panel.hidden)load('history');
- },destroy(){destroyed=true;reader?.destroy();gallery?.destroy();questionGallery?.destroy();}};
+ },destroy(){destroyed=true;peek?.destroy();reader?.destroy();gallery?.destroy();questionGallery?.destroy();}};
 }
 
 // Read-only paper view shared by a grade card's direct original-question entry.

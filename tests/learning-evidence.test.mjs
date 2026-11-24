@@ -99,3 +99,24 @@ test('a capped offline paper restores whole raw points and still verifies mistak
   assert.equal(s.publishedGrade.total,17);
  }
 });
+
+test('student receipt distinguishes capped recovery, changed grades and missing first scores',async()=>{
+  const {receiptEvidence}=await import('../homework/learning-evidence.js');
+  const receipt=(grade,history=[])=>receiptEvidence({publishedGrade:{maxPoints:18,...grade},gradeHistory:history});
+  assert.match(receipt({total:18,scoreSources:{original:17,first:17,recovered:1}}),/首次得分 <b>17.*订正补回 <b>\+1/);
+  assert.match(receipt({total:16,manualTotal:true,scoreSources:{original:14,first:14,recovered:1}},[{total:14,maxPoints:18}]),/成绩调整 <b>\+1/);
+  assert.doesNotMatch(receipt({total:16,manualTotal:true}),/首次得分/);
+  assert.doesNotMatch(receipt({total:16,manualTotal:true},[{total:10,maxPoints:12}]),/成绩调整/);
+  assert.match(receipt({total:0}),/首次得分 <b>0/);
+  assert.equal(receipt({total:null,absent:true}),'');
+});
+
+test('receipt action counts follow one attempt and distinguish student work from review',async()=>{
+  const {receiptCorrections}=await import('../homework/learning-model.js');
+  const rows=['todo','verified','review','todo','review'].map((progressStatus,i)=>({
+    submissionId:'s',questionId:i+1,progressStatus,verification:{status:i===2?'manual':'queued'}
+  }));
+  rows.push({submissionId:'s',questionId:8,progressStatus:'review'});
+  rows.push({submissionId:'superseded',questionId:'1',progressStatus:'todo'});
+  assert.deepEqual(receiptCorrections(rows,'s'),{open:2,manual:1,review:1,saved:1,next:1});
+});

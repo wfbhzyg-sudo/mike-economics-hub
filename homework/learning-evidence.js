@@ -154,3 +154,23 @@ export function mountReviewPanel(host,{api,put,h,link,fileMarkup,metadata,bindPr
   return ()=>{closed=true;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('focus',refresh);};
 
 }
+
+export function receiptEvidence(submission) {
+  const grade = submission?.publishedGrade;
+  if (!Number.isFinite(grade?.total) || grade.absent) return '';
+  const parts = grade.scoreSources, history = submission.gradeHistory || [];
+  const first = history[0] || grade;
+  const firstTotal = parts?.original ?? first.total;
+  const recovered = parts?.recovered ?? 0;
+  const hasFirst = Number.isFinite(firstTotal) && (history.length || !grade.manualTotal || parts);
+  const firstMax = first.maxPoints ?? grade.maxPoints;
+  const recorded = submission.offlineEvidence || submission.assignment?.offline || grade.source === 'offline';
+  const adjustment = hasFirst && firstMax === grade.maxPoints ? Math.round((grade.total-firstTotal-recovered)*100)/100 : null;
+  return `<div class="receipt-evidence evidence-sources">${hasFirst?`<span>${recorded?'首次录分':'首次得分'} <b>${number(firstTotal)}${firstMax!==grade.maxPoints&&Number.isFinite(firstMax)?' / '+number(firstMax):''}</b></span>`:''}<span>订正补回 <b>+${number(recovered)}</b></span>${adjustment?`<span>成绩调整 <b>${adjustment>0?'+':''}${number(adjustment)}</b></span>`:''}</div>`;
+}
+
+export function receiptActions(summary, assignmentId, link) {
+  if (!summary) return '';
+  if (!(summary.open || summary.review || summary.manual || summary.saved)) return '<div class="receipt-next"><span>本次无需订正</span></div>';
+  return `<div class="receipt-next">${summary.open?link('mistakes/'+encodeURIComponent(assignmentId)+'/'+encodeURIComponent(summary.next),'订正剩余 '+summary.open+' 题','primary'):''}${summary.review?`<span>待验收 ${summary.review} 题</span>`:''}${summary.manual?`<span>待教师核对 ${summary.manual} 题</span>`:''}${summary.saved?`<span>已保存订正 ${summary.saved} 题</span>`:''}</div>`;
+}

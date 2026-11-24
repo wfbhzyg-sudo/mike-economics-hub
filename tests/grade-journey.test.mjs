@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {cellsFor,cellSummary,progressChange,visibleAssignments,inRange,timeRange,gradeCSV,cellFor} from '../homework/grade-journey-model.js';
+import {latestPublishedCell,cellsFor,cellSummary,progressChange,visibleAssignments,inRange,timeRange,gradeCSV,cellFor} from '../homework/grade-journey-model.js';
 const u={id:'u',name:'A',username:'=malicious()',classIds:['c']},a={id:'a',title:'A',published:true,classIds:['c'],createdAt:'2026-10-01T12:00:00Z',dueAt:'2026-10-02T12:00:00Z',audience:{confirmedAt:'2026-10-01',students:[{id:'u',classIds:['c']}]}};
 const sub=(id,score,at,status='published')=>({id,studentId:'u',assignmentId:'a',status,submittedAt:at,version:1,publishedGrade:score===null?null:{total:score,maxPoints:10,questions:[{id:'1',score,maxPoints:10}]}});
 test('A pending replacement retains one effective grade and neutral pending never becomes zero',()=>{const data={assignments:[a],submissions:[sub('1',8,'2026-10-01'),sub('2',null,'2026-10-02','queued')]},cells=cellsFor(data,u);assert.equal(cells.length,1);assert.equal(cells[0].rate,80);assert.equal(cells[0].pendingUpdate,true);assert.equal(cellSummary(cells).average,80);const no=cellsFor({...data,submissions:[sub('2',null,'2026-10-02','queued')]},u);assert.equal(no[0].rate,null);assert.equal(cellSummary(no).average,null);});
@@ -9,3 +9,12 @@ test('Published assignment chronology is stable and historical deleted graded wo
 test('Date filters include entire local end day and semester boundaries',()=>{assert.equal(inRange(a,{from:'2026-10-02',to:'2026-10-02'}),true);assert.equal(inRange(a,{from:'2026-10-03'}),false);assert.deepEqual(timeRange('term','','',new Date(2026,0,12)),{from:'2025-08-01',to:'2026-01-31'});assert.equal(timeRange('term','','',new Date(2026,7,12)).from,'2026-08-01');});
 test('Progress requires six published rates, reports percentage points, skips pending',()=>{assert.equal(progressChange([1,2,3].map(rate=>({rate}))),null);assert.equal(progressChange([35,50,65,null,75,85,90].map(rate=>({rate}))),33.3);});
 test('CSV preserves neutral blanks, distinct statuses and protects spreadsheet formula fields',()=>{const csv=gradeCSV([u],[a],{assignments:[a],submissions:[]});assert(csv.startsWith('\uFEFF'));assert(csv.includes("'=malicious()"));assert(csv.includes('"未交","","","",""'));assert(!csv.includes('"未交","0"'));});
+
+test('student landing selects the last published numeric grade, including zero, across different deadlines',()=>{
+  const assignments=['older','recent','absent','unfinished'].map((id,i)=>({...a,id,dueAt:'2026-10-0'+(5-i)}));
+  const submissions=assignments.slice(0,3).map(({id},i)=>({...sub(id,6,'2026-10-01'),assignmentId:id,
+    publishedGrade:{total:i===1?0:6,maxPoints:10,publishedAt:'2026-10-0'+(i+1),absent:i===2}}));
+  const cells=cellsFor({assignments,submissions},u);
+  assert.equal(latestPublishedCell(cells).assignment.id,'recent');
+  assert.equal(latestPublishedCell(cells.filter(c=>c.status!=='graded')),null);
+});

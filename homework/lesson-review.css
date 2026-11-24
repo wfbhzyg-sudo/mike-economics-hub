@@ -278,3 +278,22 @@
 @media(min-width:681px) {
  .student-find[open]>summary {font-size:.82rem;min-height:26px}
 }
+
+.frq-writing-field { position:relative; min-width:0; }
+.frq-writing-field label > span { display:flex; align-items:center; min-height:44px; padding-inline-end:6.5em; }
+.frq-writing-field > button { position:absolute; inset-block-start:0; inset-inline-end:0; }
+dialog.frq-writing-reference { padding:0; width:min(50rem,96vw); max-width:96vw; max-height:92dvh; border:1px solid #bbcad4; border-radius:12px; color:#173247; background:white; }
+.frq-writing-reference::backdrop { background:rgb(16 32 45 / .48); }
+.frq-writing-reference > header { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 10px; border-bottom:1px solid #d6e1e9; }
+.frq-writing-reference button { min-height:44px; font:inherit; }
+.frq-writing-reference [data-original] { border:0; background:transparent; color:#44596c; padding:6px 9px; }
+.frq-writing-reference [aria-pressed=true] { color:#142e44; box-shadow:inset 0 -3px #284d68; font-weight:700; }
+.frq-writing-reference [data-resume] { padding-inline:12px; border:0; border-radius:8px; color:white; background:#17354c; }
+.frq-reading-stage { overflow:auto; overscroll-behavior:contain; padding:8px; }
+.frq-reading-stage .frq-pair { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); height:min(67dvh,40rem); gap:0; }
+.frq-reading-stage .frq-pair > section { grid-area:1/1; min-height:0; overflow:auto; padding:0; border:0; }
+.frq-reading-stage .frq-pair > section[inert] { visibility:hidden; pointer-events:none; }
+.frq-reading-stage .frq-pair > section > div { max-height:none; overflow:visible; }
+.frq-reading-stage .frq-pair h3 { display:none; }
+.frq-reading-stage .reader-body { max-height:50dvh; }
+.frq-reading-stage .correction-gallery.review-studio { height:clamp(260px,53dvh,580px); }

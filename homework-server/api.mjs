@@ -6,7 +6,7 @@ import {questionLessonReference} from './lesson-reference.mjs';
 import {assignmentCourse,classKey,singleClassCourse,courseLabel,namedCourse} from '../homework/course-scope.js';
 import {scoreMaximum} from '../homework/score-entry.js';
 import {editTeacherScore} from './teacher-score.mjs';
-import {assignmentRecords,assignmentState,correctionCounts,retryWorkMode,usesTotalOnlyEditor} from '../homework/learning-model.js';
+import {receiptCorrections,assignmentRecords,assignmentState,correctionCounts,retryWorkMode,usesTotalOnlyEditor} from '../homework/learning-model.js';
 import {sendJSON} from './json-response.mjs';
 import {loadUnifiedIdentity} from './unified-session.mjs';
 import {byteRange} from './file-range.mjs';
@@ -1584,9 +1584,18 @@ export async function createHomework({externalAuth} = {}) {
         }
         if (route[1]) {
           let s = await requireSubmission(route[1], user);
+          let receiptAssignment, correctionSummary;
           if(method==='GET'&&(!route[2]||route[2]==='pdf')){
             const scope={assignmentId:s.assignmentId,studentId:s.studentId};
-            const all=await recover(await db.find('submission',scope),scope,[await db.get(s.assignmentId)]);
+            const [attempts,reviews,assignment]=await Promise.all([db.find('submission',scope),correctionReview.reviews(scope),db.get(s.assignmentId)]);
+            receiptAssignment=assignment;
+            const all=applyRecovery(attempts,reviews,assignment?[assignment]:[]);
+            if (user.role==='student' && !route[2] && url.searchParams.get('receipt')==='1' && assignment && s.publishedGrade?.questions?.length && assignmentRecords(attempts)[0]?.effective?.id===s.id) {
+              const notes=s.publishedGrade.questions.some(q=>q.score!=null&&q.score<q.maxPoints)?await db.find('mistake-note',scope):[];
+              const byQuestion=new Map(reviews.filter(r=>r.submissionId===s.id).map(r=>[r.questionId,r]));
+              const rows=mistakeRows(attempts,[assignment],notes,[],{progressOnly:true}).filter(row=>row.submissionId===s.id);
+              correctionSummary=receiptCorrections(rows.map(row=>attachReview(row,byQuestion.get(row.questionId))),s.id);
+            }
             s=all.find(item=>item.id===s.id)||s;
           }
           if(method==='GET'&&route[2]==='paper-pdf'){
@@ -1651,7 +1660,7 @@ export async function createHomework({externalAuth} = {}) {
               const student=(await availableStudents()).find(person=>person.id===s.studentId);
               detail.studentName=student?.name || (await db.get(s.studentId))?.name || "历史学生";
             }
-            return (json(res,{submission:{...detail,responses:s.responses||{},assignment:publicAssignment(await db.get(s.assignmentId))}}),true);
+            return (json(res,{submission:{...detail,...(correctionSummary?{correctionSummary}:{}),responses:s.responses||{},assignment:publicAssignment(receiptAssignment??await db.get(s.assignmentId))}}),true);
           }
           teacher();
           const b = await body(req);

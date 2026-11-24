@@ -92,3 +92,21 @@ export function usesTotalOnlyEditor(assignment,submission){
   return !submission?.choices&&!submission?.text?.trim()&&!submission?.files?.length
     &&!submission?.rubricSnapshot?.length&&!submission?.publishedGrade?.questions?.length;
 }
+
+// Only work belonging to the selected attempt can lead to a correction.
+export function receiptCorrections(rows, submissionId) {
+  const result = { open: 0, review: 0, manual: 0, saved: 0, next: null };
+  for (const row of rows) {
+    if (row.submissionId !== submissionId) continue;
+    const status = row.progressStatus || row.status;
+    if (status === 'todo') {
+      result.open++;
+      result.next ??= row.questionId;
+    } else if (status === 'review') {
+      if (row.verification?.status === 'manual') result.manual++;
+      else if (['queued','running'].includes(row.verification?.status)) result.review++;
+      else result.saved++;
+    }
+  }
+  return result;
+}
