@@ -264,3 +264,17 @@
   .learning-filters.mistake-nav-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .mistake-nav-filters .field:first-child { grid-column: 1/-1; }
 }
+
+.topic-picker {display:flex;align-items:center;gap:8px;margin-top:8px}
+.topic-picker .field {margin:0;flex:0 1 32rem;min-width:0}
+.topic-picker select {width:100%;min-width:0;text-overflow:ellipsis}
+.topic-picker button {flex:none;min-height:44px}
+#topic-progress {color:#244763;font-weight:650;margin:6px 0}
+.mistake-extra>summary {cursor:pointer;width:fit-content;min-height:40px;align-content:center;color:#28485d}
+.mistake-extra .mistake-nav-filters {grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.mistake-extra .mistake-nav-filters .field:first-child {grid-column:auto}
+.student-find {min-width:0;flex:1 1 auto}
+.student-find>summary {cursor:pointer;min-height:38px;align-content:center;color:#28485d}
+@media(min-width:681px) {
+ .student-find[open]>summary {font-size:.82rem;min-height:26px}
+}

@@ -53,3 +53,23 @@ export function mistakeTopicOptions(scoped) {
   return [...topics.entries()].sort(([a], [b]) =>
     !a ? 1 : !b ? -1 : a.localeCompare(b, 'en', {numeric:true}));
 }
+
+export const needsCorrection = row => (row.progressStatus || row.status || 'todo') === 'todo';
+const needsVerification = row => ['queued','running','manual'].includes(row.verification?.status);
+
+// Count a bank question once per state. Its two assignment submissions can be at different stages.
+export function topicWorkCounts(groups) {
+  const counts=new Map();
+  for(const group of groups){
+    const pending=new Set(),waiting=new Set();
+    for(const row of [group,...(group.occurrences||[])]){
+      const topic=mistakeTopic(row)||'unknown';
+      if(!counts.has(topic))counts.set(topic,{pending:0,waiting:0});
+      if(needsCorrection(row))pending.add(topic);
+      if(needsVerification(row))waiting.add(topic);
+    }
+    for(const topic of pending)counts.get(topic).pending++;
+    for(const topic of waiting)counts.get(topic).waiting++;
+  }
+  return counts;
+}

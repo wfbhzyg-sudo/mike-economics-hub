@@ -5,6 +5,12 @@ export function studentAssignmentAction(assignment, submissions, time = Date.now
   const info = assignmentState(assignment, submissions, time);
   const offline = Boolean(assignment.offline||assignment.format==='score');
   const opensLater = !info.latest && assignmentOpensLater(assignment, time);
+  const progress=assignment.attemptProgress;
+  const questionMode=offline ? retryWorkMode(assignment)==='questions' : ['mcq','mixed'].includes(assignment.format);
+  if(questionMode && progress?.started && Number.isInteger(progress.index) && !opensLater && info.canSubmit &&
+     (info.key==='todo' || (info.key==='done' && !offline && assignment.allowResubmit))){
+    return {info,target:'mcq/'+assignment.id,action:'继续第 '+(progress.index+1)+' 题',opensLater:false,label:'进行中',resume:true};
+  }
   if(info.zeroRetryOf){
     const choice=offline?retryWorkMode(assignment)==='questions':['mcq','mixed'].includes(assignment.format);
     return {info,target:(choice?'mcq/':'submit/')+assignment.id,action:info.draft||assignment.attemptProgress?'继续重做':'重新作答',opensLater:false,label:info.label};
@@ -45,4 +51,26 @@ export function byPublication(assignments, order = 'desc') {
     const delta = left.time - right.time;
     return (order === 'asc' ? delta : -delta) || left.a.id.localeCompare(right.a.id);
   }).map(item => item.a);
+}
+
+export function byLearningPriority(assignments, submissions, now=Date.now()){
+  const byAssignment=new Map();
+  for(const s of submissions){
+    if(!byAssignment.has(s.assignmentId))byAssignment.set(s.assignmentId,[]);
+    byAssignment.get(s.assignmentId).push(s);
+  }
+  const ranked=byPublication(assignments).map(a=>{
+    const task=studentAssignmentAction(a,byAssignment.get(a.id)||[],now);
+    const actionable=!task.opensLater && (task.resume || (task.info.key==='todo' && task.info.canSubmit && task.target));
+    const active=actionable && Boolean(task.resume || task.info.draft);
+    const due=Date.parse(a.dueAt||''),upcoming=actionable && due>=now;
+    const recent=Date.parse(a.attemptProgress?.updatedAt||task.info.draft?.updatedAt||'')||0;
+    return {a,rank:active?0:upcoming?1:actionable?2:3,due,upcoming,recent};
+  }).sort((x,y)=>x.rank-y.rank || (x.rank===0?y.recent-x.recent:x.rank===1?x.due-y.due:0));
+  // Keep an imminent deadline visible even if the student has several older drafts.
+  if(ranked[0]?.rank===0){
+    const soon=ranked.slice(1).filter(x=>x.upcoming && x.due-now<=7*86400000).sort((x,y)=>x.due-y.due)[0];
+    if(soon){ranked.splice(ranked.indexOf(soon),1);ranked.splice(1,0,soon);}
+  }
+  return ranked.map(x=>x.a);
 }

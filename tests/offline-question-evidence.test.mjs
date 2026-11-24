@@ -102,3 +102,10 @@ test('correction topics include every matching occurrence and keep untagged unit
  assert.equal(mistakeTopic({source:'mock',topic:'2.6',libraryUnit:'micro-unit-2'}),'2.6');
  assert.equal(mistakeTopic({libraryUnit:'macro-unit-2',assignmentTitle:'3.1 FRQ'}),'');
 });
+
+test('topic totals separate actual review jobs from ordinary saved notes and self-assessment',async()=>{
+ const {topicWorkCounts}=await import('../homework/mistake-navigation.js');
+ const row=(progressStatus,status)=>({topic:'2.1',progressStatus,verification:status?{status}:null});
+ const groups=[{...row('todo','revise'),occurrences:[row('todo'),row('review','manual')]},row('review'),row('verified','passed'),row('review','queued')];
+ assert.deepEqual(topicWorkCounts(groups).get('2.1'),{pending:1,waiting:2});
+});

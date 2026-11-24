@@ -17,3 +17,18 @@ test('published work uses the first release or original paper date in both direc
   assert.equal(publicationTime({published:true, publishedAt:'invalid'}), null);
   assert.equal(publicationTime({published:true, format:'score', createdAt:'2027-01-01'}), null);
 });
+
+test('learning order resumes the saved question and keeps the closest open deadline visible',async()=>{
+ const {byLearningPriority,studentAssignmentAction}=await import('../homework/assignment-navigation.js');
+ const now=Date.parse('2026-11-24T05:00Z');
+ const task=(id,extra={})=>({id,published:true,publishedAt:'2026-11-22',format:'mcq',...extra});
+ const active=task('active',{attemptProgress:{started:true,index:6,answered:1,updatedAt:'2026-11-24'}});
+ const old=task('old',{attemptProgress:{started:true,index:1,updatedAt:'2026-11-23'}});
+ const due=task('due',{dueAt:'2026-11-25'}),late=task('late',{dueAt:'2026-11-20',allowLate:true});
+ const future=task('not-yet',{opensAt:'2026-11-26',dueAt:'2026-11-27'}),graded=task('graded');
+ const subs=[{id:'s',assignmentId:'graded',status:'published',publishedGrade:{total:1}}];
+ assert.deepEqual(byLearningPriority([graded,future,late,old,due,active],subs,now).slice(0,4).map(a=>a.id),['active','due','old','late']);
+ const resume=studentAssignmentAction(active,subs,now);
+ assert.equal(resume.target,'mcq/active');assert.equal(resume.action,'继续第 7 题');
+ assert.equal(studentAssignmentAction(future,subs,now).target,null);
+});

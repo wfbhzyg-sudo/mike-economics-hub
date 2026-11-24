@@ -3,7 +3,7 @@ import {renderBookmarks} from './study-workflow.js';
 import {assignmentCourse,courseLabel,coursesFor,selectedCourse,rememberCourse} from './course-scope.js';
 import {mountInk} from './ink.js';
 import {mountLessonLinks} from './lesson-panel.js';
-import {mistakeNavigation,bindMistakeNavigation,matchingMistakes,mistakeTopic,mistakeTopicOptions} from './mistake-navigation.js';
+import {mistakeNavigation,bindMistakeNavigation,matchingMistakes,mistakeTopic,mistakeTopicOptions,needsCorrection,topicWorkCounts} from './mistake-navigation.js';
 import {feedbackMarkup,feedbackTitle,splitChoiceCorrection,joinChoiceCorrection} from './choice-correction.js';
 import {mountGradeJourney} from './grade-journey.js';
 import {mountGradeHeatmap} from './grade-heatmap.js';
@@ -145,6 +145,7 @@ export function createLearningUI(ctx){
       form.querySelectorAll('[data-correction-save]').forEach(b=>b.textContent=b.dataset.correctionSave==='next'?'提交并继续':'提交验收');
       form.elements.status.closest('label').hidden=true;
     }
+    if(ctx.finishTopic)form.querySelector('[data-correction-save=stay]').textContent=enabled?'提交并查看进度':'保存并查看进度';
     let autosave,correctionInk;const up=uploadWidget($('#correction-upload'),'submission',initial.files||[],()=>autosave?.changed());bindPreviews();
     autosave=correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute,feedback=>{
       const status=$('#correction-draft-status'),receipt=$('[data-saved-verdict]');
@@ -180,15 +181,17 @@ export function createLearningUI(ctx){
   const occurrences=data.mistakes.flatMap(m=>[m,...(m.occurrences||[])]);
   const subjects=[...new Set([...coursesFor(data.assignments,data.classes||[]),...occurrences.map(subjectOf)])];
   let subject=selectedCourse(state.user.id,subjects),visibleRows=[];
-  main.innerHTML=`<section class="paper">${head('','我的错题集','',link('grades','成绩档案','text-button'))}${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>Topic</span><select id="mistake-topic"></select></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div><div id="mistakes-list"></div></section>`;
+  main.innerHTML=`<section class="paper">${head('','我的错题集','',link('grades','成绩档案','text-button'))}${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div><p id="topic-progress" role="status" tabindex="-1" hidden></p><div data-round-feedback></div><details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div></details><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div><div id="mistakes-list"></div></section>`;
   bindMistakeNavigation(main);
   $('#mistake-search').value=memory.get('query','');$('#mistake-state').value=memory.get('status','');
-  const topicControl=$('#mistake-topic');
+  const topicControl=$('#mistake-topic'),startTopic=$('#topic-start'),progress=$('#topic-progress');
+  let pendingRows=[],finished=false,needsRefresh=false,lastSaved=null,reviewTimer;
+  $('.mistake-extra').open=Boolean($('#mistake-search').value||$('#mistake-state').value);
   function setTopicChoices(){
     const scoped=matchingMistakes(data.mistakes,m=>subjectOf(m)===subject);
-    const options=mistakeTopicOptions(scoped);
+    const options=mistakeTopicOptions(scoped),counts=topicWorkCounts(scoped);
     topicControl.innerHTML='<option value="all">全部 Topic</option>'+options.map(([topic,title])=>
-      `<option value="${topic||'unknown'}">${topic?h('Topic '+topic+(title?' · '+title:'')):'未标注 Topic'}</option>`).join('');
+      `<option value="${topic||'unknown'}">${topic?h('Topic '+topic+(title?' · '+title:'')):'未标注 Topic'} · 待订正 ${counts.get(topic||'unknown').pending}</option>`).join('');
     const saved=memory.get('topic:'+subject,'all');
     topicControl.value=Array.from(topicControl.options).some(o=>o.value===saved)?saved:'all';
   }
@@ -199,6 +202,38 @@ export function createLearningUI(ctx){
     const rows=matchingMistakes(scoped,m=>(topic==='all'||(mistakeTopic(m)||'unknown')===topic) &&
       (!status||(m.progressStatus||m.status)===status) &&
       (!term||[m.assignmentTitle,m.prompt,m.knowledge,m.questionId].join(' ').toLocaleLowerCase().includes(term.toLocaleLowerCase())));
+    const totals=topicWorkCounts(scoped).get(topic)||{pending:0,waiting:0};
+    pendingRows=matchingMistakes(rows,needsCorrection);
+    progress.hidden=topic==='all';
+    progress.textContent=(finished?'本轮进度 · ':'')+'待订正 '+totals.pending+' 题 · 待验收 '+totals.waiting+' 题';
+    const last=finished && lastSaved && scoped.flatMap(m=>[m,...(m.occurrences||[])]).find(m=>m.assignmentId===lastSaved.a&&m.questionId===lastSaved.q);
+    $('[data-round-feedback]').innerHTML=last && !needsRefresh ? (last.verification?verificationMarkup(last.verification,h):'')+
+      (!last.verification||last.verification.status==='passed'?feedbackMarkup(last.correctionFeedback,h):'') : '';
+    if(needsRefresh)progress.textContent='进度暂未同步，请重试。';
+    startTopic.hidden=topic==='all'||(!pendingRows.length&&!needsRefresh);
+    startTopic.textContent=needsRefresh?'重试同步':term||status?'开始筛选出的 '+pendingRows.length+' 题':'开始订正';
+    clearTimeout(reviewTimer);
+    if(finished && !needsRefresh && totals.waiting){
+      const waiting=scoped.flatMap(m=>[m,...(m.occurrences||[])]).filter(m=>(mistakeTopic(m)||'unknown')===topic && ['queued','running','manual'].includes(m.verification?.status)).map(m=>m.verification);
+      const sameView=()=>!closed&&!active&&!busy&&finished&&topic===topicControl.value;
+      const check=async()=>{
+        if(!sameView())return;
+        try{
+          if(!document.hidden){
+            const {updates}=await api('learning/correction-updates?includeMock=1');
+            if(!sameView())return;
+            const byId=new Map(updates.map(r=>[r.id,r]));
+            if(waiting.some(v=>byId.get(v.id)?.revision!==v.revision||byId.get(v.id)?.status!==v.status)){
+              const fresh=await api('learning?mistakeBook=1');
+              if(sameView()){data.mistakes=fresh.mistakes;setTopicChoices();draw();}
+              return;
+            }
+          }
+        }catch{/* Retry while the summary is visible; the displayed counts are the last confirmed ones. */}
+        if(sameView())reviewTimer=setTimeout(check,12000);
+      };
+      reviewTimer=setTimeout(check,6000);
+    }
     visibleRows=rows;
     memory.set({query:term,status,['topic:'+subject]:topic});
     $('#mistake-count').textContent=rows.length+' / '+scoped.length+' 道'+courseLabel(subject)+'失分题';
@@ -207,11 +242,17 @@ export function createLearningUI(ctx){
   draw();
   const list=$('#mistakes-list');let active=null,busy=false,closed=false;
   const courseControl=$('[data-mistake-course]');
-  const filters=[courseControl,topicControl,$('#mistake-search'),$('#mistake-state'),$('#clear-mistake-filters')].filter(Boolean);
+  const filters=[courseControl,topicControl,startTopic,$('#mistake-search'),$('#mistake-state'),$('#clear-mistake-filters')].filter(Boolean);
+  async function refreshRows(){
+    try{
+      const fresh=await api('learning?mistakeBook=1');if(closed)return;
+      data.mistakes=fresh.mistakes;needsRefresh=false;setTopicChoices();draw();
+    }catch(e){if(!closed){needsRefresh=true;draw();toast(e.message);}}
+  }
   async function closeInline({refresh=false,focus=true}={}){
     const previous=active;if(!previous)return;await previous.local.correctionNavigation?.();if(active!==previous)return;active=null;
     previous.local.routeVersion++;previous.local.viewCleanup?.();previous.host.remove();previous.row.classList.remove('is-expanded');previous.trigger.setAttribute('aria-expanded','false');
-    if(refresh||previous.saved){try{const fresh=await api('learning?mistakeBook=1');if(!closed){data.mistakes=fresh.mistakes;if(!active)draw();}}catch(e){toast(e.message);}}
+    if(refresh||previous.saved)await refreshRows();
     if(focus){const target=previous.trigger.isConnected?previous.trigger:[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===previous.trigger.getAttribute('href'));target?.scrollIntoView({block:'nearest',behavior:'instant'});target?.focus({preventScroll:true});}
   }
   $('.mistake-views').onclick=async e=>{
@@ -226,24 +267,22 @@ export function createLearningUI(ctx){
     catch(error){toast(error.message);}
     finally{busy=false;}
   };
-  const filterDraw=async()=>{if(busy)return;busy=true;try{await closeInline({focus:false});draw();}catch(e){toast(e.message);}finally{busy=false;}};
+  const filterDraw=async()=>{if(busy)return;busy=true;const chosen=topicControl.value;try{finished=false;await closeInline({focus:false});topicControl.value=chosen;draw();}catch(e){toast(e.message);}finally{busy=false;}};
   if(courseControl)courseControl.onchange=async()=>{
     if(busy){courseControl.value=subject;return;}
     busy=true;
     try{
       await closeInline({focus:false});
-      subject=courseControl.value;rememberCourse(state.user.id,subject);setTopicChoices();draw();
+      finished=false;subject=courseControl.value;rememberCourse(state.user.id,subject);setTopicChoices();draw();
     }catch(e){courseControl.value=subject;toast(e.message);}finally{busy=false;}
   };
   $('#mistake-search').oninput=filterDraw;$('#mistake-state').onchange=filterDraw;topicControl.onchange=filterDraw;
-  $('#clear-mistake-filters').onclick=async()=>{if(busy)return;busy=true;try{await closeInline({focus:false});$('#mistake-search').value='';$('#mistake-state').value='';topicControl.value='all';draw();$('#mistake-search').focus();}catch(e){toast(e.message);}finally{busy=false;}};
-  list.addEventListener('click',async e=>{
-    let trigger=e.target.closest('a[href]'),row=trigger?.closest('[data-inline-assignment]');
-    if(!trigger)return;memory.set({selected:trigger.getAttribute('href'),top:main.scrollTop});
-    if(!row||trigger.target==='_blank'||!trigger.getAttribute('href').includes('mistakes/')||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
-    e.preventDefault();if(busy)return;busy=true;filters.forEach(f=>f.disabled=true);
+  $('#clear-mistake-filters').onclick=async()=>{if(busy)return;busy=true;try{await closeInline({focus:false});$('#mistake-search').value='';$('#mistake-state').value='';topicControl.value='all';finished=false;draw();$('#mistake-search').focus();}catch(e){toast(e.message);}finally{busy=false;}};
+  async function openRow(trigger,round=false){
+    let row=trigger?.closest('[data-inline-assignment]');
+    if(!row||busy)return;finished=false;clearTimeout(reviewTimer);busy=true;filters.forEach(f=>f.disabled=true);
     try{
-      if(active?.row===row&&active.trigger.getAttribute('href')===trigger.getAttribute('href')){await closeInline();return;}
+      if(!round&&active?.row===row&&active.trigger.getAttribute('href')===trigger.getAttribute('href')){await closeInline();return;}
       const href=trigger.getAttribute('href');
       await closeInline({focus:false});if(closed)return;
       if(!row.isConnected){trigger=[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===href);row=trigger?.closest('[data-inline-assignment]');if(!row)return;}
@@ -251,7 +290,7 @@ export function createLearningUI(ctx){
       const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};active={host,row,trigger,local};
       // Keep the filtered order for this session, including the particular occurrence opened.
       const start=trigger.hash.slice(1).split('/').map(decodeURIComponent);
-      const topicQueue=topicControl.value==='all'?null:visibleRows.map(item=>
+      const topicQueue=round?pendingRows:topicControl.value==='all'?null:visibleRows.map(item=>
         [item,...(item.occurrences||[])].find(r=>r.assignmentId===start[1] && r.questionId===start[2]) || item);
       const topicLabel=topicControl.value==='unknown'?'未标注 Topic':'Topic '+topicControl.value;
       const open=async(route)=>{if(closed||active?.host!==host)return;local.viewCleanup?.();const version=++local.routeVersion;local.viewCleanup=null;local.correctionNavigation=null;const [,a,q]=route.split('/').map(decodeURIComponent);
@@ -261,7 +300,11 @@ export function createLearningUI(ctx){
           if(anchor){active.row.classList.remove('is-expanded');active.trigger.setAttribute('aria-expanded','false');
             active.row=anchor.closest('.mistake-row');active.trigger=anchor;active.row.append(host);active.row.classList.add('is-expanded');anchor.setAttribute('aria-expanded','true');}
         }
-        const child=createLearningUI({...ctx,main:host,state:local,topicQueue,topicLabel,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{active.saved=true;if(mode==='next'&&next)await open(next);}});
+        const last=round&&topicQueue.at(-1)?.assignmentId===a&&topicQueue.at(-1)?.questionId===q;
+        const child=createLearningUI({...ctx,main:host,state:local,topicQueue,topicLabel,finishTopic:last,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(closed||active?.host!==host||version!==local.routeVersion)return;
+          active.saved=true;
+          if(last){finished=true;lastSaved={a,q};await closeInline({focus:false,refresh:true});if(!closed){progress.focus();progress.scrollIntoView({block:'nearest'});}}
+          else if(mode==='next'&&next)await open(next);}});
         try{await child.mistakes(a,q);}catch(error){
           if(closed||active?.host!==host||version!==local.routeVersion)return;
           host.innerHTML=`<p role="alert">${h(error.message)}</p><button type="button" class="secondary" data-retry>重试</button><button type="button" class="text-button" data-inline-close>收起订正</button>`;
@@ -272,8 +315,24 @@ export function createLearningUI(ctx){
       await open(trigger.getAttribute('href').slice(1));
     }catch(e){toast(e.message);if(active&&!active.local.correctionNavigation){active.local.viewCleanup?.();active.host.remove();active.row.classList.remove('is-expanded');active.trigger.setAttribute('aria-expanded','false');active=null;}}
     finally{busy=false;filters.forEach(f=>f.disabled=false);}
+  }
+  startTopic.onclick=async()=>{
+    if(busy)return;
+    if(needsRefresh){busy=true;try{await refreshRows();}finally{busy=false;}return;}
+    if(active){busy=true;try{await closeInline({focus:false});}catch(e){toast(e.message);return;}finally{busy=false;}}
+    const first=pendingRows[0];if(!first||closed)return;
+    const route='#mistakes/'+first.assignmentId+'/'+encodeURIComponent(first.questionId);
+    const trigger=[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===route);
+    finished=false;await openRow(trigger,true);
+  };
+  list.addEventListener('click',e=>{
+    const trigger=e.target.closest('a[href]');
+    if(!trigger||!trigger.closest('[data-inline-assignment]'))return;
+    memory.set({selected:trigger.getAttribute('href'),top:main.scrollTop});
+    if(trigger.target==='_blank'||!trigger.hash.startsWith('#mistakes/')||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+    e.preventDefault();void openRow(trigger);
   });
-  state.viewCleanup=()=>{closed=true;if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
+  state.viewCleanup=()=>{closed=true;clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
   state.restoreView=()=>{main.scrollTo({top:memory.get('top',0),behavior:'instant'});const a=[...list.querySelectorAll('a')].find(a=>a.getAttribute('href')===memory.get('selected',''));a?.focus({preventScroll:true});};
  }
  return {gradebook,overview,mistakes};

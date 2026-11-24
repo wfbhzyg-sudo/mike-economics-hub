@@ -1,7 +1,7 @@
 import {audiencePicker,bindAudiencePicker,audienceLabel} from './audience-picker.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {assignmentCourse,courseLabel,coursesFor,courseTabs,selectedCourse,rememberCourse,classKey,namedCourse,singleClassCourse} from './course-scope.js';
-import {studentAssignmentAction,assignmentOpensLater,publicationTime,byPublication} from './assignment-navigation.js';
+import {studentAssignmentAction,assignmentOpensLater,publicationTime,byPublication,byLearningPriority} from './assignment-navigation.js';
 import {insightsMarkup} from './student-home.js';
 import {highlightText} from './search-text.js';
 import { assignmentState, assignmentRecords, correctionCounts } from "./learning-model.js";
@@ -205,8 +205,8 @@ export function createWorkspaceUI(ctx) {
         remaining = progress.open,
         rate = max ? Math.round((total / max) * 100) : null;
       detail = `<p class="card-score"><strong>${total}</strong><span>/ ${max || "?"}</span>${rate != null ? `<em>${rate}%</em>` : ""}${remaining ? `<span class="card-correct">需订正 ${remaining} 题</span>` : ""}${progress?.review ? `<span>已提交订正 ${progress.review} 题</span>` : ""}${progress?.verified ? `<span>已验收 ${progress.verified} 题</span>` : ""}</p>`;
-    } else if (!offline && info.key === "todo") {
-      const total = a.format === "mcq" ? questions.filter((q) => q.type === "choice").length : 0,
+    } else if ((!offline && info.key === "todo") || action.resume) {
+      const total = action.resume || ["mcq","mixed"].includes(a.format) ? questions.length : 0,
         answered = Math.max(Number(a.attemptProgress?.answered || 0), info.draft ? Object.values(info.draft.choices || {}).filter(Boolean).length : 0);
       detail = total
         ? `<p class="card-progress">${answered ? "已保存 " + answered + "/" + total + " 题" : "共 " + total + " 题"}</p>`
@@ -232,11 +232,12 @@ export function createWorkspaceUI(ctx) {
       }
     }
     if(!t)indexProgress();
-    let publishOrder = 'desc';
+    let publishOrder = t ? 'desc' : 'priority';
     try {
       const saved = JSON.parse(sessionStorage.getItem(key) || "{}");
       Object.assign(state, saved);
-      if (saved.publishOrder === 'asc') publishOrder = 'asc';
+      if(t && saved.publishOrder==='asc')publishOrder='asc';
+      if(!t && ['asc','desc','priority'].includes(saved.studentSort))publishOrder=saved.studentSort;
     } catch {}
     const filters = t
       ? [
@@ -263,9 +264,9 @@ export function createWorkspaceUI(ctx) {
     if (!courses.includes(state.assignmentCourse)) state.assignmentCourse = "";
     if(!state.classes.some(c=>c.id===state.assignmentClass))state.assignmentClass='';
     const sortLabel = t ? '发布时间' : '布置时间';
-    const sortControl = `<select id="assignment-publish-order" aria-label="按${sortLabel}排序">
-      <option value="desc">${sortLabel} · 从新到旧</option><option value="asc">${sortLabel} · 从旧到新</option></select>`;
-    main.innerHTML = `<section class="paper workspace-home"${t?"":' data-student-assignments'}>${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>` + `<div data-course-insights></div>`}<div class="assignment-toolbar">${t?'<div class="assignment-status-sort">':''}<div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div>${t?sortControl+'</div>':''}<div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h(["macro","micro","mixed","unknown"].includes(c)?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label>${!t?`<label class="assignment-sort-field">${sortControl}</label>`:""}</div></div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div></section>`;
+    const sortControl = `<select id="assignment-publish-order" aria-label="${t?'按'+sortLabel+'排序':'作业排序'}">
+      ${t?'':'<option value="priority">学习优先</option>'}<option value="desc">${sortLabel} · 从新到旧</option><option value="asc">${sortLabel} · 从旧到新</option></select>`;
+    main.innerHTML = `<section class="paper workspace-home"${t?"":' data-student-assignments'}>${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>`}<div class="assignment-toolbar">${t?'<div class="assignment-status-sort">':''}<div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div>${t?sortControl+'</div>':''}${t?'':`<details class="student-find" ${state.assignmentSearch || !matchMedia('(max-width:680px)').matches?'open':''}><summary>查找与排序</summary>`}<div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h(["macro","micro","mixed","unknown"].includes(c)?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label>${!t?`<label class="assignment-sort-field">${sortControl}</label>`:""}</div>${t?'':'</details>'}</div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div>${t?'':'<div data-course-insights></div>'}</section>`;
     const sortPicker = $('#assignment-publish-order');
     if (sortPicker) {
       sortPicker.value = publishOrder;
@@ -303,7 +304,7 @@ export function createWorkspaceUI(ctx) {
       );
       const filtered = base.filter((a) => matches(a, state.assignmentFilter));
       if (sortPicker) sortPicker.hidden = state.assignmentFilter === 'draft';
-      const rows = state.assignmentFilter === 'draft' ? filtered : byPublication(filtered, publishOrder);
+      const rows = !t && publishOrder==='priority' ? byLearningPriority(filtered,state.submissions) : state.assignmentFilter === 'draft' ? filtered : byPublication(filtered, publishOrder);
       $("#assignment-count").textContent = `${rows.length} 份作业`;
       try {
         sessionStorage.setItem(
@@ -313,7 +314,7 @@ export function createWorkspaceUI(ctx) {
             assignmentSearch: state.assignmentSearch,
             assignmentCourse: state.assignmentCourse,
             assignmentClass:state.assignmentClass,
-            publishOrder,
+            ...(t?{publishOrder}:{studentSort:publishOrder}),
           }),
         );
       } catch {}

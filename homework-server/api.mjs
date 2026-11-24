@@ -965,7 +965,7 @@ export async function createHomework({externalAuth} = {}) {
       if(route.join('/')==='learning/correction-updates'&&method==='GET'){
         assert(user.role==='student','请使用学生账号',403);
         const rows=await correctionReview.reviews({studentId:user.id});
-        return (json(res,{updates:rows.filter(r=>!r.mock).map(r=>({id:r.id,status:r.status==='running'?'queued':r.status,revision:r.revision}))}),true);
+        return (json(res,{updates:rows.filter(r=>!r.mock||url.searchParams.get('includeMock')==='1').map(r=>({id:r.id,status:r.status==='running'?'queued':r.status,revision:r.revision}))}),true);
       }
       if(route[0]==='learning'&&route[1]==='performance-advice'&&method==='POST'){
         assert(user.role==='student','请使用学生账号',403);
@@ -1188,14 +1188,16 @@ export async function createHomework({externalAuth} = {}) {
           const all = await db.studentAssignments(user);
           const attempts=new Map();
           for(const attempt of await db.find('mcq-attempt',{studentId:user.id})){
-            if(attempt.submittedId)continue;
+            if(attempt.submittedId || (attempt.returnedFrom && !attempt.startedAt))continue;
             const key=`${attempt.assignmentId}:${attempt.version}`;
             if(!attempts.has(key))attempts.set(key,attempt);
           }
           const assignments=all.map(a=>{
             const attempt=attempts.get(`${a.id}:${a.version}`);
             return {...publicAssignment(a),classIds:audienceClasses(a,user),
-              attemptProgress:attempt?{started:true,answered:Object.values(attempt.answers||{}).filter(Boolean).length}:null};
+              attemptProgress:attempt?{started:true,index:Math.max(0,Math.min(Number.isInteger(attempt.index)?attempt.index:0,(a.rubric?.length||1)-1)),
+                updatedAt:attempt.updatedAt||attempt.startedAt,
+                answered:Object.values(attempt.answers||{}).filter(Boolean).length+Object.values(attempt.responses||{}).filter(r=>r?.text?.trim()||r?.files?.length).length}:null};
           });
           return (json(res,{assignments}),true);
         }
