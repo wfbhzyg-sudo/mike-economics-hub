@@ -306,3 +306,15 @@ dialog.frq-writing-reference { padding:0; width:min(50rem,96vw); max-width:96vw;
 .correction-reference-head [data-collapse-reference]{min-width:32px;font-size:17px}
 .correction-reference-panel .question-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-block-end:6px}
 .correction-reference-panel .question-tools button{font-size:12px;min-height:32px}
+
+/* The fixed companion occupies the trailing edge above the mobile dock. */
+@media(max-width:700px){
+  .correction-workspace .correction-question-nav{
+    display:grid;grid-template-columns:repeat(2,max-content);justify-content:start;
+    grid-template-areas:"count count" "prev next";gap:2px 6px;padding-inline-end:54px;
+  }
+  .correction-question-nav span{grid-area:count;font-variant-numeric:tabular-nums}
+  .correction-question-nav [data-correction-nav=prev]{grid-area:prev}
+  .correction-question-nav [data-correction-nav=next]{grid-area:next}
+  .correction-workspace .correction-question-nav button{min-width:44px;padding-inline:5px}
+}
