@@ -13,9 +13,13 @@ export function openBooks({ctx,selection,onRefresh}){
  dialog.showModal();
  const header=(title)=>'<header><h2>'+h(title)+'</h2><button type="button" data-close aria-label="关闭">×</button></header>';
  function frame(title,body){dialog.innerHTML=header(title)+'<div class="cb-body">'+body+'</div><p data-message role="status"></p>';bind();}
- function bind(){dialog.querySelector('[data-close]').onclick=close;}
+ function lockControls(busy){
+   const body=dialog.querySelector('.cb-body');if(body)body.inert=busy;
+   const input=dialog.querySelector('[data-upload]');if(input)input.disabled=busy;
+ }
+ function bind(){dialog.querySelector('[data-close]').onclick=close;lockControls(working);}
  function message(t){if($('[data-message]'))$('[data-message]').textContent=t;}
- async function act(fn){if(working)return;working=true;dialog.setAttribute('aria-busy','true');try{await fn();}catch(e){message(e.message);}finally{working=false;dialog.removeAttribute('aria-busy');}}
+ async function act(fn){if(working)return;working=true;lockControls(true);dialog.setAttribute('aria-busy','true');try{await fn();}catch(e){message(e.message);}finally{working=false;lockControls(false);dialog.removeAttribute('aria-busy');}}
  const pdfLink=()=>'<a class="secondary" data-paper-download download href="/api/homework/correction-books/'+encodeURIComponent(book.id)+'/pdf">下载 PDF</a>';
  const title=i=>i.tag+' · '+i.title+' · 原题 '+i.number;
  function basket(){const rows=[...selection.values()];
@@ -40,8 +44,8 @@ export function openBooks({ctx,selection,onRefresh}){
  if(observed.has(current)&&observed.get(current)!==latest)onRefresh?.();
  observed.set(current,latest);
  }
- async function showBook(){step='book';frame(book.code,'<div class="cb-tools"><button class="text-button" data-shelf>我的错题册</button>'+pdfLink()+'<label class="primary cb-pick">交回 PDF / 照片<input data-upload type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp"></label></div><div data-receipts></div>');$('[data-shelf]').onclick=()=>act(shelf);
- $('[data-upload]').onchange=e=>{const files=[...e.target.files];e.target.value='';act(()=>upload(files));};await receipts();}
+ async function showBook(){clearTimeout(timer);step='book';frame(book.code,'<div class="cb-tools"><button class="text-button" data-shelf>我的错题册</button>'+pdfLink()+'<label class="primary cb-pick">交回 PDF / 照片<input data-upload type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp"></label></div><div data-receipts></div>');$('[data-shelf]').onclick=()=>act(shelf);
+ $('[data-upload]').onchange=e=>{const files=[...e.target.files];e.target.value='';act(()=>upload(files));};void receipts().catch(e=>message(e.message));}
  async function upload(files){
  if(!files.length)return;
  for(const f of files){
