@@ -19,16 +19,17 @@ export function questionIssues(db,question){
         return student&&classes.some(c=>r.classIds.includes(classKey(c.id))&&student.classIds?.some(id=>classKey(id)===classKey(c.id)));
       });
       if(method==='POST'){
-        const b=await ctx.body(req),reply=boundedText(b.reply,280,'处理说明').trim();assert(reply,'请填写处理说明');
+        const b=await ctx.body(req),reply=boundedText(b.reply,280,'处理说明').trim();if(route[1]==='resolve')assert(reply,'请填写处理说明');
         const group=visible.filter(r=>r.group===b.group);assert(group.length,'未找到反馈',404);
         await db.tx(async c=>{for(const item of group){const row=await db.get(item.id,c);if(row&&row.status!=='resolved'){const bank=row.bankId&&await db.get(row.bankId,c);const updatedVersion=Number(bank?.version)>Number(row.reportedVersion)?bank.version:null;
-            await db.put(kind,{...row,status:route[1]==='inspect'?'checking':'resolved',reply,updatedVersion,updatedAt:now()},c);}}},'question-issue-group:'+b.group);
+            await db.put(kind,{...row,status:route[1]==='inspect'?'checking':'resolved',reply:reply||row.reply||'',updatedVersion,updatedAt:now()},c);}}},'question-issue-group:'+b.group);
         return {handled:true};
       }
       const groups=new Map();
-      for(const r of visible){const g=groups.get(r.group)||{key:r.group,title:r.title,label:r.label,bankId:r.bankId,reasons:[],sources:new Set(),people:new Set(),open:0};
-        g.people.add(r.studentId);g.sources.add(r.title+' · '+r.label);if(r.status!=='resolved')g.open++;if(!g.reasons.includes(r.reason))g.reasons.push(r.reason);groups.set(r.group,g);}
-      return {groups:[...groups.values()].map(({people,sources,...g})=>({...g,sources:[...sources],count:people.size})).sort((a,b)=>b.open-a.open)};
+      for(const r of visible){const g=groups.get(r.group)||{key:r.group,title:r.title,label:r.label,bankId:r.bankId,reasons:[],sources:new Set(),notes:new Set(),people:new Set(),open:0,unchecked:0,lastReply:'',replyAt:''};
+        if(r.reply&&String(r.updatedAt||'')>=g.replyAt){g.lastReply=r.reply;g.replyAt=String(r.updatedAt||'');}
+        g.people.add(r.studentId);g.sources.add(r.title+' · '+r.label);if(r.note?.trim())g.notes.add(r.note.trim());if(r.status==='open')g.unchecked++;if(r.status!=='resolved')g.open++;if(!g.reasons.includes(r.reason))g.reasons.push(r.reason);groups.set(r.group,g);}
+      return {groups:[...groups.values()].map(({people,sources,notes,replyAt,...g})=>({...g,sources:[...sources],notes:[...notes],count:people.size})).sort((a,b)=>b.open-a.open)};
     }
     assert(user.role==='student'&&['POST','GET'].includes(method)&&!route[1],'仅限学生反馈',403);
     const b=method==='POST'?await ctx.body(req):Object.fromEntries(new URL(req.url,'http://local').searchParams);

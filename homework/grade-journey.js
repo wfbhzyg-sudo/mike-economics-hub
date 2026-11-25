@@ -49,11 +49,21 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
       if(item)evidenceLessons.mount(target,{lessonReference:item.lessonReference},{course:subject,number:item.questionNumber});
     }}
     let prior;try{prior=sessionStorage.getItem(key);}catch{}
+    const markers=[...panel.querySelectorAll('[data-skill-axis]')];
+    function syncSkill(){
+      const id=rows.find(row=>row.open)?.dataset.skill||'';
+      for(const marker of markers)marker.setAttribute('aria-expanded',String(marker.dataset.skillAxis===id));
+      try{if(id)sessionStorage.setItem(key,id);else sessionStorage.removeItem(key);}catch{}
+    }
     for(const row of rows){
       row.open=row.dataset.skill===prior;
-      row.addEventListener('toggle',()=>{if(!row.open)return;for(const other of rows)if(other!==row)other.open=false;try{sessionStorage.setItem(key,row.dataset.skill);}catch{}});
+      row.addEventListener('toggle',()=>{
+        if(row.open)for(const other of rows)if(other!==row)other.open=false;
+        syncSkill();
+      });
     }
-    for(const axis of panel.querySelectorAll('[data-skill-axis]')){
+    syncSkill();
+    for(const axis of markers){
       const open=()=>{const row=rows.find(x=>x.dataset.skill===axis.dataset.skillAxis);if(row){row.open=true;row.querySelector('summary').focus({preventScroll:true});}};
       axis.onclick=open;axis.onkeydown=e=>{if([' ','Enter'].includes(e.key)){e.preventDefault();open();}};
     }

@@ -30,7 +30,7 @@ export function skillRadarSvg(axes,interactive=false){
     <g class="evidence-grid">${levels.map(level=>`<polygon points="${polygon(level)}" />`).join('')}${axes.map((_,i)=>`<path d="M74 74L${point(i,60).join(' ')}" />`).join('')}</g>
     ${points.every(Boolean)?`<polygon class="evidence-radar-fill" points="${points.map(p=>p.join(',')).join(' ')}" />`:''}
     <g class="evidence-radar-lines">${segments}</g>
-    ${axes.map((axis,i)=>{const [x,y]=points[i]||point(i,60);return `<g ${interactive?`data-skill-axis="${i+1}" tabindex="0" role="button" aria-label="查看第 ${i+1} 项技能证据"`:''}><text x="${point(i,69)[0]}" y="${point(i,68)[1]+4}" text-anchor="middle" class="evidence-axis-index">${i+1}</text><circle cx="${x}" cy="${y}" r="4" ${axis.band===null?'class="evidence-radar-empty"':`fill="${colors[axis.band-1]}"`} />${interactive?`<circle cx="${point(i,58)[0]}" cy="${point(i,58)[1]}" r="12" fill="transparent"/>`:''} </g>`;}).join('')}
+    ${axes.map((axis,i)=>{const [x,y]=points[i]||point(i,60);return `<g ${interactive?`data-skill-axis="${i+1}" tabindex="0" role="button" aria-label="查看第 ${i+1} 项技能证据"`:''}><text x="${point(i,69)[0]}" y="${point(i,68)[1]+4}" text-anchor="middle" class="evidence-axis-index">${i+1}</text><circle cx="${x}" cy="${y}" r="4" ${axis.band===null?'class="evidence-radar-empty"':`fill="${colors[axis.band-1]}"`} />${interactive?`<circle cx="${point(i,58)[0]}" cy="${point(i,58)[1]}" r="18" fill="transparent"/>`:''} </g>`;}).join('')}
   </svg>`;
 }
 

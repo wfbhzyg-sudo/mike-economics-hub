@@ -26,10 +26,10 @@ export function compareDraft(host,conflicts){
     let accepted=false;
     conflicts.forEach(({path,mine,theirs,choose},i)=>{
       const row=document.createElement('fieldset'),legend=document.createElement('legend');
-      legend.textContent='第 '+path[0]+' 题 · '+({text:'简答文字',answers:'选项',files:'附件',flags:'标记',excluded:'排除选项',freeText:'整卷文字'}[path[1]]||path[1]);row.append(legend);
+      legend.textContent=(path[0]==='整卷'?'整卷':'第 '+path[0]+' 题')+' · '+({text:'简答文字',answers:'选项',files:'附件',flags:'标记',excluded:'排除选项',freeText:'文字'}[path[1]]||path[1]);row.append(legend);
       for(const [label,value] of [['本机',mine],['账户',theirs]]){
         const el=document.createElement('label'),option=document.createElement('input');option.type='radio';option.name='choice'+i;option.required=true;option.onchange=()=>choose(value);
-        el.append(option,label+'　'+(path[1]==='files'?value.length+' 个附件':Array.isArray(value)?value.join('、'):String(value||'空白')));
+        el.append(option,label+'　'+(path[1]==='files'?value.length+' 个附件':path[1]==='flags'?(value?'已标记':'未标记'):Array.isArray(value)?(value.join('、')||'未排除'):String(value||'空白')));
         if(path[1]==='files')for(const [i,id] of value.entries()){const a=document.createElement('a');a.href='/api/homework/files/'+encodeURIComponent(id);a.target='_blank';a.rel='noopener';a.textContent=' 附件 '+(i+1);el.append(a);}
         row.append(el);
       }

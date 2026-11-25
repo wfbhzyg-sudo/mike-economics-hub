@@ -433,10 +433,50 @@ body:has(.mock-attempt-popover) #mike-companion{visibility:hidden}
 .frq-parts p,.sync-compare label{white-space:pre-wrap;overflow-wrap:anywhere}
 .frq-parts textarea,.student-issue-dialog textarea{width:100%;box-sizing:border-box}
 .evidence-radar [data-skill-axis]{cursor:pointer}.evidence-radar [data-skill-axis]:focus-visible{outline:2px solid #174774}
-.student-action-card{margin:.65rem 0;padding:.65rem .85rem;border:1px solid #bccbd3;border-radius:.65rem;background:white;color:#152b40}.student-action-card summary,.student-question-more summary{cursor:pointer}.student-action-card [data-list]{margin:.6rem 0}
+.student-action-card{margin:.65rem 0;padding:.65rem .85rem;border:1px solid #bccbd3;border-radius:.65rem;background:white;color:#152b40}.student-action-card summary{cursor:pointer}.student-action-card [data-list]{margin:.6rem 0}
 .student-issue-dialog header,.student-recall-dialog header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .student-issue-dialog form,.student-issue-dialog label,.student-recall-dialog form,.sync-compare fieldset{display:grid;gap:.5rem}
 .student-recall-dialog img{display:block;max-width:100%;height:auto;margin:0 auto}.student-recall-dialog label{display:block;padding:.4rem}
-.student-question-more{position:relative;align-self:center}.study-controls .student-question-more>button{position:absolute;inset-inline-end:0;top:100%;white-space:nowrap;z-index:5;background:white;color:#152b40}
+.student-recall-dialog .recall-result-options{display:grid;gap:5px;padding:0;margin:8px 0;list-style:none}
+.recall-result-options li{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:baseline;padding:7px 9px;background:#f2f5f6;border-radius:6px;overflow-wrap:anywhere}
+.recall-result-options li[data-result=correct]{background:#e3f1e9;color:#205c46}
+.recall-result-options li[data-result=missed]{background:#f8e9e5;color:#873f31}
+.student-recall-dialog>header{position:sticky;top:-1px;z-index:1;background:#fcfcf9;padding-block:3px}
+.study-controls [data-question-issue]{white-space:nowrap}
+.student-action-card>summary{min-height:36px;align-content:center;font-weight:650;overflow-wrap:anywhere}
+.student-action-card section{min-width:0}
+.student-action-card [data-list] label{display:inline-flex;align-items:center;gap:4px;min-height:40px}
+.student-action-card :is([data-save],[data-undo]),.teacher-issue-list .issue-actions button{font:inherit;font-size:.86rem;font-weight:600;padding:6px 12px;min-height:40px;border:1px solid #c6d4dd;border-radius:7px;background:#fff;color:#1c4058}
+.student-action-card [data-save]:enabled,.teacher-issue-list .issue-actions button:first-child{background:#19364b;color:white;border-color:#19364b}
+.student-action-card [data-save]:disabled{color:#617582;background:#f0f3f5}
+.student-action-card [role=status]:empty,.student-issue-dialog [hidden],.student-recall-dialog form[hidden],.student-action-card [hidden]{display:none}
+.teacher-issue-list{width:min(100%,55rem);margin-inline:auto}
+.teacher-issue-list .student-action-card>summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.teacher-issue-list .student-action-card>summary span{white-space:nowrap;color:#476473;font-size:.83rem}
+.teacher-issue-list .student-action-card>summary::after{content:'';width:7px;height:7px;flex:none;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.teacher-issue-list .student-action-card[open]>summary::after{transform:rotate(225deg)}
+.teacher-issue-list .student-action-card>summary strong{margin-inline-end:auto}
+.teacher-issue-list .student-action-card>summary::-webkit-details-marker{display:none}
+.teacher-issue-list .student-action-card>section{display:grid;gap:9px;padding-block:10px 2px;border-top:1px solid #d9e2e8;overflow-wrap:anywhere}
+.teacher-issue-list section p,.teacher-issue-list ul{margin:0}
+.teacher-issue-list .issue-notes{padding:8px 12px 8px 28px;background:#f1f5f7;color:#233d50;border-radius:5px;max-height:13rem;overflow:auto;white-space:pre-wrap}
+.teacher-issue-list form label{display:grid;gap:4px}
+.teacher-issue-list form input{width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;min-height:42px;border:1px solid #afc1cb;border-radius:6px;font:inherit}
+.teacher-issue-list .issue-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.student-issue-dialog form[data-loading] :is(label,[type=submit]){display:none}
+.student-issue-dialog [data-receipt] [role=status]{color:#356754;font-weight:600}
+.student-issue-dialog .issue-receipt-note{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0}
+.sync-compare>header,.student-recall-dialog>header,.student-issue-dialog form>header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sync-compare>header h2,.student-recall-dialog>header h2,.student-issue-dialog form>header h2{margin:0}
+.sync-compare dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0;margin:12px 0}
+.sync-compare :is(dt,dd){margin:0;padding:7px 0;border-bottom:1px solid #dce4e8;font-variant-numeric:tabular-nums}
+.sync-compare dd{text-align:end}
+.sync-compare [data-queue]>div{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-block:6px}
+.sync-compare [data-queue] span{min-width:0;overflow-wrap:anywhere}
+.sync-compare [data-queue] button{flex:none}
+.sync-compare>p:empty{display:none}
+@media(pointer:coarse){.student-action-card>summary,.student-action-card [data-list] label,.student-action-card :is([data-save],[data-undo]),.teacher-issue-list .issue-actions button{min-height:44px}}
+@media(max-width:760px){dialog.student-recall-dialog{max-height:min(84dvh,calc(100dvh - 88px));overscroll-behavior:contain}}
+
 .student-issue-dialog,.student-recall-dialog,.sync-compare{width:min(36rem,calc(100vw - 2rem));max-height:84dvh;box-sizing:border-box;overflow:auto}
 .mcq-session-status .mcq-save{min-width:0;background:transparent;color:inherit;border:0;padding:.25rem .4rem}

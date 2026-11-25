@@ -40,8 +40,9 @@ export function createMCQUI(ctx){
  const snapshot=()=>({views:views.snapshot(),sequence:t.sequence||0,revision,answers:{...answers},flags:[...flags],excluded:structuredClone(excluded),index,freeText,files:[...files],responses:structuredClone(responses)});
  function persist(){try{localStorage.setItem(storage,JSON.stringify({...snapshot(),baseDraft,needsCompare:conflict,comparisonDraft}));return true}catch{return false}}
  function inkPending(){try{return a.questions.filter(q=>q.type==='short'&&localStorage.getItem('mike-ink:'+state.user.id+':'+JSON.stringify({assignmentId:id,questionId:q.id}))).length;}catch{return null;}}
+ let refreshSyncDetails;
  function showStatus(text){lastSave=text;if(disposed)return;const status=$('.mcq-save');if(!status)return;
-   status.textContent=pendingCount?'附件待同步 '+pendingCount+' 份':text;status.onclick=syncDetails;
+   status.textContent=pendingCount?'附件待同步 '+pendingCount+' 份':text;status.onclick=syncDetails;status.setAttribute('aria-label',status.textContent+'，查看同步详情');refreshSyncDetails?.();
    const retry=$('#mcq-retry-save');if(retry){retry.hidden=!saveError&&!pendingCount;retry.textContent=conflict?'比较版本':'重试同步';retry.onclick=()=>{void reconcile().catch(fail);};}
  }
  async function reconcile(){
@@ -58,12 +59,35 @@ export function createMCQUI(ctx){
    await save();await flushFiles();
  }
  function syncDetails(){
-   const d=document.createElement('dialog');d.className='mcq-modal sync-compare';d.setAttribute('aria-label','同步详情');d.innerHTML='<h2>同步详情</h2><div></div><button type="button">关闭</button>';main.append(d);
-   const items=['答案与文字　'+(conflict?'等待比较':dirty?'本机待同步':'账户已保存'),'手写草稿　'+(inkPending()===null?'查看题内状态':inkPending()?inkPending()+' 题待同步':'无待同步草稿'),'照片与 PDF　'+(pendingCount?pendingCount+' 份在本机':'无待传附件')];
-   if(lastConfirmed)items.push('账户确认　'+new Date(lastConfirmed).toLocaleTimeString());if(!dirty&&queueChecked&&!pendingCount&&inkPending()===0)items.push('可换设备继续');
-   for(const item of items){const p=document.createElement('p');p.textContent=item;d.querySelector('div').append(p);}
-   if(pendingCount)attachments.list(storage).then(rows=>{if(!d.open)return;for(const row of rows){const line=document.createElement('p'),remove=document.createElement('button');remove.type='button';remove.textContent='取消待传';remove.onclick=async()=>{if(flushing)return;try{await attachments.remove(row.id);pendingCount=(await attachments.list(storage)).length;line.remove();showStatus(lastSave);}catch(err){fail(err);}};line.append('第 '+row.q+' 题 · '+(row.name||row.file?.name)+'　',remove);d.querySelector('div').append(line);}}).catch(fail);
-   d.querySelector('button').onclick=()=>d.close();d.onclose=()=>d.remove();d.showModal();
+   const d=document.createElement('dialog');d.className='mcq-modal sync-compare';d.setAttribute('aria-label','同步详情');
+   d.innerHTML='<header><h2>同步详情</h2><button type="button" data-close>关闭</button></header><dl></dl><div data-queue></div><p role="status"></p>';
+   main.append(d);const rows=d.querySelector('dl'),queue=d.querySelector('[data-queue]'),message=d.querySelector('[role=status]');
+   let shownCount=-1,request=0;
+   function refresh(){
+     const ink=inkPending(),ready=!dirty&&!saveError&&!conflict&&queueChecked&&!pendingCount&&ink===0;
+     const items=[['答案与文字',conflict?'等待比较':dirty||saveError?'待同步':'已保存'],['手写草稿',ink===null?'请查看题内状态':ink?ink+' 题待同步':'无待传'],['照片与 PDF',pendingCount?pendingCount+' 份待传':queueChecked?'无待传':'正在检查']];
+     if(lastConfirmed)items.push(['最近同步',new Date(lastConfirmed).toLocaleTimeString()]);
+     rows.replaceChildren();
+     for(const [label,value] of items){const term=document.createElement('dt'),detail=document.createElement('dd');term.textContent=label;detail.textContent=value;rows.append(term,detail);}
+     message.textContent=ready?'可换设备继续':'';
+     if(shownCount===pendingCount)return;shownCount=pendingCount;const version=++request;queue.replaceChildren();
+     if(pendingCount)attachments.list(storage).then(files=>{
+       if(!d.open||request!==version)return;
+       for(const file of files){
+         const line=document.createElement('div'),name=document.createElement('span'),remove=document.createElement('button');
+         name.textContent='第 '+file.q+' 题 · '+(file.name||file.file?.name||'附件');
+         remove.type='button';remove.textContent='取消待传';remove.onclick=async()=>{
+           if(flushing){message.textContent='正在同步，请稍后再试';return;}
+           remove.disabled=true;
+           try{await attachments.remove(file.id);pendingCount=(await attachments.list(storage)).length;shownCount=-1;showStatus(lastSave);}
+           catch(err){message.textContent=err.message;remove.disabled=false;}
+         };
+         line.append(name,remove);queue.append(line);
+       }
+     }).catch(err=>{if(request===version){shownCount=-1;message.textContent=err.message;}});
+   }
+   d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>{refreshSyncDetails=null;request++;d.remove();};
+   refreshSyncDetails=refresh;d.showModal();refresh();
  }
  async function transmit(row){
    const resp=await fetch('/api/homework/files?'+new URLSearchParams({purpose:'submission',name:row.name||row.file?.name,uploadId:row.id}),{method:'POST',headers:{'X-CSRF-Token':state.csrf},body:row.bytes||row.file});

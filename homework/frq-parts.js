@@ -19,12 +19,17 @@ export function mountFrqParts(field,m,key){
   const input=group.querySelector('textarea'),buttons=group.querySelector('[role=group]');
   const label=field.closest('label');label.before(group);label.hidden=true;
   let active='';
+  function showOriginal(){
+    const answer=group.querySelector('[data-original]'),text=original?.parts[active];
+    answer.hidden=!text;
+    answer.textContent=text?'我的原作答　'+text:'';
+  }
   function select(k){
     if(active)positions[active]=[input.selectionStart,input.selectionEnd,input.scrollTop];
     active=k;input.value=drafts[k]||'';
     input.maxLength=Math.max(input.value.length,10000-(keys.length*5+Object.entries(drafts).filter(([j])=>j!==k).reduce((n,[,s])=>n+s.length,0)));
     group.querySelector('[data-prompt]').textContent='('+k+') '+question.parts[k];
-    const answer=group.querySelector('[data-original]');answer.hidden=!original?.parts[k];answer.textContent=original?.parts[k]?'我的原作答　'+original.parts[k]:'';
+    showOriginal();
     for(const b of buttons.querySelectorAll('[data-part]'))b.setAttribute('aria-pressed',String(b.dataset.part===k));
     const [start,end,offset]=positions[k]||[0,0,0];input.setSelectionRange(start,end);input.scrollTop=offset;
     try{sessionStorage.setItem(key,k);}catch{}
@@ -34,6 +39,6 @@ export function mountFrqParts(field,m,key){
   let saved;try{saved=sessionStorage.getItem(key);}catch{}
   const lost=m.partScores?.find(p=>p.earned<p.max&&keys.includes(String(p.id).replace(/[()]/g,'').toLowerCase()));
   select(keys.includes(saved)?saved:lost?String(lost.id).replace(/[()]/g,'').toLowerCase():keys[0]);
-  input.updateOriginal=text=>{original=labelledParts(text);select(active);};
+  input.updateOriginal=text=>{original=labelledParts(text);showOriginal();};
   return input;
 }

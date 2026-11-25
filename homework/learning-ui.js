@@ -175,7 +175,10 @@ export function createLearningUI(ctx){
       });
     });const inkDetails=$('[data-correction-ink]');inkDetails.ontoggle=async()=>{if(!inkDetails.open||inkDetails.dataset.loaded)return;inkDetails.dataset.loaded='true';try{const host=$('[data-ink-host]');const mounted=await mountInk(host,{api,post,put,userId:state.user.id,scope:{assignmentId:m.assignmentId,questionId:m.questionId,correctionId:m.submissionId},exportLabel:'保存为 PDF 并加入订正',exportHint:'添加后请点击保存订正。原成绩保持不变。',onExport:async file=>{up.append(file);$('.correction-attachments').open=true;autosave.changed();toast('手写 PDF 已加入订正附件')}});if(!host.isConnected)mounted.destroy();else correctionInk=mounted}catch(e){inkDetails.dataset.loaded='';toast(e.message)}};state.correctionNavigation=()=>autosave.flush();
     const partEditor=mountFrqParts(form.elements.correction,m,cacheKey+':part');
-    if(partEditor)form.closest('.correction-workspace').classList.add('has-frq-parts');
+    if(partEditor){
+      form.closest('.correction-workspace').classList.add('has-frq-parts');
+      if(!latestCorrection)$('.correction-editor h2').classList.add('sr-only');
+    }
     const reference=mountCorrectionReference($('.correction-reference'),{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,onOriginal:text=>partEditor?.updateOriginal(text),compact:Boolean(ctx.onCorrectionSaved),onEdit:()=>{const editor=$('.correction-editor');editor.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});(partEditor||editor.querySelector('[data-correct-choice][tabindex="0"], [name=correction]')).focus({preventScroll:true});}});
     {const heading=$('.correction-editor h2'),back=document.createElement('button');back.type='button';back.className='text-button correction-back-reference';const field=$('#correction-form [name=correction]');
      if(reference.openForWriting && field){

@@ -12,11 +12,12 @@ host.style.cssText='position:fixed!important;inset:0!important;width:auto!import
 function syncLayer(){
   if(host.hidden)return;
   const modals=[...document.querySelectorAll('dialog:modal')];
-  const decision=modals.some(d=>d.matches('.publish-check,.bank-publish-dialog,.mcq-palette-dialog'));
+  const decision=modals.some(d=>d.matches('.publish-check,.bank-publish-dialog,.mcq-palette-dialog,.student-issue-dialog,.sync-compare'));
   host.toggleAttribute('data-decision',decision);
   const focused=document.activeElement?.closest('dialog:modal');
   const parent=focused || (modals.includes(host.parentElement)?host.parentElement:modals.at(-1)) || document.fullscreenElement || document.body;
   host.toggleAttribute('data-in-reading-dialog',Boolean(document.fullscreenElement)||Boolean(parent.closest?.('[data-reader-dialog],#preview')));
+  host.toggleAttribute('data-in-recall',parent.classList.contains('student-recall-dialog'));
   if(host.parentElement!==parent)parent.append(host);
   if(host.showPopover&&!host.matches(':popover-open'))host.showPopover();
   syncOpenLayer?.();

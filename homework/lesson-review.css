@@ -322,7 +322,13 @@ dialog.frq-writing-reference { padding:0; width:min(50rem,96vw); max-width:96vw;
 .correction-workspace.has-frq-parts {container: frq-edit / inline-size}
 .has-frq-parts .frq-parts [role=group]{align-items:center}
 .has-frq-parts .frq-parts [data-part]{min-width:2.6rem;min-height:2.5rem;border:1px solid #bccbd3;border-radius:.45rem;font-weight:650}
-.has-frq-parts .frq-parts .correction-back-reference{margin-inline-start:auto;position:static}
+.has-frq-parts .frq-parts .correction-back-reference{margin-inline-start:auto;position:static;order:1}
+.has-frq-parts .frq-parts [data-part]{background:#f2f5f6;color:#254354;min-height:44px}
+.has-frq-parts .frq-parts [data-part][aria-pressed=true]{background:#18364b;color:white}
+.has-frq-parts .frq-parts [data-original]:not([hidden]){padding:.4rem .65rem;border-inline-start:2px solid #afc4ce;background:#f4f7f8}
+@container frq-edit (max-width:719px){
+ .has-frq-parts .correction-editor .correction-save-actions{position:static;margin:0;padding:10px 0;box-shadow:none}
+}
 .has-frq-parts .frq-parts label{display:grid;gap:.3rem}
 @container frq-edit (min-width:720px){
  .correction-workspace.has-frq-parts .correction-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(.75rem,2vw,1.5rem);align-items:start}
