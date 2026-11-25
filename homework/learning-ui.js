@@ -1,3 +1,4 @@
+import {bindDisclosureMenus} from './disclosure-menu.js';
 import {mountMistakeDesk} from './mistake-desk.js';
 import {unitCourse} from './subject-catalog.js';
 import {verificationMarkup} from './learning-evidence.js';
@@ -188,19 +189,29 @@ export function createLearningUI(ctx){
   const occurrences=data.mistakes.flatMap(m=>[m,...(m.occurrences||[])]);
   const subjects=[...new Set([...coursesFor(data.assignments,data.classes||[]),...occurrences.map(subjectOf)])];
   let subject=selectedCourse(state.user.id,subjects),visibleRows=[];
-  main.innerHTML=`<section class="paper mistake-desk"><div class="md-toolbar"><h1 class="sr-only">我的错题集</h1>${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="md-command"><label class="md-metric"><select aria-label="Topic 数量口径" data-count-mode><option value="pending">待订正题数</option><option value="total">累计错题数</option></select></label><button type="button" class="secondary" data-books>我的错题册</button><button type="button" class="primary" data-make-book disabled>导出 PDF</button></div></div><div class="md-strip"><button aria-label="向左查看 Topic" data-scroll-topics="-1">‹</button><nav class="md-topics" aria-label="按 Topic 选择"></nav><button aria-label="向右查看 Topic" data-scroll-topics="1">›</button></div><div class="md-context"><div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div><p id="topic-progress" role="status" tabindex="-1" hidden></p><div data-round-feedback></div><details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div></details><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div></div><div class="md-panes"><div id="mistakes-list" aria-label="错题列表"></div><section class="md-reader" aria-label="订正工作区"><p class="md-idle">选择一道错题，查看原题与上次作答。</p></section></div></section>`;
+  main.innerHTML=`<section class="paper mistake-desk"><div class="md-toolbar"><h1 class="sr-only">我的错题集</h1>${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="md-command"><label class="md-metric"><select aria-label="Topic 数量口径" data-count-mode><option value="pending">待订正题数</option><option value="total">累计错题数</option></select></label><button type="button" class="secondary" data-books>我的错题册</button><button type="button" class="primary" data-make-book disabled>导出 PDF</button></div></div><div class="md-strip"><button aria-label="向左查看 Topic" data-scroll-topics="-1">‹</button><nav class="md-topics" aria-label="按 Topic 选择"></nav><button aria-label="向右查看 Topic" data-scroll-topics="1">›</button></div><div class="md-context"><div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div><p id="topic-progress" role="status" tabindex="-1" hidden></p><div data-round-feedback></div><details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters"><button type="button" data-filter-close aria-label="关闭筛选">关闭</button><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div></details><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div></div><div class="md-panes"><div id="mistakes-list" aria-label="错题列表"></div><section class="md-reader" aria-label="订正工作区"><button type="button" class="md-list-toggle" aria-expanded="true">收起题栏</button><p class="md-idle">选择一道错题，查看原题与上次作答。</p></section></div></section>`;
   bindMistakeNavigation(main);
   $('#mistake-search').value=memory.get('query','');$('#mistake-state').value=memory.get('status','');
   const topicControl=$('#mistake-topic'),startTopic=$('#topic-start'),progress=$('#topic-progress');
   let pendingRows=[],finished=false,needsRefresh=false,lastSaved=null,reviewTimer;
-  $('.mistake-extra').open=Boolean($('#mistake-search').value||$('#mistake-state').value);
+  const filterMenu=$('.mistake-extra'),compactFilter=matchMedia('(max-width:700px)');
+  let releaseFilter=null;
+  function bindFilters(){
+    releaseFilter?.();filterMenu.open=false;
+    releaseFilter=compactFilter.matches?bindDisclosureMenus(main,'.mistake-extra'):null;
+  }
+  bindFilters();compactFilter.addEventListener('change',bindFilters);
+  $('[data-filter-close]').onclick=()=>{filterMenu.open=false;filterMenu.querySelector('summary').focus();};
   function setTopicChoices(){
     const scoped=matchingMistakes(data.mistakes,m=>subjectOf(m)===subject);
     const options=mistakeTopicOptions(scoped),counts=topicWorkCounts(scoped);
     topicControl.innerHTML='<option value="all">全部 Topic</option>'+options.map(([topic,title])=>
       `<option value="${topic||'unknown'}">${topic?h('Topic '+topic+(title?' · '+title:'')):'未标注 Topic'} · 待订正 ${counts.get(topic||'unknown').pending}</option>`).join('');
     const saved=memory.get('topic:'+subject,'all');
-    topicControl.value=Array.from(topicControl.options).some(o=>o.value===saved)?saved:'all';
+    // The catalog also contains chapters with zero mistakes. Keep a previously
+    // selected one while the separately loaded outline is being resolved.
+    if(/^\d+\.\d+$/.test(saved)&&![...topicControl.options].some(o=>o.value===saved))topicControl.add(new Option('Topic '+saved,saved));
+    topicControl.value=[...topicControl.options].some(o=>o.value===saved)?saved:'all';
   }
   const desk=mountMistakeDesk(ctx,{onRefresh:()=>{if(!closed&&!busy)void refreshRows();}});
   setTopicChoices();
@@ -210,6 +221,9 @@ export function createLearningUI(ctx){
     return i<0?'':'<p class="search-context">'+highlightText((i>16?'…':'')+text.slice(Math.max(0,i-16),i+term.length+25),term)+'</p>';
   }
   const list=$('#mistakes-list');let active=null,busy=false,closed=false;
+  const railButton=$('.md-list-toggle'),panes=$('.md-panes');
+  function setRail(open){panes.toggleAttribute('data-hide-rail',!open);railButton.setAttribute('aria-expanded',String(open));railButton.textContent=open?'收起题栏':'显示题栏';}
+  railButton.onclick=()=>setRail(railButton.getAttribute('aria-expanded')!=='true');
   function selectRow(route){
     if(!active)return;
     active.row.removeAttribute('aria-current');active.trigger.setAttribute('aria-expanded','false');
@@ -259,13 +273,15 @@ export function createLearningUI(ctx){
     }
     visibleRows=rows;
     memory.set({query:term,status,['topic:'+subject]:topic});
+    const choice=$('#mistake-state').selectedOptions[0];
+    filterMenu.querySelector('summary').textContent=['筛选',term,status && choice.textContent].filter(Boolean).join(' · ');
     $('#mistake-count').textContent=rows.length+' / '+scoped.length+' 道'+courseLabel(subject)+'失分题';
     $('#clear-mistake-filters').hidden=!term&&!status&&topic==='all';
     $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${excerpt(m,term)}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span></div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;desk.update(rows,scoped,subject);if(active)selectRow(active.route);};
   draw();
 
-  const courseControl=$('[data-mistake-course]');
-  const filters=[courseControl,topicControl,startTopic,$('#mistake-search'),$('#mistake-state'),$('#clear-mistake-filters')].filter(Boolean);
+  const courseControls=$$('[data-mistake-course]');
+  const filters=[...courseControls,topicControl,startTopic,$('#mistake-search'),$('#mistake-state'),$('#clear-mistake-filters')].filter(Boolean);
   async function refreshRows(){
     try{
       const fresh=await api('learning?mistakeBook=1');if(closed)return;
@@ -273,10 +289,10 @@ export function createLearningUI(ctx){
     }catch(e){if(!closed){needsRefresh=true;draw();toast(e.message);}}
   }
   async function closeInline({refresh=false,focus=true}={}){
-    const previous=active;if(!previous)return;await previous.local.correctionNavigation?.();if(active!==previous)return;active=null;
+    const previous=active;if(!previous)return;await previous.local.correctionNavigation?.();if(active!==previous)return;active=null;setRail(true);
     previous.local.routeVersion++;previous.local.viewCleanup?.();previous.host.remove();previous.row.removeAttribute('aria-current');previous.trigger.setAttribute('aria-expanded','false');
     if(refresh||previous.saved)await refreshRows();
-    if(focus){const target=previous.trigger.isConnected?previous.trigger:[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===previous.trigger.getAttribute('href'));target?.scrollIntoView({block:'nearest',behavior:'instant'});target?.focus({preventScroll:true});}
+    if(focus){list.scrollTop=previous.listTop;const target=previous.trigger.isConnected?previous.trigger:[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===previous.trigger.getAttribute('href'));target?.scrollIntoView({block:'nearest',behavior:'instant'});target?.focus({preventScroll:true});}
   }
   $('.mistake-views').onclick=async e=>{
     const target=e.target.closest('a[href]');
@@ -299,13 +315,15 @@ export function createLearningUI(ctx){
     }catch(e){toast(e.message);}
     finally{busy=false;}
   };
-  if(courseControl)courseControl.onchange=async()=>{
-    if(busy){courseControl.value=subject;return;}
+  for(const button of courseControls)button.onclick=async()=>{
+    if(busy||subject===button.dataset.mistakeCourse)return;
     busy=true;
     try{
       await closeInline({focus:false});
-      finished=false;subject=courseControl.value;rememberCourse(state.user.id,subject);setTopicChoices();draw();
-    }catch(e){courseControl.value=subject;toast(e.message);}finally{busy=false;}
+      finished=false;subject=button.dataset.mistakeCourse;rememberCourse(state.user.id,subject);
+      courseControls.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+      setTopicChoices();draw();
+    }catch(e){toast(e.message);}finally{busy=false;}
   };
   $('#mistake-search').oninput=filterDraw;$('#mistake-state').onchange=filterDraw;topicControl.onchange=filterDraw;
   $('#clear-mistake-filters').onclick=async()=>{if(busy)return;busy=true;try{await closeInline({focus:false});$('#mistake-search').value='';$('#mistake-state').value='';topicControl.value='all';finished=false;draw();$('#mistake-search').focus();}catch(e){toast(e.message);}finally{busy=false;}};
@@ -318,7 +336,7 @@ export function createLearningUI(ctx){
       await closeInline({focus:false});if(closed)return;
       if(!row.isConnected){trigger=[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===href);row=trigger?.closest('[data-inline-assignment]');if(!row)return;}
       const host=document.createElement('div');host.className='mistake-inline';host.setAttribute('aria-label','原题与订正');host.innerHTML='<p role="status">正在打开原题与订正…</p>';$('.md-reader').append(host);
-      const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};active={host,row,trigger,local};
+      const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};active={host,row,trigger,local,listTop:list.scrollTop};
       // Keep the filtered order for this session, including the particular occurrence opened.
       const start=trigger.hash.slice(1).split('/').map(decodeURIComponent);
       const topicQueue=round?pendingRows:topicControl.value==='all'?null:visibleRows.map(item=>
@@ -361,7 +379,7 @@ export function createLearningUI(ctx){
     if(trigger.target==='_blank'||!trigger.hash.startsWith('#mistakes/')||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();void openRow(trigger);
   });
-  state.viewCleanup=()=>{closed=true;desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
+  state.viewCleanup=()=>{closed=true;releaseFilter?.();compactFilter.removeEventListener('change',bindFilters);desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
   state.restoreView=()=>{main.scrollTo({top:memory.get('top',0),behavior:'instant'});const a=[...list.querySelectorAll('a')].find(a=>a.getAttribute('href')===memory.get('selected',''));a?.focus({preventScroll:true});};
  }
  return {gradebook,overview,mistakes};

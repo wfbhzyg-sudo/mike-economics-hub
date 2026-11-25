@@ -143,43 +143,57 @@ export function createSelfPracticeUI(ctx) {
     const openSettings=page.querySelector('[data-open-settings]');
     const quickSummary=openSettings.querySelector('[data-quick-summary]');
     const quickTimer=openSettings.querySelector('[data-quick-timer]');
+    let draft=null, applyButton;
     openSettings.onclick=()=>{
       const dialog=document.createElement('dialog');
       dialog.className='sp-dialog sp-settings-sheet';
       dialog.setAttribute('aria-labelledby','sp-setup-title');
-      const done=document.createElement('button');
-      done.type='button';done.className='primary';done.textContent='完成';
-      dialog.append(configuration,done);attachDialog(dialog);
+      draft={count:settings.count,timer:settings.timer,minutes:settings.minutes};
+      const actions=document.createElement('footer');
+      actions.innerHTML='<button type="button" class="secondary" data-cancel>取消</button><button type="button" class="primary" data-apply>应用</button>';
+      applyButton=actions.querySelector('[data-apply]');
+      dialog.append(configuration,actions);attachDialog(dialog);
       const compact=matchMedia('(max-width:900px)');
       const resize=()=>{if(!compact.matches)dialog.close();};
       compact.addEventListener('change',resize);
       dialog.addEventListener('close',()=>{
         compact.removeEventListener('change',resize);
-        setup.prepend(configuration);dialog.remove();
-        if(compact.matches&&openSettings.isConnected)openSettings.focus({preventScroll:true});
+        if(dialog.returnValue==='apply')Object.assign(settings,draft);
+        draft=null;applyButton=null;
+        setup.prepend(configuration);dialog.remove();minutesInput.value=settings.minutes;
+        if(page.isConnected){paint();if(compact.matches)openSettings.focus({preventScroll:true});}
       },{once:true});
-      done.onclick=()=>dialog.close();
-      dialog.showModal();
+      actions.querySelector('[data-cancel]').onclick=()=>dialog.close();
+      applyButton.onclick=()=>dialog.close('apply');
+      dialog.onclick=e=>{
+        if(e.target!==dialog)return;
+        const r=dialog.getBoundingClientRect();
+        if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();
+      };
+      paint();dialog.showModal();
+      (countHost.querySelector('[aria-pressed=true]:not(:disabled)')||applyButton).focus();
     };
     const paint = () => {
-      saveCreate(settings);
+      if(!draft)saveCreate(settings);
+      const values=draft||settings;
       const availableCount = availableQuestionCount(catalog, settings.topics);
       page.querySelector('[data-available]').textContent = `已选 ${settings.topics.length} 章 · 可练 ${availableCount} 题`;
       for (const button of countHost.querySelectorAll('[data-count]')) {
         const value = Number(button.dataset.count);
-        button.setAttribute('aria-pressed', String(settings.count === value));
+        button.setAttribute('aria-pressed', String(values.count === value));
         button.disabled = availableCount > 0 && value > availableCount;
         button.title = button.disabled ? `当前仅 ${availableCount} 题` : '';
       }
       const warn = configuration.querySelector('[data-count-warn]');
-      warn.textContent = availableCount === 0 ? '请至少选择一个章节' : settings.count > availableCount ? `当前仅 ${availableCount} 题，无法组成 ${settings.count} 道` : '';
-      for (const button of timerHost.querySelectorAll('[data-timer]')) button.setAttribute('aria-pressed', String(settings.timer === button.dataset.timer));
-      minutesRow.hidden = settings.timer !== 'countdown';
-      summary.innerHTML = summaryMarkup(settings, availableCount, h);
-      const validMinutes=Number.isInteger(settings.minutes)&&settings.minutes>=1&&settings.minutes<=240;
-      minutesInput.setAttribute('aria-invalid', String(settings.timer==='countdown'&&!validMinutes));
-      configuration.querySelector('[data-minutes-warn]').textContent=settings.timer==='countdown'&&!validMinutes?'倒计时需为 1–240 之间的整数分钟':'';
-      quickSummary.textContent=`已选 ${settings.topics.length} 章 · ${settings.count} 题`;
+      warn.textContent = availableCount === 0 ? '' : values.count > availableCount ? `当前仅 ${availableCount} 题，无法组成 ${values.count} 道` : '';
+      for (const button of timerHost.querySelectorAll('[data-timer]')) button.setAttribute('aria-pressed', String(values.timer === button.dataset.timer));
+      minutesRow.hidden = values.timer !== 'countdown';
+      summary.innerHTML = summaryMarkup({...settings,...values}, availableCount, h);
+      const validMinutes=Number.isInteger(values.minutes)&&values.minutes>=1&&values.minutes<=240;
+      minutesInput.setAttribute('aria-invalid', String(values.timer==='countdown'&&!validMinutes));
+      configuration.querySelector('[data-minutes-warn]').textContent=values.timer==='countdown'&&!validMinutes?'倒计时需为 1–240 之间的整数分钟':'';
+      if(applyButton)applyButton.disabled=values.timer==='countdown'&&!validMinutes;
+      quickSummary.textContent=(settings.topics.length?`已选 ${settings.topics.length} 章`:'先选择章节')+` · ${settings.count} 题`;
       quickTimer.textContent=availableCount<settings.count&&settings.topics.length?`仅可练 ${availableCount} 题 · 调整设置`:settings.timer==='countdown'?`倒计时 ${settings.minutes} 分钟 · 调整`:'正计时 · 调整';
       start.disabled = creating || !settings.topics.length || settings.count > availableCount || (settings.timer==='countdown'&&!validMinutes);
       if (!units.length) start.disabled = true;
@@ -221,18 +235,18 @@ export function createSelfPracticeUI(ctx) {
     countHost.addEventListener('click', (event) => {
       const button = event.target.closest('[data-count]');
       if (!button || button.disabled) return;
-      settings.count = Number(button.dataset.count);
+      (draft||settings).count = Number(button.dataset.count);
       paint();
     });
     timerHost.addEventListener('click', (event) => {
       const button = event.target.closest('[data-timer]');
       if (!button) return;
-      settings.timer = button.dataset.timer;
+      (draft||settings).timer = button.dataset.timer;
       paint();
     });
     minutesInput.addEventListener('input', () => {
       const value = Number(minutesInput.value);
-      settings.minutes = value;
+      (draft||settings).minutes = value;
       configuration.querySelector('[data-minutes-warn]').textContent = value >= 1 && value <= 240 ? '' : '倒计时需在 1–240 分钟之间';
       paint();
     });
@@ -280,8 +294,11 @@ export function createSelfPracticeUI(ctx) {
 
   function unitMarkup(unit, settings) {
     const checked = unit.topics.filter((topic) => settings.topics.includes(topic.id)).length;
+    const courseTitle=subjectInfo(settings.course)?.english;
+    const unitHeading=unit.title.match(/\bUnit\s+\d+\b.*$/i)?.[0];
+    const title=unitHeading || (courseTitle && unit.title.startsWith(courseTitle+' ')?unit.title.slice(courseTitle.length+1):unit.title);
     return `<details class="sp-unit" data-unit="${h(unit.unitId)}" ${checked || unit.unitId.includes('-2') ? 'open' : ''}>
-      <summary class="sp-unit-summary"><label class="sp-unit-select"><input type="checkbox" data-unit-all ${checked === unit.topics.length && checked ? 'checked' : ''} aria-label="选择 ${h(unit.title)} 全部可练习章节"><span class="sp-unit-select-text" data-unit-selection>全选</span></label><span class="sp-unit-name">${h(unit.title)}</span><span class="sp-unit-total">${unit.questionCount} 题</span></summary>
+      <summary class="sp-unit-summary"><label class="sp-unit-select"><input type="checkbox" data-unit-all ${checked === unit.topics.length && checked ? 'checked' : ''} aria-label="选择 ${h(unit.title)} 全部可练习章节"><span class="sp-unit-select-text" data-unit-selection>全选</span></label><span class="sp-unit-name">${h(title)}</span><span class="sp-unit-total">${unit.questionCount} 题</span></summary>
       <div class="sp-topics">${unit.topics.map((topic) => `<label class="sp-topic ${topic.count ? '' : 'is-empty'}">
         <input type="checkbox" data-topic="${h(topic.id)}" ${settings.topics.includes(topic.id) ? 'checked' : ''} ${topic.count ? '' : 'disabled'}>
         <span class="sp-topic-name"><strong>${h(topic.id)} ${h(topic.name)}</strong><small>${h(topic.title || '')}</small></span>

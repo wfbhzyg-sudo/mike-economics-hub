@@ -22,3 +22,45 @@
 .subject-tag[data-subject-tone=amber]{background:var(--work-tag-amber)}
 .subject-tag[data-subject-tone=slate]{background:var(--work-tag-slate)}
 @media (pointer:coarse) { [data-subject-switch] > button {min-block-size:var(--ui-hit-size,44px)} }
+
+/* Single-choice filters close over the list; moving the trigger must never reflow its neighbours. */
+.task-more-filters[data-selected] > summary {color:var(--ink,#142d42);font-weight:700}
+.task-more-filters > div:popover-open,.teacher-filter-menu .filter-panel:popover-open,.mistake-extra .mistake-nav-filters:popover-open {
+  box-sizing:border-box;padding:10px;color:#183247;background:#fff;border:1px solid #c9d4da;border-radius:9px;box-shadow:0 8px 22px #132d431f;
+}
+.teacher-filters .teacher-filter-menu {flex:none;align-self:center}
+.teacher-filter-menu > summary {display:flex;align-items:center;cursor:pointer;min-height:44px;padding-inline:10px;list-style:none;white-space:nowrap;color:#173349}
+.teacher-filter-menu > summary::after {content:'⌄';margin-left:5px}
+.teacher-filter-menu .filter-panel:popover-open {display:grid;gap:8px}
+.teacher-filter-menu .filter-panel label:not([hidden]) {display:grid;gap:4px;font-size:13px}
+.teacher-filters select,.teacher-filter-menu select {min-height:44px;max-width:100%;box-sizing:border-box;padding:4px 8px;color:#183247;background:white;border:1px solid #bdcbd2;border-radius:6px;font:inherit}
+.student-find summary {overflow-wrap:anywhere}
+.gj-journey .gj-detail .actions > .gj-download {display:inline-grid;place-items:center;flex:0 0 44px;min-height:44px;box-sizing:border-box;padding:0;color:#26485c;border:1px solid #c6d4d9;border-radius:7px;background:white}
+@media(min-width:761px){
+  [data-student-assignments] .assignment-grid {align-items:stretch}
+  [data-student-assignments] .assignment-card footer {margin-top:auto}
+}
+@media(max-width:760px){
+  #main > .paper:is([data-student-assignments],[data-student-results],.sp-create) {padding-top:0!important;padding-inline:0!important;border:0;background:transparent;box-shadow:none}
+  #main > .paper:is([data-student-assignments],[data-student-results],.sp-create) > :is(.paper-head,.sp-create-head) {margin-top:0;align-items:start;padding-top:0}
+  #main > .paper:is([data-student-assignments],[data-student-results],.sp-create) h1:first-child {font-size:21px;line-height:1.35;margin-top:0}
+  .teacher-filters .assignment-search-controls {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;width:100%}
+  .teacher-filters .assignment-search-controls > label:first-child {grid-column:1}
+  .teacher-filters .assignment-search-controls > .search-field {grid-column:1/-1;grid-row:2}
+  .teacher-filters .assignment-search-controls > .teacher-filter-menu {grid-column:2;grid-row:1}
+  .teacher-filters #assignment-class {width:100%;min-height:44px}
+}
+
+@media(min-width:761px){
+  #main > .paper:is(.gj-journey[data-student-results],.sp-create) {padding-top:0!important;padding-inline:0!important}
+}
+.teacher-filters #assignment-class,.teacher-filter-menu .filter-panel select {
+  appearance:none;height:44px;padding-inline:10px 27px;
+  background-image:linear-gradient(45deg,transparent 50%,#506573 50%),linear-gradient(135deg,#506573 50%,transparent 50%);
+  background-size:5px 5px;background-repeat:no-repeat;background-position:calc(100% - 15px) 51%,calc(100% - 10px) 51%;
+}
+@media(max-width:760px){
+  .homework-surface .teacher-filters .assignment-search-controls {display:grid;grid-template-columns:minmax(0,1fr) max-content}
+  .homework-surface .teacher-filters .assignment-search-controls > label {max-width:none;min-width:0}
+  .homework-surface .teacher-filters #assignment-class {max-width:100%}
+}

@@ -24,7 +24,10 @@ test('registered subjects define filters, class membership, and assessment label
  assert.equal(assignmentCourse({classIds:['a']},[{id:'a',name:'一班',course:extra.id}]),extra.id);
  assert.deepEqual(coursesFor([],[{id:'a',name:'一班',course:extra.id}]),[extra.id]);
  assert.equal(assignmentCourse({course:'unregistered'}),'unknown');
- assert.match(courseTabs([extra.id],extra.id),/aria-pressed="true">综合科学</);
+ const singleCourse=courseTabs([extra.id],extra.id);
+ assert.match(singleCourse,/>综合科学<\/span>/);
+ assert.doesNotMatch(singleCourse,/<button/);
+ assert.match(courseTabs(['micro',extra.id],extra.id),/aria-pressed="true">综合科学</);
  assert.match(scoreBadge(85,extra.id),/第 5 档/);
  assert.match(scoreBadge(85,'micro'),/AP 5/);
 });

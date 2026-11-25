@@ -259,7 +259,7 @@ export async function renderBookmarks({main,api,state,link,head,toast}) {
     <div class="study-filters"><label class="field"><span>查找书签</span><input type="search" placeholder="作业或知识点"></label>
     <button type="button" class="text-button" data-blocked>屏蔽管理</button></div><div data-book-list></div></section>`;
   bindMistakeNavigation(main);
-  const filter=main.querySelector('input'), subject=main.querySelector('[data-mistake-course]'), list=main.querySelector('[data-book-list]');
+  const filter=main.querySelector('input'), list=main.querySelector('[data-book-list]');
   let selected=active;
   function draw(){
     const term=filter.value.trim().toLowerCase();
@@ -300,7 +300,10 @@ export async function renderBookmarks({main,api,state,link,head,toast}) {
       }
     }catch(e){feed.textContent=e.message;}
   };
-  filter.oninput=draw;if(subject)subject.onchange=()=>{selected=subject.value;if(selected!=='all')rememberCourse(state.user.id,selected);draw();};draw();
+  filter.oninput=draw;for(const button of main.querySelectorAll('[data-mistake-course]'))button.onclick=()=>{
+    selected=button.dataset.mistakeCourse;if(selected!=='all')rememberCourse(state.user.id,selected);
+    main.querySelectorAll('[data-mistake-course]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));draw();
+  };draw();
 }
 
 export async function renderMockStatistics({main,api,state}){

@@ -43,9 +43,11 @@ export function bindDisclosureMenus(root, selector) {
       place(entry);
     }, {signal:events.signal});
   }
-  document.addEventListener('pointerdown', e => {if (active && !active.details.contains(e.target)) close(active);}, {capture:true,signal:events.signal});
-  root.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && active) {e.preventDefault(); e.stopPropagation(); close(active, true);}
+  const opened=()=>active?.details.open?active:entries.find(entry=>entry.details.open);
+  document.addEventListener('pointerdown', e => {const entry=opened();if (entry && !entry.details.contains(e.target)) close(entry);}, {capture:true,signal:events.signal});
+  document.addEventListener('keydown', e => {
+    const entry=opened();
+    if (e.key === 'Escape' && entry) {e.preventDefault(); e.stopPropagation(); close(entry, true);}
   }, {capture:true,signal:events.signal});
   document.addEventListener('scroll', e => {if (active && !active.panel.contains(e.target)) place(active);}, {capture:true,passive:true,signal:events.signal});
   window.addEventListener('resize', () => {if(active) place(active);}, {signal:events.signal});

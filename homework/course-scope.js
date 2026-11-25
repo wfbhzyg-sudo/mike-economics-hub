@@ -31,5 +31,6 @@ export function subjectSwitcher(ids,selected,{className='course-scope',attribute
  return `<div class="${className}" data-subject-switch role="${tabs?'tablist':'group'}" aria-label="${label}">${choices.map(id=>`<button type="button" data-${attribute}="${id}" ${tabs?'role="tab" aria-selected':'aria-pressed'}="${id===selected}">${english&&isSubject(id)?subjectInfo(id).english:courseLabel(id)}</button>`).join('')}</div>`;
 }
 export function courseTabs(courses,selected,{all=false}={}) {
+ if(!all&&courses.length===1)return `<div class="course-scope"><span class="mistake-course-name">${courseLabel(courses[0])}</span></div>`;
  return subjectSwitcher(all?['all',...courses]:courses,selected);
 }

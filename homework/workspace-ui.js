@@ -267,13 +267,26 @@ export function createWorkspaceUI(ctx) {
     const sortLabel = t ? '发布时间' : '布置时间';
     const sortControl = `<select id="assignment-publish-order" aria-label="${t?'按'+sortLabel+'排序':'作业排序'}">
       ${t?'':'<option value="priority">学习优先</option>'}<option value="desc">${sortLabel} · 从新到旧</option><option value="asc">${sortLabel} · 从旧到新</option></select>`;
-    main.innerHTML = `<section class="paper workspace-home"${t?"":' data-student-assignments'}>${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>`}<div class="assignment-toolbar">${t?'<div class="assignment-status-sort">':''}<div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters" ${['processing','closed'].includes(state.assignmentFilter)?'open':''}><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div>${t?sortControl+'</div>':''}${t?'':`<details class="student-find" ${state.assignmentSearch || !matchMedia('(max-width:680px)').matches?'open':''}><summary>查找与排序</summary>`}<div class="assignment-search-controls">${t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:""}${t && courses.length > 1 ? `<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h((isSubject(c)||["mixed","unknown"].includes(c))?courseLabel(c):c)}</option>`).join("")}</select></label>` : ""}<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label>${!t?`<label class="assignment-sort-field">${sortControl}</label>`:""}</div>${t?'':'</details>'}</div><p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div>${t?'':'<div data-course-insights></div>'}</section>`;
+    const classField=t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:'';
+    const courseField=t && courses.length>1?`<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h((isSubject(c)||["mixed","unknown"].includes(c))?courseLabel(c):c)}</option>`).join("")}</select></label>`:'';
+    const searchField=`<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label>`;
+    const filterTabs=`<div class="filter-tabs" role="group" aria-label="作业状态">${filters.filter(([v])=>t||['all','todo','done'].includes(v)).map(([v, t]) => `<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter === v}">${t}<span data-count="${v}"></span></button>`).join("")}${!t?`<details class="task-more-filters"><summary>更多状态</summary><div>${filters.filter(([v])=>['processing','closed'].includes(v)).map(([v,label])=>`<button type="button" data-filter="${v}" aria-pressed="${state.assignmentFilter===v}">${label}<span data-count="${v}"></span></button>`).join('')}</div></details>`:''}</div>`;
+    const toolbar=t?`<div class="assignment-toolbar teacher-filters">${filterTabs}
+      <div class="assignment-search-controls">${classField}${searchField}
+        <details class="teacher-filter-menu"><summary>筛选与排序</summary><div class="filter-panel">${courseField}<label><span>${sortLabel}</span>${sortControl}</label></div></details>
+      </div></div>`:`<div class="assignment-toolbar">${filterTabs}
+      <details class="student-find" ${state.assignmentSearch || !matchMedia('(max-width:680px)').matches?'open':''}><summary>查找与排序</summary>
+      <div class="assignment-search-controls">${searchField}<label class="assignment-sort-field">${sortControl}</label><button type="button" class="text-button" data-clear-search hidden>清除搜索</button></div></details></div>`;
+    main.innerHTML = `<section class="paper workspace-home"${t?"":' data-student-assignments'}>${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>`}${toolbar}<p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div>${t?'':'<div data-course-insights></div>'}</section>`;
     const sortPicker = $('#assignment-publish-order');
     if (sortPicker) {
       sortPicker.value = publishOrder;
       sortPicker.onchange = () => { publishOrder = sortPicker.value; draw(); };
     }
-    const releaseTools=t?bindDisclosureMenus(main,'.work-tools'):null;
+    const releaseTools=bindDisclosureMenus(main,t?'.work-tools,.teacher-filter-menu':'.task-more-filters');
+    const more=$('.task-more-filters');
+    const clearSearch=$('[data-clear-search]');
+    if(clearSearch)clearSearch.onclick=()=>{$('#assignment-search').value='';draw();$('#assignment-search').focus();};
     function draw() {
       const fixed=singleClassCourse(state.classes.find(c=>c.id===state.assignmentClass));
       const picker=$("#assignment-course");
@@ -284,6 +297,13 @@ export function createWorkspaceUI(ctx) {
       if(!t){const scoped=state.assignments.filter(a=>subject==='all'||assignmentCourse(a,state.classes)===subject);$('[data-course-summary]').innerHTML=studentSummaryMarkup(scoped);const insights=(state.learning?.insights||[]).filter(r=>subject==='all'||namedCourse(state.classes.find(c=>classKey(c.id)===classKey(r.scope?.classId))?.name)===subject);$('[data-course-insights]').innerHTML=insightsMarkup({...state,learning:{...state.learning,insights}},h);}
 
       state.assignmentSearch = $("#assignment-search").value;
+      if(more){
+        const extra=filters.find(([key])=>key===state.assignmentFilter && ['processing','closed'].includes(key));
+        more.querySelector('summary').textContent=extra?extra[1]:'更多状态';
+        more.toggleAttribute('data-selected',Boolean(extra));
+        $('.student-find summary').textContent=(state.assignmentSearch?'查找 · '+state.assignmentSearch+' / ':'排序 · ')+({desc:'最新布置',asc:'最早布置',priority:'学习优先'}[publishOrder]);
+        clearSearch.hidden=!state.assignmentSearch;
+      }
       const term = state.assignmentSearch.trim().toLocaleLowerCase(),
         base = state.assignments.filter(
           (a) =>
@@ -423,6 +443,7 @@ export function createWorkspaceUI(ctx) {
     $$("[data-filter]").forEach(
       (b) =>
         (b.onclick = () => {
+          if(more?.open){more.open=false;if(more.contains(b))more.querySelector('summary').focus({preventScroll:true});}
           state.assignmentFilter = b.dataset.filter;
           $$("[data-filter]").forEach((x) =>
             x.setAttribute("aria-pressed", x === b),
