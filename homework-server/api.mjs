@@ -264,6 +264,14 @@ export async function createHomework({externalAuth} = {}) {
     ['question','library'].includes(file.purpose) && questions?.some(q=>q.questionImages?.includes(file.id));
   const authorizeFile = async (file,user,availableClasses) => {
     if (file.owner === user.id) return true;
+    if(file.purpose==='correction-source')return false;
+    if(file.purpose==='submission' && file.id.startsWith('evidence-')){
+      if(user.role!=='teacher')return false;
+      const r=await db.query(`SELECT 1 FROM ${db.table} n JOIN ${db.table} a ON a.id=n.data->>'assignmentId'
+        WHERE n.kind='mistake-note' AND n.data->>'studentId'=$1 AND a.kind='assignment' AND a.data->>'teacherId'=$2
+        AND EXISTS(SELECT 1 FROM jsonb_array_elements(n.data->'corrections') c WHERE c->'files' ? $3) LIMIT 1`,[file.owner,user.id,file.id]);
+      return r.rowCount>0;
+    }
     // PDF metadata, page bytes and reading position all use this path when opening a paper.
     if(user.role==='student' && file.purpose==='question' && file.mime==='application/pdf'){
       const allowed=await db.query(`SELECT 1 FROM ${db.table} WHERE kind='assignment'
@@ -1028,6 +1036,10 @@ export async function createHomework({externalAuth} = {}) {
         }
         return attempt?.type==='assignment'?mistakeRows(await db.find('submission',{assignmentId,studentId:user.id},c),[attempt],notes):[];
       }
+      if(route[0]==='correction-books'){
+        const {correctionBooks}=await import('./correction-books.mjs');
+        return await correctionBooks({user,route,method,db,files,body,req,res,json,correctionRows,correctionReview,sendQuestionPaper,rate,decrypt});
+      }
       if(route[0]==='mistakes'&&route[1]&&route[2]&&route[3]==='verification'&&method==='GET'){
         assert(user.role==='student','请使用学生账号',403);
         const note=await db.get('mistake:'+hash(user.id+':'+route[1]+':'+route[2]));
@@ -1102,10 +1114,10 @@ export async function createHomework({externalAuth} = {}) {
           rate(req, "upload", 100, user.id);
           const purpose = url.searchParams.get("purpose");
           assert(
-            ["answer", "question", "submission", "board"].includes(purpose),
+            ["answer", "question", "submission", "board", "correction-source"].includes(purpose),
             "附件用途不正确",
           );
-          if (purpose !== "submission" && purpose !== "board") teacher();
+          if (!["submission","board","correction-source"].includes(purpose)) teacher();
           const f = await files.upload(await readBody(req, MAX_FILE), {
             owner: user.id,
             purpose,

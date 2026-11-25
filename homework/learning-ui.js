@@ -1,3 +1,4 @@
+import {mountMistakeDesk} from './mistake-desk.js';
 import {unitCourse} from './subject-catalog.js';
 import {verificationMarkup} from './learning-evidence.js';
 import {renderBookmarks} from './study-workflow.js';
@@ -19,7 +20,7 @@ export function createLearningUI(ctx){
  const $=(s,r=main)=>r.querySelector(s), $$=(s,r=main)=>[...r.querySelectorAll(s)];
  const pct=g=>g?.maxPoints?Math.round(g.total/g.maxPoints*1000)/10:null;
  const routeLink=(route,text,cls='text-button')=>link(route,text,cls);
- function focusCorrection(host){host.scrollIntoView({block:'start',behavior:'instant'});const heading=host.querySelector('.correction-workspace h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}
+ function focusCorrection(host){if(host.closest('.md-reader'))host.parentElement.scrollTop=0;else host.scrollIntoView({block:'start',behavior:'instant'});const heading=host.querySelector('.correction-workspace h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}
  async function load(path='learning'){const v=state.routeVersion;const data=await api(path);if(v!==state.routeVersion)return null;return data;}
  async function gradebook(studentId){
   const teacher=state.user.role==='teacher';const data=await load(teacher?'learning':'learning?performance=1');if(!data)return;
@@ -189,7 +190,7 @@ export function createLearningUI(ctx){
   const occurrences=data.mistakes.flatMap(m=>[m,...(m.occurrences||[])]);
   const subjects=[...new Set([...coursesFor(data.assignments,data.classes||[]),...occurrences.map(subjectOf)])];
   let subject=selectedCourse(state.user.id,subjects),visibleRows=[];
-  main.innerHTML=`<section class="paper">${head('','我的错题集','',link('grades','成绩档案','text-button'))}${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div><p id="topic-progress" role="status" tabindex="-1" hidden></p><div data-round-feedback></div><details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div></details><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div><div id="mistakes-list"></div></section>`;
+  main.innerHTML=`<section class="paper mistake-desk">${head('','我的错题集','',link('grades','成绩档案','text-button'))}${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="md-command"><label class="md-metric"><select aria-label="Topic 数量口径" data-count-mode><option value="pending">待订正题数</option><option value="total">累计错题数</option></select></label><button type="button" class="secondary" data-books>我的错题册</button><button type="button" class="primary" data-make-book disabled>导出 PDF</button></div><div class="md-strip"><button aria-label="向左查看 Topic" data-scroll-topics="-1">‹</button><nav class="md-topics" aria-label="按 Topic 选择"></nav><button aria-label="向右查看 Topic" data-scroll-topics="1">›</button></div><div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div><p id="topic-progress" role="status" tabindex="-1" hidden></p><div data-round-feedback></div><details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters"><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div></details><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div><div class="md-panes"><div id="mistakes-list" aria-label="错题列表"></div><section class="md-reader" aria-label="订正工作区"><p class="md-idle">选择一道错题，查看原题与上次作答。</p></section></div></section>`;
   bindMistakeNavigation(main);
   $('#mistake-search').value=memory.get('query','');$('#mistake-state').value=memory.get('status','');
   const topicControl=$('#mistake-topic'),startTopic=$('#topic-start'),progress=$('#topic-progress');
@@ -203,6 +204,7 @@ export function createLearningUI(ctx){
     const saved=memory.get('topic:'+subject,'all');
     topicControl.value=Array.from(topicControl.options).some(o=>o.value===saved)?saved:'all';
   }
+  const desk=mountMistakeDesk(ctx,{onRefresh:()=>{if(!closed&&!busy)void refreshRows();}});
   setTopicChoices();
   const draw=()=>{
     const term=$('#mistake-search').value.trim(),status=$('#mistake-state').value,topic=topicControl.value;
@@ -246,7 +248,7 @@ export function createLearningUI(ctx){
     memory.set({query:term,status,['topic:'+subject]:topic});
     $('#mistake-count').textContent=rows.length+' / '+scoped.length+' 道'+courseLabel(subject)+'失分题';
     $('#clear-mistake-filters').hidden=!term&&!status&&topic==='all';
-    $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)} · ${courseLabel(subjectOf(m))}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${term?`<p class="search-context">${highlightText([m.knowledge,m.prompt].filter(Boolean).join(" · "),term)}</p>`:""}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span>${link('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),m.status==='verified'?'查看订正':m.draftUpdatedAt?'继续订正':'原题与订正','primary')}</div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;};
+    $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)} · ${courseLabel(subjectOf(m))}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${term?`<p class="search-context">${highlightText([m.knowledge,m.prompt].filter(Boolean).join(" · "),term)}</p>`:""}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span>${link('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),m.status==='verified'?'查看订正':m.draftUpdatedAt?'继续订正':'原题与订正','primary')}</div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;desk.update(rows,scoped,subject);};
   draw();
   const list=$('#mistakes-list');let active=null,busy=false,closed=false;
   const courseControl=$('[data-mistake-course]');
@@ -275,7 +277,7 @@ export function createLearningUI(ctx){
     catch(error){toast(error.message);}
     finally{busy=false;}
   };
-  const filterDraw=async()=>{if(busy)return;busy=true;const chosen=topicControl.value;try{finished=false;await closeInline({focus:false});topicControl.value=chosen;draw();}catch(e){toast(e.message);}finally{busy=false;}};
+  const filterDraw=async()=>{if(busy)return;busy=true;const chosen=topicControl.value;try{finished=false;topicControl.value=chosen;draw();}catch(e){toast(e.message);}finally{busy=false;}};
   if(courseControl)courseControl.onchange=async()=>{
     if(busy){courseControl.value=subject;return;}
     busy=true;
@@ -294,7 +296,7 @@ export function createLearningUI(ctx){
       const href=trigger.getAttribute('href');
       await closeInline({focus:false});if(closed)return;
       if(!row.isConnected){trigger=[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===href);row=trigger?.closest('[data-inline-assignment]');if(!row)return;}
-      const host=document.createElement('div');host.className='mistake-inline';host.setAttribute('aria-label','原题与订正');host.innerHTML='<p role="status">正在打开原题与订正…</p>';row.append(host);row.classList.add('is-expanded');trigger.setAttribute('aria-expanded','true');
+      const host=document.createElement('div');host.className='mistake-inline';host.setAttribute('aria-label','原题与订正');host.innerHTML='<p role="status">正在打开原题与订正…</p>';$('.md-reader').append(host);row.classList.add('is-expanded');trigger.setAttribute('aria-expanded','true');
       const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};active={host,row,trigger,local};
       // Keep the filtered order for this session, including the particular occurrence opened.
       const start=trigger.hash.slice(1).split('/').map(decodeURIComponent);
@@ -306,7 +308,7 @@ export function createLearningUI(ctx){
         if(topicQueue && active.trigger.hash.slice(1)!==route){
           const anchor=[...list.querySelectorAll('.mistake-row > .actions a[href], .mistake-occurrences a[href]')].find(el=>el.hash.slice(1)===route);
           if(anchor){active.row.classList.remove('is-expanded');active.trigger.setAttribute('aria-expanded','false');
-            active.row=anchor.closest('.mistake-row');active.trigger=anchor;active.row.append(host);active.row.classList.add('is-expanded');anchor.setAttribute('aria-expanded','true');}
+            active.row=anchor.closest('.mistake-row');active.trigger=anchor;active.row.classList.add('is-expanded');anchor.setAttribute('aria-expanded','true');}
         }
         const last=round&&topicQueue.at(-1)?.assignmentId===a&&topicQueue.at(-1)?.questionId===q;
         const child=createLearningUI({...ctx,main:host,state:local,topicQueue,topicLabel,finishTopic:last,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(closed||active?.host!==host||version!==local.routeVersion)return;
@@ -334,13 +336,15 @@ export function createLearningUI(ctx){
     finished=false;await openRow(trigger,true);
   };
   list.addEventListener('click',e=>{
-    const trigger=e.target.closest('a[href]');
-    if(!trigger||!trigger.closest('[data-inline-assignment]'))return;
+    const row=e.target.closest('[data-inline-assignment]');
+    if(!row||e.target.closest('input,button,details,summary'))return;
+    const trigger=e.target.closest('a[href]')||row.querySelector('.actions a[href]');
+    if(!trigger)return;
     memory.set({selected:trigger.getAttribute('href'),top:main.scrollTop});
     if(trigger.target==='_blank'||!trigger.hash.startsWith('#mistakes/')||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();void openRow(trigger);
   });
-  state.viewCleanup=()=>{closed=true;clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
+  state.viewCleanup=()=>{closed=true;desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
   state.restoreView=()=>{main.scrollTo({top:memory.get('top',0),behavior:'instant'});const a=[...list.querySelectorAll('a')].find(a=>a.getAttribute('href')===memory.get('selected',''));a?.focus({preventScroll:true});};
  }
  return {gradebook,overview,mistakes};

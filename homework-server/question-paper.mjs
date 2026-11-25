@@ -10,6 +10,7 @@ let compactFont, fullFont;
 function publicRows(questions) {
   return questions.map((q, index) => ({
     number: index + 1,
+    sourceLabel:q.sourceLabel, paperLocation:q.paperLocation,
     sourceNumber: String(q.number || q.id || '').match(/^\d{1,4}(?:[.(）)（-]?[a-z\d]{1,3}[)）]?)?$/i)?.[0] || '',
     prompt: String(q.prompt || ''),
     points: Number.isFinite(q.maxPoints) ? q.maxPoints : null,
@@ -55,7 +56,7 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
   compactFont ||= readFile(new URL('./fonts/PaperText.ttf', import.meta.url)).then(bytes => ({bytes, face:fontkit.create(bytes)}));
   const compact = await compactFont;
   const texts = [paper.title,paper.instructions,paper.readingScope,paper.submissionGuide,
-    ...rows.flatMap(q => [q.prompt,...q.options.map(o => o.text)])].filter(Boolean);
+    ...rows.flatMap(q => [q.sourceLabel,q.prompt,...q.options.map(o => o.text)])].filter(Boolean);
   const rare = texts.some(text => Array.from(text).some(ch => ch.codePointAt(0)>31 && !compact.face.hasGlyphForCodePoint(ch.codePointAt(0))));
   if (rare) fullFont ||= readFile(new URL('./fonts/NotoSansSC-Regular.ttf', import.meta.url));
   const font = await doc.embedFont(rare ? await fullFont : compact.bytes, {subset:false, features:{liga:false,clig:false}});
@@ -85,6 +86,7 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
     }
   }
   const block = (text,size,color) => { if(text){drawLines(wrapped(text,size,measure),size,color); y -= 5;} };
+  if (!paper.workbook) {
   start();
   page.drawText('MIKE  /  ECONOMICS', {x:M,y:y-8,size:9,font:small,color:muted});
   y -= 24;
@@ -92,6 +94,7 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
   if (rows.length) block('共 '+rows.length+' 题',10,muted);
   for (const value of [paper.instructions,paper.readingScope && '本次范围　'+paper.readingScope,paper.submissionGuide && '作答要求　'+paper.submissionGuide]) block(value,11);
   y -= 4;
+  }
 
   const imageCache = new Map();
   async function image(id) {
@@ -104,7 +107,9 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
     page.drawImage(p.img,{x:M+(center?(WIDTH-p.width)/2:0),y:y-p.height,width:p.width,height:p.height});
     y -= p.height + 8;
   }
+  const sheetImages=new Map();
   for (const q of rows) {
+    if(paper.workbook)start();
     const source = q.sourceNumber && q.sourceNumber !== String(q.number) ? ' · 原题 '+q.sourceNumber : '';
     const heading = '第 '+q.number+' 题'+source;
     const body = wrapped(q.prompt,11,measure);
@@ -113,16 +118,41 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
     for (const id of q.images) originals.push(await image(id));
     // A narrow crop of choices or a shared graph belongs at the same print
     // scale as its adjoining stem. Stretching each crop to full width breaks this.
-    const scale=Math.min(.75,...originals.map(img=>Math.min(WIDTH/img.width,(TOP-BOTTOM-55)/img.height)));
+    if(paper.workbook && q.paperLocation && !originals.length){
+      const {fileId,page:firstPage,lastPage=firstPage}=q.paperLocation;
+      let pdf;
+      try{
+        for(let n=firstPage;n<=lastPage;n++){
+          const key=fileId+'/'+n;
+          if(!sheetImages.has(key)){
+            const {openPDF,renderPage}=await import('./pdf-pages.mjs');
+            if(!pdf){
+              const attachment=await readAttachment(fileId);
+              if(attachment.mime!=='application/pdf'){sheetImages.set(key,await embedAttachment(attachment));originals.push(sheetImages.get(key));break;}
+              pdf=await openPDF(attachment.bytes);
+            }
+            const raster=await renderPage(pdf,n,{maxHeight:2200});
+            const {default:sharp}=await import('sharp');
+            sheetImages.set(key,await doc.embedJpg(await sharp(raster.bytes).jpeg({quality:88}).toBuffer()));
+          }
+          originals.push(sheetImages.get(key));
+        }
+      }finally{await pdf?.destroy();}
+    }
+    const scale=Math.min(.75,...originals.map(img=>Math.min(WIDTH/img.width,(TOP-BOTTOM-(paper.workbook?90:55))/img.height)));
     const images=originals.map(img=>({img,width:img.width*scale,height:img.height*scale}));
     const lines = q.prompt ? body : [];
     const writing = q.short && !extras.length ? 2 : 0;
     const height = 26 + (lines.length+options.length)*17.05 + images.reduce((sum,p)=>sum+p.height+8,0) + 30 + writing*20;
     const first = lines.length ? Math.min(2,lines.length)*17.05 : (images[0]?.height || 18);
-    need(height <= TOP-BOTTOM ? height : 26+first);
+    if(!paper.workbook)need(height <= TOP-BOTTOM ? height : 26+first);
     page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.7,color:rule});
     y -= 3;
     const header = continued => {
+      if(paper.workbook){
+        write(paper.workbook+' / Q'+String(q.number).padStart(2,'0')+' / STEM',M,y-10,10,ink);y-=19;
+        for(const line of wrapped(q.sourceLabel||'',9,measure)){write(line,M,y-9,9,muted);y-=13;}
+      }
       write(heading+(continued?'（续）':''),M,y-14,12,ink);
       if (!continued && q.points !== null) {
         const score = q.points+' 分';
@@ -150,6 +180,13 @@ export async function questionPaperPDF({paper, questions = [], readAttachment}) 
     if (!q.short && q.options.length) {
       if(y-18<BOTTOM){start();header(true);}
       block('作答　'+q.options.map(o => '○ '+o.label).join('     '),10,muted);
+    }
+    if(paper.workbook){
+      if(y<H*.42+56){start();header(true);}
+      const top=H*.42;
+      write(paper.workbook+' / Q'+String(q.number).padStart(2,'0')+' / RESPONSE',M,top+24,10,ink);
+      write('在框内写下新答案和理由，拍照时请保留上方题签。',M,top+9,9,muted);
+      page.drawRectangle({x:W*.065,y:H*.08,width:W*.87,height:H*.34,borderWidth:.7,borderColor:rule});
     }
     y -= 6;
   }

@@ -5,7 +5,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
-import { id, now } from "./store.mjs";
+import { id, now, hash } from "./store.mjs";
 import { assert, text } from "./validation.mjs";
 export const MAX_FILE = 20 * 1024 * 1024,
   MAX_TOTAL = 50 * 1024 * 1024;
@@ -31,7 +31,11 @@ export function createFiles(store) {
   });
   const Bucket = process.env.S3_BUCKET;
   return {
-    async upload(bytes, { owner, purpose, name }) {
+    async upload(bytes, { owner, purpose, name, evidenceKey }) {
+      if(evidenceKey){
+        const existing=await store.get(evidenceKey);
+        if(existing?.owner===owner&&existing.purpose===purpose)return existing;
+      }
       assert(
         bytes.length > 0 && bytes.length <= MAX_FILE,
         "单个文件最多 20 MB",
@@ -50,7 +54,7 @@ export function createFiles(store) {
           assert(false, "PDF 无法读取，请检查是否加密或损坏");
         }
         pages = pdf.getPageCount();
-        assert(pages > 0 && pages <= 20, "每份 PDF 最多 20 页");
+        assert(pages > 0 && pages <= (purpose==="correction-source"?160:20), purpose==="correction-source"?"订正 PDF 最多 160 页":"每份 PDF 最多 20 页");
         mime = "application/pdf"; originalMime=mime;
       } else {
         let meta;
@@ -80,7 +84,7 @@ export function createFiles(store) {
         mime = "image/jpeg";
       }
       const file = {
-        id: id(),
+        id: evidenceKey || id(),
         owner,
         purpose,
         name: text(name, 180) || "作业附件",
@@ -90,6 +94,7 @@ export function createFiles(store) {
         height,
         size: bytes.length,
         originalSize: originalBytes.length, originalMime,
+        ...(purpose==="correction-source"?{digest:hash(originalBytes)}:{}),
         createdAt: now(),
       };
       await s3.send(new PutObjectCommand({Bucket,Key:file.id+"/original",Body:originalBytes,ContentType:originalMime}));

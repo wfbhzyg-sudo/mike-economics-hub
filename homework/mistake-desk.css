@@ -1,0 +1,36 @@
+/* A stationary topic strip above two independently scrolling reading surfaces. */
+.mistake-desk{--md-ink:#17334b;--md-edge:#ced9de;min-width:0;max-width:100%;color:#1e313c}
+.mistake-desk .topic-picker label:has(#mistake-topic){display:none}
+.mistake-desk .topic-picker:has(#topic-start[hidden]),.mistake-desk .filter-result-line:has(#mistake-count:empty){display:none}
+.mistake-desk .md-command,.cb-dialog .cb-tools,.cb-dialog footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mistake-desk .md-command{justify-content:flex-end;margin:0 0 8px}
+.mistake-desk .md-metric{margin-right:auto}
+.mistake-desk .md-command :is(button,select),.cb-dialog :is(button,select,a,.cb-pick){font:inherit;font-size:.86rem;min-height:36px;width:auto;max-width:100%;border-radius:7px}
+.mistake-desk .md-strip{display:grid;grid-template-columns:26px minmax(0,1fr) 26px;align-items:center;gap:4px;border-block:1px solid var(--md-edge);padding:5px 0}
+.md-strip>[data-scroll-topics]{padding:0;background:transparent;border:0;font-size:24px;color:var(--md-ink);min-width:0}
+.md-topics{display:flex;align-items:flex-end;gap:12px;white-space:nowrap;overflow-x:auto;scrollbar-width:thin;padding:3px}
+.md-unit{flex:none}.md-unit>small{display:block;line-height:1.4;font-size:10px;color:#52626c}.md-unit>div{display:flex;gap:3px}
+.md-strip .md-topics button{display:grid;place-content:center;gap:1px;min-width:40px;height:44px;padding:2px 3px;text-align:center;background:#f0f2f2;color:#42555d;border:1px solid transparent;border-radius:5px;font-variant-numeric:tabular-nums}
+.md-topics button small{font-size:10px;line-height:1}.md-topics button b{font-size:15px;line-height:1.15}
+.md-strip button[data-tone="1"]{background:#fae5df;color:#622c28}.md-strip button[data-tone="2"]{background:#f0b9ab;color:#592c28}.md-strip button[data-tone="3"]{background:#b96256;color:white}.md-strip button[data-tone="4"]{background:#833c38;color:white}.md-strip button[aria-pressed="true"]{outline:2px solid var(--md-ink);outline-offset:1px}
+.mistake-desk .md-panes{display:grid;grid-template-columns:clamp(205px,24%,310px) minmax(0,1fr);height:clamp(360px,62dvh,840px);min-width:0;border:1px solid var(--md-edge);border-radius:10px;overflow:hidden}
+.md-panes #mistakes-list,.md-panes .md-reader{min-width:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.md-panes #mistakes-list{background:#f4f6f6;border-right:1px solid var(--md-edge)}
+.md-reader{background:white;container-type:inline-size}.md-reader .md-idle{margin:2rem;color:#52626c}.md-reader:has(.mistake-inline) .md-idle{display:none}
+.md-reader .mistake-inline,.md-reader .correction-workspace{margin:0;width:100%;min-width:0;border:0;box-shadow:none}.md-reader .correction-workspace{padding:clamp(12px,2vw,24px)}
+@container(max-width:730px){.md-reader .correction-layout{display:block}.md-reader .correction-editor{margin-top:12px}.md-reader .correction-heading-info{flex-wrap:wrap}}
+.mistake-desk .md-panes .mistake-row{display:grid;grid-template-columns:19px minmax(0,1fr);gap:4px 7px;margin:0;padding:10px;border:0;border-bottom:1px solid #dce3e6;border-radius:0;color:#1e3443;align-items:start;background:transparent}
+.md-panes .mistake-row.is-expanded{box-shadow:inset 3px 0 #17334b;background:#e5edf0}
+.md-panes .mistake-row [data-pick]{width:17px;height:17px;margin:4px 0;accent-color:#17334b}
+.md-panes .mistake-row :is(h2,p,details){margin:0}.md-panes .mistake-row h2,.md-panes .mistake-row h2 a{font-size:.92rem}.md-panes .mistake-row .meta{font-size:.76rem;line-height:1.45}
+.md-panes .mistake-row>.actions{grid-column:2;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px;align-items:center}.md-panes .mistake-row .actions :is(a,button){font-size:.72rem;min-height:28px;padding:3px 7px}.md-panes .mistake-feedback{display:none}
+.md-peek,.cb-dialog{background:#fff;color:#183347;border:1px solid #ccd6dc;box-shadow:0 14px 46px #102b4033;border-radius:12px}
+.md-peek{position:fixed;z-index:9999;width:min(350px,85vw);max-height:45dvh;overflow:auto;padding:14px;font-size:14px;overflow-wrap:anywhere}.md-peek img{max-width:100%;display:block}
+.cb-dialog{width:min(650px,94vw);max-height:86dvh;padding:0;overflow:auto}.cb-dialog::backdrop{background:#11283a66}
+.cb-dialog header{position:sticky;top:0;background:#17334b;color:white;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;z-index:1}.cb-dialog header h2{color:white;margin:0;font-size:1.12rem}.cb-dialog header button{background:transparent;color:white;border:0;font-size:24px}
+.cb-dialog .cb-body,.cb-dialog [data-message]:not(:empty){padding:14px 16px}.cb-dialog [data-message]{margin:0;color:#6d3e27}.cb-dialog [data-message]:empty{display:none}
+.cb-dialog .cb-line,.cb-dialog .cb-book{display:flex;gap:10px;align-items:center;padding:9px 2px;border:0;border-bottom:1px solid #dfe5e6;background:white;color:#213b4b}
+.cb-dialog .cb-line span{flex:1;min-width:0;overflow-wrap:anywhere}.cb-dialog .cb-book{justify-content:space-between;width:100%}.cb-dialog footer{justify-content:flex-end;margin-top:14px}
+.cb-dialog .cb-tools{margin-bottom:12px}.cb-dialog .cb-pick{display:inline-flex;align-items:center;position:relative;padding:7px 13px;overflow:hidden;cursor:pointer;background:#17334b;color:white}.cb-pick input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.cb-dialog .cb-map{flex-wrap:wrap}.cb-map select{max-width:min(240px,100%)}.cb-crop{position:relative;width:fit-content;max-width:100%;margin:auto;touch-action:none}.cb-crop img{max-width:100%;max-height:60dvh;display:block}.cb-crop i{position:absolute;border:2px solid #2b7194;background:#58b4d633;pointer-events:none;box-sizing:border-box}
+@media(max-width:700px){.mistake-desk{padding:10px}.mistake-desk .md-command{gap:5px}.mistake-desk .md-panes{grid-template-columns:1fr;grid-template-rows:minmax(95px,24%) minmax(0,1fr);height:69dvh}.md-panes #mistakes-list{border-right:0;border-bottom:1px solid #cdd9de}.mistake-desk .md-panes:not(:has(.mistake-inline)){grid-template-rows:1fr}.md-panes:not(:has(.mistake-inline)) .md-reader{display:none}.md-panes .mistake-row>.actions{flex-wrap:wrap}.mistake-desk .md-command :is(select,button){font-size:12px;min-height:38px}}

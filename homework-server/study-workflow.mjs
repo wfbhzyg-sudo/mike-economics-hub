@@ -7,7 +7,7 @@ import {hash, id, now} from './store.mjs';
 import {assert, boundedText} from './validation.mjs';
 import {chapterLink} from './review-links.mjs';
 import {paperOf,questionLocation} from './paper.mjs';
-import {publicAttempt, optionLabels} from './self-practice-model.mjs';
+import {publicAttempt, optionLabels, publicOptionText} from './self-practice-model.mjs';
 import {classKey, namedCourse, singleClassCourse} from '../homework/course-scope.js';
 
 const policies = ['attempt', 'open', 'review', 'closed'];
@@ -44,10 +44,10 @@ export function mockMistakes(attempts, notes, drafts) {
       return [{
         correctionFeedback:correctionFeedback({type:'choice',answer:q.correctOption || snapshot.get(q.id)?.answer},corrections.at(-1)),
         assignmentId:a.id, questionId:q.id, questionNumber:i+1, assignmentTitle:'自主模考 · '+displayCourse(a.course),
-        source:'mock', libraryQuestionId:q.id, bankVersion:snapshot.get(q.id)?.version,
-        course:a.course, topic:q.topic || snapshot.get(q.id)?.topic, libraryUnit:snapshot.get(q.id)?.unitId || null, type:'choice', prompt:q.prompt,
-        knowledge:q.knowledge || q.topic || '', questionImages:q.questionImages || [],
-        options:optionLabels(snapshot.get(q.id) || q).map(label => ({label,text:''})),
+        source:'mock', studentId:a.studentId, libraryQuestionId:q.id, bankVersion:snapshot.get(q.id)?.version,
+        course:a.course, topic:q.topic || snapshot.get(q.id)?.topic, libraryUnit:snapshot.get(q.id)?.unitId || null, type:'choice', prompt:q.prompt||snapshot.get(q.id)?.prompt||'',
+        knowledge:q.knowledge || q.topic || '', questionImages:q.questionImages?.length?q.questionImages:snapshot.get(q.id)?.questionImages||[],
+        options:Object.entries(publicOptionText(snapshot.get(q.id)||q)).map(([label,text])=>({label,text})),
         originalChoice:q.chosen || '', score:q.score, maxPoints:q.maxPoints, publishedAt:a.submittedAt,
         note:n?.note || '', status:n?.status || (saved ? (saved.choice===q.correctOption?'mastered':'review') : 'todo'),
         corrections,

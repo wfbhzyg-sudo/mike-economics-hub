@@ -1,5 +1,8 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-25-topic-correction-books',date:'2026-11-25',title:'按 Topic 整理错题，纸笔订正也可交回',
+  items:[{audience:'student',art:'book',title:'制作自己的错题册',text:'在「错题」按章节勾选最多 30 道题，下载 PDF。写好后从「我的错题册」交回照片或 PDF，核对每道题的题签。'},{audience:'teacher',art:'roster',title:'核对纸笔订正与补分',text:'在作业的订正验收中查看每道题的学生作答。开启补分的作业会同步更新成绩，首次得分单独保留。'}]
+},{
   id:'2026-11-20-profile-evidence',date:'2026-11-20',title:'学生档案中的学习表现',
   items:[{audience:'teacher',art:'book',title:'在学生档案看四项技能',text:'从班级名单或成绩与学情打开学生档案，按学科查看五档表现、技能分布和题目依据。'},{audience:'student',art:'book',title:'筛选成绩保留展开位置',text:'查看某一技能的依据后，筛选作业记录时可继续阅读，已展开的内容不会收起。'}]
 },{
