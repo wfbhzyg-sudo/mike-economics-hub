@@ -265,8 +265,8 @@ export function createWorkspaceUI(ctx) {
     if (!courses.includes(state.assignmentCourse)) state.assignmentCourse = "";
     if(!state.classes.some(c=>c.id===state.assignmentClass))state.assignmentClass='';
     const sortLabel = t ? '发布时间' : '布置时间';
-    const sortControl = `<select id="assignment-publish-order" aria-label="${t?'按'+sortLabel+'排序':'作业排序'}">
-      ${t?'':'<option value="priority">学习优先</option>'}<option value="desc">${sortLabel} · 从新到旧</option><option value="asc">${sortLabel} · 从旧到新</option></select>`;
+    const sortControl = `<select id="assignment-publish-order" aria-label="按发布时间排序"><option value="desc">发布时间 · 从新到旧</option><option value="asc">发布时间 · 从旧到新</option></select>`;
+    const studentOrders={priority:'学习优先',desc:'最新布置',asc:'最早布置'};
     const classField=t?`<label><span class="sr-only">筛选班级</span><select id="assignment-class" aria-label="筛选班级"><option value="">全部班级</option>${state.classes.map(c=>`<option value="${h(c.id)}" ${state.assignmentClass===c.id?"selected":""}>${h(c.name)}</option>`).join("")}</select></label>`:'';
     const courseField=t && courses.length>1?`<label><span class="sr-only">筛选课程</span><select id="assignment-course"><option value="">全部课程</option>${courses.map((c) => `<option value="${h(c)}" ${state.assignmentCourse === c ? "selected" : ""}>${h((isSubject(c)||["mixed","unknown"].includes(c))?courseLabel(c):c)}</option>`).join("")}</select></label>`:'';
     const searchField=`<label class="search-field"><span class="sr-only">查找作业</span><input id="assignment-search" type="search" placeholder="查找作业" value="${h(state.assignmentSearch)}"></label>`;
@@ -275,15 +275,25 @@ export function createWorkspaceUI(ctx) {
       <div class="assignment-search-controls">${classField}${searchField}
         <details class="teacher-filter-menu"><summary>筛选与排序</summary><div class="filter-panel">${courseField}<label><span>${sortLabel}</span>${sortControl}</label></div></details>
       </div></div>`:`<div class="assignment-toolbar">${filterTabs}
-      <details class="student-find" ${state.assignmentSearch || !matchMedia('(max-width:680px)').matches?'open':''}><summary>查找与排序</summary>
-      <div class="assignment-search-controls">${searchField}<label class="assignment-sort-field">${sortControl}</label><button type="button" class="text-button" data-clear-search hidden>清除搜索</button></div></details></div>`;
+      <details class="student-find"><summary>查找与排序</summary>
+      <div class="student-sort-panel"><div class="student-search-row">${searchField}<button type="button" data-clear-search hidden>清除</button></div>
+      <div class="student-sort-choices" role="group" aria-label="作业排序">${Object.entries(studentOrders).map(([value,label])=>`<button type="button" data-student-order="${value}">${label}</button>`).join('')}</div></div></details></div>`;
     main.innerHTML = `<section class="paper workspace-home"${t?"":' data-student-assignments'}>${head("", t ? "作业管理" : "我的学习", t ? "" : state.classes.map((c) => c.name).join(" · "), t ? link("new", "新建作业", "primary") + `<details class="work-tools"><summary aria-label="更多作业操作" title="更多作业操作">⋯</summary><div class="work-tools-menu"><a href="/teacher/#bank" data-bank-start>从题库出题</a>${link("trash","回收站")}</div></details>` : "")}${t ? "" : courseTabs(subjects,subject,{all:true})+`<div data-course-summary></div>`}${toolbar}<p class="sr-only" id="assignment-count" role="status"></p><div id="task-workspace"></div>${t?'':'<div data-course-insights></div>'}</section>`;
     const sortPicker = $('#assignment-publish-order');
     if (sortPicker) {
       sortPicker.value = publishOrder;
       sortPicker.onchange = () => { publishOrder = sortPicker.value; draw(); };
     }
-    const releaseTools=bindDisclosureMenus(main,t?'.work-tools,.teacher-filter-menu':'.task-more-filters');
+    const releaseTools=bindDisclosureMenus(main,t?'.work-tools,.teacher-filter-menu':'.task-more-filters,.student-find');
+    const findMenu=$('.student-find');
+    for(const button of main.querySelectorAll('[data-student-order]')){
+      button.onclick=()=>{
+        publishOrder=button.dataset.studentOrder;
+        findMenu.open=false;
+        draw();
+        findMenu.querySelector('summary').focus({preventScroll:true});
+      };
+    }
     const more=$('.task-more-filters');
     const clearSearch=$('[data-clear-search]');
     if(clearSearch)clearSearch.onclick=()=>{$('#assignment-search').value='';draw();$('#assignment-search').focus();};
@@ -301,7 +311,10 @@ export function createWorkspaceUI(ctx) {
         const extra=filters.find(([key])=>key===state.assignmentFilter && ['processing','closed'].includes(key));
         more.querySelector('summary').textContent=extra?extra[1]:'更多状态';
         more.toggleAttribute('data-selected',Boolean(extra));
-        $('.student-find summary').textContent=(state.assignmentSearch?'查找 · '+state.assignmentSearch+' / ':'排序 · ')+({desc:'最新布置',asc:'最早布置',priority:'学习优先'}[publishOrder]);
+        const trigger=findMenu.querySelector('summary');
+        trigger.textContent='排序 · '+studentOrders[publishOrder]+(state.assignmentSearch?' · 已筛选':'');
+        trigger.title=state.assignmentSearch?'查找：'+state.assignmentSearch:'查找与排序';
+        for(const button of findMenu.querySelectorAll('[data-student-order]'))button.setAttribute('aria-pressed',String(button.dataset.studentOrder===publishOrder));
         clearSearch.hidden=!state.assignmentSearch;
       }
       const term = state.assignmentSearch.trim().toLocaleLowerCase(),
@@ -354,8 +367,11 @@ export function createWorkspaceUI(ctx) {
           state.assignmentSearch = "";
           state.assignmentClass = "";
           state.assignmentCourse = "";
-          try { sessionStorage.setItem(key, JSON.stringify({publishOrder})); } catch {}
-          dashboard();
+          $("#assignment-search").value="";
+          if(t)for(const field of ["#assignment-class","#assignment-course"]){const control=$(field);if(control)control.value="";}
+          for(const button of $$("[data-filter]"))button.setAttribute("aria-pressed",String(button.dataset.filter==="all"));
+          draw();
+          (findMenu?.querySelector('summary')||$("#assignment-search")).focus({preventScroll:true});
         });
         return;
       }

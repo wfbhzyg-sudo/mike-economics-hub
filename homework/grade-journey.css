@@ -63,6 +63,10 @@
 .gj-journey[data-student-results] .gj-focus-layout { display:block; }
 .gj-journey[data-student-results] > .gj-detail { margin-block:10px 12px; }
 .gj-journey[data-student-results] > .gj-detail .gj-result { flex-wrap:wrap; }
+.gj-journey[data-student-results] .gj-pending-result {display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap}
+.gj-journey[data-student-results] .gj-pending-result > :is(.gj-status,.primary) {display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;max-width:100%;box-sizing:border-box}
+.gj-journey[data-student-results] .gj-pending-result > .primary {min-height:44px;padding:6px 14px}
+.gj-journey[data-student-results] .gj-detail > .actions:empty {display:none}
 .grade-current { font-size:.85rem; font-weight:600; }
 .receipt-next,.receipt-evidence { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-block:8px; }
 .receipt-next > span { color:#50482f; font-size:.88rem; }

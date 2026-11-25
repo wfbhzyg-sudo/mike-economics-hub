@@ -20,7 +20,7 @@ export function bindDisclosureMenus(root, selector) {
   let active;
   const place = entry => {
     const {panel, trigger} = entry, viewport = window.visualViewport;
-    const p = menuPlacement(trigger.getBoundingClientRect(), {width: panel.classList.contains('lib-page-popover') ? 300 : 240, height: panel.scrollHeight},
+    const p = menuPlacement(trigger.getBoundingClientRect(), {width: panel.matches('.lib-page-popover,.student-sort-panel') ? 300 : 240, height: panel.scrollHeight},
       {left: viewport?.offsetLeft || 0, top: viewport?.offsetTop || 0, width: viewport?.width || innerWidth, height: viewport?.height || innerHeight});
     Object.assign(panel.style, {position:'fixed', inset:'auto', margin:'0', left:p.left+'px', top:p.top+'px', width:p.width+'px', maxHeight:p.maxHeight+'px', overflowY:'auto', zIndex:'150'});
   };
