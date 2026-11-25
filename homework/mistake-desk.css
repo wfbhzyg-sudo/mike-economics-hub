@@ -34,3 +34,42 @@
 .cb-dialog .cb-tools{margin-bottom:12px}.cb-dialog .cb-pick{display:inline-flex;align-items:center;position:relative;padding:7px 13px;overflow:hidden;cursor:pointer;background:#17334b;color:white}.cb-pick input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 .cb-dialog .cb-map{flex-wrap:wrap}.cb-map select{max-width:min(240px,100%)}.cb-crop{position:relative;width:fit-content;max-width:100%;margin:auto;touch-action:none}.cb-crop img{max-width:100%;max-height:60dvh;display:block}.cb-crop i{position:absolute;border:2px solid #2b7194;background:#58b4d633;pointer-events:none;box-sizing:border-box}
 @media(max-width:700px){.mistake-desk{padding:10px}.mistake-desk .md-command{gap:5px}.mistake-desk .md-panes{grid-template-columns:1fr;grid-template-rows:minmax(95px,24%) minmax(0,1fr);height:69dvh}.md-panes #mistakes-list{border-right:0;border-bottom:1px solid #cdd9de}.mistake-desk .md-panes:not(:has(.mistake-inline)){grid-template-rows:1fr}.md-panes:not(:has(.mistake-inline)) .md-reader{display:none}.md-panes .mistake-row>.actions{flex-wrap:wrap}.mistake-desk .md-command :is(select,button){font-size:12px;min-height:38px}}
+.mistake-desk{display:flex;flex-direction:column;height:calc(100dvh - 115px);min-height:405px;box-sizing:border-box}
+.mistake-desk>.paper-head{flex:none;margin-bottom:4px;padding-bottom:5px}
+.md-toolbar,.md-context{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;min-width:0}
+.md-toolbar{justify-content:space-between}.md-toolbar .mistake-navigation{flex:1 1 auto;gap:10px;margin:0;border:0;justify-content:flex-start}
+.md-toolbar .md-command{margin:0}.md-toolbar .mistake-views{gap:12px}
+.mistake-desk .md-context .topic-picker,.mistake-desk .md-context #topic-progress,.mistake-desk .md-context .filter-result-line{margin:0}
+.md-context .filter-result-line{flex:1 1 auto;gap:6px;justify-content:flex-end}.md-context .mistake-extra[open]{order:5;flex:1 1 100%}
+.md-context .mistake-extra[open] .mistake-nav-filters{margin-bottom:5px}
+.md-context [data-round-feedback]:empty{display:none}.md-context [data-round-feedback]:not(:empty){flex:1 1 100%}
+.mistake-desk .md-panes{flex:1 1 auto;height:auto;min-height:190px}
+@media(max-width:700px){.mistake-desk{height:calc(100dvh - 133px);min-height:360px}
+.md-toolbar{gap:2px 8px}.md-toolbar .mistake-navigation,.md-toolbar .md-command{flex:1 1 100%}
+.md-context{gap:0 8px}.md-context #topic-progress,.md-context .filter-result-line{font-size:11px}
+.md-context .filter-result-line{min-height:30px}.md-context .filter-result-line button{min-height:32px}
+.md-toolbar .md-command{justify-content:flex-end}.md-toolbar .md-command button{min-height:32px}}
+@media(max-width:700px){
+ .mistake-desk .md-panes,.mistake-desk .md-panes:not(:has(.mistake-inline)){grid-template-columns:clamp(76px,22%,98px) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+ .md-panes:not(:has(.mistake-inline)) .md-reader{display:block}
+ .md-panes #mistakes-list{border-right:1px solid var(--md-edge);border-bottom:0}
+ .mistake-desk .md-panes .mistake-row{grid-template-columns:18px minmax(0,1fr);gap:2px;padding:6px 4px}
+ .md-panes .mistake-row h2 a{display:inline-block;font-size:12px;min-height:26px;padding:4px 0}
+ .md-panes .mistake-row .meta{font-size:10px;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ .md-panes .mistake-row>.actions{grid-column:1/-1;gap:1px}.md-panes .mistake-row .actions .question-score{display:none}
+ .md-panes .mistake-row .actions .badge{font-size:10px;padding-inline:3px}
+ .md-panes .mistake-row .actions a,.md-panes .mistake-row .actions button{font-size:11px;line-height:1.2;min-height:25px;padding:3px}
+ .md-panes .mistake-row .mistake-occurrences{font-size:10px}
+ .md-reader .md-idle{margin:14px;font-size:13px}
+ .md-reader :is(.correction-reference,.correction-editor,input,textarea){min-width:0;max-width:100%}
+ .md-reader .correction-workspace{padding:8px}
+}
+.md-panes .mistake-row.is-expanded>div:not(.actions){display:block;min-width:0}
+.md-panes .mistake-row.is-expanded>.actions{display:flex}
+@media(max-width:700px){
+ .mistake-desk>.paper-head{min-height:0;border:0;padding:0;margin:0}.mistake-desk>.paper-head>.actions{display:none}
+ .md-toolbar .mistake-views a{min-height:32px}.md-toolbar .md-command{margin-bottom:4px}
+ .md-reader .correction-heading-info{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:4px 0}
+ .md-reader .correction-heading-info :is(button,a){min-height:30px;padding:3px 5px}
+}
+.md-panes .mistake-row .search-context{font-size:11px;overflow-wrap:anywhere;line-height:1.35}
