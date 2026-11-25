@@ -1,3 +1,4 @@
+import {questionSlices,bindSliceRetries} from './question-slices.js';
 // Assignment and mock sessions pass the same student-visible question model here.
 export function questionView(q, h, {number, zoom = false, textOpen = false, label = ''}) {
   const options = (q.options || q.optionLabels || []).map(o => typeof o === 'string'
@@ -6,7 +7,7 @@ export function questionView(q, h, {number, zoom = false, textOpen = false, labe
   const hasText = Boolean(q.prompt || options.some(o => o.text));
   const text = `<p class="mcq-question-text">${h(q.prompt || '')}</p>${options.filter(o => o.text).map(o => `<p>${h(o.label)}. ${h(o.text)}</p>`).join('')}`;
   // Text is the only source of written choices when there are no facsimile slices.
-  const paper = images.map((file,i) => `<figure class="question-slice"><img src="/api/homework/files/${encodeURIComponent(file)}" alt="第 ${number} 题原题片段 ${i+1} / ${images.length}" draggable="false" decoding="async"><div class="question-retry" hidden><span>片段 ${i+1} 加载失败</span> <button type="button">重试</button></div></figure>`).join('');
+  const paper = questionSlices(images,'第 '+h(number)+' 题');
   return {
     tools:`<div class="mcq-toolbar question-view-toolbar"><strong id="mcq-question-heading" tabindex="-1">${h(label || '第 '+number+' 题')}</strong><div class="question-tools" role="group" aria-label="题面工具"><button type="button" id="mcq-flag">⚑ 标记</button><button type="button" id="mcq-zoom" ${images.length?'':'hidden'} aria-pressed="${zoom}">${zoom?'适应宽度':'放大题面'}</button><button type="button" id="mcq-text" ${images.length&&hasText?'':'hidden'} aria-expanded="${textOpen}" aria-controls="mcq-accessible">文字版</button></div></div>`,
     paper:`<div class="mcq-paper question-paper ${zoom?'zoom':''}">${paper || text}</div><section id="mcq-accessible" class="mcq-card" ${textOpen?'':'hidden'}>${text}</section>`,
@@ -42,18 +43,7 @@ export function bindQuestionPaper(root, marker, {view = {}, changed = () => {}, 
   const restore=()=>{
     if(paper.isConnected&&!interacted){paper.scrollLeft=view.x||0;paper.scrollTop=view.y||0;}
   };
-  for (const slice of paper.querySelectorAll('.question-slice')) {
-    const image=slice.querySelector('img'), retry=slice.querySelector('.question-retry');
-    image.addEventListener('error',()=>{retry.hidden=false;});
-    image.addEventListener('load',()=>{retry.hidden=true;restore();});
-    if(image.complete&&!image.naturalWidth)retry.hidden=false;
-    retry.querySelector('button').onclick=()=>{
-      const url=new URL(image.src);
-      url.searchParams.set('retry',Date.now());
-      image.src=url;
-      retry.hidden=true;
-    };
-  }
+  bindSliceRetries(paper,restore);
   restore();
   return paper;
 }

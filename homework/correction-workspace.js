@@ -1,3 +1,4 @@
+import {mountQuestionSlices} from './question-slices.js';
 import {questionMarker} from './question-marker.js';
 import {correctionAnswerEvidence} from './choice-correction.js';
 import {mountPDFReader} from './pdf-reader.js';
@@ -61,25 +62,32 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
  const tabs=[['question',compare?'原题与原作答':'原题'],...(!compare?[['answer','我的原作答']]:[]),['history','订正记录 · '+m.corrections.length]];
  const pair=compare?`<div class="frq-pair"><section aria-label="原题"><h3>原题</h3><div data-frq-question></div></section><section aria-label="我的原作答"><h3>我的原作答</h3><div data-frq-answer></div></section></div>`:'';
  root.closest('.correction-workspace')?.classList.toggle('frq-workspace',compare);
- root.innerHTML=`<div class="correction-reference-head"><strong>原题与作答</strong>${onEdit?'<button type="button" class="text-button" data-write-correction>写订正</button>':''}<button type="button" class="text-button" data-collapse-reference aria-expanded="true" aria-controls="correction-reference-body">收起参考区</button></div><div class="correction-reference-body" id="correction-reference-body"><div class="correction-reference-tabs" role="tablist" aria-label="订正参考资料">${tabs.map(([id,name],i)=>`<button type="button" role="tab" id="correction-tab-${id}" data-reference="${id}" aria-selected="${i===0}" aria-controls="correction-panel-${id}" tabindex="${i===0?0:-1}">${name}</button>`).join('')}</div>${tabs.map(([id],i)=>`<section class="correction-reference-panel" role="tabpanel" id="correction-panel-${id}" aria-labelledby="correction-tab-${id}" tabindex="0" ${i?'hidden':''}>${id==='question'?pair:''}</section>`).join('')}</div>`;
+ const tabMarkup=tabs.map(([id,name],i)=>`<button type="button" role="tab" id="correction-tab-${id}" data-reference="${id}" aria-selected="${i===0}" aria-controls="correction-panel-${id}" tabindex="${i===0?0:-1}">${name}</button>`).join('');
+ root.innerHTML=`<div class="correction-reference-head"><div class="correction-reference-tabs" role="tablist" aria-label="订正参考资料">${tabMarkup}</div><div class="reference-actions">${onEdit?'<button type="button" class="text-button" data-write-correction>写订正</button>':''}<button type="button" class="text-button" data-collapse-reference aria-expanded="true" aria-controls="correction-reference-body" aria-label="收起原题" title="收起原题">⌃</button></div></div><div class="correction-reference-body" id="correction-reference-body">${tabs.map(([id],i)=>`<section class="correction-reference-panel" role="tabpanel" id="correction-panel-${id}" aria-labelledby="correction-tab-${id}" tabindex="0" ${i?'hidden':''}>${id==='question'?pair:''}</section>`).join('')}</div>`;
+
  const $=s=>root.querySelector(s);let submission;
  const getSubmission=()=>submission||(submission=api('submissions/'+m.submissionId).then(v=>v.submission).catch(e=>{submission=null;throw e;}));
  async function question(panel){
-  const paper=m.paper||(m.source==='mock'?null:(await getSubmission()).paper),ids=m.questionImages?.length?m.questionImages:paper?.questionFiles||[];
+  const slices=m.questionImages||[];
+  const paper=m.paper||(slices.length||m.source==='mock'?null:(await getSubmission()).paper);
+  const ids=slices.length?[]:paper?.questionFiles||[];
   await metadata(ids);if(destroyed)return;
-  const files=ids.map(id=>state.files.get(id)).filter(Boolean),location=m.paperLocation||paper?.locations?.find(q=>q.id===m.questionId),first=files.find(f=>f.id===location?.fileId)||files.find(f=>f.id===paper?.mainQuestionFile)||files[0];
-  const imageParts=Boolean(m.questionImages?.length)&&files.every(f=>f.mime.startsWith('image/'));
-  panel.innerHTML=`${m.prompt?((compact||imageParts)&&first?`<details class="correction-question-text"><summary>题干文字</summary><p class="correction-prompt">${h(m.prompt)}</p></details>`:`<p class="correction-prompt">${h(m.prompt)}</p>`):''}${first?`<p class="correction-location">本次提交的原题${paper?.version?' · v'+paper.version:''}${imageParts?' · '+files.length+' 个原题片段':location?.page?' · 第 '+location.page+' 页':' · 未标注题页，可用搜索或页码定位'}</p>${files.length>1&&!imageParts?`<label class="field"><span>题纸文件</span><select data-correction-file aria-label="选择原题文件">${files.map(f=>`<option value="${h(f.id)}" ${f===first?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>`:''}<div data-correction-document></div>`:!m.prompt?'<p class="correction-prompt">这次作业没有可显示的题纸或文字题干。你仍可查看自己的原作答，继续订正。</p>':''}`;
-  const prompt=panel.querySelector('.correction-prompt');
+  const files=ids.map(id=>state.files.get(id)).filter(Boolean),location=m.paperLocation||paper?.locations?.find(q=>q.id===m.questionId);
+  const first=files.find(f=>f.id===location?.fileId)||files.find(f=>f.id===paper?.mainQuestionFile)||files[0];
+  const options=(m.options||[]).filter(o=>o.text);
+  const text=(m.prompt?`<p class="correction-prompt">${h(m.prompt)}</p>`:'')+options.map(o=>`<p>${h(o.label)}. ${h(o.text)}</p>`).join('');
+  const written=text&&(slices.length||compact&&first)?`<details class="correction-question-text"><summary>题面文字</summary>${text}</details>`:text;
+  panel.innerHTML=written+(slices.length||first?`${files.length>1?`<label class="field"><span>题纸文件</span><select data-correction-file>${files.map(f=>`<option value="${h(f.id)}" ${f===first?'selected':''}>${h(f.name)}</option>`).join('')}</select></label>`:''}<div data-correction-document></div>`:!text?'<p>本题没有题纸或文字题干。</p>':'');
   let marker;
-  if(m.prompt || files.some(f=>f.mime.startsWith('image/'))){
+  if(m.prompt||slices.length||files.some(f=>f.mime.startsWith('image/'))){
     const tools=document.createElement('div');tools.className='question-tools';panel.prepend(tools);
     marker=questionMarker(tools,JSON.stringify(['correction',state.user.id,m.submissionId||m.assignmentId,m.questionId]));
-    if(prompt && m.prompt)marker.attachText(prompt,'prompt');
+    const prompt=panel.querySelector('.correction-prompt');if(prompt)marker.attachText(prompt,'prompt');
   }
+  if(slices.length){questionGallery=mountQuestionSlices(panel.querySelector('[data-correction-document]'),slices,{marker,tools:panel.querySelector('.question-tools')});return;}
   function show(file){reader?.destroy();reader=null;questionGallery?.destroy();questionGallery=null;const host=panel.querySelector('[data-correction-document]');host.replaceChildren();host.className='';if(file.mime==='application/pdf'){
     host.className='pdf-preview';reader=mountPDFReader(host,{fileId:file.id,title:'第 '+m.questionId+' 题原件',storageKey:`hw-correction-paper:${state.user.id}:${m.submissionId}:${m.questionId}:${file.id}`,initialPage:file.id===location?.fileId?Number(location.page):null});
-   }else{host.className='review-studio correction-gallery'+(imageParts?' question-fit-gallery':'');host.innerHTML='<div class="rv-gallery"></div>';questionGallery=mountReviewGallery(host.firstElementChild,{files:imageParts?files:[file],label:'题目原件',fullscreen:false,marker,fitContent:imageParts,storageKey:'correction-question:'+state.user.id+':'+file.id});}}
+   }else{host.className='review-studio correction-gallery';host.innerHTML='<div class="rv-gallery"></div>';questionGallery=mountReviewGallery(host.firstElementChild,{files:[file],label:'题目原件',fullscreen:false,marker,storageKey:'correction-question:'+state.user.id+':'+file.id});}}
   if(first)show(first);const select=panel.querySelector('[data-correction-file]');if(select)select.onchange=()=>show(files.find(f=>f.id===select.value));
  }
  async function answer(panel){
@@ -93,11 +101,11 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
   const originalText=compare && evidence.text ? `<p class="correction-prompt correction-answer-text">${h(evidence.text)}</p>` : '';
   panel.innerHTML=caption+originalText+'<div class="review-studio correction-gallery"><div class="rv-gallery"></div></div>';gallery=mountReviewGallery(panel.querySelector('.rv-gallery'),{files:evidence.files.map(id=>state.files.get(id)).filter(Boolean),text:compare?'':evidence.text,label:'我的原作答',fullscreen:false,storageKey:'correction-answer:'+state.user.id+':'+m.submissionId+':'+m.questionId});
  }
- async function history(panel){await metadata(m.corrections.flatMap(c=>c.files||[]));if(destroyed)return;panel.innerHTML=m.corrections.length?[...m.corrections].reverse().map(c=>`<article class="correction"><p class="hint">${date(c.createdAt)}</p><p class="instructions">${h(c.text||'订正见附件')}</p><div class="file-list">${fileMarkup(c.files||[])}</div></article>`).join(''):'<p class="correction-prompt">还没有已保存的订正记录。右侧或下方的草稿会自动保存，完成后点击“保存订正”。</p>';bindPreviews(panel);}
+ async function history(panel){await metadata(m.corrections.flatMap(c=>c.files||[]));if(destroyed)return;panel.innerHTML=m.corrections.length?[...m.corrections].reverse().map(c=>`<article class="correction"><p class="hint">${date(c.createdAt)}</p><p class="instructions">${h(c.text||'订正见附件')}</p><div class="file-list">${fileMarkup(c.files||[])}</div></article>`).join(''):'<p class="correction-prompt">暂无订正记录。</p>';bindPreviews(panel);}
  function load(id){const panel=compare && id!=='history' ? $('[data-frq-'+id+']') : $('#correction-panel-'+id);if(panel.dataset.ready||tasks.has(id))return;panel.setAttribute('aria-busy','true');panel.innerHTML='<p class="hint" role="status">正在打开参考资料…</p>';const task=({question,answer,history}[id])(panel).then(()=>{if(!destroyed)panel.dataset.ready='true';}).catch(e=>{if(destroyed)return;panel.innerHTML=`<p class="error" role="alert">${h(e.message)}</p><button type="button" class="secondary">重试加载</button>`;panel.querySelector('button').onclick=()=>load(id);}).finally(()=>{tasks.delete(id);if(!destroyed)panel.setAttribute('aria-busy','false');});tasks.set(id,task);}
- const buttons=[...root.querySelectorAll('[role=tab]')];function select(id){buttons.forEach(b=>{const active=b.dataset.reference===id;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;$('#correction-panel-'+b.dataset.reference).hidden=!active;});load(id);if(compare&&id==='question')load('answer');}
+ const buttons=[...root.querySelectorAll('[role=tab]')];function select(id){if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();buttons.forEach(b=>{const active=b.dataset.reference===id;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;$('#correction-panel-'+b.dataset.reference).hidden=!active;});load(id);if(compare&&id==='question')load('answer');}
  buttons.forEach((b,i)=>{b.onclick=()=>select(b.dataset.reference);b.onkeydown=e=>{let n;if(e.key==='ArrowRight')n=(i+1)%buttons.length;if(e.key==='ArrowLeft')n=(i+buttons.length-1)%buttons.length;if(e.key==='Home')n=0;if(e.key==='End')n=buttons.length-1;if(n!==undefined){e.preventDefault();buttons[n].focus();select(buttons[n].dataset.reference);}};});
- $('[data-collapse-reference]').onclick=e=>{const body=$('.correction-reference-body'),open=body.hidden;body.hidden=!open;e.currentTarget.setAttribute('aria-expanded',String(open));e.currentTarget.textContent=open?'收起参考区':'展开原题与原作答';};
+ $('[data-collapse-reference]').onclick=e=>{const body=$('.correction-reference-body'),open=body.hidden;body.hidden=!open;e.currentTarget.setAttribute('aria-expanded',String(open));const label=open?'收起原题':'展开原题';e.currentTarget.setAttribute('aria-label',label);e.currentTarget.title=label;e.currentTarget.textContent=open?'⌃':'⌄';};
  const peek=compare?writingReference(root,$('.frq-pair'),()=>reader):null;
  if(onEdit)$('[data-write-correction]').onclick=()=>onEdit?.();select('question');return {openForWriting:peek?.open,refreshHistory(){
   const tab=$('[data-reference=history]'),panel=$('#correction-panel-history');

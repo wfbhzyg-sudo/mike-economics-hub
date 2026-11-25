@@ -1,3 +1,4 @@
+import {mountQuestionSlices} from './question-slices.js';
 import {questionResult} from './result-badge.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {mountReviewGallery} from './review-gallery.js';
@@ -38,7 +39,7 @@ export function mountReviewStudio(root,{submission:s,title,name,files,userId,que
    const q=s.rubricSnapshot.find(q=>q.id===rows[active]?.id),qn=q?s.rubricSnapshot.indexOf(q)+1:'—',evidence=questionReviewEvidence(s,q?.id,source),kind=evidence.source,key=q?.id+':'+kind;
    $$('[data-review-source]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewSource===kind)));$('[data-review-source=question]').disabled=!q?.questionImages?.length&&!q?.prompt;
    $('.rv-source-hint').textContent='第 '+qn+' 题'+(evidence.fallback==='answer'?' · 本题无作答，暂看原题':evidence.fallback==='question'?' · 本题缺原题，暂看作答':kind==='answer'&&!s.responses?.[q?.id]&&!s.choices?.[q?.id]?' · 完整作答':'');
-   if(galleryKey===key)return;galleryKey=key;gallery?.destroy();gallery=mountReviewGallery($('.rv-gallery'),{files:evidence.files.map(id=>files.find(f=>f.id===id)).filter(Boolean),text:evidence.text,label:'第 '+qn+' 题'+(kind==='question'?'原题':'学生作答'),storageKey:'hw-review-gallery:'+userId+':'+s.id+':'+key});
+   if(galleryKey===key)return;galleryKey=key;gallery?.destroy();gallery=kind==='question'&&q.questionImages?.length?mountQuestionSlices($('.rv-gallery'),q.questionImages):mountReviewGallery($('.rv-gallery'),{files:evidence.files.map(id=>files.find(f=>f.id===id)).filter(Boolean),text:evidence.text,label:'第 '+qn+' 题'+(kind==='question'?'原题':'学生作答'),storageKey:'hw-review-gallery:'+userId+':'+s.id+':'+key});
   }
   $$('[data-review-source]').forEach(b=>b.onclick=()=>{preferredSource=b.dataset.reviewSource;showEvidence(preferredSource);});
   function changed(i){rows[i].value=inputs[i].value;select(i);if(valid(rows[i],i))saver.set(rows[i].id,Number(rows[i].value));persist(saver.snapshot().revision);update();clearTimeout(timer);timer=setTimeout(()=>void saver.flush().catch(()=>{}),450);}

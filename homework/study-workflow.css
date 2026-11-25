@@ -413,3 +413,16 @@ body:has(.mock-attempt-popover) #mike-companion{visibility:hidden}
  .mock-personal [data-personal-chapters]{max-height:300px;overflow-y:auto;overscroll-behavior-y:contain;padding-bottom:65px}
  .mock-personal [data-personal-chapters]:not(:has(.topic-cell[open])){padding-bottom:4px}
 }
+
+.slice-stack{display:grid;gap:8px;min-width:0}
+.slice-stack .question-slice{min-width:0;margin:0}
+.slice-stack .slice-image{position:relative;width:100%;margin-inline:auto}
+.slice-stack .slice-image img{display:block;width:100%;max-width:100%;height:auto;max-height:none;margin:0}
+.slice-reader{display:block;min-width:0}
+.slice-controls{display:flex;justify-content:flex-start;padding-block:2px 6px}
+.slice-controls button{font:inherit;font-size:.8rem;min-height:32px;padding:3px 9px;border:1px solid #cbd9e1;border-radius:6px;color:#203f56;background:white}
+.slice-scroll{overflow-x:auto;min-width:0}
+.slice-zoom>.slice-stack{width:165%}
+.slice-reader .question-retry[hidden],.slice-stack .question-retry[hidden]{display:none}
+.rv-document>.rv-gallery.slice-reader{display:flex;flex-direction:column;min-height:0;padding:8px}
+.rv-document>.slice-reader>.slice-scroll{overflow:auto;flex:1;min-height:0}

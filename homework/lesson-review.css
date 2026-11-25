@@ -297,3 +297,12 @@ dialog.frq-writing-reference { padding:0; width:min(50rem,96vw); max-width:96vw;
 .frq-reading-stage .frq-pair h3 { display:none; }
 .frq-reading-stage .reader-body { max-height:50dvh; }
 .frq-reading-stage .correction-gallery.review-studio { height:clamp(260px,53dvh,580px); }
+
+.correction-workspace .correction-reference-head{display:flex;align-items:center;justify-content:flex-start;gap:2px 8px;flex-wrap:wrap;padding:4px 8px;border-radius:7px 7px 0 0}
+.correction-workspace .correction-reference-tabs{padding:0;flex-wrap:wrap;gap:2px;background:transparent}
+.correction-workspace .correction-reference-tabs button{flex:none;min-height:34px;padding:4px 7px}
+.correction-reference-head .reference-actions{display:flex;align-items:center;gap:2px}
+.correction-reference-head .reference-actions button{min-height:32px;padding:3px 7px}
+.correction-reference-head [data-collapse-reference]{min-width:32px;font-size:17px}
+.correction-reference-panel .question-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-block-end:6px}
+.correction-reference-panel .question-tools button{font-size:12px;min-height:32px}

@@ -43,6 +43,6 @@ export function mountMistakeDesk(ctx,{onRefresh}){
  return {update(rows,all,subject){
  visible=rows;scoped=all;course=subject;closePreview();heat();
  for(const row of list.querySelectorAll('[data-inline-assignment]')){const m=find(row),box=document.createElement('input');box.type='checkbox';box.dataset.pick='';box.checked=basket.has(key(m));box.setAttribute('aria-label','选择 '+m.assignmentTitle+' 原题 '+m.questionNumber);row.prepend(box);
- const peekBtn=document.createElement('button');peekBtn.type='button';peekBtn.dataset.peek='';peekBtn.textContent='预览';row.querySelector('.actions')?.prepend(peekBtn);}
+ const peekBtn=document.createElement('button');peekBtn.type='button';peekBtn.dataset.peek='';peekBtn.setAttribute('aria-label','预览原题');peekBtn.title='预览原题';peekBtn.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';row.querySelector('.actions')?.append(peekBtn);}
  picked();},destroy(){closePreview();closeBook?.();document.removeEventListener('keydown',esc);document.removeEventListener('pointerdown',outside);}};
 }
