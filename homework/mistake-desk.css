@@ -112,7 +112,7 @@
 
 /* Both controls keep the same footprint as filters, matches and topic counts change. */
 .mistake-desk .md-context {
-  display:grid;grid-template-columns:minmax(9rem,18rem) max-content max-content;
+  display:grid;grid-template-columns:minmax(0,18rem) max-content max-content minmax(0,1fr);
   align-items:center;gap:0 8px;padding-block:3px;
 }
 .md-assignment-field {display:block;min-width:0;margin:0}
@@ -129,9 +129,10 @@
 .md-context .mistake-extra[open] > summary::after {transform:translateY(2px) rotate(225deg)}
 .md-context .mistake-extra[data-filtered] > summary {background:#e7eff4;border-radius:7px}
 .md-context .mistake-nav-filters {
-  position:fixed;box-sizing:border-box;margin:0;padding:10px;border:1px solid #bdcdd8;border-radius:9px;
+  position:fixed;visibility:hidden;box-sizing:border-box;margin:0;padding:10px;border:1px solid #bdcdd8;border-radius:9px;
   color:var(--md-ink);background:white;box-shadow:0 8px 22px #132d431f;
 }
+.md-context .mistake-nav-filters[data-positioned] {visibility:visible}
 .md-context .mistake-extra[open] .mistake-nav-filters {
   display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px 10px;align-items:end
 }

@@ -25,11 +25,13 @@ export function bindDisclosureMenus(root, selector) {
     const p = menuPlacement(trigger.getBoundingClientRect(), {width, height: panel.scrollHeight},
       {left: viewport?.offsetLeft || 0, top: viewport?.offsetTop || 0, width: viewport?.width || innerWidth, height: viewport?.height || innerHeight});
     Object.assign(panel.style, {position:'fixed', inset:'auto', margin:'0', left:p.left+'px', top:p.top+'px', width:p.width+'px', maxHeight:p.maxHeight+'px', overflowY:'auto', zIndex:'150'});
+    panel.setAttribute('data-positioned','');
   };
   function close(entry, restore = false) {
     if (!entry) return;
     entry.details.open = false;
     if (entry.panel.hidePopover && entry.panel.matches(':popover-open')) entry.panel.hidePopover();
+    entry.panel.removeAttribute('data-positioned');
     entry.panel.style.cssText = entry.originalStyle;
     if (active === entry) active = null;
     if (restore && entry.trigger.isConnected) entry.trigger.focus({preventScroll:true});

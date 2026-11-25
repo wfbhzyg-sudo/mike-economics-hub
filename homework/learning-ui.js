@@ -227,6 +227,9 @@ export function createLearningUI(ctx){
   const filterMenu=$('.mistake-extra'),filterTrigger=filterMenu.querySelector('summary');
   const releaseFilter=bindDisclosureMenus(main,'.mistake-extra');
   $('[data-filter-close]').onclick=()=>{filterMenu.open=false;filterTrigger.focus({preventScroll:true});};
+  const compactDesk=matchMedia('(max-width:700px)'),statusBar=$('.md-status-bar');
+  function placeStatusBar(){(compactDesk.matches?$('.md-command'):$('.md-context')).append(statusBar);}
+  placeStatusBar();compactDesk.addEventListener('change',placeStatusBar);
   const assignmentControl=$('#mistake-assignment');
   let courseRows=[],sourceRows=[];
   function setSourceRows(){
@@ -344,7 +347,7 @@ export function createLearningUI(ctx){
     const count=$('#mistake-count');count.textContent=rows.length+' / '+scoped.length+' 题';
     count.title=courseLabel(subject)+' · 显示 '+rows.length+' 道，当前来源共 '+scoped.length+' 道错题';
     $('#clear-mistake-filters').disabled=!term&&!status&&topic==='all'&&!assignmentControl.value;
-    $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${excerpt(m,term)}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span></div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;list.prepend(suggested);desk.update(rows,scoped,subject);if(active)selectRow(active.route);};
+    $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${excerpt(m,term)}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span></div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;if(!suggested.hidden)list.prepend(suggested);desk.update(rows,scoped,subject);if(active)selectRow(active.route);};
   draw();
 
   const courseControls=$$('[data-mistake-course]');
@@ -471,7 +474,7 @@ export function createLearningUI(ctx){
     if(trigger.target==='_blank'||!trigger.hash.startsWith('#mistakes/')||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();void openRow(trigger);
   });
-  state.viewCleanup=()=>{closed=true;releaseFilter();desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
+  state.viewCleanup=()=>{closed=true;releaseFilter();compactDesk.removeEventListener('change',placeStatusBar);desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
   state.restoreView=()=>{main.scrollTo({top:memory.get('top',0),behavior:'instant'});const a=[...list.querySelectorAll('a')].find(a=>a.getAttribute('href')===memory.get('selected',''));a?.focus({preventScroll:true});};
  }
  return {gradebook,overview,mistakes};
