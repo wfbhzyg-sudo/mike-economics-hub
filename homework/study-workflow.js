@@ -319,10 +319,10 @@ export async function renderMockStatistics({main,api,state}){
     <label data-course-field>学科 <select name="course"><option value="">全部学科</option>${subjectIds.map(id=>`<option value="${id}">${subjectInfo(id).label}</option>`).join('')}</select></label>
     <label>学生 <select name="studentId"><option value="">全部学生</option></select></label>
     <span class="mock-course-label" data-fixed-course hidden></span>
-    </div><div class="mock-range-tools"><details class="study-filter-panel"><summary>日期和更多筛选</summary><div class="study-filters study-extra-filters"><label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
+    </div><div class="mock-range-tools"><button class="mock-range-trigger" type="button" aria-haspopup="dialog">日期和更多筛选</button><dialog class="tw-dialog mock-filter-dialog" aria-label="日期和更多筛选"><strong>日期和更多筛选</strong><div class="study-filters study-extra-filters"><label>起始日 <input name="from" type="date" value="${from}"></label><label>结束日 <input name="to" type="date" value="${today}"></label>
     <label>章节 <input name="topic" type="search" placeholder="例如 2.3"></label>
     <label>计时 <select name="timer"><option value="">全部</option><option value="countdown">倒计时</option><option value="countup">正计时</option></select></label>
-    </div></details><button type="button" data-reset-mock>重置筛选</button></div></form>
+    <p class="mock-filter-error" role="alert"></p></div><footer><button type="button" data-cancel-range>取消</button><button type="button" data-apply-range>应用</button></footer></dialog><button type="button" data-reset-mock>重置筛选</button></div></form>
     <p role="status"></p><div data-overview></div><div class="mock-mobile-views" role="group" aria-label="统计视图"><button type="button" data-mock-view="attempts" aria-pressed="true">学生走势</button><button type="button" data-mock-view="topics" aria-pressed="false">章节表现</button></div><div class="study-stat-grid" data-mobile-view="attempts"><section class="study-panel" data-attempts></section><aside class="study-panel" data-topics></aside></div></div>`;
   const root=main.querySelector('.study-stats'), form=root.querySelector('form'),status=root.querySelector('[role=status]');
   let serial=0,drawer,ascending=memory.get('ascending',false),zeroOnly=memory.get('zeroOnly',false);
@@ -389,22 +389,51 @@ export async function renderMockStatistics({main,api,state}){
       if(n===serial)panels.forEach(el=>{el.inert=false;el.removeAttribute('aria-busy');});
     }
   }
+  const rangeDialog=form.querySelector('.mock-filter-dialog');
+  const rangeTrigger=form.querySelector('.mock-range-trigger');
+  const fields=['from','to','topic','timer'];
+  let original={};
+  rangeTrigger.onclick=()=>{
+    original=Object.fromEntries(fields.map(key=>[key,form.elements[key].value]));
+    rangeDialog.querySelector('[role=alert]').textContent='';
+    rangeDialog.showModal();
+  };
+  function cancelRange(){
+    for(const key of fields)form.elements[key].value=original[key];
+    rangeDialog.close();rangeTrigger.focus({preventScroll:true});
+  }
+  rangeDialog.addEventListener('cancel',event=>{event.preventDefault();cancelRange();});
+  rangeDialog.addEventListener('click',event=>{
+    if(event.target.closest('[data-cancel-range]'))cancelRange();
+    else if(event.target===rangeDialog){
+      const rect=rangeDialog.getBoundingClientRect();
+      if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)cancelRange();
+    }
+  });
+  function confirmRange(){
+    if(form.elements.from.value&&form.elements.to.value&&form.elements.from.value>form.elements.to.value){
+      rangeDialog.querySelector('[role=alert]').textContent='结束日不能早于起始日。';return;
+    }
+    rangeDialog.close();rangeTrigger.focus({preventScroll:true});apply();
+  }
+  form.querySelector('[data-apply-range]').onclick=confirmRange;
   let previousTopic=form.elements.topic.value;
   function apply(){
     drawer?.close();
     const count=['topic','timer'].filter(k=>form.elements[k].value).length+
       Number(form.elements.from.value!==from)+Number(form.elements.to.value!==today);
-    form.querySelector('summary').textContent=count?'日期和更多筛选 · '+count:'日期和更多筛选';
+    rangeTrigger.textContent=count?'日期和更多筛选 · '+count:'日期和更多筛选';
     memory.set({filters:Object.fromEntries(new FormData(form))});
     previousTopic=form.elements.topic.value;
     void load();
   }
   form.onchange=e=>{
+    if(rangeDialog.contains(e.target))return;
     if(e.target.name==='classId'){form.elements.course.value='';classScope();}
     if(['classId','course'].includes(e.target.name))form.elements.studentId.value='';
     apply();
   };
-  form.onsubmit=e=>{e.preventDefault();if(form.elements.topic.value!==previousTopic)apply();};
+  form.onsubmit=e=>{e.preventDefault();if(rangeDialog.open)confirmRange();else if(form.elements.topic.value!==previousTopic)apply();};
   form.querySelector('[data-reset-mock]').onclick=()=>{form.reset();form.elements.studentId.value='';classScope();apply();};
   paint(initial);
   if(Object.keys(saved).length){

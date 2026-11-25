@@ -324,7 +324,13 @@ export function createWorkspaceUI(ctx) {
             " " + base.filter((a) => matches(a, el.dataset.count)).length),
       );
       const filtered = base.filter((a) => matches(a, state.assignmentFilter));
-      if (sortPicker) sortPicker.hidden = state.assignmentFilter === 'draft';
+      if (t && sortPicker) {
+        const draft=state.assignmentFilter==='draft';
+        sortPicker.closest('label').hidden=draft;
+        const menu=main.querySelector('.teacher-filter-menu');
+        menu.hidden=draft&&(!picker||picker.disabled);
+        menu.querySelector('summary').textContent=draft?'筛选课程':publishOrder==='asc'?'最早发布 ↑':'筛选与排序';
+      }
       const rows = !t && publishOrder==='priority' ? byLearningPriority(filtered,state.submissions) : state.assignmentFilter === 'draft' ? filtered : byPublication(filtered, publishOrder);
       $("#assignment-count").textContent = `${rows.length} 份作业`;
       try {

@@ -1,3 +1,5 @@
+import {bindDisclosureMenus} from './disclosure-menu.js';
+import {unitIdentity} from './subject-catalog.js';
 import {studentReportUrl} from './student-report-link.js';
 import {scoreSources,showTeacherEvidence} from './learning-evidence.js';
 import {courseLabel,singleClassCourse} from './course-scope.js';
@@ -18,6 +20,10 @@ import {
   classObservations, reportText, assignmentDiagnostics, orderedDiagnosisQuestions, newestAssignmentFirst,
 } from './learning-analytics-model.js';
 
+function unitLabel(value) {
+  const unit=unitIdentity(value);
+  return unit?courseLabel(unit.course)+' · Unit '+unit.number:value;
+}
 const SORTS = [['name', '学生姓名'], ['average', '平均分'], ['attention', '待处理'], ['trend', '近期变化']];
 const TYPES = {mcq: 'MCQ', choice: '选择题', frq: 'FRQ', short: '简答题'};
 const TYPE_ORDER = ['graded', 'attention', 'pending', 'todo', 'missing', 'unconfirmed', 'unassigned'];
@@ -93,7 +99,7 @@ export function mountLearningOverview(ctx, initialData) {
     <details class="lo-more" id="lo-more">
       <summary class="lo-btn lo-icon" title="更多操作" aria-label="更多操作"><span aria-hidden="true">⋯</span></summary>
       <div class="lo-menu" role="menu">
-        <button type="button" role="menuitem" id="lo-refresh">刷新数据</button>
+        <button type="button" role="menuitem" class="lo-narrow-only" data-class-entry>按班录入线下成绩</button><button type="button" role="menuitem" id="lo-refresh">刷新数据</button>
         <button type="button" role="menuitem" data-action="export">导出当前范围 CSV</button>
         <button type="button" role="menuitem" data-action="class-report">班级学情摘要</button>
         <button type="button" role="menuitem" data-action="legend">五色分档说明</button>
@@ -102,6 +108,7 @@ export function mountLearningOverview(ctx, initialData) {
     </details>
 
   </div>
+  <button type="button" class="lo-stats-toggle" aria-controls="lo-stats" aria-expanded="false"><span id="lo-scope-label"></span><strong>班级概况</strong></button>
   <div class="lo-stats" id="lo-stats" aria-live="polite"></div>
   <div class="lo-tabs" role="tablist" aria-label="学情视图">
     <button type="button" role="tab" id="lo-tab-matrix" aria-controls="lo-panel-matrix" aria-selected="${tab === 'matrix'}" tabindex="${tab === 'matrix' ? 0 : -1}" data-tab="matrix">成绩总览</button>
@@ -112,11 +119,12 @@ export function mountLearningOverview(ctx, initialData) {
   </div>
   <div class="lo-body" id="lo-body">
     <div class="lo-panel" id="lo-panel-matrix" role="tabpanel" aria-labelledby="lo-tab-matrix" ${tab === 'matrix' ? '' : 'hidden'}>
-      <header class="lo-panel-bar"><strong>班级成绩</strong><button type="button" class="lo-btn" data-class-entry>按班录入线下成绩</button></header>
+      <header class="lo-panel-bar"><strong>班级成绩</strong><button type="button" class="lo-btn" data-class-entry>按班录入线下成绩</button>
       <div class="lo-switch" role="group" aria-label="手机查看方式">
         <button type="button" data-mview="list" aria-pressed="${mobileView === 'list'}">学生列表</button>
         <button type="button" data-mview="grid" aria-pressed="${mobileView === 'grid'}">成绩矩阵</button>
       </div>
+      </header>
       <div class="lo-matrix-scroll" id="lo-matrix-scroll" tabindex="0" role="region" aria-label="班级成绩矩阵，可横向滚动">
         <table class="lo-matrix" id="lo-matrix"></table>
       </div>
@@ -147,7 +155,7 @@ export function mountLearningOverview(ctx, initialData) {
   </dialog>
   <dialog class="lo-sheet lo-filter-sheet" id="lo-filter-sheet" aria-label="筛选与排序">
     <div class="lo-sheet-bar"><strong>筛选与排序</strong><button type="button" class="lo-btn" data-close-filter>关闭</button></div>
-    <div class="lo-filter-grid">
+    <div class="lo-filter-grid"><label class="lo-field"><span>时间范围</span><select id="lo-filter-period"></select></label>
       <label class="lo-field"><span>单元</span><select id="lo-filter-unit"></select></label>
       <label class="lo-field"><span>作业</span><select id="lo-filter-assignment"></select></label>
       <label class="lo-field"><span>排序</span><select id="lo-filter-sort"></select></label>
@@ -178,7 +186,10 @@ export function mountLearningOverview(ctx, initialData) {
   const root = document.getElementById('lo-page');
   const $ = selector => root.querySelector(selector);
   const $$ = selector => [...root.querySelectorAll(selector)];
+  const releaseMenu=bindDisclosureMenus(root,'#lo-more');
   const statsHost = $('#lo-stats');
+  const statsToggle=$('.lo-stats-toggle');
+  statsToggle.onclick=()=>statsToggle.setAttribute('aria-expanded',String(statsToggle.getAttribute('aria-expanded')!=='true'));
   const matrixHost = $('#lo-matrix');
   const scrollHost = $('#lo-matrix-scroll');
   const listHost = $('#lo-list');
@@ -222,7 +233,7 @@ export function mountLearningOverview(ctx, initialData) {
     const courseTag=$('#lo-class-course');courseTag.hidden=!classCourse;courseTag.dataset.course=classCourse;
     courseTag.textContent=classCourse?courseLabel(classCourse):'';
     $('#lo-unit-field').hidden = units.length < 2;
-    fill($('#lo-unit'), [['', '全部单元'], ...units.map(unit => [unit, unit])], filter.unit);
+    fill($('#lo-unit'), [['', '全部单元'], ...units.map(unit => [unit, unitLabel(unit)])], filter.unit);
     fill($('#lo-period'), PERIODS, filter.period);
     fill($('#lo-assignment'), assignmentOptions(unitScope), filter.assignmentId);
     if ($('#lo-query').value !== filter.query) $('#lo-query').value = filter.query;
@@ -305,10 +316,14 @@ export function mountLearningOverview(ctx, initialData) {
   }
 
   function renderFilterState() {
-    const active = [filter.unit, filter.assignmentId, filter.status !== 'all' ? 'status' : '', filter.query.trim() ? 'q' : '', filter.sort !== 'name' || filter.direction !== 'asc' ? 's' : ''].filter(Boolean).length;
+    const active = [filter.period!=='4w'?'time':'',filter.unit, filter.assignmentId, filter.status !== 'all' ? 'status' : '', filter.query.trim() ? 'q' : '', filter.sort !== 'name' || filter.direction !== 'asc' ? 's' : ''].filter(Boolean).length;
     const badge = $('#lo-filter .lo-filter-count');
     badge.hidden = active === 0;
     badge.textContent = String(active);
+    const periodLabel=PERIODS.find(([id])=>id===filter.period)?.[1]||'';
+    const summary=[filter.unit?unitLabel(filter.unit):'',periodLabel].filter(Boolean).join(' · ');
+    $('#lo-filter').setAttribute('aria-label','筛选与排序，当前'+summary);
+    $('#lo-scope-label').textContent=summary;
     $('#lo-period').value = filter.period;
     $('#lo-unit').value = filter.unit;
     $('#lo-assignment').value = filter.assignmentId;
@@ -337,7 +352,7 @@ export function mountLearningOverview(ctx, initialData) {
         return cellMarkup(cell);
       }).join('');
       return `<tr data-student-row="${h(student.id)}">
-        <th scope="row" class="lo-student"><button type="button" class="lo-student-link" data-profile="${h(student.id)}" title="打开 ${h(student.name)} 的学生档案">${highlightText(student.name, filter.query)}</button><small>${h(student.username || '')}</small></th>
+        <th scope="row" class="lo-student"><button type="button" class="lo-student-link" data-profile="${h(student.id)}" title="打开 ${h(student.name)} 的学生档案">${highlightText(student.name, filter.query)}</button><small class="lo-login-name">${h(student.username || '')}</small><span class="lo-compact-score"><span class="lo-band-pill" data-band="${row.band?.level||''}">${formatPercent(row.average)}</span><span aria-label="近期变化">${row.trend==null?'—':trendLabel(row.trend)+' pp'}</span></span></th>
         ${trendMarkup(row)}
         <td class="lo-avg">${averageMarkup(row)}</td>
         ${cells}
@@ -1087,8 +1102,9 @@ function renderDetail() {
   }
 
   function writeFilterDraft(draft) {
+    fill($('#lo-filter-period'),PERIODS,draft.period||'4w');
     const units = unitsOf(scopedAssignments(data, {classId: filter.classId, period: 'all'}));
-    fill($('#lo-filter-unit'), [['', '全部单元'], ...units.map(unit => [unit, unit])], draft.unit);
+    fill($('#lo-filter-unit'), [['', '全部单元'], ...units.map(unit => [unit, unitLabel(unit)])], draft.unit);
     fillDraftAssignments(draft.unit, draft.assignmentId);
     fill($('#lo-filter-sort'), SORTS, draft.sort);
     $('#lo-filter-direction').value = draft.direction;
@@ -1372,6 +1388,7 @@ function renderDetail() {
       return;
     }
     if (target.closest('[data-filter-apply]')) {
+      filter.period = $('#lo-filter-period').value;
       filter.unit = $('#lo-filter-unit').value;
       filter.assignmentId = $('#lo-filter-assignment').value;
       filter.status = $('#lo-filter-status').value;
@@ -1498,7 +1515,7 @@ function renderDetail() {
   return {
     destroy() {
       if (destroyed) return;
-      destroyed = true;hideTip();disposeOriginals();
+      destroyed = true;releaseMenu();hideTip();disposeOriginals();
       wide.removeEventListener('change', onMedia);
       clearTimeout(filter.timer);
       if (scrollFrame) cancelAnimationFrame(scrollFrame);

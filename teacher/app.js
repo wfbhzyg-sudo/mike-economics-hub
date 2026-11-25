@@ -90,23 +90,32 @@ function classroom(){return state.meta.classes.find(c=>c.id===state.classId);}
 function classRequired(){if(classroom())return true;main.innerHTML=empty('先选择一个班级','沿用学生注册时填写的通用班级码，所有教学记录都保存在同一账号下。',button('classes','管理班级',true));return false;}
 function persist(){try{sessionStorage.setItem('teacher-context:'+state.user.id,JSON.stringify({classId:state.classId,book:state.book,course:state.course}));}catch{}}
 async function metadata(value){state.meta=value||await api('teacher/workspace');if(!state.meta.classes.some(c=>c.id===state.classId))state.classId=state.meta.classes.find(c=>!c.archived)?.id||state.meta.classes[0]?.id||'';if(!state.meta.books.some(b=>b.id===state.book))state.book=state.meta.books[0]?.id;persist();}
+const mikeDock = '<button type="button" class="teacher-mike" data-open-teacher-mike aria-label="打开 Mike 经济学伙伴"><img src="/assets/mike-pixel.png" width="24" height="24" alt=""><span>Mike</span></button>';
 function navigation(section){
  const current=location.hash.slice(1);
+ const inReview=/^work\/reviews?(?:\/|$)/.test(current)||(/^work\/overview\//.test(current)&&current.endsWith('/published'));
  const active=id=>id==='library'?section==='library'
   :id==='analytics'?section==='analytics'||/^work\/gradebook/.test(current)
-  :id==='work/reviews'?/work\/(review|overview)/.test(current)
+  :id==='work/reviews'?inReview
   :id==='classes'?section==='classes'||section==='student'
   :id==='bank'?section==='bank'
   :id==='mock-stats'?section==='mock-stats'
-  :id==='work/assignments'&&section==='work'&&!/work\/(review|overview|gradebook)/.test(current);
+  :id==='work/assignments'&&section==='work'&&!inReview&&!current.startsWith('work/gradebook');
  const links=sections.map(([id,title,name])=>`<a href="#${id}" ${active(id)?'aria-current="page"':''}>${icon(name)}${title}</a>`).join('');
  const secondary=`<div class="tw-nav-secondary"><a href="#games" ${section==='games'?'aria-current="page"':''}>${icon('chart')}拓展学习记录</a>${state.meta.capabilities.admin?`<a href="#settings" ${section==='settings'?'aria-current="page"':''}>${icon('settings')}设置</a>`:''}</div>`;
  const mobileSections=sections.filter(([id])=>!['classes','work/reviews','mock-stats'].includes(id));
  const mobileLinks=mobileSections.map(([id,title,name,short])=>`<a href="#${id}" ${active(id)?'aria-current="page"':''}>${icon(name)}${short||title}</a>`).join('');
- $('#teacher-navigation').innerHTML=links+secondary;
- $('#mobile-navigation').innerHTML=mobileLinks;
+ $('#teacher-navigation').innerHTML=links+secondary+mikeDock;
+ $('#mobile-navigation').innerHTML=mobileLinks+mikeDock;
  $$('[data-open-more]').forEach(button=>button.onclick=()=>{state.moreTrigger=button;button.focus({preventScroll:true});$('#more-menu').showModal();});
  $('#more-navigation').innerHTML=`<a href="#work/reviews">${icon('chart')}作业批阅</a><a href="#classes">${icon('people')}班级与学生</a><a href="#mock-stats">${icon('chart')}自主模考统计</a><a href="#games">${icon('chart')}拓展学习记录</a>`+(state.meta.capabilities.admin?`<a href="#settings">${icon('settings')}批改设置</a>`:'')+`<a href="/?account=password">${icon('settings')}修改密码</a><button type="button" data-more-logout>${icon('arrow')}退出登录</button><a href="${deskHref}">${icon('arrow')}返回一页通</a>`;
+ const currentMore=[...$('#more-navigation').querySelectorAll('a')].find(a=>{
+  const id=a.hash.slice(1);return active(id)||(['games','settings'].includes(id)&&id===section);
+ });
+ if(currentMore)currentMore.setAttribute('aria-current','page');
+ const moreButton=$('.tw-brand-more');
+ if(currentMore){moreButton.setAttribute('aria-current','location');moreButton.setAttribute('aria-label','更多教师功能，当前位置：'+currentMore.textContent);}
+ else{moreButton.removeAttribute('aria-current');moreButton.setAttribute('aria-label','更多教师功能');}
  $$('[data-more-logout]').forEach(b=>b.onclick=()=>{$('#more-menu')?.close();$('#teacher-logout')?.click();});
 
 }
@@ -133,14 +142,15 @@ async function classes(){
  const memory=viewMemory(state.user.id+':classes:'+state.classId+':'+state.book);
  const current=classroom();const [data,membership]=current?await Promise.all([api('teacher/performance?'+qs({class:current.id,book:state.book})),hw('students')]):[null,null];
  if(version!==state.version)return;
- main.innerHTML=`<div class="class-workspace"><aside class="class-workspace-nav"><div class="tw-section-head"><h2>我的班级</h2><span class="tw-note">${state.meta.classes.length} 个班</span></div><div class="tw-class-list">${state.meta.classes.map(c=>`<article class="tw-class-row" data-current="${c.id===state.classId}"><div><h3><button type="button" class="class-name-link" data-class-view="${c.id}" aria-label="查看${h(c.name)}名单" aria-pressed="${c.id===state.classId}">${h(c.name)} <span aria-hidden="true">›</span></button> ${c.archived?badge('已归档'):''}</h3><p>${c.students} 位学生${singleClassCourse(c)?' · '+subjectInfo(singleClassCourse(c)).label:''}</p></div><div class="tw-actions tw-class-actions"><details class="tw-class-more"><summary class="tw-button tw-small" aria-label="${h(c.name)}的更多操作" title="班级操作">⋯</summary><div class="tw-class-menu"><button data-add-student="${c.id}">添加学生</button><button data-copy="${h(c.code)}">复制班级码</button><button data-rename="${c.id}">重命名班级</button><button data-archive="${c.id}">${c.archived?'恢复班级':'归档班级'}</button></div></details></div></article>`).join('')||'<p class="tw-muted">还没有班级。创建后把班级码交给学生注册即可。</p>'}</div><details class="tw-new-class"><summary>新建班级</summary><form class="tw-inline-form" id="create-class">${field('新班级名称','name','','text','required maxlength="80" placeholder="例如：AP 宏观 3 班"')}<button class="tw-button" type="submit">创建班级</button><p class="tw-form-error" role="alert"></p></form></details></aside><div class="class-workspace-main">${data?`<section class="class-roster">
-  <div class="class-roster-head"><div><label class="class-mobile-switch"><span class="tw-note">班级</span><select id="class-mobile-switch" aria-label="切换班级">${state.meta.classes.map(c=>`<option value="${h(c.id)}" ${c.id===current.id?'selected':''}>${h(c.name)}${c.archived?' · 已归档':''}</option>`).join('')}</select></label><h2 id="class-roster-title" tabindex="-1">${h(current.name)} <small>${current.students} 人</small></h2><p>班级码 <strong class="tw-class-code">${h(current.code)}</strong> <button class="tw-text" type="button" data-copy="${h(current.code)}">复制</button></p></div><button class="tw-button tw-primary" type="button" data-add-student="${current.id}">添加学生</button></div>
-  <div class="class-roster-tools"><strong>学生名单</strong><div class="tw-filter">${field('查找学生','studentSearch','','search','id="student-search" placeholder="姓名或账号"')}</div><details class="tw-class-more class-roster-more"><summary class="tw-button tw-small" aria-label="更多名单操作">⋯</summary><div class="tw-class-menu"><button data-rename="${current.id}">重命名班级</button><button data-archive="${current.id}">${current.archived?'恢复班级':'归档班级'}</button><button class="tw-button tw-small" id="export-class">导出学情数据（JSON）</button></div></details></div>
+ main.innerHTML=`<div class="class-workspace"><aside class="class-workspace-nav"><div class="tw-section-head"><h2>我的班级</h2><span class="tw-note">${state.meta.classes.length} 个班</span></div><div class="tw-class-list">${state.meta.classes.map(c=>`<article class="tw-class-row" data-current="${c.id===state.classId}"><div><h3><button type="button" class="class-name-link" data-class-view="${c.id}" aria-label="查看${h(c.name)}名单" aria-pressed="${c.id===state.classId}">${h(c.name)} <span aria-hidden="true">›</span></button> ${c.archived?badge('已归档'):''}</h3><p>${c.students} 位学生${singleClassCourse(c)?' · '+subjectInfo(singleClassCourse(c)).label:''}</p></div><div class="tw-actions tw-class-actions"><details class="tw-class-more"><summary class="tw-button tw-small" aria-label="${h(c.name)}的更多操作" title="班级操作">⋯</summary><div class="tw-class-menu"><button data-add-student="${c.id}">添加学生</button><button data-copy="${h(c.code)}">复制班级码</button><button data-rename="${c.id}">重命名班级</button><button data-archive="${c.id}">${c.archived?'恢复班级':'归档班级'}</button></div></details></div></article>`).join('')||'<p class="tw-muted">还没有班级。创建后把班级码交给学生注册即可。</p>'}</div><details class="tw-new-class" data-has-class="${Boolean(current)}"><summary>新建班级</summary><form class="tw-inline-form" id="create-class">${field('新班级名称','name','','text','required maxlength="80" placeholder="例如：AP 宏观 3 班"')}<button class="tw-button" type="submit">创建班级</button><p class="tw-form-error" role="alert"></p></form></details></aside><div class="class-workspace-main">${data?`<section class="class-roster">
+  <div class="class-roster-head"><div><label class="class-mobile-switch"><span class="tw-note">班级</span><select id="class-mobile-switch" aria-label="切换班级">${state.meta.classes.map(c=>`<option value="${h(c.id)}" ${c.id===current.id?'selected':''}>${h(c.name)}${c.archived?' · 已归档':''}</option>`).join('')}</select><small class="class-size">${current.students} 人</small></label><h2 id="class-roster-title" tabindex="-1">${h(current.name)} <small>${current.students} 人</small></h2><p>班级码 <strong class="tw-class-code">${h(current.code)}</strong> <button class="tw-text" type="button" data-copy="${h(current.code)}">复制</button></p></div><button class="tw-button tw-primary" type="button" data-add-student="${current.id}">添加学生</button></div>
+  <div class="class-roster-tools"><strong>学生名单</strong><div class="tw-filter">${field('查找学生','studentSearch','','search','id="student-search" placeholder="姓名或账号"')}</div><details class="tw-class-more class-roster-more"><summary class="tw-button tw-small" aria-label="更多名单操作">⋯</summary><div class="tw-class-menu"><button type="button" data-start-class>新建班级</button><button type="button" data-copy="${h(current.code)}">复制班级码</button><button data-rename="${current.id}">重命名班级</button><button data-archive="${current.id}">${current.archived?'恢复班级':'归档班级'}</button><button class="tw-button tw-small" id="export-class">导出学情数据（JSON）</button></div></details></div>
   <div id="roster-table" class="class-roster-scroll" tabindex="0" aria-label="学生名单"></div></section>`:'<p class="tw-note">创建班级后，可在这里管理学生名单。</p>'}</div></div>${createStudentDialog()}${accountDrawer()}`;
  state.viewCleanup=bindDisclosureMenus(main,'.tw-class-more');
  main.querySelectorAll('.tw-class-menu').forEach(menu=>menu.addEventListener('click',e=>{
   if(e.target.closest('button')){const details=menu.parentElement;details.open=false;details.querySelector('summary').focus({preventScroll:true});}
  },true));
+ bindAction('[data-start-class]',()=>{const entry=main.querySelector('.tw-new-class');entry.open=true;entry.querySelector('input').focus();});
  onForm('#create-class',async b=>{await mutate('teacher/classes','POST',b);await metadata();toast('班级已创建，学生可使用班级码注册');await render();});
  bindAction('[data-add-student]',async b=>{const dlg=$('#create-student-dialog');if(!dlg)return;dlg.showModal();const form=$('#create-student');form.reset();$$('[name=classIds]',form).forEach(x=>x.checked=x.value===b.dataset.addStudent);const pass=$('#create-student-password');if(pass)pass.type='text';form.elements.name.focus();});
  $('#create-student-dialog').addEventListener('close',()=>{dirtyForms.delete($('#create-student'));state.dirty=dirtyForms.size>0;});
@@ -151,7 +161,8 @@ async function classes(){
  bindAction('[data-copy]',async b=>{try{await navigator.clipboard.writeText(b.dataset.copy);toast('班级码已复制');}catch{toast('请长按班级码复制');}});
  async function switchClass(classId){
   state.classId=classId;persist();await render();
-  $('#class-roster-title')?.focus({preventScroll:true});
+  const switcher=$('#class-mobile-switch');
+  (switcher?.getClientRects().length?switcher:$('#class-roster-title'))?.focus({preventScroll:true});
  }
  bindAction('[data-class-view]',b=>switchClass(b.dataset.classView));
  $('#class-mobile-switch')?.addEventListener('change',e=>{void switchClass(e.target.value);});
@@ -169,12 +180,13 @@ async function classes(){
    rosterHost.innerHTML=roster.length?table(['学生 / 账号','班级','操作'],roster.map(s=>{
     const enrolled=(memberships.get('bookself:'+s.id)||[]).map(id=>classNames.get(classKey(id))).filter(Boolean);
     return `<tr><td><a class="class-profile-link" href="#student/${encodeURIComponent(s.id)}">${highlightText(s.name,term)}</a><p>${highlightText(s.username,term)}</p></td><td data-label="班级">${h(enrolled.join('、')||current.name)}</td><td><button type="button" class="tw-button tw-small" data-manage="${h(s.id)}" aria-label="管理账号 ${h(s.name)}">管理账号</button></td></tr>`;
-   })):empty('没有匹配的学生','调整搜索条件，或请学生使用该班级码注册。');
+   })):(term?empty('未找到匹配的学生','','<button type="button" class="tw-button" data-clear-roster>清除搜索</button>'):empty('班级还没有学生','添加学生，或复制班级码邀请学生。'));
   }
   search.oninput=draw;draw();
   rosterHost.scrollTop=memory.get('rosterTop',0);
   rosterHost.addEventListener('scroll',()=>memory.set({rosterTop:rosterHost.scrollTop}),{passive:true});
   rosterHost.addEventListener('click',e=>{
+   if(e.target.closest('[data-clear-roster]')){search.value='';draw();search.focus();return;}
    const manage=e.target.closest('[data-manage]');
    if(manage){openAccount(manage.dataset.manage);return;}
    const link=e.target.closest('a');
@@ -505,7 +517,7 @@ async function analytics(){
  const view=mountLearningOverview({state,main,h,toast,link:button,load:()=>hw('learning'),readEvidence:(...args)=>reader(...args),resetEvidence:()=>{reader=teacherEvidenceReader(hw);},ai:(path,options={})=>hw(path,{...options,signal:AbortSignal.timeout(130000)})},data);
  state.viewCleanup=()=>view.destroy();
 }
-const titles={'mock-stats':['自主模考统计','查看学生自主练习的参与和答题情况。'],library:['课程教学包','从备课到订正，沿同一条学习路径。'],home:['教师工作台','备课、批阅与学情，在同一处完成。'],classes:['班级与学生','同一份名单，连接每一步学习。'],student:['完整学生档案','作业与考试表现优先，拓展学习记录单独查看。'],books:['教材与题库','核对内容，追踪当前版本的审核状态。'],question:['题目详情','原始模型、图表、答案与解释。'],work:['作业与批阅','发布题纸、确认答案，回应每一份思考。'],bank:['题库','全部单元自由组合，教学包只是题库的预设。'],games:['游戏与补练','从课堂尝试出发，安排下一步练习。'],feedback:['反馈中心','把学生遇到的问题，变成可跟进的改进。'],analytics:['成绩与学情','成绩总览、题目诊断与学情报告。'],settings:['批改设置','批改方式与教学操作记录。']};
+const titles={'mock-stats':['自主模考统计','查看学生自主练习的参与和答题情况。'],library:['课程教学包','从备课到订正，沿同一条学习路径。'],home:['教师工作台','备课、批阅与学情，在同一处完成。'],classes:['班级与学生','同一份名单，连接每一步学习。'],student:['完整学生档案','作业与考试表现优先，拓展学习记录单独查看。'],books:['教材与题库','核对内容，追踪当前版本的审核状态。'],question:['题目详情','原始模型、图表、答案与解释。'],work:['作业与批阅','发布题纸、确认答案，回应每一份思考。'],bank:['题库','全部单元自由组合，教学包只是题库的预设。'],games:['拓展学习记录',''],feedback:['反馈中心','把学生遇到的问题，变成可跟进的改进。'],analytics:['成绩与学情','成绩总览、题目诊断与学情报告。'],settings:['批改设置','批改方式与教学操作记录。']};
 function errorText(e) {
   if (e?.name === 'TimeoutError') return '连接超时，请重试。已保存的教学记录不会丢失。';
   const message = String(e?.message || '');
@@ -515,6 +527,14 @@ function errorText(e) {
 async function render(){
  dirtyForms.clear();state.restoreView=null;state.controller?.abort();state.viewCleanup?.();state.viewCleanup=null;state.controller=new AbortController();const version=++state.version;state.homework?.unmountTeacherHomework();surface.hidden=true;status.textContent='';main.setAttribute('aria-busy','true');main.innerHTML='<p class="tw-loading">正在读取教学记录…</p>';
  const [section='library',part='',third='']=location.hash.slice(1).split('/').map(x=>{try{return decodeURIComponent(x);}catch{return x;}}),key=titles[section]?section:'library';main.classList.toggle('tw-host-toolbar',['work','library'].includes(key)||key==='settings'&&part!=='audit');document.body.dataset.section=key;document.body.dataset.library=String(key==='library'||key==='work'&&part==='library');document.body.dataset.workTask=(key==='work'&&['new','edit','answer','review','mcq-import','mcq'].includes(part))?'true':'false';const [title,description]=titles[document.body.dataset.library==='true'?'library':key];$('.tw-page-heading').hidden=key==='settings'&&part!=='audit'||key==='bank'&&part==='crop';$('#page-title').textContent=title;$('#page-description').textContent=description;$('#publish-shortcut').hidden=true;document.title=title+' · Mike 的经济一页通';navigation(document.body.dataset.library==='true'?'library':key==='student'?'classes':key==='question'?'books':key);controls(key);
+ const taskList=key==='work'&&['assignments','reviews'].includes(part)&&!third?part:'';
+ const sharedTitle=taskList==='assignments'?'作业管理':taskList==='reviews'?'作业批阅':'';
+ document.body.dataset.teacherList=taskList||(['analytics','classes'].includes(key)?key:'');
+ const actions=$('#teacher-list-actions');
+ actions.hidden=!taskList;
+ actions.innerHTML=taskList==='assignments'?'<a class="tw-button tw-primary" href="#work/new">新建作业</a><details class="tw-class-more work-tools"><summary class="tw-button" aria-label="更多作业操作">⋯</summary><div class="tw-class-menu"><a href="#bank">从题库出题</a><a href="#work/trash">回收站</a></div></details>':taskList==='reviews'?'<a class="tw-button" href="#work/reviews/published">已出分作业</a>':'';
+ if(sharedTitle){$('#page-title').textContent=sharedTitle;document.title=sharedTitle+' · Mike 的经济一页通';}
+ state.listActionsCleanup?.();state.listActionsCleanup=taskList==='assignments'?bindDisclosureMenus(actions,'details'):null;
  try{if(key==='library')await work(location.hash.slice(1)||'library');else if(key==='bank'){if(part==='crop')await bankCrop(third);else await bank();}else if(key==='classes')await classes();else if(key==='student')await student(part,third);else if(key==='books')await books();else if(key==='question')await question(part);else if(key==='feedback')await feedback();else if(key==='analytics')await analytics();else if(key==='mock-stats')await renderMockStatistics({main,api:hw,state});else if(key==='games')await games(part,third);else if(key==='settings')await settings(part);else if(key==='work')await work(location.hash.slice(6)||'assignments');else await home();}
  catch(e){if(version!==state.version||e.name==='AbortError')return;surface.hidden=true;main.innerHTML=empty('暂时无法打开',h(errorText(e)),'<button class="tw-button tw-primary" id="retry-page">重新连接</button>');$('#retry-page').onclick=()=>void render();}
  finally{if(version===state.version){main.setAttribute('aria-busy','false');state.lastHash=location.hash;state.dirty=false;if(document.activeElement===document.body||document.activeElement===main||document.activeElement?.id==='teacher-content')(surface.hidden?main:$('#homework-main')).focus({preventScroll:true});state.restoreView?.();}}

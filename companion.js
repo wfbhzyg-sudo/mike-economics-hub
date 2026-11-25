@@ -16,9 +16,23 @@ function syncLayer(){
   host.toggleAttribute('data-decision',decision);
   const focused=document.activeElement?.closest('dialog:modal');
   const parent=focused || (modals.includes(host.parentElement)?host.parentElement:modals.at(-1)) || document.fullscreenElement || document.body;
+  host.toggleAttribute('data-in-reading-dialog',Boolean(document.fullscreenElement)||Boolean(parent.closest?.('[data-reader-dialog],#preview')));
   if(host.parentElement!==parent)parent.append(host);
   if(host.showPopover&&!host.matches(':popover-open'))host.showPopover();
   syncOpenLayer?.();
+}
+const teacherWorkspace = document.documentElement.dataset.teacherWorkspace === 'true';
+if (teacherWorkspace) {
+  const dockStyle=document.createElement('style');
+  dockStyle.textContent=':host(:not([data-in-reading-dialog])) .mike-launcher{display:none!important}';
+  ui.append(dockStyle);
+  document.addEventListener('click',event=>{
+    const trigger=event.target.closest('[data-open-teacher-mike]');
+    if(!trigger)return;
+    const menu=trigger.closest('details');if(menu)menu.open=false;
+    const returnFocus=menu?.querySelector('summary')||trigger;
+    host.hidden=false;syncLayer();open(false);lastFocus=returnFocus;
+  });
 }
 syncLayer();
 new MutationObserver(syncLayer).observe(document.body,{attributes:true,attributeFilter:['open'],subtree:true,childList:true});
@@ -104,6 +118,7 @@ function applyProfile(next,announce=false){
  launcher.querySelector('img').src=next.student?outfit(next.equipped):'/assets/mike-pixel.png';
  launcher.querySelector('.mike-equipped')?.remove();
  if(next.student){const prop=document.createElement('i');prop.className='mike-equipped';prop.innerHTML=symbol(next.equipped);launcher.append(prop);}
+ if(teacherWorkspace)document.body.toggleAttribute('data-mike-news',Boolean(next.unread));
  launcherText.textContent=next.unread?'功能更新':'问问 Mike';launcher.setAttribute('aria-label',next.unread?'打开 Mike 经济学伙伴，有新的功能更新':'打开 Mike 经济学伙伴');
  launcher.classList.toggle('has-news',next.unread);updates.textContent=next.unread?'更新 ●':'更新';
  renderOutfit();

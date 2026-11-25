@@ -121,7 +121,7 @@ function sizeTitleFields() {
   state.viewCleanup = () => { previous?.(); observer.disconnect(); fields.forEach(el => el.removeEventListener("input", input)); };
 }
 const head = (eyebrow, title, description = "", actions = "") =>
-  `<div class="paper-head"><div><h1>${h(title)}</h1>${/^(ANSWER KEY|SUBMIT) \/ /.test(eyebrow) ? `<p class="context">${eyebrow.split(" / ").slice(1).join(" / ")}</p>` : ""}${description ? `<p>${h(description)}</p>` : ""}</div>${actions ? `<div class="actions">${actions}</div>` : ""}</div>`;
+  `<div class="paper-head"><div><h1>${h(title)}</h1>${/^(ANSWER KEY|SUBMIT) \/ /.test(eyebrow) ? `<p class="context">${eyebrow.split(" / ").slice(1).join(" / ")}</p>` : ""}${description ? `<p>${h(description)}</p>` : ""}</div>${actions ? `<div class="actions">${actions}${embedded && document.body.dataset.workTask==="true" ? '<button type="button" class="secondary" data-open-teacher-mike>Mike</button>' : ""}</div>` : ""}</div>`;
 const empty = (title, copy, action = "") =>
   `<div class="empty"><h2>${h(title)}</h2><p>${h(copy)}</p>${action}</div>`;
 const link = (route, label, kind = "secondary") =>
@@ -733,12 +733,19 @@ function reviews(assignmentId) {
       const classId=select?.value||'';
       const visible=works.filter(a=>!classId||a.classIds.includes(classId));
       $('#review-history-list').innerHTML=visible.length?visible.map(a=>{
-        const route='overview/'+encodeURIComponent(a.id)+'/all/'+(classId?encodeURIComponent(classId):'all-classes');
+        const route='overview/'+encodeURIComponent(a.id)+'/all/'+(classId?encodeURIComponent(classId):'all-classes')+'/published';
         return `<article class="assignment-row"><div><h2>${link(route,h(a.title),'task-name')}</h2><div class="meta">${h(a.course||'')}</div></div>${link(route,'查看学生')}</article>`;
       }).join(''):empty('暂无已出分作业','');
     }
     if(select)select.onchange=()=>{scope.set({class:select.value});draw();};
     draw();
+    const list=$('#review-history-list');
+    let scrollHost=main;
+    while(scrollHost!==document.body && !(scrollHost.scrollHeight>scrollHost.clientHeight&&/(auto|scroll)/.test(getComputedStyle(scrollHost).overflowY)))scrollHost=scrollHost.parentElement;
+    if(scrollHost===document.body)scrollHost=document.scrollingElement;
+    list.addEventListener('click',event=>{if(event.target.closest('a'))scope.set({listTop:scrollHost.scrollTop});});
+    if(select)select.addEventListener('change',()=>scope.set({listTop:0}));
+    state.restoreView=()=>{scrollHost.scrollTop=scope.get('listTop',0);};
     return;
   }
   if (assignmentId) rows = rows.filter((s) => s.assignmentId === assignmentId);
@@ -1089,7 +1096,7 @@ async function render(scroll = true) {
     else if (route === "reviews") {state.reviewReturn=null;state.gradeReturn=null;if(id==='queue'&&Object.hasOwn(deskQueueLabels,questionId))await deskReviews(questionId,version);else reviews(id);}
     else if (["grades","history","gradebook"].includes(route)){state.reviewReturn=null;await learning.gradebook(id);}
     else if(route==="mistakes")await learning.mistakes(id,questionId);
-    else if(route==="overview"&&id)await learning.overview(id,questionId,libraryMode);
+    else if(route==="overview"&&id)await learning.overview(id,questionId,libraryMode,libraryDetail);
     else if (route === "result" && id) await resultPage(id);
     else if (route === "review" && id) await reviewPage(id,questionId);
     else if (route === "device") await devicePage();
