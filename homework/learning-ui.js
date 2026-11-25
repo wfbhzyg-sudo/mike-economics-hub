@@ -2,6 +2,7 @@ import {mountRecall} from './student-actions.js';
 import {mountFrqParts} from './frq-parts.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {mountMistakeDesk} from './mistake-desk.js';
+import {publicationTime} from './assignment-navigation.js';
 import {unitCourse} from './subject-catalog.js';
 import {verificationMarkup} from './learning-evidence.js';
 import {renderBookmarks} from './study-workflow.js';
@@ -38,7 +39,7 @@ export function createLearningUI(ctx){
   }});state.viewCleanup=()=>view.destroy();
  }
  async function overview(id,filter,classId,origin){return showAssignmentRoster(ctx,id,filter,classId,origin);}
- function correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute,onStay){
+ function correctionDraft(form,up,m,initial,remote,cached,endpoint,getNextRoute,onStay){
   const status=$('#correction-draft-status'),conflictBox=$('#correction-conflict');
   const key=`hw-correction:${state.user.id}:${m.assignmentId}:${m.questionId}`;
   let revision=remote?.revision||0,dirty=Boolean(cached),change=0,timer,writing=Promise.resolve(),done=false,conflict=false,mutationId=cached?.mutationId||crypto.randomUUID();
@@ -69,7 +70,7 @@ export function createLearningUI(ctx){
     if(up.busy())throw Error('请等待附件上传完成');
     if(up.pending())throw Error('还有文件未添加，请重试或选择不添加后再保存订正。');
     if(conflict)throw Error('请先选择要继续编辑的草稿版本。');
-    const next=form.dataset.afterSave==='next'&&nextRoute;
+    const nextRoute=getNextRoute(),next=form.dataset.afterSave==='next'&&nextRoute;
     const navigate=async()=>{if(ctx.onCorrectionSaved)await ctx.onCorrectionSaved(nextRoute,next?'next':'stay');else if(next)go(nextRoute);};
     if(done){await navigate();return;}
     clearTimeout(timer);
@@ -113,11 +114,10 @@ export function createLearningUI(ctx){
     const initial=cached||(!remote?.cleared&&remote)||{correction:'',note:m.note,status:m.status==='verified'?'review':m.status,files:[]};
     const latestCorrection=m.corrections.at(-1);const ids=[...m.corrections.flatMap(c=>c.files||[]),...(initial.files||[])];await metadata(ids);if(v!==state.routeVersion)return;
     const allRows=data.mistakes.flatMap(x=>[x,...(x.occurrences||[])]);
-    const queue=ctx.topicQueue || allRows.filter(x=>x.assignmentId===m.assignmentId);
-    const index=queue.findIndex(x=>x.assignmentId===m.assignmentId && x.questionId===m.questionId),next=queue[index+1];
-    const queueTitle=ctx.topicQueue ? ctx.topicLabel : '本次作业';
-    const route=x=>'mistakes/'+x.assignmentId+'/'+encodeURIComponent(x.questionId),nextRoute=next?route(next):null;
-    main.innerHTML=`<section class="paper correction-workspace"><h1 class="sr-only" tabindex="-1">第 ${h(m.questionNumber||m.questionId)} 题订正</h1><div class="correction-heading-info"><div class="correction-score-context"><strong>原得分 ${m.score} / ${m.maxPoints}</strong>${m.type==='choice'?`<span>原作答 ${h(m.originalChoice||'未作答')}</span>`:''}</div><div data-correction-lesson></div>${link('mistakes','返回错题集','text-button')}</div><div class="correction-layout"><section class="correction-reference" aria-label="原题与作答参考"></section><section class="correction-editor"><h2>${latestCorrection?'继续补充订正':'写下新的解题思路'}</h2>${m.feedback?`<details><summary>老师反馈</summary><p class="instructions">${h(m.feedback)}</p></details>`:''}${latestCorrection?`<details class="correction-saved" ${!initial.correction?'open':''}><summary>已保存订正 · ${date(latestCorrection.createdAt)}</summary><p class="instructions">${h(latestCorrection.text||'订正见附件')}</p><div class="file-list">${fileMarkup(latestCorrection.files||[])}</div></details>`:''}<form id="correction-form" class="stack"><aside class="lesson-pinned" data-lesson-pinned hidden></aside>${area('我的订正答案','correction',initial.correction,'placeholder="对照原题，按题号写下修改后的答案…" maxlength="10000"')}<details class="lib-handwriting" data-correction-ink><summary>手写订正</summary><div data-ink-host></div></details><details class="correction-attachments" ${(initial.files||[]).length?'open':''}><summary>拍照或添加订正附件</summary><div id="correction-upload"></div></details><details ${initial.note?'open':''}><summary>复习笔记（可选）</summary>${area('下次要记住什么','note',initial.note,'maxlength="5000"')}</details><label class="field"><span>复习状态</span><select name="status">${[['todo','待订正'],['review','待复习'],['mastered','我已掌握（自评）']].map(([v,t])=>`<option value="${v}" ${initial.status===v?'selected':''}>${t}</option>`).join('')}</select></label><p class="draft-feedback" id="correction-draft-status" role="status">${cached?'已恢复此设备的订正草稿。':remote&&!remote.cleared?'已恢复账户订正草稿。':'输入后自动保存草稿。'}</p><div id="correction-conflict" class="draft-conflict" hidden></div><p class="form-error" role="alert"></p><div class="correction-save-actions"><button class="primary" type="submit" data-correction-save="stay">保存订正</button>${next?'<button class="secondary" type="submit" data-correction-save="next">保存并下一题</button>':''}</div><div data-saved-verdict>${feedbackMarkup(m.correctionFeedback,h)}</div></form><nav class="correction-question-nav" aria-label="${h(queueTitle)}的错题"><button type="button" class="text-button" data-correction-nav="prev" ${index<=0?'disabled':''}>上一题</button><span>${h(queueTitle)} ${index+1} / ${queue.length} 道失分题</span><button type="button" class="text-button" data-correction-nav="next" ${next?'':'disabled'}>下一题</button></nav></section></div></section>`;
+    const paperQueue=allRows.filter(x=>x.assignmentId===m.assignmentId);
+    const route=x=>'mistakes/'+x.assignmentId+'/'+encodeURIComponent(x.questionId);
+    let queue,index;
+    main.innerHTML=`<section class="paper correction-workspace"><h1 class="sr-only" tabindex="-1">第 ${h(m.questionNumber||m.questionId)} 题订正</h1><div class="correction-heading-info"><div class="correction-score-context"><strong>原得分 ${m.score} / ${m.maxPoints}</strong>${m.type==='choice'?`<span>原作答 ${h(m.originalChoice||'未作答')}</span>`:''}</div><div data-correction-lesson></div>${link('mistakes','返回错题集','text-button')}</div><div class="correction-layout"><section class="correction-reference" aria-label="原题与作答参考"></section><section class="correction-editor"><h2>${latestCorrection?'继续补充订正':'写下新的解题思路'}</h2>${m.feedback?`<details><summary>老师反馈</summary><p class="instructions">${h(m.feedback)}</p></details>`:''}${latestCorrection?`<details class="correction-saved" ${!initial.correction?'open':''}><summary>已保存订正 · ${date(latestCorrection.createdAt)}</summary><p class="instructions">${h(latestCorrection.text||'订正见附件')}</p><div class="file-list">${fileMarkup(latestCorrection.files||[])}</div></details>`:''}<form id="correction-form" class="stack"><aside class="lesson-pinned" data-lesson-pinned hidden></aside>${area('我的订正答案','correction',initial.correction,'placeholder="对照原题，按题号写下修改后的答案…" maxlength="10000"')}<details class="lib-handwriting" data-correction-ink><summary>手写订正</summary><div data-ink-host></div></details><details class="correction-attachments" ${(initial.files||[]).length?'open':''}><summary>拍照或添加订正附件</summary><div id="correction-upload"></div></details><details ${initial.note?'open':''}><summary>复习笔记（可选）</summary>${area('下次要记住什么','note',initial.note,'maxlength="5000"')}</details><label class="field"><span>复习状态</span><select name="status">${[['todo','待订正'],['review','待复习'],['mastered','我已掌握（自评）']].map(([v,t])=>`<option value="${v}" ${initial.status===v?'selected':''}>${t}</option>`).join('')}</select></label><p class="draft-feedback" id="correction-draft-status" role="status">${cached?'已恢复此设备的订正草稿。':remote&&!remote.cleared?'已恢复账户订正草稿。':'输入后自动保存草稿。'}</p><div id="correction-conflict" class="draft-conflict" hidden></div><p class="form-error" role="alert"></p><div class="correction-save-actions"><button class="primary" type="submit" data-correction-save="stay">保存订正</button><button class="secondary" type="submit" data-correction-save="next">保存并下一题</button></div><div data-saved-verdict>${feedbackMarkup(m.correctionFeedback,h)}</div></form><nav class="correction-question-nav"><button type="button" class="text-button" data-correction-nav="prev">上一题</button><span></span><button type="button" class="text-button" data-correction-nav="next">下一题</button></nav></section></div></section>`;
     const lessons=mountLessonLinks(main,api);
     lessons.mount($('[data-correction-lesson]'),m,{number:m.questionNumber||m.questionId,
       pinHost:$('[data-lesson-pinned]'),libraryUnit:m.libraryUnit,course:m.course,review:m.review});
@@ -153,9 +153,20 @@ export function createLearningUI(ctx){
       form.querySelectorAll('[data-correction-save]').forEach(b=>b.textContent=b.dataset.correctionSave==='next'?'提交并继续':'提交验收');
       form.elements.status.closest('label').hidden=true;
     }
-    if(ctx.finishTopic)form.querySelector('[data-correction-save=stay]').textContent=enabled?'提交并查看进度':'保存并查看进度';
+    function updateQueue(rows,label,finish){
+      queue=rows||paperQueue;index=queue.findIndex(x=>x.assignmentId===m.assignmentId&&x.questionId===m.questionId);
+      const title=rows?label:'本次作业',hasNext=index>=0&&index+1<queue.length;
+      const nav=$('.correction-question-nav');
+      nav.setAttribute('aria-label',title+'的错题');nav.querySelector('span').textContent=title+' '+(index+1)+' / '+queue.length+' 道失分题';
+      nav.querySelector('[data-correction-nav=prev]').disabled=index<=0;
+      nav.querySelector('[data-correction-nav=next]').disabled=!hasNext;
+      form.querySelector('[data-correction-save=next]').hidden=!hasNext;
+      form.querySelector('[data-correction-save=stay]').textContent=finish?(enabled?'提交并查看进度':'保存并查看进度'):(enabled?'提交验收':'保存订正');
+    }
+    updateQueue(ctx.topicQueue,ctx.topicLabel,ctx.finishTopic);
+    ctx.onQueueReady?.(updateQueue);
     let autosave,correctionInk;const up=uploadWidget($('#correction-upload'),'submission',initial.files||[],()=>autosave?.changed());bindPreviews();
-    autosave=correctionDraft(form,up,m,initial,remote,cached,endpoint,nextRoute,feedback=>{
+    autosave=correctionDraft(form,up,m,initial,remote,cached,endpoint,()=>queue[index+1]?route(queue[index+1]):null,feedback=>{
       const status=$('#correction-draft-status'),receipt=$('[data-saved-verdict]');
       status.textContent='订正已保存';receipt.innerHTML=enabled&&m.verification?'':feedbackMarkup(feedback,h,true);
       setTimeout(paintVerification,0);
@@ -190,7 +201,7 @@ export function createLearningUI(ctx){
      }else{back.textContent='查看原题';heading.append(back);back.onclick=()=>{if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();$('.correction-reference').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[data-reference=question]').click();$('[data-reference=question]').focus({preventScroll:true});};}}
     paintVerification();
     const cleanup=state.viewCleanup;state.viewCleanup=()=>{clearTimeout(reviewTimer);correctionInk?.destroy();reference.destroy();cleanup?.();};
-    for(const [direction,target]of [['prev',queue[index-1]],['next',next]])$('[data-correction-nav='+direction+']').onclick=async e=>{if(!target)return;const button=e.currentTarget;button.disabled=true;try{await autosave.flush();go(route(target));}catch(error){toast(error.message);button.disabled=false;}};
+    for(const [direction,step] of [['prev',-1],['next',1]])$('[data-correction-nav='+direction+']').onclick=async e=>{const target=queue[index+step];if(!target)return;const button=e.currentTarget;button.disabled=true;try{await autosave.flush();go(route(target));}catch(error){toast(error.message);button.disabled=false;}};
     const correctionCleanup=state.viewCleanup;state.viewCleanup=()=>{lessons.destroy();correctionCleanup?.();};
     return;
   }
@@ -200,28 +211,61 @@ export function createLearningUI(ctx){
   const occurrences=data.mistakes.flatMap(m=>[m,...(m.occurrences||[])]);
   const subjects=[...new Set([...coursesFor(data.assignments,data.classes||[]),...occurrences.map(subjectOf)])];
   let subject=selectedCourse(state.user.id,subjects),visibleRows=[];
-  main.innerHTML=`<section class="paper mistake-desk"><div class="md-toolbar"><h1 class="sr-only">我的错题集</h1>${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="md-command"><label class="md-metric"><select aria-label="Topic 数量口径" data-count-mode><option value="pending">待订正题数</option><option value="total">累计错题数</option></select></label><button type="button" class="secondary" data-books>我的错题册</button><button type="button" class="primary" data-make-book disabled>导出 PDF</button></div></div><div class="md-strip"><button aria-label="向左查看 Topic" data-scroll-topics="-1">‹</button><nav class="md-topics" aria-label="按 Topic 选择"></nav><button aria-label="向右查看 Topic" data-scroll-topics="1">›</button></div><div class="md-context"><div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div><p id="topic-progress" role="status" tabindex="-1" hidden></p><div data-round-feedback></div><details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters"><button type="button" data-filter-close aria-label="关闭筛选">关闭</button><label class="field"><span>查找作业或题目</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label><label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label></div></details><div class="filter-result-line"><p id="mistake-count" role="status"></p><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button></div></div><div class="md-panes"><div id="mistakes-list" aria-label="错题列表"></div><section class="md-reader" aria-label="订正工作区"><button type="button" class="md-list-toggle" aria-expanded="true">收起题栏</button><p class="md-idle">选择一道错题，查看原题与上次作答。</p></section></div></section>`;
+  main.innerHTML=`<section class="paper mistake-desk"><div class="md-toolbar"><h1 class="sr-only">我的错题集</h1>${mistakeNavigation(link,h,{current:'mistakes',subjects,subject})}<div class="md-command"><label class="md-metric"><select aria-label="Topic 数量口径" data-count-mode><option value="pending">待订正题数</option><option value="total">累计错题数</option></select></label><button type="button" class="secondary" data-books>我的错题册</button><button type="button" class="primary" data-make-book disabled>导出 PDF</button><div class="md-status-bar"><div class="filter-result-line"><p id="mistake-count" role="status"></p></div><p id="topic-progress" role="status" tabindex="-1" hidden></p></div></div></div><div class="md-strip"><button aria-label="向左查看 Topic" data-scroll-topics="-1">‹</button><nav class="md-topics" aria-label="按 Topic 选择"></nav><button aria-label="向右查看 Topic" data-scroll-topics="1">›</button></div><div class="md-context">
+    <label class="md-assignment-field"><span class="sr-only">按作业筛选错题</span><select id="mistake-assignment"></select></label>
+    <details class="mistake-extra"><summary>筛选</summary><div class="learning-filters mistake-nav-filters">
+      <label class="field"><span>关键词</span><input id="mistake-search" type="search" placeholder="作业、知识点或题号"></label>
+      <label class="field"><span>复习状态</span><select id="mistake-state"><option value="">全部</option><option value="todo">待订正</option><option value="verified">已订正</option><option value="review">已提交订正</option><option value="mastered">已掌握（自评）</option></select></label>
+      <div class="md-filter-actions"><button type="button" class="text-button" id="clear-mistake-filters">清除筛选</button><button type="button" class="secondary" data-filter-close>关闭</button></div>
+    </div></details>
+    <div class="topic-picker"><label class="field"><span class="sr-only">Topic</span><select id="mistake-topic"></select></label><button type="button" class="primary" id="topic-start" hidden>开始订正</button></div>
+  </div><div data-round-feedback></div><div class="md-panes"><div id="mistakes-list" aria-label="错题列表"></div><section class="md-reader" aria-label="订正工作区"><button type="button" class="md-list-toggle" aria-expanded="true">收起题栏</button><p class="md-idle">选择一道错题，查看原题与上次作答。</p></section></div></section>`;
   bindMistakeNavigation(main);
   $('#mistake-search').value=memory.get('query','');$('#mistake-state').value=memory.get('status','');
   const topicControl=$('#mistake-topic'),startTopic=$('#topic-start'),progress=$('#topic-progress');
   let pendingRows=[],finished=false,needsRefresh=false,lastSaved=null,reviewTimer;
-  const filterMenu=$('.mistake-extra'),compactFilter=matchMedia('(max-width:700px)');
-  let releaseFilter=null;
-  function bindFilters(){
-    releaseFilter?.();filterMenu.open=false;
-    releaseFilter=compactFilter.matches?bindDisclosureMenus(main,'.mistake-extra'):null;
+  const filterMenu=$('.mistake-extra'),filterTrigger=filterMenu.querySelector('summary');
+  const releaseFilter=bindDisclosureMenus(main,'.mistake-extra');
+  $('[data-filter-close]').onclick=()=>{filterMenu.open=false;filterTrigger.focus({preventScroll:true});};
+  const assignmentControl=$('#mistake-assignment');
+  let courseRows=[],sourceRows=[];
+  function setSourceRows(){
+    const value=assignmentControl.value;
+    sourceRows=value?matchingMistakes(courseRows,m=>value===(m.source==='mock'?'mock':'assignment:'+m.assignmentId)):courseRows;
   }
-  bindFilters();compactFilter.addEventListener('change',bindFilters);
-  $('[data-filter-close]').onclick=()=>{filterMenu.open=false;filterMenu.querySelector('summary').focus();};
   function setTopicChoices(){
-    const scoped=matchingMistakes(data.mistakes,m=>subjectOf(m)===subject);
-    const options=mistakeTopicOptions(scoped),counts=topicWorkCounts(scoped);
+    courseRows=matchingMistakes(data.mistakes,m=>subjectOf(m)===subject);
+    const papers=new Map();let hasMocks=false;
+    for(const group of courseRows)for(const m of [group,...group.occurrences]){
+      if(m.source==='mock'){hasMocks=true;continue;}
+      if(!papers.has(m.assignmentId)){
+        const paper=assignmentsById.get(m.assignmentId);
+        papers.set(m.assignmentId,{id:m.assignmentId,title:paper?.title||m.assignmentTitle,time:paper?publicationTime(paper):null});
+      }
+    }
+    const ordered=[...papers.values()].sort((a,b)=>(b.time??0)-(a.time??0)||a.title.localeCompare(b.title,'zh-CN',{numeric:true})||a.id.localeCompare(b.id));
+    // Expose duplicate titles as distinct choices even if both papers were distributed on the same day.
+    const titles=new Map(),labels=new Map();
+    for(const p of ordered)titles.set(p.title,(titles.get(p.title)||0)+1);
+    assignmentControl.replaceChildren(new Option('全部作业与模考',''));
+    for(const p of ordered){
+      const label=titles.get(p.title)>1&&p.time?p.title+' · '+date(p.time):p.title;
+      const n=(labels.get(label)||0)+1;labels.set(label,n);
+      assignmentControl.add(new Option(n>1?label+' ('+n+')':label,'assignment:'+p.id));
+    }
+    if(hasMocks)assignmentControl.add(new Option('自主模考','mock'));
+    assignmentControl.value=memory.get('assignment:'+subject,'');
+    if(assignmentControl.selectedIndex<0)assignmentControl.selectedIndex=0;
+    setSourceRows();
+    const options=mistakeTopicOptions(courseRows),counts=topicWorkCounts(courseRows);
     topicControl.innerHTML='<option value="all">全部 Topic</option>'+options.map(([topic,title])=>
       `<option value="${topic||'unknown'}">${topic?h('Topic '+topic+(title?' · '+title:'')):'未标注 Topic'} · 待订正 ${counts.get(topic||'unknown').pending}</option>`).join('');
     const saved=memory.get('topic:'+subject,'all');
     // The catalog also contains chapters with zero mistakes. Keep a previously
     // selected one while the separately loaded outline is being resolved.
-    if(/^\d+\.\d+$/.test(saved)&&![...topicControl.options].some(o=>o.value===saved))topicControl.add(new Option('Topic '+saved,saved));
+    if(/^\d+\.\d+$/.test(saved)&&![...topicControl.options].some(o=>o.value===saved)){
+      const provisional=new Option('Topic '+saved,saved);provisional.dataset.provisional='';topicControl.add(provisional);
+    }
     topicControl.value=[...topicControl.options].some(o=>o.value===saved)?saved:'all';
   }
   const desk=mountMistakeDesk(ctx,{onRefresh:()=>{if(!closed&&!busy)void refreshRows();}});
@@ -246,10 +290,10 @@ export function createLearningUI(ctx){
   }
   let shownRecall='';
   const suggested=document.createElement('div');suggested.className='student-recall-offer';suggested.hidden=true;
-  $('.filter-result-line').after(suggested);
+
   const draw=()=>{
     const term=$('#mistake-search').value.trim(),status=$('#mistake-state').value,topic=topicControl.value;
-    const scoped=matchingMistakes(data.mistakes,m=>subjectOf(m)===subject);
+    const scoped=sourceRows;
     const rows=matchingMistakes(scoped,m=>(topic==='all'||(mistakeTopic(m)||'unknown')===topic) &&
       (!status||(m.progressStatus||m.status)===status) &&
       (!term||[m.assignmentTitle,m.prompt,m.knowledge,m.questionId].join(' ').toLocaleLowerCase().includes(term.toLocaleLowerCase())));
@@ -268,7 +312,8 @@ export function createLearningUI(ctx){
       (!last.verification||last.verification.status==='passed'?feedbackMarkup(last.correctionFeedback,h):'') : '';
     if(needsRefresh)progress.textContent='进度暂未同步，请重试。';
     startTopic.hidden=topic==='all'||(!pendingRows.length&&!needsRefresh);
-    startTopic.textContent=needsRefresh?'重试同步':term||status?'开始筛选出的 '+pendingRows.length+' 题':'开始订正';
+    startTopic.textContent=needsRefresh?'重试同步':'开始订正';
+    startTopic.setAttribute('aria-label',needsRefresh?'重试同步':'开始订正 · '+pendingRows.length+' 题');
     clearTimeout(reviewTimer);
     if(finished && !needsRefresh && totals.waiting){
       const waiting=scoped.flatMap(m=>[m,...(m.occurrences||[])]).filter(m=>(mistakeTopic(m)||'unknown')===topic && ['queued','running','manual'].includes(m.verification?.status)).map(m=>m.verification);
@@ -292,16 +337,18 @@ export function createLearningUI(ctx){
       reviewTimer=setTimeout(check,6000);
     }
     visibleRows=rows;
-    memory.set({query:term,status,['topic:'+subject]:topic});
+    memory.set({query:term,status,['topic:'+subject]:topic,['assignment:'+subject]:assignmentControl.value});
     const choice=$('#mistake-state').selectedOptions[0];
-    filterMenu.querySelector('summary').textContent=['筛选',term,status && choice.textContent].filter(Boolean).join(' · ');
-    $('#mistake-count').textContent=rows.length+' / '+scoped.length+' 道'+courseLabel(subject)+'失分题';
-    $('#clear-mistake-filters').hidden=!term&&!status&&topic==='all';
-    $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${excerpt(m,term)}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span></div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;desk.update(rows,scoped,subject);if(active)selectRow(active.route);};
+    filterMenu.toggleAttribute('data-filtered',Boolean(term||status));
+    filterTrigger.setAttribute('aria-label',['筛选',term,status && choice.textContent].filter(Boolean).join(' · '));
+    const count=$('#mistake-count');count.textContent=rows.length+' / '+scoped.length+' 题';
+    count.title=courseLabel(subject)+' · 显示 '+rows.length+' 道，当前来源共 '+scoped.length+' 道错题';
+    $('#clear-mistake-filters').disabled=!term&&!status&&topic==='all'&&!assignmentControl.value;
+    $('#mistakes-list').innerHTML=rows.length?rows.map(m=>`<article class="mistake-row" data-inline-assignment="${h(m.assignmentId)}" data-inline-question="${h(m.questionId)}"><div><h2>${routeLink('mistakes/'+m.assignmentId+'/'+encodeURIComponent(m.questionId),'第 '+(m.questionNumber ? highlightText(m.questionNumber,term) : highlightText(m.questionId,term))+' 题')}</h2><p class="meta">${highlightText(m.assignmentTitle,term)}${mistakeTopic(m)?' · Topic '+h(mistakeTopic(m)):''}</p>${m.mistakeCount>1?`<details class="mistake-occurrences"><summary>${m.mistakeCount} 次失分 · 查看其他作答</summary>${m.occurrences.map(r=>link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.assignmentTitle+' · '+date(r.publishedAt)+' · '+r.score+'/'+r.maxPoints),'text-button')).join('')}</details>`:''}${excerpt(m,term)}${m.feedback?`<p class="mistake-feedback">${h(m.feedback)}</p>`:""}</div><div class="actions"><span class="badge">${({todo:'待订正',verified:'已订正',review:m.verification?'待验收':'已提交订正',mastered:'已掌握（自评）'})[m.progressStatus||m.status]||'待订正'}</span><span class="question-score">${m.score}/${m.maxPoints}</span></div></article>`).join(''):`<div class="empty"><h2>${data.mistakes.length?'没有匹配的错题':'这里收集每次作业的失分题'}</h2><p>${data.mistakes.length?'调整筛选条件，再找一次。':'成绩返回后，失分题会自动保存。满分作业不会增加错题。'}</p>${link('assignments','查看作业','primary')}</div>`;list.prepend(suggested);desk.update(rows,scoped,subject);if(active)selectRow(active.route);};
   draw();
 
   const courseControls=$$('[data-mistake-course]');
-  const filters=[...courseControls,topicControl,startTopic,$('#mistake-search'),$('#mistake-state'),$('#clear-mistake-filters')].filter(Boolean);
+  const filters=[...courseControls,assignmentControl,topicControl,startTopic,$('#mistake-search'),$('#mistake-state'),$('#clear-mistake-filters')].filter(Boolean);
   async function refreshRows(){
     try{
       const fresh=await api('learning?mistakeBook=1');if(closed)return;
@@ -326,14 +373,25 @@ export function createLearningUI(ctx){
     catch(error){toast(error.message);}
     finally{busy=false;}
   };
+  let applyingFilters=false,filtersChanged=false;
   const filterDraw=async()=>{
+    if(applyingFilters){filtersChanged=true;return;}
     if(busy)return;
-    busy=true;
+    const previous={assignment:memory.get('assignment:'+subject,''),topic:memory.get('topic:'+subject,'all'),term:memory.get('query',''),status:memory.get('status','')};
+    busy=true;applyingFilters=true;
     try{
       finished=false;draw();
       if(active&&!active.row.isConnected)await closeInline({focus:false});
-    }catch(e){toast(e.message);}
-    finally{busy=false;}
+      else active?.applyFilters?.();
+    }catch(e){
+      // A pending attachment or unresolved draft keeps its question and scope on screen.
+      assignmentControl.value=previous.assignment;topicControl.value=previous.topic;
+      $('#mistake-search').value=previous.term;$('#mistake-state').value=previous.status;
+      setSourceRows();draw();toast(e.message);
+    }finally{
+      busy=false;applyingFilters=false;
+      if(filtersChanged&&!closed){filtersChanged=false;void filterDraw();}
+    }
   };
   for(const button of courseControls)button.onclick=async()=>{
     if(busy||subject===button.dataset.mistakeCourse)return;
@@ -345,8 +403,14 @@ export function createLearningUI(ctx){
       setTopicChoices();draw();
     }catch(e){toast(e.message);}finally{busy=false;}
   };
+  assignmentControl.onchange=()=>{setSourceRows();void filterDraw();};
   $('#mistake-search').oninput=filterDraw;$('#mistake-state').onchange=filterDraw;topicControl.onchange=filterDraw;
-  $('#clear-mistake-filters').onclick=async()=>{if(busy)return;busy=true;try{await closeInline({focus:false});$('#mistake-search').value='';$('#mistake-state').value='';topicControl.value='all';finished=false;draw();$('#mistake-search').focus();}catch(e){toast(e.message);}finally{busy=false;}};
+  $('#clear-mistake-filters').onclick=async()=>{
+    if(busy)return;
+    $('#mistake-search').value='';$('#mistake-state').value='';topicControl.value='all';
+    assignmentControl.value='';setSourceRows();await filterDraw();
+    if(filterMenu.open)$('#mistake-search').focus({preventScroll:true});
+  };
   async function openRow(trigger,round=false){
     let row=trigger?.closest('[data-inline-assignment]');
     if(!row||busy)return;finished=false;clearTimeout(reviewTimer);busy=true;filters.forEach(f=>f.disabled=true);
@@ -357,18 +421,26 @@ export function createLearningUI(ctx){
       if(!row.isConnected){trigger=[...list.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===href);row=trigger?.closest('[data-inline-assignment]');if(!row)return;}
       const host=document.createElement('div');host.className='mistake-inline';host.setAttribute('aria-label','原题与订正');host.innerHTML='<p role="status">正在打开原题与订正…</p>';$('.md-reader').append(host);
       const local={...state,routeVersion:0,viewCleanup:null,restoreView:null,correctionNavigation:null};active={host,row,trigger,local,listTop:list.scrollTop};
-      // Keep the filtered order for this session, including the particular occurrence opened.
-      const start=trigger.hash.slice(1).split('/').map(decodeURIComponent);
-      const topicQueue=round?pendingRows:topicControl.value==='all'?null:visibleRows.map(item=>
-        [item,...(item.occurrences||[])].find(r=>r.assignmentId===start[1] && r.questionId===start[2]) || item);
-      const topicLabel=topicControl.value==='unknown'?'未标注 Topic':'Topic '+topicControl.value;
+      // A filter change updates the editor's navigation in place, including the same bank question in another paper.
+      let updateQueue;
+      const selectedQueue=(a,q)=>{
+        if(round)return pendingRows;
+        if(topicControl.value==='all'&&!assignmentControl.value&&!$('#mistake-search').value.trim()&&!$('#mistake-state').value)return null;
+        return visibleRows.map(item=>[item,...item.occurrences].find(r=>r.assignmentId===a&&r.questionId===q)||item);
+      };
+      const queueLabel=()=>topicControl.value==='all'?(assignmentControl.value?assignmentControl.selectedOptions[0].textContent:'筛选结果'):topicControl.value==='unknown'?'未标注 Topic':'Topic '+topicControl.value;
+      active.applyFilters=()=>{
+        round=false;
+        const [,a,q]=active.route.split('/').map(decodeURIComponent);
+        updateQueue?.(selectedQueue(a,q),queueLabel(),false);
+      };
       const open=async(route)=>{if(closed||active?.host!==host)return;local.viewCleanup?.();const version=++local.routeVersion;local.viewCleanup=null;local.correctionNavigation=null;const [,a,q]=route.split('/').map(decodeURIComponent);
-        host.innerHTML='<p role="status">正在打开原题与订正…</p>';
+        updateQueue=null;host.innerHTML='<p role="status">正在打开原题与订正…</p>';
         selectRow(route);
-        const last=round&&topicQueue.at(-1)?.assignmentId===a&&topicQueue.at(-1)?.questionId===q;
-        const child=createLearningUI({...ctx,main:host,state:local,topicQueue,topicLabel,finishTopic:last,go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(closed||active?.host!==host||version!==local.routeVersion)return;
+        const topicQueue=selectedQueue(a,q),last=round&&topicQueue.at(-1)?.assignmentId===a&&topicQueue.at(-1)?.questionId===q;
+        const child=createLearningUI({...ctx,main:host,state:local,topicQueue,topicLabel:queueLabel(),finishTopic:last,onQueueReady:fn=>{updateQueue=fn;if(!round)fn(selectedQueue(a,q),queueLabel(),false);},go:r=>void open(r).catch(e=>toast(e.message)),link:(r,t,c)=>r==='mistakes'?'<button type="button" class="secondary" data-inline-close>收起订正</button>':link(r,t,c),onCorrectionSaved:async(next,mode)=>{if(closed||active?.host!==host||version!==local.routeVersion)return;
           active.saved=true;
-          if(last){finished=true;lastSaved={a,q};await closeInline({focus:false,refresh:true});if(!closed){progress.focus();progress.scrollIntoView({block:'nearest'});}}
+          if(round&&last){finished=true;lastSaved={a,q};await closeInline({focus:false,refresh:true});if(!closed){progress.focus();progress.scrollIntoView({block:'nearest'});}}
           else if(mode==='next'&&next)await open(next);}});
         try{await child.mistakes(a,q);}catch(error){
           if(closed||active?.host!==host||version!==local.routeVersion)return;
@@ -399,7 +471,7 @@ export function createLearningUI(ctx){
     if(trigger.target==='_blank'||!trigger.hash.startsWith('#mistakes/')||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();void openRow(trigger);
   });
-  state.viewCleanup=()=>{closed=true;releaseFilter?.();compactFilter.removeEventListener('change',bindFilters);desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
+  state.viewCleanup=()=>{closed=true;releaseFilter();desk.destroy();clearTimeout(reviewTimer);if(active){active.local.routeVersion++;active.local.viewCleanup?.();active=null;}};
   state.restoreView=()=>{main.scrollTo({top:memory.get('top',0),behavior:'instant'});const a=[...list.querySelectorAll('a')].find(a=>a.getAttribute('href')===memory.get('selected',''));a?.focus({preventScroll:true});};
  }
  return {gradebook,overview,mistakes};

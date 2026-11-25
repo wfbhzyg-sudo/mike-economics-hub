@@ -36,13 +36,11 @@
 @media(max-width:700px){.mistake-desk{padding:10px}.mistake-desk .md-command{gap:5px}.mistake-desk .md-panes{grid-template-columns:1fr;grid-template-rows:minmax(95px,24%) minmax(0,1fr);height:69dvh}.md-panes #mistakes-list{border-right:0;border-bottom:1px solid #cdd9de}.mistake-desk .md-panes:not(:has(.mistake-inline)){grid-template-rows:1fr}.md-panes:not(:has(.mistake-inline)) .md-reader{display:none}.md-panes .mistake-row>.actions{flex-wrap:wrap}.mistake-desk .md-command :is(select,button){font-size:12px;min-height:38px}}
 .mistake-desk{display:flex;flex-direction:column;height:calc(100dvh - 115px);min-height:405px;box-sizing:border-box}
 .mistake-desk>.paper-head{flex:none;margin-bottom:4px;padding-bottom:5px}
-.md-toolbar,.md-context{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;min-width:0}
+.md-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;min-width:0}
 .md-toolbar{justify-content:flex-start}.md-toolbar .mistake-navigation{flex:0 1 auto;gap:10px;margin:0;border:0;justify-content:flex-start}
 .md-toolbar .md-command{margin:0}.md-toolbar .mistake-views{gap:12px}
-.mistake-desk .md-context .topic-picker,.mistake-desk .md-context #topic-progress,.mistake-desk .md-context .filter-result-line{margin:0}
-.md-context .filter-result-line{flex:0 1 auto;gap:6px;justify-content:flex-start}.md-context .mistake-extra[open]{order:5;flex:1 1 100%}
-.md-context .mistake-extra[open] .mistake-nav-filters{margin-bottom:5px}
-.md-context [data-round-feedback]:empty{display:none}.md-context [data-round-feedback]:not(:empty){flex:1 1 100%}
+.mistake-desk .md-context .topic-picker,.mistake-desk .md-status-bar #topic-progress,.mistake-desk .md-status-bar .filter-result-line{margin:0}
+
 .mistake-desk .md-panes{flex:1 1 auto;height:auto;min-height:190px}
 @media(max-width:700px){.mistake-desk{height:calc(100dvh - 133px);min-height:360px}
 .md-toolbar{gap:2px 8px}.md-toolbar .mistake-navigation,.md-toolbar .md-command{flex:0 1 auto}
@@ -87,9 +85,7 @@
 .mistake-desk .md-context .filter-result-line{min-height:32px}
 .md-reader .correction-workspace .correction-score-context strong{font-size:14px}
 @container(min-width:731px){.md-reader .correction-workspace:not(.frq-workspace) :is([data-write-correction],.correction-back-reference){display:none}}
-.mistake-desk .md-command [hidden],.mistake-extra [data-filter-close],.md-reader .md-list-toggle {display:none}
-.md-context .mistake-extra[open] .mistake-nav-filters {display:flex;align-items:end;justify-content:flex-start;gap:12px}
-.md-context .mistake-nav-filters .field {flex:0 1 240px;margin:0}
+.mistake-desk .md-command [hidden],.md-reader .md-list-toggle {display:none}
 .mistake-desk .course-scope[data-subject-switch] {margin:0}
 .mistake-course-name {display:inline-flex;align-items:center;min-height:36px;font-size:13px;font-weight:600;color:#304b5e}
 @media(max-width:700px){
@@ -107,21 +103,55 @@
   .mistake-desk .md-panes[data-hide-rail]:has(.mistake-inline) {grid-template-columns:minmax(0,1fr)}
   .md-panes[data-hide-rail]:has(.mistake-inline) #mistakes-list {display:none}
   .md-panes:has(.mistake-inline) .md-list-toggle {display:block;margin:4px 6px 0 auto;min-height:32px;padding:3px 8px;font-size:12px}
-  .md-context .mistake-extra[open] {flex:0 1 auto;order:0}
-  .md-context .mistake-extra > summary {max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .md-context .mistake-extra[open] .mistake-nav-filters {align-items:stretch;display:grid;gap:8px}
-  .md-context .mistake-extra [data-filter-close] {display:block;justify-self:end;min-height:36px}
-}
-@media(max-width:700px){
   #main>.mistake-desk {padding-inline:0}
-  .md-context .mistake-extra[open] .mistake-nav-filters {
-    grid-template-columns:minmax(0,1fr);grid-auto-flow:row;align-items:start;gap:8px;
-  }
-  .md-context .mistake-nav-filters .field {grid-column:1;width:100%;max-width:none;margin:0;min-width:0}
-  .md-context .mistake-nav-filters :is(input,select) {width:100%;box-sizing:border-box}
-  .md-context .mistake-extra [data-filter-close],.md-panes:has(.mistake-inline) .md-list-toggle {
+  .md-panes:has(.mistake-inline) .md-list-toggle {
     align-self:start;width:auto;padding:4px 10px;line-height:1.3;color:#274b63;
     border:1px solid #c7d4da;background:#f6f9fa;border-radius:6px;font-size:12px;
   }
-  .md-context .mistake-extra [data-filter-close] {grid-column:1;grid-row:3;min-height:36px}
+}
+
+/* Both controls keep the same footprint as filters, matches and topic counts change. */
+.mistake-desk .md-context {
+  display:grid;grid-template-columns:minmax(9rem,18rem) max-content max-content;
+  align-items:center;gap:0 8px;padding-block:3px;
+}
+.md-assignment-field {display:block;min-width:0;margin:0}
+.md-assignment-field select {
+  width:100%;min-width:0;height:44px;box-sizing:border-box;text-overflow:ellipsis;
+  border:1px solid var(--md-edge);border-radius:7px;padding:0 8px;color:var(--md-ink);background:white;font:inherit;font-size:14px;
+}
+.md-context .mistake-extra > summary {
+  display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding-inline:8px;
+  white-space:nowrap;list-style:none;color:var(--md-ink);font-size:14px;
+}
+.md-context .mistake-extra > summary::-webkit-details-marker {display:none}
+.md-context .mistake-extra > summary::after {content:'';width:6px;height:6px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg)}
+.md-context .mistake-extra[open] > summary::after {transform:translateY(2px) rotate(225deg)}
+.md-context .mistake-extra[data-filtered] > summary {background:#e7eff4;border-radius:7px}
+.md-context .mistake-nav-filters {
+  position:fixed;box-sizing:border-box;margin:0;padding:10px;border:1px solid #bdcdd8;border-radius:9px;
+  color:var(--md-ink);background:white;box-shadow:0 8px 22px #132d431f;
+}
+.md-context .mistake-extra[open] .mistake-nav-filters {
+  display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px 10px;align-items:end
+}
+.md-context .mistake-nav-filters .field {grid-column:auto;margin:0;min-width:0}
+.md-context .mistake-nav-filters :is(input,select) {width:100%;min-width:0;box-sizing:border-box;min-height:44px;font-size:16px}
+.md-filter-actions {grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.md-filter-actions button {min-height:44px;width:auto;padding:4px 10px}
+.md-filter-actions button:disabled {opacity:.5}
+.md-status-bar {display:flex;align-items:center;min-height:36px;min-width:0;font-size:13px;font-variant-numeric:tabular-nums}
+.md-status-bar:has(#topic-progress:not([hidden])) .filter-result-line {display:none}
+.md-context #topic-start {white-space:nowrap;margin:0;font-size:13px;padding:4px 8px}
+@media(max-width:700px){
+  .mistake-desk .md-toolbar .md-command {width:100%;height:40px}
+  .md-status-bar {margin-inline-start:auto;text-align:end;font-size:12px;line-height:1.25}
+  .md-status-bar .filter-result-line {font-size:12px}
+  .mistake-desk .md-context {grid-template-columns:minmax(0,1fr) auto max-content;column-gap:5px}
+  .md-context .md-assignment-field {grid-area:1/1}
+  .md-context .mistake-extra {grid-area:1/3}
+  .md-context .topic-picker {grid-area:1/2}
+  .md-context .mistake-extra[open] .mistake-nav-filters {grid-template-columns:minmax(0,1fr)}
+  .md-context .md-filter-actions {grid-column:1}
+  .md-status-bar #topic-progress {font-size:12px}
 }

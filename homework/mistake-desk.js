@@ -17,12 +17,13 @@ export function mountMistakeDesk(ctx,{onRefresh}){
  document.body.append(preview);const r=row.getBoundingClientRect(),pw=preview.offsetWidth;
  preview.style.left=Math.max(8,Math.min(innerWidth-pw-8,r.right+8))+'px';preview.style.top=Math.max(8,Math.min(innerHeight-preview.offsetHeight-8,r.top))+'px';
  preview.onpointerenter=()=>clearTimeout(delay);preview.onpointerleave=closePreview;}
- let positionedFor=null;
+ let positionedFor=null,paintedTopic;
  function heat(){
+ paintedTopic=select.value;
  const focusTopic=rail.contains(document.activeElement)?document.activeElement.dataset.topic:null;
  const offsets=rail.scrollLeft,counts=topicWorkCounts(scoped),total=new Map();
  for(const g of scoped)for(const t of new Set([g,...(g.occurrences||[])].map(m=>mistakeTopic(m)||'unknown')))total.set(t,(total.get(t)||0)+1);
- const topics=new Set([...(outline[course]||[]),...total.keys()]);
+ const topics=new Set([...(outline[course]||[]),...Array.from(select.querySelectorAll('option:not([data-provisional])'),o=>o.value).filter(t=>t!=='all'),...total.keys()]);
  if(outline[course] && select.value!=='all' && !topics.has(select.value)){
    select.value='all';select.dispatchEvent(new Event('change'));return;
  }
@@ -54,7 +55,9 @@ export function mountMistakeDesk(ctx,{onRefresh}){
  const outside=e=>{if(preview&&!preview.contains(e.target)&&!e.target.closest('[data-peek]'))closePreview();};
  document.addEventListener('keydown',esc);document.addEventListener('pointerdown',outside);list.addEventListener('scroll',closePreview);
  return {update(rows,all,subject){
- if(subject!==course){positionedFor=null;rail.scrollLeft=0;}visible=rows;scoped=all;course=subject;closePreview();heat();
+ const repaint=subject!==course||all!==scoped||paintedTopic!==select.value;
+ if(subject!==course){positionedFor=null;rail.scrollLeft=0;}
+ visible=rows;scoped=all;course=subject;closePreview();if(repaint)heat();
  for(const row of list.querySelectorAll('[data-inline-assignment]')){const m=find(row),box=document.createElement('input');box.type='checkbox';box.dataset.pick='';box.checked=basket.has(key(m));box.setAttribute('aria-label','选择 '+m.assignmentTitle+' 原题 '+m.questionNumber);row.prepend(box);
  const peekBtn=document.createElement('button');peekBtn.type='button';peekBtn.dataset.peek='';peekBtn.setAttribute('aria-label','预览原题');peekBtn.title='预览原题';peekBtn.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';row.querySelector('.actions')?.append(peekBtn);}
  picked();},destroy(){closePreview();closeBook?.();document.removeEventListener('keydown',esc);document.removeEventListener('pointerdown',outside);}};
