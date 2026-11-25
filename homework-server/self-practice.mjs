@@ -1,3 +1,4 @@
+import {recallService} from './recall.mjs';
 import {courseLabel as displayCourse} from '../homework/course-scope.js';
 import {splitChoiceCorrection} from '../homework/choice-correction.js';
 import {optionLabels,publicOptionText} from './self-practice-model.mjs';
@@ -35,17 +36,17 @@ function practiceError(error) {
 export function createSelfPractice({db,sendQuestionPaper}) {
   const byId = new Map();
 
-  async function eligibleByUnit(units) {
+  async function eligibleByUnit(units,c) {
     // Importers store original question crops as `question`; recrops use `library`.
     // Keep this cache request-local so a repaired file is visible without a restart.
     const fileCache = new Map();
     const map = {};
     for (const unit of units) {
-      const questions = (await db.list('library-question', undefined, unit.id))
+      const questions = (await db.list('library-question', c, unit.id))
         .filter((question) => questionEligible(question, {unit}));
       const imageIds = [...new Set(questions.flatMap((question) => Array.isArray(question.questionImages) ? question.questionImages : []))];
       const missingIds = imageIds.filter((fileId) => !fileCache.has(fileId));
-      const files = missingIds.length ? (db.getMany ? await db.getMany(missingIds) : await Promise.all(missingIds.map((fileId) => db.get(fileId)))) : [];
+      const files = missingIds.length ? (db.getMany ? await db.getMany(missingIds,c) : await Promise.all(missingIds.map((fileId) => db.get(fileId,c)))) : [];
       for (const fileId of missingIds) fileCache.set(fileId, false);
       for (const file of files) if (file) fileCache.set(file.id, isQuestionImage(file));
       map[unit.id] = questions.filter((question) =>
@@ -54,9 +55,9 @@ export function createSelfPractice({db,sendQuestionPaper}) {
     return map;
   }
 
-  async function studentUnits(user, course) {
-    const units = (await db.list('library-unit')).filter((unit) => !course || courseOf(unit) === course);
-    const releases = await db.list('library-release');
+  async function studentUnits(user, course,c) {
+    const units = (await db.list('library-unit',c)).filter((unit) => !course || courseOf(unit) === course);
+    const releases = await db.list('library-release',c);
     return visibleUnitsForStudent(units, user, releases).filter((unit) => !course || courseOf(unit) === course);
   }
 
@@ -166,7 +167,9 @@ export function createSelfPractice({db,sendQuestionPaper}) {
       }
       if (body?.answers) {
         assert(Number(body.revision) === attempt.revision, '答案已在另一台设备更新，请刷新后重试', 409);
-        attempt = {...attempt, answers: normalizeAnswers(attempt, {...(attempt.answers || {}), ...body.answers})};
+        const validIds=new Set(attempt.questions.map(q=>q.id));
+        const flags=Array.isArray(body.flags)?[...new Set(body.flags.filter(id=>validIds.has(id)))]:attempt.flags;
+        attempt = {...attempt, flags, answers: normalizeAnswers(attempt, {...(attempt.answers || {}), ...body.answers})};
       }
       const finalized = finalizeAttempt(attempt, {receiptId: receiptIdFor(attempt.id)});
       await db.put('self-practice-attempt', finalized, client);
@@ -346,9 +349,11 @@ export function createSelfPractice({db,sendQuestionPaper}) {
     }
   }
 
+  const recall=recallService({db,studentUnits,eligibleByUnit});
   async function handle(ctx) {
     const {res, route, method, user, body, json} = ctx;
     if (route[0] !== 'self-practice') return false;
+    if(route[1]==='recall'){json(res,await recall.handle(ctx));return true;}
     const query = new URL(ctx.req.url, 'http://local').searchParams;
     const student = () => assert(user.role === 'student', '自主模考仅对学生开放', 403);
     try {
@@ -411,7 +416,7 @@ export function createSelfPractice({db,sendQuestionPaper}) {
     }
   }
 
-  return {handle, sweep, catalog, create, start, get, saveAnswers, submit, result, list, correct, canReadFile};
+  return {handle, sweep, catalog, create, start, get, saveAnswers, submit, result, list, correct, canReadFile,canReadRecall:recall.canRead};
 }
 
 export function startSelfPracticeSweeper(module) {

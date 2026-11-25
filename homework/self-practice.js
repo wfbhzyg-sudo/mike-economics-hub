@@ -1,3 +1,4 @@
+import {flaggedBookmarks} from './student-actions.js';
 import {subjectIds,subjectInfo,isSubject} from './subject-catalog.js';
 import {paperDownload} from './paper-download.js';
 import {readingPositions} from './reading-positions.js';
@@ -589,6 +590,7 @@ export function createSelfPracticeUI(ctx) {
     main.querySelectorAll('[data-mock-lesson]').forEach((host,i)=>lessons.mount(host,result.questions[i],{
       number:i+1,course:attempt.course
     }));
+    flaggedBookmarks(main.querySelector('.sp-result-grid'),{api,source:'mock',assignmentId:id,items:result.questions.flatMap((q,i)=>q.correct&&attempt.flags?.includes(q.id)?[{id:q.id,number:i+1,version:attempt.questions?.find(item=>item.id===q.id)?.version||1}]:[])});
     bindTopicGrid(main.querySelector('.sp-topic-card'));
     for(const button of main.querySelectorAll('[data-recap]'))button.onclick=()=>{
       const all=button.dataset.recap==='all';

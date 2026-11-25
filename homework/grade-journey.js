@@ -1,3 +1,4 @@
+import {mountLessonLinks} from './lesson-panel.js';
 import {receiptCorrections} from "./learning-model.js";
 import {receiptActions,receiptEvidence,scoreSources,performanceMarkup,teacherEvidenceReader,showTeacherEvidence} from './learning-evidence.js';
 import {assignmentCourse,classKey,courseLabel,coursesFor,courseTabs,selectedCourse,rememberCourse} from './course-scope.js';
@@ -30,6 +31,7 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
  function center(instant=false){const b=[...main.querySelectorAll('.gj-fish [data-assignment]')].find(b=>b.dataset.assignment===selected?.assignment.id);if(b)scroll.scrollTo({left:b.getBoundingClientRect().left-scroll.getBoundingClientRect().left+scroll.scrollLeft+b.offsetWidth/2-scroll.clientWidth/2,behavior:instant?'instant':smooth()});}
  function boundaries(){const overflow=visible.length>1&&scroll.scrollWidth>scroll.clientWidth+2;$('.gj-chart-footer').hidden=!overflow;$('.gj-chart-actions>div').hidden=!overflow||visible.length<=3;$('#journey-left').disabled=scroll.scrollLeft<2;$('#journey-right').disabled=scroll.scrollLeft>=scroll.scrollWidth-scroll.clientWidth-2;}const resizeObserver=new ResizeObserver(boundaries);resizeObserver.observe(scroll);
  let drawnSubject=null;
+ const evidenceLessons=mountLessonLinks(main,ctx.api);
  const readEvidence=teacher?teacherEvidenceReader(ctx.api):null;
  function draw(preserveEditor=false){
   if(drawnSubject!==subject){
@@ -37,6 +39,25 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
   $('[data-grade-legend]').innerHTML=scoreLegend(subject);
   if(teacher)showTeacherEvidence($('[data-performance]'),{read:readEvidence,student:student.id,subject,h});
   else $('[data-performance]').innerHTML=performanceMarkup(data.performance?.find(p=>p.course===subject),h,link);
+  if(!teacher){
+    const panel=$('[data-performance]'),key='skill:'+state.user.id+':'+subject;
+    const rows=[...panel.querySelectorAll('details[data-skill]')];
+    evidenceLessons.destroy();
+    const axes=data.performance?.find(p=>p.course===subject)?.axes||[];
+    for(const row of rows){for(const target of row.querySelectorAll('[data-skill-lesson]')){
+      const item=axes[Number(row.dataset.skill)-1]?.references?.[Number(target.dataset.skillLesson)];
+      if(item)evidenceLessons.mount(target,{lessonReference:item.lessonReference},{course:subject,number:item.questionNumber});
+    }}
+    let prior;try{prior=sessionStorage.getItem(key);}catch{}
+    for(const row of rows){
+      row.open=row.dataset.skill===prior;
+      row.addEventListener('toggle',()=>{if(!row.open)return;for(const other of rows)if(other!==row)other.open=false;try{sessionStorage.setItem(key,row.dataset.skill);}catch{}});
+    }
+    for(const axis of panel.querySelectorAll('[data-skill-axis]')){
+      const open=()=>{const row=rows.find(x=>x.dataset.skill===axis.dataset.skillAxis);if(row){row.open=true;row.querySelector('summary').focus({preventScroll:true});}};
+      axis.onclick=open;axis.onkeydown=e=>{if([' ','Enter'].includes(e.key)){e.preventDefault();open();}};
+    }
+  }
   const advice=$('[data-performance-advice]');
   if(advice)advice.onclick=async()=>{
     const output=$('[data-advice-output]');
@@ -109,5 +130,5 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
    cell.rate=rateOf(cell.record.grade);
    if(selected===cell)draw(true);
  }
- return {refreshReceipt,destroy(){destroyed=true;++sequence;clearTimeout(searchTimer);remember();resizeObserver.disconnect();small.removeEventListener('change',setFilters);child?.destroy();}};
+ return {refreshReceipt,destroy(){evidenceLessons.destroy();destroyed=true;++sequence;clearTimeout(searchTimer);remember();resizeObserver.disconnect();small.removeEventListener('change',setFilters);child?.destroy();}};
 }

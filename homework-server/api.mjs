@@ -1118,7 +1118,10 @@ export async function createHomework({externalAuth} = {}) {
             "附件用途不正确",
           );
           if (!["submission","board","correction-source"].includes(purpose)) teacher();
-          const f = await files.upload(await readBody(req, MAX_FILE), {
+          const bytes=await readBody(req, MAX_FILE), uploadId=url.searchParams.get('uploadId');
+          if(uploadId)assert(purpose==='submission'&&/^[a-f0-9-]{36}$/i.test(uploadId),'附件标识不正确');
+          const f = await files.upload(bytes, {
+            ...(uploadId?{evidenceKey:'student-file:'+hash(JSON.stringify([user.id,uploadId,hash(bytes)]))}:{}),
             owner: user.id,
             purpose,
             name: url.searchParams.get("name"),
@@ -1128,7 +1131,7 @@ export async function createHomework({externalAuth} = {}) {
         if (["GET", "HEAD"].includes(method) && route[1]) {
           const f = await db.get(route[1]);
           assert(
-            f?.mime && (await authorizeFile(f,user,availableClasses) || (url.searchParams.has('mock') && await studyWorkflow.canReadMockImage(extensionContext,url.searchParams.get('mock'),f)) || (url.searchParams.has('bookmark') && await studyWorkflow.canReadBookmarkFile(extensionContext,url.searchParams.get('bookmark'),f))),
+            f?.mime && (await authorizeFile(f,user,availableClasses) || (url.searchParams.has('recall') && await selfPractice.canReadRecall(f,user,url.searchParams.get('recall'))) || (url.searchParams.has('mock') && await studyWorkflow.canReadMockImage(extensionContext,url.searchParams.get('mock'),f)) || (url.searchParams.has('issue') && await studyWorkflow.canReadIssueFile(extensionContext,url.searchParams.get('issue'),f)) || (url.searchParams.has('bookmark') && await studyWorkflow.canReadBookmarkFile(extensionContext,url.searchParams.get('bookmark'),f))),
             "附件不存在或无权查看",
             404,
           );
@@ -1668,6 +1671,11 @@ export async function createHomework({externalAuth} = {}) {
           }
           if (method === "GET"){
             const detail=user.role==="teacher" ? {...s} : publicSubmission(s);
+            if(user.role==='student' && s.status==='published' && detail.publishedGrade && user.id===s.studentId && new URL(req.url,'http://local').searchParams.has('receipt')){
+              let flags=s.flaggedQuestions;
+              if(!flags&&s.clientId){const attempt=await db.get(s.clientId);if(attempt?.submittedId===s.id&&attempt.studentId===user.id)flags=attempt.flags;}
+              detail.flaggedCorrect=(s.rubricSnapshot||[]).flatMap((q,i)=>q.type==='choice'&&flags?.includes(q.id)&&q.correctOptions?.length===1&&!q.manualGradingRequired&&detail.publishedGrade.questions?.some(row=>row.id===q.id&&Number.isFinite(row.score))&&s.choices?.[q.id]===q.correctOptions[0]?[{id:q.id,number:i+1}]:[]);
+            }
             if(user.role==="student" && (s.offlineEvidence||s.offlineMakeup?.mode==='questions'))detail.questions=offlineResultQuestions(s,detail.questions);
             if(user.role==="teacher" && !detail.studentName){
               const student=(await availableStudents()).find(person=>person.id===s.studentId);

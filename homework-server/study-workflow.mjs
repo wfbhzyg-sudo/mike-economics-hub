@@ -1,3 +1,4 @@
+import {questionIssues} from './question-issues.mjs';
 import {unitCourse} from '../homework/subject-catalog.js';
 import {courseLabel as displayCourse} from '../homework/course-scope.js';
 import {audienceClasses} from '../homework/assignment-audience.js';
@@ -361,7 +362,7 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
       const query=new URL(req.url,'http://local').searchParams;
       const all=await db.find('question-bookmark',{studentId:user.id});
       const filtered=all.filter(r=>(!query.get('assignmentId')||r.assignmentId===query.get('assignmentId'))&&(!query.get('source')||r.source===query.get('source')));
-      return {items:filtered.map(r=>({id:r.id,source:r.source,assignmentId:r.assignmentId,questionId:r.questionId,version:r.version,title:r.title,course:r.course,label:r.label,at:r.updatedAt}))};
+      return {items:filtered.map(r=>({id:r.id,source:r.source,assignmentId:r.assignmentId,questionId:r.questionId,version:r.version,title:r.title,course:r.course,label:r.label,number:r.number,bankId:r.bankId,at:r.updatedAt}))};
     }
     if(method==='GET'&&route[1]){
       const r=await db.get(route[1]);assert(r?.kind==='question-bookmark'&&r.studentId===user.id,'找不到书签',404);
@@ -381,18 +382,21 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     const assignmentId=boundedText(b.assignmentId,160,'作业'), questionId=boundedText(b.questionId,160,'题目');
     const key='bookmark:'+asKey(user.id,source,assignmentId,version,questionId);
     if(method==='DELETE'){
-      const old=await db.get(route[1]||key);if(old?.kind==='question-bookmark'&&old.studentId===user.id)await db.remove(old.id);
+      await db.tx(async c=>{const old=await db.get(route[1]||key,c);if(old?.kind==='question-bookmark'&&old.studentId===user.id&&(!b.creationId||b.creationId===old.creationId))await db.remove(old.id,c);},'question-bookmarks:'+user.id);
       return {saved:false};
     }
-    await db.tx(async c=>{
+    const creationId=id();
+    const created=await db.tx(async c=>{
       const original=await question(user,source,assignmentId,questionId,version,c);
+      if(await db.get(key,c))return false;
       const {q,title,course,a}=original;
       const refId=source==='assignment'?'question-ref:'+asKey(assignmentId,version,questionId):null;
       if(refId&&!(await db.get(refId,c)))await db.put('question-ref',{id:refId,assignmentId,version,formal:formal(a),item:bookmarkQuestion(original,source)},c);
-      await db.put('question-bookmark',{id:key,kind:'question-bookmark',studentId:user.id,source,assignmentId,questionId,version,refId,title,course,
+      await db.put('question-bookmark',{id:key,kind:'question-bookmark',creationId,studentId:user.id,source,assignmentId,questionId,version,refId,title,course,bankId:q.libraryQuestionId||(source==='mock'?q.id:null),number:(a.questions||a.rubric||[]).findIndex(item=>item.id===q.id)+1,
         label:boundedText(String(q.knowledge||q.topic||'').slice(0,120),120,'知识点'),updatedAt:now()},c);
+      return true;
     },'question-bookmarks:'+user.id);
-    return {saved:true,id:key};
+    return {saved:true,id:key,created,...(created?{creationId}:{})};
   }
 
   async function thread(ctx, query, c) {
@@ -512,8 +516,10 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
     return value;
   }
 
+  const issues=questionIssues(db,question);
   async function handle(ctx) {
     const {req,res,route,method,user,body,json}=ctx;
+    if(route[0]==='question-issues'){json(res,await issues(ctx));return true;}
     const query=new URL(req.url,'http://local').searchParams;
     if(route[0]==='mock-stats'&&method==='GET'){json(res,await teacherMock(ctx,query));return true;}
     if(route[0]==='question-bookmarks'){json(res,await bookmarks(ctx));return true;}
@@ -583,5 +589,11 @@ export function createStudyWorkflow({db, requireAssignment, decrypt, reviewModel
       return readable&&(item.images.includes(file.id)||item.paperLocation?.fileId===file.id);
     }catch{return false;}
   }
-  return {handle,canReadMockImage,canReadBookmarkFile};
+  async function canReadIssueFile(ctx,key,file){
+    if(ctx.user.role!=='student'||!key.startsWith('student-question-issue:')||!file.mime?.startsWith('image/')||!['question','library'].includes(file.purpose))return false;
+    const r=await db.get(key);if(!r||r.studentId!==ctx.user.id||r.status!=='resolved'||!r.updatedVersion)return false;
+    await question(ctx.user,r.source,r.assignmentId,r.questionId,r.version);
+    const bank=await db.get(r.bankId);return bank?.status==='ready'&&Number(bank.version)===Number(r.updatedVersion)&&bank.questionImages?.includes(file.id);
+  }
+  return {handle,canReadMockImage,canReadBookmarkFile,canReadIssueFile};
 }

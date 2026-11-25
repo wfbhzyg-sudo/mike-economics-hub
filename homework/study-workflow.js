@@ -1,3 +1,4 @@
+import {questionIssue} from './student-actions.js';
 import {subjectIds,subjectInfo} from './subject-catalog.js';
 import {coursesFor,selectedCourse,rememberCourse,courseLabel,singleClassCourse} from './course-scope.js';
 import {mistakeNavigation,bindMistakeNavigation} from './mistake-navigation.js';
@@ -82,6 +83,7 @@ export function studyControls({api,toast,user,source='assignment',assignmentId,v
     strip.className='study-controls';
     strip.innerHTML='<button type="button" aria-pressed="false">☆ 收藏</button>';
     const button=strip.firstElementChild;host.append(strip);buttons.set(button,key);sync();
+    if(user.role==='student')questionIssue(strip,api,{source,assignmentId,questionId:q.id,version:source==='mock'?(q.version||1):version});
     const trigger=button;
     trigger.onclick=async()=>{
       trigger.disabled=true;
@@ -260,11 +262,11 @@ export async function renderBookmarks({main,api,state,link,head,toast}) {
     <button type="button" class="text-button" data-blocked>屏蔽管理</button></div><div data-book-list></div></section>`;
   bindMistakeNavigation(main);
   const filter=main.querySelector('input'), list=main.querySelector('[data-book-list]');
-  let selected=active;
+  let selected=active,mistakes;
   function draw(){
     const term=filter.value.trim().toLowerCase();
     const rows=items.filter(x=>(selected==='all'||x.course===selected)&&(!term||`${x.title} ${x.label} ${x.questionId}`.toLowerCase().includes(term)));
-    list.innerHTML=rows.map(r=>`<article class="study-book-row"><details><summary><strong>${esc(r.title)} · ${r.source==='mock'?'题目':'第 '+esc(r.questionId)+' 题'}</strong><small>${esc(courseLabel(r.course))} · ${esc(r.label||'原题')} · ${nl(r.at)}</small></summary><div data-book-preview></div></details><button type="button" data-remove aria-label="移除此书签">移除</button></article>`).join('')||'<p>暂无符合条件的书签。</p>';
+    list.innerHTML=rows.map(r=>`<article class="study-book-row"><details><summary><strong>${esc(r.title)} · ${r.number?'第 '+esc(r.number)+' 题':r.source==='mock'?'题目':'第 '+esc(r.questionId)+' 题'}</strong><small>${esc(courseLabel(r.course))} · ${esc(r.label||'原题')} · ${nl(r.at)}</small></summary><div data-book-preview></div></details><button type="button" data-remove aria-label="移除此书签">移除</button></article>`).join('')||'<p>暂无符合条件的书签。</p>';
     [...list.children].filter(e=>e.matches('article')).forEach((row,i)=>{
       const r=rows[i], details=row.querySelector('details'), preview=row.querySelector('[data-book-preview]');
       details.ontoggle=async()=>{
@@ -279,6 +281,10 @@ export async function renderBookmarks({main,api,state,link,head,toast}) {
           preview.innerHTML=`<p class="study-prompt">${esc(item.prompt)}</p>${imageMarkup}<ul>${item.options.filter(o=>o.text).map(o=>`<li>${esc(o.label)}　${esc(o.text)}</li>`).join('')}</ul>
             ${item.paperLocation?.fileId?`<a target="_blank" rel="noopener" href="/api/homework/files/${part(item.paperLocation.fileId)}?bookmark=${part(r.id)}#page=${Number(item.paperLocation.page)||1}">打开题纸第 ${Number(item.paperLocation.page)||1} 页</a>`:''}
             ${link(resume,'回到原作业或模考','secondary')}`;
+          mistakes||=api('learning?mistakeBook=1').then(d=>d.mistakes.flatMap(m=>[m,...(m.occurrences||[])])).catch(()=>{mistakes=null;return [];});
+          const matches=await mistakes;
+          const related=matches.find(m=>(r.bankId&&m.libraryQuestionId===r.bankId||r.assignmentId===m.assignmentId&&r.questionId===m.questionId));
+          if(related&&row.isConnected&&details.open)preview.insertAdjacentHTML('beforeend',link('mistakes/'+part(related.assignmentId)+'/'+part(related.questionId),'查看这道题的订正','secondary'));
         }catch{if(row.isConnected)preview.textContent='原题暂不可查看。可以保留或移除书签。';}
       };
       const remove=row.querySelector('[data-remove]');

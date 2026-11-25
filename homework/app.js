@@ -1,3 +1,4 @@
+import {flaggedBookmarks} from './student-actions.js';
 import {mountQuestionSlices,questionSlices,bindSliceRetries} from './question-slices.js';
 import {audiencePicker,bindAudiencePicker,audienceLabel} from './audience-picker.js';
 import {paperDownload,downloadLabel} from './paper-download.js';
@@ -757,7 +758,7 @@ function reviews(assignmentId) {
   );
   main.innerHTML = `<section class="paper">${head(teacher ? "REVIEW / 教师复核" : "SUBMISSIONS / 我的记录", teacher ? "作业批阅" : "提交记录", teacher ? "核对初评分，也可以直接改分后发布。" : "每次提交都会保留。成绩发布后，可在这里查看成绩。", teacher?link("reviews/published","已出分作业"):link("assignments","返回作业列表"))}${rows.length ? submissionRows(rows) : empty(teacher ? "暂无待复核作业" : "还没有提交记录", teacher ? "需要人工评分的作答会显示在这里。" : "完成一份作业后，你的提交记录会出现在这里。")}</section>`;
 }
-async function resultPage(id) {
+async function resultPage(id,focusId) {
  const version=state.routeVersion,{submission:s}=await api('submissions/'+id+'?receipt=1');
  if(s.publishedGrade&&s.publishedGrade.maxPoints==null)s.publishedGrade.maxPoints=(s.publishedGrade.questions||[]).reduce((n,q)=>n+Number(q.maxPoints||0),0);
  s.files||=[];s.reviewRequests||=[];
@@ -775,6 +776,7 @@ async function resultPage(id) {
  const recap=viewMemory('assignment-recap:'+state.user.id+':'+id);
  const first=g?.questions.find(q=>q.score!=null&&q.score<q.maxPoints)||g?.questions[0];
  const opened=new Set(recap.get('opened',first?[String(first.id)]:[]));
+ if(focusId)opened.add(String(focusId));
  const hasLoss=q=>q.score!=null&&q.score<q.maxPoints;
  function recapQuestion(row,index){
    const q=snapshots.get(String(row.id)),images=q?.questionImages||[],choice=s.choices?.[row.id],response=s.responses?.[row.id];
@@ -817,6 +819,8 @@ async function resultPage(id) {
   const action=main.querySelector('.receipt-next')||main.querySelector('.receipt-evidence')||main.querySelector('.result-score');
   if(receipt && action)action.after(receipt);
  }
+ if(g&&state.user.role==='student')flaggedBookmarks(main.querySelector('.result-score'),{api,source:'assignment',assignmentId:a.id,version:s.version||1,items:s.flaggedCorrect});
+ if(focusId){const target=[...main.querySelectorAll('[data-review-id]')].find(row=>row.dataset.reviewId===String(focusId));target?.scrollIntoView({block:'nearest'});}
  if(state.justSubmitted===s.id)delete state.justSubmitted;
  if(g){
   const classes=(state.classes||[]).filter(c=>(a.classIds||[]).some(id=>discussionClassKey(id)===discussionClassKey(c.id)));
@@ -1097,7 +1101,7 @@ async function render(scroll = true) {
     else if (["grades","history","gradebook"].includes(route)){state.reviewReturn=null;await learning.gradebook(id);}
     else if(route==="mistakes")await learning.mistakes(id,questionId);
     else if(route==="overview"&&id)await learning.overview(id,questionId,libraryMode,libraryDetail);
-    else if (route === "result" && id) await resultPage(id);
+    else if (route === "result" && id) await resultPage(id,questionId);
     else if (route === "review" && id) await reviewPage(id,questionId);
     else if (route === "device") await devicePage();
     else if (route === "account") accountPage();

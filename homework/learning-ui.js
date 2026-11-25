@@ -1,3 +1,5 @@
+import {mountRecall} from './student-actions.js';
+import {mountFrqParts} from './frq-parts.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {mountMistakeDesk} from './mistake-desk.js';
 import {unitCourse} from './subject-catalog.js';
@@ -130,8 +132,11 @@ export function createLearningUI(ctx){
     const form=$('#correction-form');form.addEventListener('submit',e=>{form.dataset.afterSave=e.submitter?.dataset.correctionSave||'stay';},true);
     const receipt=$('[data-saved-verdict]');
     let reviewTimer;
+    const recallHost=document.createElement('div');recallHost.hidden=true;form.after(recallHost);
+    const checkRecall=mountRecall(recallHost,api,{assignmentId:m.assignmentId,questionId:m.questionId,course:unitCourse(m.libraryUnit)||assignmentCourse(data.assignments.find(a=>a.id===m.assignmentId)||{course:m.course},data.classes||[])});
     function paintVerification(){
       if(!receipt || !m.verification)return;
+      if(m.verification.status==='passed'&&Date.parse(m.verification.finishedAt)<=Date.now()-3*86400000)void checkRecall();
       receipt.innerHTML=verificationMarkup(m.verification,h)+(m.verification.status==='passed'?feedbackMarkup(m.correctionFeedback,h,true):'');
       form.querySelectorAll('[data-correction-save]').forEach(b=>b.disabled=['queued','passed'].includes(m.verification.status));
       if(m.verification.status==='queued'){
@@ -169,13 +174,16 @@ export function createLearningUI(ctx){
         if(receipt.firstElementChild)receipt.scrollIntoView({block:'nearest',behavior:'instant'});
       });
     });const inkDetails=$('[data-correction-ink]');inkDetails.ontoggle=async()=>{if(!inkDetails.open||inkDetails.dataset.loaded)return;inkDetails.dataset.loaded='true';try{const host=$('[data-ink-host]');const mounted=await mountInk(host,{api,post,put,userId:state.user.id,scope:{assignmentId:m.assignmentId,questionId:m.questionId,correctionId:m.submissionId},exportLabel:'保存为 PDF 并加入订正',exportHint:'添加后请点击保存订正。原成绩保持不变。',onExport:async file=>{up.append(file);$('.correction-attachments').open=true;autosave.changed();toast('手写 PDF 已加入订正附件')}});if(!host.isConnected)mounted.destroy();else correctionInk=mounted}catch(e){inkDetails.dataset.loaded='';toast(e.message)}};state.correctionNavigation=()=>autosave.flush();
-    const reference=mountCorrectionReference($('.correction-reference'),{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact:Boolean(ctx.onCorrectionSaved),onEdit:()=>{const editor=$('.correction-editor');editor.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});editor.querySelector('[data-correct-choice][tabindex="0"], [name=correction]').focus({preventScroll:true});}});
+    const partEditor=mountFrqParts(form.elements.correction,m,cacheKey+':part');
+    if(partEditor)form.closest('.correction-workspace').classList.add('has-frq-parts');
+    const reference=mountCorrectionReference($('.correction-reference'),{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,onOriginal:text=>partEditor?.updateOriginal(text),compact:Boolean(ctx.onCorrectionSaved),onEdit:()=>{const editor=$('.correction-editor');editor.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});(partEditor||editor.querySelector('[data-correct-choice][tabindex="0"], [name=correction]')).focus({preventScroll:true});}});
     {const heading=$('.correction-editor h2'),back=document.createElement('button');back.type='button';back.className='text-button correction-back-reference';const field=$('#correction-form [name=correction]');
      if(reference.openForWriting && field){
        const row=document.createElement('div'),label=field.closest('label');
        row.className='frq-writing-field';label.before(row);row.append(label,back);
+       if(partEditor){const group=partEditor.closest('.frq-parts');group.querySelector('[role=group]').append(back);row.hidden=true;}
        back.textContent='对照原件';back.setAttribute('aria-haspopup','dialog');
-       back.onclick=()=>reference.openForWriting(field);
+       back.onclick=()=>reference.openForWriting(partEditor||field);
      }else{back.textContent='查看原题';heading.append(back);back.onclick=()=>{if($('.correction-reference-body').hidden)$('[data-collapse-reference]').click();$('.correction-reference').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});$('[data-reference=question]').click();$('[data-reference=question]').focus({preventScroll:true});};}}
     paintVerification();
     const cleanup=state.viewCleanup;state.viewCleanup=()=>{clearTimeout(reviewTimer);correctionInk?.destroy();reference.destroy();cleanup?.();};
@@ -233,12 +241,21 @@ export function createLearningUI(ctx){
     active.row=link.closest('.mistake-row');active.trigger=link;
     active.row.setAttribute('aria-current','true');link.setAttribute('aria-expanded','true');
   }
+  let shownRecall='';
+  const suggested=document.createElement('div');suggested.className='student-recall-offer';suggested.hidden=true;
+  $('.filter-result-line').after(suggested);
   const draw=()=>{
     const term=$('#mistake-search').value.trim(),status=$('#mistake-state').value,topic=topicControl.value;
     const scoped=matchingMistakes(data.mistakes,m=>subjectOf(m)===subject);
     const rows=matchingMistakes(scoped,m=>(topic==='all'||(mistakeTopic(m)||'unknown')===topic) &&
       (!status||(m.progressStatus||m.status)===status) &&
       (!term||[m.assignmentTitle,m.prompt,m.knowledge,m.questionId].join(' ').toLocaleLowerCase().includes(term.toLocaleLowerCase())));
+    const due=status==='verified'&&rows.flatMap(r=>[r,...(r.occurrences||[])]).find(r=>r.verification?.status==='passed'&&Date.parse(r.verification.finishedAt)<=Date.now()-3*86400000);
+    const suggestionKey=due?JSON.stringify([subject,due.assignmentId,due.questionId]):'';
+    if(shownRecall!==suggestionKey){
+      shownRecall=suggestionKey;suggested.hidden=!due;suggested.replaceChildren();
+      if(due){const holder=document.createElement('div');holder.hidden=true;suggested.append(holder);void mountRecall(holder,api,{assignmentId:due.assignmentId,questionId:due.questionId,course:subject})();}
+    }
     const totals=topicWorkCounts(scoped).get(topic)||{pending:0,waiting:0};
     pendingRows=matchingMistakes(rows,needsCorrection);
     progress.hidden=topic==='all';

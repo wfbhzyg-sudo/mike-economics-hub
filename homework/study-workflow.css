@@ -426,3 +426,17 @@ body:has(.mock-attempt-popover) #mike-companion{visibility:hidden}
 .slice-reader .question-retry[hidden],.slice-stack .question-retry[hidden]{display:none}
 .rv-document>.rv-gallery.slice-reader{display:flex;flex-direction:column;min-height:0;padding:8px}
 .rv-document>.slice-reader>.slice-scroll{overflow:auto;flex:1;min-height:0}
+
+.frq-parts{min-width:0;margin:0;padding:.6rem .8rem;border:1px solid #bfccd2;border-radius:.65rem}
+.frq-parts [role=group],.student-action-card [data-list]{display:flex;gap:.45rem;flex-wrap:wrap}
+.frq-parts [aria-pressed=true]{background:#162e43;color:white}
+.frq-parts p,.sync-compare label{white-space:pre-wrap;overflow-wrap:anywhere}
+.frq-parts textarea,.student-issue-dialog textarea{width:100%;box-sizing:border-box}
+.evidence-radar [data-skill-axis]{cursor:pointer}.evidence-radar [data-skill-axis]:focus-visible{outline:2px solid #174774}
+.student-action-card{margin:.65rem 0;padding:.65rem .85rem;border:1px solid #bccbd3;border-radius:.65rem;background:white;color:#152b40}.student-action-card summary,.student-question-more summary{cursor:pointer}.student-action-card [data-list]{margin:.6rem 0}
+.student-issue-dialog header,.student-recall-dialog header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.student-issue-dialog form,.student-issue-dialog label,.student-recall-dialog form,.sync-compare fieldset{display:grid;gap:.5rem}
+.student-recall-dialog img{display:block;max-width:100%;height:auto;margin:0 auto}.student-recall-dialog label{display:block;padding:.4rem}
+.student-question-more{position:relative;align-self:center}.study-controls .student-question-more>button{position:absolute;inset-inline-end:0;top:100%;white-space:nowrap;z-index:5;background:white;color:#152b40}
+.student-issue-dialog,.student-recall-dialog,.sync-compare{width:min(36rem,calc(100vw - 2rem));max-height:84dvh;box-sizing:border-box;overflow:auto}
+.mcq-session-status .mcq-save{min-width:0;background:transparent;color:inherit;border:0;padding:.25rem .4rem}

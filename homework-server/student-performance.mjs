@@ -1,3 +1,4 @@
+import {questionLessonReference} from './lesson-reference.mjs';
 import {subjectIds,subjectInfo} from '../homework/subject-catalog.js';
 import {assignmentCourse} from '../homework/course-scope.js';
 import {scoreBand} from '../homework/score-bands.js';
@@ -107,7 +108,9 @@ export function studentPerformance(submissions,assignments,mistakes,classes=[],l
           usedSkills.add(key);
           const axis=skills[Number(p.skill)-1];
           add(axis,p.score,p.max,weight);axis.questions.add(qid);
-          if(axis.references.length<8)axis.references.push({assignmentId:a.id,title:a.title,questionId:q.id,questionNumber:i+1,score:q.score,max:q.maxPoints});
+          axis.references.unshift({assignmentId:a.id,submissionId:s.id,title:a.title,questionId:q.id,questionNumber:i+1,score:q.score,max:q.maxPoints,
+            lessonReference:questionLessonReference(info,a),pointId:p.pointId,pointScore:p.score,pointMax:p.max,recovered:s.publishedGrade?.scoreSources?.byQuestion?.[q.id]||0});
+          if(axis.references.length>8)axis.references.pop();
         }
       }
     }

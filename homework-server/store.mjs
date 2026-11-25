@@ -93,16 +93,26 @@ export function createStore(connectionString, schema = "homework") {
         ORDER BY a.created DESC, a.id`, [teacherId, trash]);
       return rows.map(withPublication);
     },
-    async studentAssignments(student) {
+    async studentAssignments(student, client=pool) {
       const classIds = [...new Set((student.classIds || []).map(classKey))];
       if (!classIds.length) return [];
       const storedIds = classIds.flatMap(key => [key, 'bookself-class:' + key]);
-      const {rows} = await pool.query(`SELECT a.data, v.data->>'confirmedAt' AS first_publication
+      const {rows} = await client.query(`SELECT a.data, v.data->>'confirmedAt' AS first_publication
         FROM ${table} a ${firstPublicationJoin}
         WHERE a.kind='assignment' AND a.data->>'published'='true' AND a.data->>'deletedAt' IS NULL
           AND a.data->'classIds' ?| $1::text[] AND ${audienceSql('$2','$3','a.data')}
         ORDER BY a.created DESC, a.id`, [storedIds, classIds, student.id]);
       return rows.map(withPublication);
+    },
+    async scheduledRecallQuestions(student, client=pool) {
+      const classes=[...new Set((student.classIds||[]).map(classKey))];
+      if(!classes.length)return [];
+      const {rows}=await client.query(`SELECT a.data->'rubric' AS rubric, a.data->'draftRubric' AS draft
+        FROM ${table} a WHERE a.kind='assignment' AND a.data->>'published' IS DISTINCT FROM 'true'
+        AND a.data->>'deletedAt' IS NULL AND a.data->>'opensAt' IS NOT NULL
+        AND a.data->'classIds' ?| $1::text[] AND ${audienceSql('$2','$3','a.data')}`,
+        [classes.flatMap(id=>[id,'bookself-class:'+id]),classes,student.id]);
+      return rows.flatMap(row=>[...(row.rubric||[]),...(row.draft||[])]);
     },
     async teacherWorklist(teacherId) {
       const {rows}=await pool.query(`SELECT jsonb_build_object(

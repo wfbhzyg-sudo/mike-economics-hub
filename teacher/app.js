@@ -1,3 +1,4 @@
+import {teacherQuestionIssues} from '../homework/student-actions.js';
 import {subjectIds,subjectInfo,unitCourse} from '../homework/subject-catalog.js';
 import {audiencePicker,bindAudiencePicker} from '/homework/audience-picker.js';
 import {studentReportUrl} from '../homework/student-report-link.js';
@@ -379,7 +380,7 @@ async function bank(){
  }
  const hasAudit=bankState.questions.some(q=>q.canEdit!==false);
  main.innerHTML=`<div class="bank-head">${subjectSwitcher(bankCourses.map(([id])=>id),bankState.course,{className:'bank-seg',attribute:'bank-course'})}
-  <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#library">课程教学包</a></div></details></div></div>
+  <div class="bank-head-actions"><button class="tw-button tw-primary" id="bank-publish" disabled>组卷</button><details class="work-tools bank-more"><summary aria-label="更多题库操作">⋯</summary><div class="work-tools-menu">${hasAudit?'<a href="#bank/crop">图表待补</a>':''}<a href="#bank/issues">学生题面反馈</a><a href="#library">课程教学包</a></div></details></div></div>
   <div id="bank-filter-anchor"><div class="bank-workspace-filters" role="group" aria-label="筛选题目">
   <select id="bank-unit" aria-label="单元"></select><select id="bank-topic" aria-label="Topic"></select>
   <select id="bank-type" aria-label="题型"><option value="">全部题型</option><option value="choice">MCQ</option><option value="short">FRQ</option></select>
@@ -535,7 +536,7 @@ async function render(){
  actions.innerHTML=taskList==='assignments'?'<a class="tw-button tw-primary" href="#work/new">新建作业</a><details class="tw-class-more work-tools"><summary class="tw-button" aria-label="更多作业操作">⋯</summary><div class="tw-class-menu"><a href="#bank">从题库出题</a><a href="#work/trash">回收站</a></div></details>':taskList==='reviews'?'<a class="tw-button" href="#work/reviews/published">已出分作业</a>':'';
  if(sharedTitle){$('#page-title').textContent=sharedTitle;document.title=sharedTitle+' · Mike 的经济一页通';}
  state.listActionsCleanup?.();state.listActionsCleanup=taskList==='assignments'?bindDisclosureMenus(actions,'details'):null;
- try{if(key==='library')await work(location.hash.slice(1)||'library');else if(key==='bank'){if(part==='crop')await bankCrop(third);else await bank();}else if(key==='classes')await classes();else if(key==='student')await student(part,third);else if(key==='books')await books();else if(key==='question')await question(part);else if(key==='feedback')await feedback();else if(key==='analytics')await analytics();else if(key==='mock-stats')await renderMockStatistics({main,api:hw,state});else if(key==='games')await games(part,third);else if(key==='settings')await settings(part);else if(key==='work')await work(location.hash.slice(6)||'assignments');else await home();}
+ try{if(key==='library')await work(location.hash.slice(1)||'library');else if(key==='bank'){if(part==='crop')await bankCrop(third);else if(part==='issues'){const host=document.createElement('section');main.replaceChildren(host);await teacherQuestionIssues(host,hw);}else await bank();}else if(key==='classes')await classes();else if(key==='student')await student(part,third);else if(key==='books')await books();else if(key==='question')await question(part);else if(key==='feedback')await feedback();else if(key==='analytics')await analytics();else if(key==='mock-stats')await renderMockStatistics({main,api:hw,state});else if(key==='games')await games(part,third);else if(key==='settings')await settings(part);else if(key==='work')await work(location.hash.slice(6)||'assignments');else await home();}
  catch(e){if(version!==state.version||e.name==='AbortError')return;surface.hidden=true;main.innerHTML=empty('暂时无法打开',h(errorText(e)),'<button class="tw-button tw-primary" id="retry-page">重新连接</button>');$('#retry-page').onclick=()=>void render();}
  finally{if(version===state.version){main.setAttribute('aria-busy','false');state.lastHash=location.hash;state.dirty=false;if(document.activeElement===document.body||document.activeElement===main||document.activeElement?.id==='teacher-content')(surface.hidden?main:$('#homework-main')).focus({preventScroll:true});state.restoreView?.();}}
 }

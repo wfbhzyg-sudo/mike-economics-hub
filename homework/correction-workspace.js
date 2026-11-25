@@ -56,7 +56,7 @@ function writingReference(root, pair, getReader) {
     destroy(){finish(false);cancelAnimationFrame(frame);dialog.remove();marker.remove();}
   };
 }
-export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact=false,onEdit}){
+export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fileMarkup,bindPreviews,date,compact=false,onEdit,onOriginal}){
  let destroyed=false,reader=null,gallery=null,questionGallery=null;const tasks=new Map();
  const compare=m.type!=='choice';
  const tabs=[['question',compare?'原题与原作答':'原题'],...(!compare?[['answer','我的原作答']]:[]),['history','订正记录 · '+m.corrections.length]];
@@ -94,6 +94,7 @@ export function mountCorrectionReference(root,{mistake:m,state,api,metadata,h,fi
   if(m.source==='mock'){panel.innerHTML='<p>'+h(m.originalChoice?'原选项 '+m.originalChoice:'未作答')+'</p>';return;}
 
   const s=await getSubmission(),evidence=correctionAnswerEvidence(s,m);await metadata(evidence.files);if(destroyed)return;
+  if(s.responses?.[m.questionId]?.text)onOriginal?.(s.responses[m.questionId].text);
   const whole=compare && !s.responses?.[m.questionId] && (evidence.files.length||evidence.text);
   const caption=whole?'<p class="correction-location">整份作业的原作答 · 按题号对照</p>':'';
   const empty=s.offlineEvidence?'线下成绩表没有记录本题的原作答。':'本题没有保存的文字或附件。';

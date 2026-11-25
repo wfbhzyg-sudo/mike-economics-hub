@@ -67,6 +67,7 @@ export function mistakeRows(submissions, assignments, notes=[], bindings=[], {pr
         libraryQuestionId:raw?.libraryQuestionId||fallback?.libraryQuestionId||null,source:'assignment',
         libraryUnit:record.assignment.libraryUnit||null,submissionId:record.effective.id,questionId:q.id,questionNumber:index+1,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',
         originalChoice:record.effective.choices?.[q.id]||'',
+        ...(ref.type==='short'&&q.pointResults?.length?{partScores:q.pointResults.filter(p=>/^[(]?[a-h][)]?$/i.test(p.id)&&Number.isFinite(p.earned)&&Number.isFinite(p.maxPoints)).map(p=>({id:p.id,earned:p.earned,max:p.maxPoints}))}:{}),
         lessonReference:questionLessonReference({...fallback,...raw,...ref},record.assignment),
         review:reviewLinksFor({...ref,id:q.id},record.assignment,bindings.find(b=>b.assignmentId===record.assignmentId)),options:ref.options||[],questionImages:ref.questionImages||[],score:q.score,maxPoints:q.maxPoints,evidence:q.evidence,feedback:q.feedback,publishedAt:record.grade.publishedAt,
         paper:record.effective.paperSnapshot||null,paperLocation:questionLocation(record.effective.paperSnapshot,q.id),
