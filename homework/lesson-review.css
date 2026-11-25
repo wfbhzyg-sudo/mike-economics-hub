@@ -273,11 +273,19 @@
 .mistake-extra>summary {cursor:pointer;width:fit-content;min-height:40px;align-content:center;color:#28485d}
 .mistake-extra .mistake-nav-filters {grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
 .mistake-extra .mistake-nav-filters .field:first-child {grid-column:auto}
-.student-find {min-width:0;flex:1 1 auto}
-.student-find>summary {cursor:pointer;min-height:38px;align-content:center;color:#28485d}
-@media(min-width:681px) {
- .student-find[open]>summary {font-size:.82rem;min-height:26px}
-}
+.student-find {min-width:0;max-width:100%;margin-inline-start:auto}
+.student-find>summary {display:flex;align-items:center;gap:6px;min-height:44px;padding-inline:8px;color:#28485d;font-weight:600;font-size:.84rem;cursor:pointer;list-style:none}
+.student-find>summary::-webkit-details-marker {display:none}
+.student-find>summary::after {content:'';width:6px;height:6px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg)}
+.student-find[open]>summary::after {transform:translateY(2px) rotate(225deg)}
+.student-sort-panel {position:fixed;box-sizing:border-box;padding:10px;border:1px solid #bdcdd8;border-radius:10px;color:#173349;background:white;box-shadow:0 6px 24px #19364b25}
+.student-search-row,.student-sort-choices {display:flex;align-items:center;gap:5px}
+.student-search-row .search-field {flex:1;min-width:0}
+.student-search-row input {display:block;width:100%;max-width:none;box-sizing:border-box;min-height:42px;padding:5px 9px;border:1px solid #bccbd5;border-radius:6px;font:inherit;font-size:16px}
+.student-sort-choices {margin-top:8px}
+.student-sort-panel button {min-height:44px;padding:4px 6px;border:1px solid #c4d1da;border-radius:6px;background:white;color:#26475c;font:inherit;font-size:.84rem;cursor:pointer}
+.student-sort-choices button {flex:1}
+.student-sort-choices [aria-pressed=true] {background:#17374e;color:white;border-color:#17374e}
 
 .frq-writing-field { position:relative; min-width:0; }
 .frq-writing-field label > span { display:flex; align-items:center; min-height:44px; padding-inline-end:6.5em; }
