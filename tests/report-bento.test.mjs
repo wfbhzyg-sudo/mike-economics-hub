@@ -88,5 +88,5 @@ test('overview-only grades and mock-only results support an opening without inve
   assert(!/deepseek/i.test(fallback));assert(fallback.includes(recordOpening(f.opening)));
   assert.match(modelOpening({...answer,nextStep:'DeepSeek 建议你先标出均衡点。'},f.opening),/。你先标出均衡点。$/);
   assert.equal(modelOpening({...answer,nextStep:'先画图，再询问 DeepSeek。'},f.opening),'本期 1 份已出分的微观作业，平均得分率为 0%。宏观最近一次自主模考正确率为 75%。');
-  assert(page.indexOf('id="opening-title"')<page.indexOf('<section class="overview">'));
+  assert(page.indexOf('id="opening-title"')<page.indexOf('<section class="report-course"'));
 });

@@ -1,0 +1,25 @@
+.rr-charts{--rr-line:#cdd8d5;--rr-muted:#53666d;--rr-navy:#183e51;display:grid;gap:9px;min-width:0;color:#173745;font:14px/1.42 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+.rr-card{min-width:0;background:#fff;border:1px solid var(--rr-line);border-radius:8px;padding:12px 15px}
+.rr-card header,.rr-card h3,.rr-card p,.rr-card figure,.rr-card h4{margin:0}
+.rr-card header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rr-card h3,.rr-card>summary{font-size:16px;font-weight:680;line-height:1.45}
+.rr-card small,.rr-empty,.rr-coverage,.rr-caption{color:var(--rr-muted);font-size:12px}
+.rr-card .rr-empty,.rr-caption,.rr-coverage{display:block;margin-top:6px}
+.rr-pair{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:9px}
+.rr-tape{display:flex;gap:4px;overflow:auto;overscroll-behavior-x:contain;padding:5px 1px 3px;align-items:flex-end}
+.rr-unit{min-width:max-content;flex:1}.rr-unit>small{font-size:10px}.rr-unit>div{display:flex;gap:1px}
+.rr-charts [data-level]{--band:#e8edeb;background:var(--band);color:#263a43}
+.rr-charts [data-level="1"]{--band:#edbab2}.rr-charts [data-level="2"]{--band:#edc6a1}.rr-charts [data-level="3"]{--band:#eddeaa}.rr-charts [data-level="4"]{--band:#c3dabe}.rr-charts [data-level="5"]{--band:#407456;color:#fff}
+.rr-charts button.rr-cell{min-width:19px;min-height:34px;flex:1;display:grid;justify-items:center;align-content:center;padding:0 1px;border:0;border-radius:2px;font:inherit;cursor:pointer}
+.rr-charts .rr-cell b{font-size:9px}.rr-charts .rr-cell small{font-size:9px;color:inherit}.rr-charts button:focus-visible,.rr-charts a:focus-visible{outline:2px solid #153f56;outline-offset:1px}
+.rr-weak-row,.rr-exams{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px;margin-top:7px}
+.rr-charts button.rr-weak{border:0;border-left:3px solid #795845;border-radius:3px;display:grid;gap:2px;align-content:start;text-align:left;padding:7px 9px;min-width:0;cursor:pointer}.rr-weak b{font-size:11px}.rr-weak span{font-size:13px;font-weight:600}.rr-weak strong{font-size:16px}
+.rr-skills{display:grid;gap:7px;margin-top:8px}.rr-skill{display:grid;grid-template-columns:minmax(70px,1.3fr) minmax(60px,1fr) 42px;gap:6px;align-items:center;font-size:12px}.rr-skill>b{text-align:right;font-size:11px}.rr-segments{display:flex;gap:3px}.rr-segments i{height:7px;flex:1;border-radius:2px}
+.rr-card .trend svg{width:100%;height:auto;display:block;max-height:148px}.rr-card .trend figcaption,.rr-card .trend>.legend{display:none}.rr-card .trend .tick{fill:#4a6068;font:10px sans-serif}.rr-card .trend .grid{fill:none;stroke:#dce3df;stroke-width:1}.rr-card .trend .first-line,.rr-card .trend .final-line{fill:none;stroke:#a36b41;stroke-width:1.7;stroke-dasharray:none}.rr-card .trend .final-line{stroke:#205a71}.rr-card .trend .gap{stroke-dasharray:4 4;opacity:.85}.rr-card .trend .first-dot{fill:#fff;stroke:#a36b41;stroke-width:1.3}.rr-card .trend .final-dot{fill:#205a71}.rr-card .trend .caption{font-size:11px;color:#60737a}
+.rr-mocks{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.rr-run,.rr-bins>div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:38px;text-decoration:none;color:inherit}.rr-run i,.rr-bins i{display:block;width:12px;background:#568075;border-radius:2px 2px 0 0}.rr-run small,.rr-bins small{font-size:10px}
+.rr-exams{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))}.rr-exams article{padding:8px 10px;border:1px solid var(--rr-line);border-radius:4px}.rr-exams h4{font-size:14px}.rr-exams p{margin:5px 0}.rr-bins{display:flex;gap:3px}.rr-bins>div{flex:1;min-width:0}.rr-bins b{font-size:11px}.rr-bins i{background:#829caa;width:55%}
+.rr-dialog{width:min(340px,92vw);padding:17px;border:1px solid #bdcbc8;border-radius:9px;color:#173745}.rr-dialog::backdrop{background:rgba(13,35,47,.26)}.rr-dialog p{margin:7px 0}.rr-dialog a{color:#24576f}.rr-dialog>button{float:right}
+@media(max-width:700px){.rr-pair{grid-template-columns:1fr}.rr-card{padding:10px}.rr-weak-row{display:flex;overflow:auto}.rr-weak-row .rr-weak{flex:0 0 120px}.rr-student>summary{cursor:pointer}.rr-charts{font-size:13px}}
+@media(pointer:coarse){.rr-charts button.rr-cell{min-height:44px;min-width:34px}}
+
+button.rr-run{font:inherit;padding:3px 5px;border:0;border-radius:3px;background:transparent;cursor:pointer}button.rr-run:hover{background:#e9f1ef}.rr-student{min-width:0;width:100%}.rr-student .rr-charts{margin:8px 0}

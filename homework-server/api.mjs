@@ -942,8 +942,26 @@ export async function createHomework({externalAuth} = {}) {
         const html=await renderStudentReport(report,facts,await reportState(db,scope,facts));
         res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'private, no-store',
           'Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff',
-          'Content-Security-Policy':"default-src 'none'; img-src data:; font-src data:; connect-src 'self'; style-src 'unsafe-inline'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}).end(html);
+          'Content-Security-Policy':"default-src 'none'; img-src data: blob:; frame-src 'self' about:; font-src data:; connect-src 'self'; style-src 'unsafe-inline'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}).end(html);
         return true;
+      }
+      if(route.join('/')==='learning/my-report'&&method==='GET'){
+        assert(user.role==='student','请使用学生账号',403);
+        const q=new URLSearchParams({student:user.id});
+        const course=url.searchParams.get('course');
+        assert(isSubject(course)||['mixed','unknown'].includes(course),'学科无效');
+        q.set('course',course);
+        for(const key of ['from','to']){
+          const value=url.searchParams.get(key);
+          if(value){assert(/^\d{4}-\d{2}-\d{2}$/.test(value),'日期无效');q.set(key,value);}
+        }
+        q.set('q',url.searchParams.get('q')||'');
+        const {readStudentReport}=await import('./student-report.mjs');
+        const {courseCharts}=await import('./report-charts.mjs');
+        const report=await readStudentReport({db,teacherId:null,personal:true,query:q,availableClasses,
+          availableStudents:async()=>[user],correctionReview});
+        const current=report.courses.find(c=>c.course===course);
+        return (json(res,{html:current?courseCharts(current,{student:true}):''}),true);
       }
       if(route.join('/')==='learning/student-performance'&&method==='GET'){
         teacher();

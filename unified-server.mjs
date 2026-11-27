@@ -23,7 +23,7 @@ for(const f of ['companion.js','companion.css','assets/mike-pixel.png','assets/c
 for(let stage=0;stage<5;stage++)publicAssets.add('assets/companion/quest-mike-'+stage+'.webp');
 for(const file of ['homework/subject-catalog.js','homework/subject-definitions.js','homework/workspace-primitives.css'])pages.add(file);
 pages.add('homework/student-report-link.js');
-pages.add('teacher/student-report-actions.js');
+for(const file of ['teacher/student-report-actions.js','teacher/report-png.js','teacher/html2canvas-1.4.1.js','homework/report-topic-dialog.js','homework/report-progress.css'])pages.add(file);
 pages.add('homework/learning-evidence.js');
 pages.add('homework/correction-progress.js');
 pages.add('homework/learning-evidence.css');

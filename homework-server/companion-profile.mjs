@@ -1,5 +1,9 @@
 // Newest first. Roles determine which illustrated improvements each reader sees.
 export const releases = [{
+  id:'2026-11-27-report-chapters',date:'2026-11-27',title:'学习报告可以按章节查看并保存长图',
+  items:[{audience:'teacher',art:'roster',title:'查看整班考试分布',text:'从学生档案打开学习报告，可查看章节得分、薄弱知识点、模考走势和匿名班均。点「保存长图」即可带走整份报告。'},
+    {audience:'student',art:'book',title:'看看下一步练哪一章',text:'在「成绩」点开优先复习的 Topic，查看首次得分和订正补分，再回到本章继续练习。'}]
+},{
   id:'2026-11-25-topic-correction-books',date:'2026-11-25',title:'按 Topic 整理错题，纸笔订正也可交回',
   items:[{audience:'student',art:'book',title:'制作自己的错题册',text:'在「错题」按章节勾选最多 30 道题，下载 PDF。写好后从「我的错题册」交回照片或 PDF，核对每道题的题签。'},{audience:'teacher',art:'roster',title:'核对纸笔订正与补分',text:'在作业的订正验收中查看每道题的学生作答。开启补分的作业会同步更新成绩，首次得分单独保留。'}]
 },{

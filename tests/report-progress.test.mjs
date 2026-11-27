@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {anonymousExam,examDistributions,chaptersFor} from '../homework-server/report-progress.mjs';
+import {recoveryLift} from '../homework-server/report-charts.mjs';
+const work={id:'w',course:'micro',assessmentMode:'exam',classIds:['A','B'],title:'期中',createdAt:'2026-10-15'};
+test('whole class, current membership scope, one person once, real zero and sparse buckets',()=>{
+  const scores=[0,21,23,44,45,46,47,48,68,67,69,77,90];
+  assert.equal(anonymousExam(scores.slice(0,9).map(score=>({score,max:100}))),null);
+  const rows=scores.map((score,i)=>({assignment:'w',person:String(i),classes:['A'],score,max:100}));
+  const result=examDistributions([work],[{id:'A',name:'A'},{id:'B',name:'B'}],[...rows,...rows]);
+  assert.equal(result.length,1);assert.equal(result[0].n,13);
+  assert.equal(result[0].mean,Math.round(scores.reduce((a,b)=>a+b)/13*10)/10);
+  assert(result[0].bins.every(b=>b.count===0||b.count>=3));
+  assert.deepEqual(Object.keys(result[0]).sort(),['assignmentId','bins','className','date','max','mean','n','title'].sort());
+});
+test('weighted topic evidence uses original items and versioned bindings, separates zeros and corrections',()=>{
+  const rubric=[{id:'1',topic:'3.1'},{id:'2',libraryQuestionId:'lib',libraryVersion:2},{id:'3',libraryQuestionId:'lib',libraryVersion:3}];
+  const questions=[{id:'1',score:1,maxPoints:1},{id:'2',score:2,maxPoints:4},{id:'3',score:0,maxPoints:1}];
+  const grade={total:3,maxPoints:6,questions,scoreSources:{recovered:1,byQuestion:{'2':1}}};
+  const s={id:'s',status:'published',rubricSnapshot:rubric,publishedGrade:grade};
+  const c={status:'graded',assignment:work,record:{attempts:[s],grade,effective:s}};
+  const units=[{id:'micro-unit-3',topics:[{id:'3.1',name:'topic'}]},{id:'macro-unit-3',topics:[{id:'3.1'}]}];
+  const bank=new Map([['lib',{topic:'3.1',version:2,unitId:'micro-unit-3'}]]);
+  const m={submissionId:'s',questionId:'2',verification:{status:'passed'}};
+  const result=chaptersFor('micro',[c],units,bank,[m,m]);
+  assert.equal(result.topics[0].band.value,60);assert.equal(result.topics[0].count,2);
+  assert.equal(result.topics[0].passed,1);assert.equal(result.topics[0].recovered,1);
+  assert.equal(result.coverage.unmapped,1);assert.equal(result.weak.length,0);
+  const mk=(total,recovered)=>{const grade={total,maxPoints:10,scoreSources:{first:total-recovered,recovered}};return {status:'graded',assignment:{},record:{grade,effective:{id:String(total),publishedGrade:grade}}};};
+  assert.equal(recoveryLift({cells:[mk(9,1),mk(5,0)]}),5);
+  const fixed=mk(9,1);fixed.record.grade.manualTotal=true;
+  assert.equal(recoveryLift({cells:[fixed,mk(5,0)]}),0);
+});

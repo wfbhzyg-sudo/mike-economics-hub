@@ -34,7 +34,7 @@ export function skillRadarSvg(axes,interactive=false){
   </svg>`;
 }
 
-export function performanceMarkup(value,h,link,{teacher=false}={}){
+export function performanceMarkup(value,h,link,{teacher=false,reportBars=false}={}){
   if(!value)return '';
   const {index,axes,corrections}=value;
   const skills=subjectInfo(value.course)?.skills||[];
@@ -51,7 +51,7 @@ export function performanceMarkup(value,h,link,{teacher=false}={}){
       ${advice?`<p class="evidence-next"><strong>${advice}</strong>${teacher?'':`<button type="button" class="text-button" data-performance-advice="${value.course}">生成练习建议</button>`}</p><p data-advice-output role="status"></p>`:''}
       ${teacher?'<small class="evidence-scope">本教师可见作业 · 全时段</small>':''}
       <details><summary>查看计算依据</summary><p>独立首答 ${value.first??'待积累'} · 订正后迁移 ${value.transfer??'待积累'}<br>通过订正 ${corrections.done} / ${corrections.total} 道</p></details>
-    </div><div class="evidence-skill"><h2>技能分布</h2><div class="evidence-skill-body">${skillRadarSvg(axes,!teacher)}<div>
+    </div><div class="evidence-skill"><h2>${reportBars?'技能依据':'技能分布'}</h2><div class="evidence-skill-body" ${reportBars?'style="display:block"':''}>${reportBars?'':skillRadarSvg(axes,!teacher)}<div>
       ${axes.map((item,i)=>`<details data-skill="${i+1}" ${item.skill===value.focus&&item.references.length?'data-priority':''}><summary><span>${i+1}. ${skills[i]?.name||''} <small>${skills[i]?.english||''}</small></span><b>${item.band===null?'待积累':`第 ${item.band} 档`}</b></summary>
         <p>${item.count} 道独立题${item.comprehensiveAssessments?' · 综合测验覆盖 '+item.comprehensiveAssessments+' 次':''}${item.value!==null?` · 得分率 ${item.value}%`:''}</p>
         ${item.references.slice(0,3).map((r,j)=>`<div class="evidence-item">${teacher?h(r.title):r.score<r.max?link('mistakes/'+encodeURIComponent(r.assignmentId)+'/'+encodeURIComponent(r.questionId),h(r.title)):r.submissionId?link('result/'+encodeURIComponent(r.submissionId)+'/'+encodeURIComponent(r.questionId),h(r.title)):h(r.title)}<span>第 ${h(r.questionNumber||r.questionId)} 题 · 首答 ${r.score}/${r.max}${r.pointId?` · 评分点 ${h(r.pointId)}　${r.pointScore}/${r.pointMax}`:''}${r.recovered?` · 本题订正 +${r.recovered}`:''}</span>${!teacher&&r.lessonReference?.topic?`<span data-skill-lesson="${j}"></span>`:''}</div>`).join('')}</details>`).join('')}

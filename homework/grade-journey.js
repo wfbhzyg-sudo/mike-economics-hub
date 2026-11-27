@@ -1,3 +1,4 @@
+import {bindReportTopics} from './report-topic-dialog.js';
 import {correctionProgress,studentRecoveryMarkup} from './correction-progress.js';
 import {mountLessonLinks} from './lesson-panel.js';
 import {receiptCorrections} from "./learning-model.js";
@@ -18,6 +19,27 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
  const subjects=coursesFor(teacher?all.map(c=>c.assignment):data.assignments,classes);let subject=selectedCourse(state.user.id,subjects);
  const filter={query:memory.get('query',''),period:memory.get('period','all'),from:memory.get('from',''),to:memory.get('to','')};
  main.innerHTML=`<section class="paper gj-page gj-journey">${head('',teacher?student.name+'的成绩档案':'我的成绩','',back?link(back,'返回班级成绩'):link('assignments','查看作业'))}${courseTabs(subjects,subject)}<div data-performance></div><div class="gj-summary"></div><details class="gj-filters"><summary>筛选与视图<span class="gj-filter-state"></span></summary><div class="gj-tools"><label>查找作业<input type="search" id="journey-search" placeholder="作业名称或题目关键词" autocomplete="off"></label><label>时间范围<select id="journey-period"><option value="all">全部时间</option><option value="term">本学期</option><option value="month">最近30天</option><option value="custom">自定义日期</option></select></label><div class="gj-view-switch" aria-label="成绩视图"><button type="button" data-view="timeline">时间轴</button><button type="button" data-view="list">列表</button></div><button type="button" id="journey-refresh">刷新成绩</button><button type="button" class="text-button" id="journey-reset">清除筛选</button></div><div class="gj-dates" hidden><label>开始日期<input type="date" id="journey-from"></label><label>结束日期<input type="date" id="journey-to"></label></div><p class="error" id="journey-error" role="alert"></p></details><div class="gj-range-hint"></div><div class="gj-focus-layout"><div class="gj-chart-wrap"><div class="gj-chart-actions"><span id="journey-count" role="status"></span><div><button type="button" id="journey-first">查看最早</button><button type="button" id="journey-last">回到最新</button></div></div><div class="gj-timeline" tabindex="0" role="region" aria-label="横向作业时间轴"><div class="gj-fish"></div></div><div class="gj-chart-footer"><span>左右滑动查看 · 点击作业展开详情</span><div><button type="button" id="journey-left" aria-label="向左浏览作业">←</button><button type="button" id="journey-right" aria-label="向右浏览作业">→</button></div></div></div><div class="gj-list" hidden></div><section class="gj-detail" aria-label="选中作业详情" tabindex="-1"></section></div><div class="gj-inline-correction" hidden></div><div data-grade-legend></div></section>`;
+ let reportKey='',reportRequest=null;
+ const rememberReportLink=()=>{if(!teacher){remember();history.replaceState({...history.state,gradeJourney:{user:state.user.id,selected:selected?.assignment.id,top:main.scrollTop,left:scroll.scrollLeft}},'')}};
+ const detachReportTopics=bindReportTopics(main,{onLeave:rememberReportLink});
+ if(!teacher){
+   const card=document.createElement('section');card.className='rr-student';card.setAttribute('aria-label','个人学习概况');
+   main.querySelector('.course-scope').after(card);
+ }
+ function refreshReport(){
+   if(teacher)return;
+   const query=new URLSearchParams({course:subject,q:filter.query,...timeRange(filter.period,filter.from,filter.to)});
+   const key=query.toString();if(key===reportKey)return;
+   reportKey=key;reportRequest?.abort();reportRequest=new AbortController();
+   const card=main.querySelector('.rr-student');card.textContent='正在读取章节表现…';
+   ctx.api('learning/my-report?'+key,{signal:reportRequest.signal}).then(data=>{
+     if(!destroyed&&reportKey===key){card.innerHTML=data.html;card.hidden=!data.html;trackLink(card);}
+   }).catch(error=>{
+     if(destroyed||reportKey!==key||error.name==='AbortError')return;
+     card.hidden=false;const retry=document.createElement('button');retry.type='button';retry.textContent='重新读取章节表现';
+     retry.onclick=()=>{reportKey='';refreshReport()};card.replaceChildren(retry);
+   });
+ }
  const savedView=history.state?.gradeJourney;
  const returnSelection=!teacher && savedView?.user===state.user.id ? savedView.selected : null;
  if (!teacher) {
@@ -37,11 +59,12 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
  const evidenceLessons=mountLessonLinks(main,ctx.api);
  const readEvidence=teacher?teacherEvidenceReader(ctx.api):null;
  function draw(preserveEditor=false){
+  refreshReport();
   if(drawnSubject!==subject){
   drawnSubject=subject;
   $('[data-grade-legend]').innerHTML=scoreLegend(subject);
   if(teacher)showTeacherEvidence($('[data-performance]'),{read:readEvidence,student:student.id,subject,h});
-  else $('[data-performance]').innerHTML=performanceMarkup(data.performance?.find(p=>p.course===subject),h,link);
+  else $('[data-performance]').innerHTML=performanceMarkup(data.performance?.find(p=>p.course===subject),h,link,{reportBars:true});
   if(!teacher){
     const panel=$('[data-performance]'),key='skill:'+state.user.id+':'+subject;
     const rows=[...panel.querySelectorAll('details[data-skill]')];
@@ -147,5 +170,5 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
    cell.rate=rateOf(cell.record.grade);
    if(selected===cell)draw(true);
  }
- return {refreshReceipt,destroy(){evidenceLessons.destroy();destroyed=true;++sequence;clearTimeout(searchTimer);remember();resizeObserver.disconnect();small.removeEventListener('change',setFilters);child?.destroy();}};
+ return {refreshReceipt,destroy(){reportRequest?.abort();detachReportTopics();evidenceLessons.destroy();destroyed=true;++sequence;clearTimeout(searchTimer);remember();resizeObserver.disconnect();small.removeEventListener('change',setFilters);child?.destroy();}};
 }

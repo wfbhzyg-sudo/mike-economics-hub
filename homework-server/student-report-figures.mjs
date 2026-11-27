@@ -1,4 +1,3 @@
-import {subjectInfo} from '../homework/subject-catalog.js';
 import {resultParts} from './student-report.mjs';
 import {workDate} from '../homework/grade-journey-model.js';
 
@@ -35,29 +34,15 @@ export function trendFigure(course,compact=false) {
   const graded=items.filter(r=>r.final!==null).length;
   const notes=[];
   if(course.cells.length>12) notes.push('最近 12 份作业');
-  if(graded && graded<items.length) notes.push('缺分处断线');
+  const bridges=(points,cls)=>{
+    let previous=-1;const out=[];
+    points.forEach((p,i)=>{if(!p)return;if(previous>=0&&i-previous>1)out.push('<path class="gap '+cls+'" d="M'+points[previous].join(' ')+'L'+p.join(' ')+'"/>');previous=i;});
+    return out.join('');
+  };
   return `<figure class="trend"><figcaption>作业得分率</figcaption><div class="legend"><span class="key original">首答</span><span class="key final">最终</span></div>
-    <svg viewBox="0 0 396 ${bottom+30}" role="img" aria-label="作业依日期排列。虚线为首次，实线为最终，缺分处断开。">${grid}
+    <svg viewBox="0 0 396 ${bottom+30}" role="img" aria-label="作业依日期排列。空心为首次，实心为当前，虚线连接中间缺分。">${grid}
     <path class="final-line" d="${lineSegments(final)}"/><path class="first-line" d="${lineSegments(first)}"/>
-    ${dots(first,'first-dot')}${dots(final,'final-dot')}${ticks}
+    ${bridges(first,'first-line')}${bridges(final,'final-line')}${dots(first,'first-dot')}${dots(final,'final-dot')}${ticks}
     ${graded?'':'<text x="213" y="${(top+bottom)/2}" class="empty-plot" text-anchor="middle">还没有已公布成绩</text>'}</svg>
     ${notes.length?'<p class="caption">'+notes.join(' · ')+'</p>':''}</figure>`;
-}
-
-export function radarFigure(course) {
-  const skillNames=(subjectInfo(course.course)?.skills||[]).map(skill=>skill.name);
-  if(skillNames.length<3||skillNames.length>6)return '<figure class="radar"><figcaption>技能分布</figcaption>'+skillNames.map((name,i)=>html(name)+' · '+(course.evidence?.axes?.[i]?.band??'待积累')).join('　')+'</figure>';
-  const axes=skillNames.map((_,i)=>course.evidence?.axes.find(a=>a.skill===i+1));
-  const cx=130,cy=80,r=57;
-  const pos=(i,level)=>[cx+Math.sin(i*2*Math.PI/axes.length)*r*level/5,cy-Math.cos(i*2*Math.PI/axes.length)*r*level/5].map(num);
-  const points=axes.map((a,i)=>a?.band>=1?pos(i,a.band):null);
-  const rings=[1,2,3,4,5].map(k=>`<polygon class="ring" points="${axes.map((_,i)=>pos(i,k).join(',')).join(' ')}"/>`).join('');
-  const edges=points.map((p,i)=>{const q=points[(i+1)%axes.length];return p&&q?`M${p.join(' ')}L${q.join(' ')}`:'';}).filter(Boolean).join(' ');
-  const anchors=axes.length===4?[[130,15,'middle'],[195,84,'start'],[130,158,'middle'],[65,84,'end']]:axes.map((_,i)=>{const [x,y]=pos(i,6);return [x,y+4,x>135?'start':x<125?'end':'middle'];});
-  const labels=axes.map((a,i)=>`<text x="${anchors[i][0]}" y="${anchors[i][1]}" text-anchor="${anchors[i][2]}" class="axis-name">${skillNames[i]}<tspan class="axis-value"> ${a?.band??'—'}</tspan></text>`).join('');
-  return `<figure class="radar"><figcaption>技能分布 <small>1–5 档</small></figcaption>
-  <svg viewBox="0 0 260 166" role="img" aria-label="${html(axes.map((a,i)=>skillNames[i]+(a?.band?'第'+a.band+'档':'样本不足')).join('，'))}">${rings}${axes.map((_,i)=>`<path class="grid" d="M130 80L${pos(i,5).join(' ')}"/>`).join('')}
-  ${points.every(Boolean)?`<polygon class="radar-area" points="${points.map(p=>p.join(',')).join(' ')}"/>`:''}<path class="final-line" d="${edges}"/>
-  ${points.map(p=>p?`<circle class="final-dot" cx="${p[0]}" cy="${p[1]}" r="3.1"/>`:'').join('')}${labels}</svg>
-  ${points.some(p=>!p)?'<p class="caption">— 样本不足</p>':''}</figure>`;
 }

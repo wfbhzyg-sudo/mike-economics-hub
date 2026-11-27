@@ -128,6 +128,49 @@ export function createStore(connectionString, schema = "homework") {
       WHERE a.kind='assignment' AND a.data->>'teacherId'=$1 AND a.data->>'deletedAt' IS NULL`,[teacherId]);
       return rows.map(row=>row.item);
     },
+    async reportSubmittedMocks(studentId){
+      const {rows}=await pool.query(`SELECT id,data->>'studentId' AS "studentId",data->'classIds' AS "classIds",
+        data->>'course' AS course,data->>'submittedAt' AS "submittedAt",jsonb_build_object('total',data#>'{result,total}',
+        'maxPoints',data#>'{result,maxPoints}','durationSeconds',data#>'{result,durationSeconds}') AS result
+        FROM ${table} WHERE kind='self-practice-attempt' AND data->>'studentId'=$1 AND data->>'status'='submitted'
+        AND jsonb_typeof(data#>'{result,questions}')='array' AND data#>'{result,questions}'<>'[]'::jsonb`,[studentId]);
+      return rows;
+    },
+    async reportCatalog(){
+      const {rows}=await pool.query(`SELECT id, (SELECT jsonb_agg(jsonb_build_object('id',t->'id','name',t->'name','title',t->'title'))
+        FROM jsonb_array_elements(COALESCE(data->'topics','[]')) t) AS topics FROM ${table} WHERE kind='library-unit'`);
+      return rows;
+    },
+    async reportQuestionRefs(ids){
+      if(!ids.length)return [];
+      const {rows}=await pool.query(`SELECT id,data->>'skill' AS skill,data->>'topic' AS topic,data->>'unitId' AS "unitId",
+        data->'version' AS version FROM ${table} WHERE kind='library-question' AND id=ANY($1::text[])`,[[...new Set(ids)]]);
+      return rows;
+    },
+    async reportExamRows(ids){
+      if(!ids.length)return [];
+      // Use grade snapshots on the server. Select only scalar evidence, never whole answer sheets.
+      const {rows}=await pool.query(`WITH attempts AS (
+        SELECT s.id,s.data,s.data->>'assignmentId' AS assignment,s.data->>'studentId' AS person,
+          COALESCE(s.data->>'submittedAt',s.data->>'createdAt') AS stamp,
+          first_value(coalesce(s.data#>>'{publishedGrade,absent}','false')) OVER (
+            PARTITION BY s.data->>'assignmentId',s.data->>'studentId'
+            ORDER BY COALESCE(s.data->>'submittedAt',s.data->>'createdAt') DESC,s.id DESC) AS latest_absent
+        FROM ${table} s WHERE s.kind='submission' AND s.data->>'assignmentId'=ANY($1::text[])
+        AND s.data->>'status' NOT IN ('draft','returned') AND jsonb_typeof(s.data->'publishedGrade')='object'
+      )
+      SELECT assignment,person,data->'classIds' AS classes,
+        COALESCE(data#>'{offlineEvidence,total}',initial.g#>'{scoreSources,original}',initial.g#>'{scoreSources,first}',initial.g->'total',
+                 data#>'{publishedGrade,scoreSources,original}',data#>'{publishedGrade,scoreSources,first}',data#>'{publishedGrade,total}') AS score,
+        COALESCE(data#>'{offlineEvidence,maxPoints}',initial.g->'maxPoints',data#>'{publishedGrade,maxPoints}') AS max
+      FROM attempts LEFT JOIN LATERAL (
+        SELECT g FROM jsonb_array_elements(COALESCE(NULLIF(data->'gradeHistory','null'),'[]')) WITH ORDINALITY AS h(g,n)
+        WHERE jsonb_typeof(g->'total')='number' AND g->>'absent' IS DISTINCT FROM 'true' ORDER BY n LIMIT 1
+      ) initial ON TRUE
+      WHERE latest_absent<>'true' AND jsonb_typeof(data#>'{publishedGrade,total}')='number'
+        AND data#>>'{publishedGrade,absent}' IS DISTINCT FROM 'true' ORDER BY stamp,id`,[ids]);
+      return rows;
+    },
     async reportAssignments(teacherId, studentId, classIds, submittedIds) {
       // Return assignment metadata and this student's snapshot only. Rubrics, files and class rosters can be large.
       const result = await pool.query(`SELECT jsonb_build_object(
@@ -141,7 +184,7 @@ export function createStore(connectionString, schema = "homework") {
         FROM ${table} a LEFT JOIN LATERAL (
           SELECT person FROM jsonb_array_elements(CASE WHEN jsonb_typeof(data#>'{recipients,students}')='array' THEN data#>'{recipients,students}' ELSE '[]'::jsonb END) person WHERE person->>'id'=$2 LIMIT 1
         ) snapshot ON true
-        WHERE kind='assignment' AND data->>'teacherId'=$1 AND data->>'published'='true' AND data->>'deletedAt' IS NULL
+        WHERE kind='assignment' AND ($1::text IS NULL OR data->>'teacherId'=$1) AND data->>'published'='true' AND data->>'deletedAt' IS NULL
           AND ((data->'classIds' ?| $3::text[] AND ${audienceSql('$5','$2')}) OR a.id=ANY($4::text[]) OR snapshot.person IS NOT NULL)`,
         [teacherId, studentId, classIds, submittedIds, [...new Set(classIds.map(id=>id.replace(/^bookself-class:/,'')))]]);
       return result.rows.map(row => row.work);
@@ -150,7 +193,7 @@ export function createStore(connectionString, schema = "homework") {
       const result=await client.query(`SELECT s.data FROM ${table} s
         JOIN ${table} a ON a.id=s.data->>'assignmentId' AND a.kind='assignment'
         WHERE s.kind='submission' AND s.data->>'studentId'=$1
-        AND a.data->>'teacherId'=$2 AND a.data->>'published'='true'
+        AND ($2::text IS NULL OR a.data->>'teacherId'=$2) AND a.data->>'published'='true'
         AND a.data->>'deletedAt' IS NULL AND s.data->>'status' IS DISTINCT FROM 'draft'
         ORDER BY s.created DESC`,[studentId,teacherId]);
       return result.rows.map(row=>row.data);

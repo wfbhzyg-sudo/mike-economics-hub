@@ -6,7 +6,8 @@ import {inRange, progressChange} from '../homework/grade-journey-model.js';
 import {applyRecovery, attachReview} from './correction-review.mjs';
 import {mistakeRows} from './learning.mjs';
 import {studentPerformance} from './student-performance.mjs';
-import {mockScorePercent, visibleStudentMock} from './study-workflow.mjs';
+import {isReportExam,chaptersFor,examDistributions,mockHistoryOf} from './report-progress.mjs';
+import {visibleStudentMock} from './study-workflow.mjs';
 import {assert} from './validation.mjs';
 
 const shares = (ids, key) => ids?.some(id => classKey(id) === classKey(key));
@@ -14,7 +15,7 @@ const num = value => Math.round(value * 10) / 10;
 
 
 
-export async function readStudentReport({db, teacherId, query, availableClasses, availableStudents, correctionReview, at = new Date()}) {
+export async function readStudentReport({db, teacherId, query, availableClasses, availableStudents, correctionReview, personal=false, at = new Date()}) {
   const id = query.get('student'), scope = classKey(query.get('class')), unit = query.get('unit') || '';
   const period = query.get('period') || 'all', assignmentId = query.get('assignment') || '';
   assert(id && id.length <= 200 && unit.length <= 120 && assignmentId.length <= 200 && PERIODS.some(([p]) => p === period),'学生或筛选条件无效');
@@ -32,16 +33,20 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
     (shares(current?.classIds,scope) || shares(a.recipient?.classIds,scope) || historical.has(a.id))));
   assert((current && (!scope || shares(current.classIds,scope))) || permitted.length,'找不到此档案',404);
   const person = current || permitted.find(a => a.recipient)?.recipient || {id,name:'历史学生'};
-  const dates = periodRange(period,at);
-  const assignments = permitted.filter(a => inRange(a,dates) && (!unit || a.libraryUnit === unit) && (!assignmentId || a.id === assignmentId));
+  const dates = personal ? {from:query.get('from')||'',to:query.get('to')||''} : periodRange(period,at);
+  const term=personal?(query.get('q')||'').trim().slice(0,120).toLowerCase():'';
+  const wanted=personal?query.get('course'):null;
+  const assignments = permitted.filter(a => inRange(a,dates) && (!wanted||assignmentCourse(a,classes)===wanted) && (!term||a.title?.toLowerCase().includes(term)) && (!unit || a.libraryUnit === unit) && (!assignmentId || a.id === assignmentId));
   const ids = new Set(assignments.map(a => a.id)), raw = attempts.filter(s => ids.has(s.assignmentId));
-  const [reviews,notes,bank,published,mocks] = await Promise.all([
-    correctionReview.reviews({teacherId,studentId:id}),
+  const [reviews,notes,bank,published,mocks,units,examRows] = await Promise.all([
+    correctionReview.reviews(personal?{studentId:id}:{teacherId,studentId:id}),
     db.find('mistake-note',{studentId:id,assignmentId:[...ids]}),
-    db.getMany(raw.flatMap(s => (s.rubricSnapshot || []).map(q => q.libraryQuestionId).filter(Boolean))),
-    db.find('insight-report',{teacherId,studentId:id,status:'published'}),
-    current && !unit && !assignmentId ? db.find('self-practice-attempt',{studentId:id,status:'submitted'}) : [],
+    db.reportQuestionRefs(raw.flatMap(s => (s.rubricSnapshot || []).map(q => q.libraryQuestionId).filter(Boolean))),
+    personal ? [] : db.find('insight-report',{teacherId,studentId:id,status:'published'}),
+    current && !unit && !assignmentId ? db.reportSubmittedMocks(id) : [],
+    db.reportCatalog(),db.reportExamRows(assignments.filter(isReportExam).map(a=>a.id)),
   ]);
+  const bankById=new Map(bank.map(q=>[q.id,q]));
   const submissions = applyRecovery(raw,reviews,assignments);
   const grades = new Map(submissions.map(s => [s.id,s.publishedGrade]));
   const reviewIndex = new Map(reviews.map(r => [JSON.stringify([r.submissionId,r.questionId]),r]));
@@ -51,7 +56,8 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
   const historicalClasses = classes.filter(c => permitted.some(a=>shares(a.recipient?.classIds,c.id)) ||
     raw.some(s=>shares(s.classIds,c.id)));
   const displayClasses = classScope.length ? classScope : historicalClasses;
-  const mockAttempts = mocks.filter(a => a.result?.questions?.length && visibleStudentMock(a,current,classScope) && inRange({createdAt:a.submittedAt},dates));
+  const examCharts=examDistributions(assignments,displayClasses,examRows);
+  const mockAttempts = mocks.filter(a => (!wanted||a.course===wanted) && visibleStudentMock(a,current,classScope) && inRange({createdAt:a.submittedAt},dates));
   const latestNote = published.filter(r => r.audience?.kind === 'student' && r.audience.studentId === id &&
     (!scope || classKey(r.scope?.classId) === scope) && (r.scope?.unit || '') === unit && !assignmentId &&
     (period === 'all' || r.scope?.period === period) && inRange({createdAt:r.publishedAt},dates)).sort((a,b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))[0];
@@ -68,8 +74,9 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
     const pending = errors.filter(m => ['todo','revise'].includes(m.progressStatus||m.status) && !['queued','manual'].includes(m.verification?.status));
     const verified = errors.filter(m => m.verification?.status === 'passed');
     const waiting = errors.filter(m=>['queued','manual'].includes(m.verification?.status) );
-    const mockHistory = mockAttempts.filter(a=>a.course===course).sort((a,b)=>String(b.submittedAt).localeCompare(String(a.submittedAt)))
-      .map(a=>({date:a.submittedAt,rate:mockScorePercent(a.result),seconds:a.result.durationSeconds}));
+    const mockHistory=mockHistoryOf(mockAttempts.filter(a=>a.course===course));
+    const chapters=chaptersFor(course,cells,units,bankById,errors,unit);
+    const exams=examCharts.filter(e=>scopeIds.has(e.assignmentId));
     const advice = [];
     if(evidence?.focus){
       const skill=evidence.axes.find(axis=>axis.skill===evidence.focus);
@@ -89,11 +96,11 @@ export async function readStudentReport({db, teacherId, query, availableClasses,
       const next=cells.find(c=>c.status==='todo' && !c.assignment.offline && c.assignment.format!=='score' && c.label!=='尚未开放');
       if(next)advice.push({title:'《'+next.assignment.title+'》',detail:'先完成这份作业，把拿不准的题号留给下次讲评。'});
     }
-    return {course,label:courseLabel(course),evidence,cells,average:publishedGrades.length?gradeSummary(publishedGrades.map(c=>c.record)).average:null,
+    return {course,label:courseLabel(course),evidence,cells,chapters,exams,average:publishedGrades.length?gradeSummary(publishedGrades.map(c=>c.record)).average:null,
       graded:publishedGrades.length,trend:progressChange([...cells].reverse()),pending:pending.length,verified:verified.length,waiting:waiting.length,
       errors:errors.length,practiceItems:pending.slice(0,3),selfReviewed:errors.filter(m=>!m.verification && ['mastered','review'].includes(m.progressStatus||m.status)).length,advice,mockHistory};
   });
-  return {name:person.name || '学生',classNames:displayClasses.map(c=>c.name),period:PERIODS.find(([k])=>k===period)[1],unit,
+  return {name:person.name || '学生',classNames:[...new Set(displayClasses.map(c=>c.name))].sort((a,b)=>a.localeCompare(b,'zh-CN',{numeric:true})),period:PERIODS.find(([k])=>k===period)[1],unit,
     assignmentTitle:assignmentId ? assignments.find(a=>a.id===assignmentId)?.title || '指定作业（当前范围无记录）' : '',
     at:at.toISOString(),courses,latestNote: latestNote && {
       headline:latestNote.headline,nextSteps:latestNote.nextSteps,publishedAt:latestNote.publishedAt,
