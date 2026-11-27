@@ -25,6 +25,7 @@ for(const file of ['homework/subject-catalog.js','homework/subject-definitions.j
 pages.add('homework/student-report-link.js');
 pages.add('teacher/student-report-actions.js');
 pages.add('homework/learning-evidence.js');
+pages.add('homework/correction-progress.js');
 pages.add('homework/learning-evidence.css');
 const compressed=new Map();
 const deskShell=(await readFile(resolve(root,'desk.html'),'utf8')).match(/<main id="desk"[\s\S]*?<\/main>/)[0];

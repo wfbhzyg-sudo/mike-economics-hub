@@ -1,5 +1,6 @@
 import {isSubject} from '../homework/subject-catalog.js';
 import {validateTiming} from './mcq-model.mjs';
+import {correctionProgress} from '../homework/correction-progress.js';
 import {createCorrectionReview,applyRecovery,attachReview,reviewView} from './correction-review.mjs';
 import {studentPerformance,performanceAdvice} from './student-performance.mjs';
 import {deskTask,deskSubmissions} from './desk-task.mjs';
@@ -964,7 +965,11 @@ export async function createHomework({externalAuth} = {}) {
         const progressOnly=url.searchParams.get('view')==='corrections';
         const notes=await db.find('mistake-note',{studentId,assignmentId:[...ids]});
         const mistakes=mistakeRows(submissions,assignments,notes,[],{progressOnly}).map(m=>attachReview(m,verified.get(JSON.stringify([m.submissionId,m.questionId]))));
-        if(progressOnly)return (json(res,{corrections:correctionCounts(mistakes)}),true);
+        if(progressOnly){
+          const records=assignmentRecords(applyRecovery(submissions,reviews,assignments),assignments);
+          const activity=correctionProgress(records,mistakes).entries;
+          return (json(res,{corrections:correctionCounts(mistakes),activity}),true);
+        }
         const values=await performanceOf({submissions,assignments},classes,mistakes);
         const subjects=new Set(assignments.map(a=>assignmentCourse(a,classes)));
         for(const c of classes)if(scope?classKey(c.id)===scope:member?.classIds?.some(id=>classKey(id)===classKey(c.id)))subjects.add(singleClassCourse(c));
@@ -1600,7 +1605,7 @@ export async function createHomework({externalAuth} = {}) {
         }
         if (route[1]) {
           let s = await requireSubmission(route[1], user);
-          let receiptAssignment, correctionSummary;
+          let receiptAssignment, correctionSummary, correctionRowsForReceipt;
           if(method==='GET'&&(!route[2]||route[2]==='pdf')){
             const scope={assignmentId:s.assignmentId,studentId:s.studentId};
             const [attempts,reviews,assignment]=await Promise.all([db.find('submission',scope),correctionReview.reviews(scope),db.get(s.assignmentId)]);
@@ -1610,7 +1615,8 @@ export async function createHomework({externalAuth} = {}) {
               const notes=s.publishedGrade.questions.some(q=>q.score!=null&&q.score<q.maxPoints)?await db.find('mistake-note',scope):[];
               const byQuestion=new Map(reviews.filter(r=>r.submissionId===s.id).map(r=>[r.questionId,r]));
               const rows=mistakeRows(attempts,[assignment],notes,[],{progressOnly:true}).filter(row=>row.submissionId===s.id);
-              correctionSummary=receiptCorrections(rows.map(row=>attachReview(row,byQuestion.get(row.questionId))),s.id);
+              correctionRowsForReceipt=rows.map(row=>attachReview(row,byQuestion.get(row.questionId)));
+              correctionSummary=receiptCorrections(correctionRowsForReceipt,s.id);
             }
             s=all.find(item=>item.id===s.id)||s;
           }
@@ -1681,7 +1687,7 @@ export async function createHomework({externalAuth} = {}) {
               const student=(await availableStudents()).find(person=>person.id===s.studentId);
               detail.studentName=student?.name || (await db.get(s.studentId))?.name || "历史学生";
             }
-            return (json(res,{submission:{...detail,...(correctionSummary?{correctionSummary}:{}),responses:s.responses||{},assignment:publicAssignment(receiptAssignment??await db.get(s.assignmentId))}}),true);
+            return (json(res,{submission:{...detail,...(correctionSummary?{correctionSummary,correctionRows:correctionRowsForReceipt}:{}),responses:s.responses||{},assignment:publicAssignment(receiptAssignment??await db.get(s.assignmentId))}}),true);
           }
           teacher();
           const b = await body(req);

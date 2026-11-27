@@ -1,3 +1,4 @@
+import {correctionsBySubmission,questionCorrection,correctionProgress,correctionLog} from './correction-progress.js';
 import {bindDisclosureMenus} from './disclosure-menu.js';
 import {unitIdentity} from './subject-catalog.js';
 import {studentReportUrl} from './student-report-link.js';
@@ -481,6 +482,7 @@ export function mountLearningOverview(ctx, initialData) {
       </div>
       <p class="lo-profile-chip"><span class="lo-chip" data-tone="${chipTone(chip.key)}">${h(chip.label)}</span>${profile.openCorrections ? `<span class="lo-chip" data-tone="warn">待订正 ${profile.openCorrections}</span>` : ''}</p>
     </div>
+    <section class="cr-panel"><div class="cr-heading"><h3>最近订正</h3></div>${correctionLog(correctionProgress(row.cells.map(c=>c.record),data.mistakes).entries,h,{studentId:row.student.id})}</section>
     <div data-profile-evidence></div>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>最近成绩</h3><small>${recent.length ? `最近 ${recent.length} 次已发布` : ''}</small></div>${recent.length ? `<ul class="lo-recent">${recent.map(cell => `<li><a href="#work/review/${encodeURIComponent(cell.record?.latest?.id || '')}"><span class="lo-recent-name">${h((cell.assignment.title || assignmentLabel(cell.assignment)))}<small>${h(monthDay(workDate(cell.assignment)))}</small></span><span class="lo-recent-score">${cell.record?.grade ? `${cell.record.grade.total}/${cell.record.grade.maxPoints}` : '—'}</span><span class="lo-band-pill" data-band="${scoreBand(cell.rate)?.level || ''}">${formatPercent(cell.rate)}</span></a></li>`).join('')}</ul>` : '<p class="lo-note">还没有已发布成绩。待复核的提交不会显示为 0 分。</p>'}</section>
     <section class="lo-profile-section"><div class="lo-section-head"><h3>优先复习的题</h3><small>${profile.weak.length ? `按得分率排序 · ${profile.mistakes} 道失分题` : ''}</small></div>${profile.weak.length ? `<ul class="lo-weak">${profile.weak.map(item => `<li><button type="button" data-open-question data-s="${h(row.student.id)}" data-a="${h(item.assignmentId)}" data-q="${h(item.questionId)}"><span class="lo-weak-prompt">${h(trim(item.prompt, 58))}</span><span class="lo-weak-meta">${h(item.assignmentTitle || '')} · ${item.score}/${item.maxPoints}</span></button></li>`).join('')}</ul>` : '<p class="lo-note">这个范围内没有失分题记录。</p>'}</section>
@@ -600,7 +602,7 @@ export function mountLearningOverview(ctx, initialData) {
     const rate = choice ? question.rate : question.scoreRate;
     const top = Math.max(1, ...question.distribution.map(item => item.count));
     return `<button type="button" class="lo-qrow" data-diag-question="${h(question.id)}" title="查看第 ${index + 1} 题原题与班级数据">
-      <span class="lo-qrow-index">${index + 1}</span>
+      <span class="lo-qrow-index">${h(/^\d+$/.test(question.id)?question.id:index+1)}${question.corrected?'<small data-cr-state="passed">订正 '+question.corrected+'</small>':''}</span>
       <span class="lo-qrow-type">${h(TYPES[question.type] || question.type || '题')}</span>
       <span class="lo-qrow-rate">${accuracyBadge(rate)}</span>
       <span class="lo-qrow-sample">${question.graded}</span>
@@ -683,9 +685,10 @@ export function mountLearningOverview(ctx, initialData) {
     const rate = choice ? question.rate : question.scoreRate;
     const total = question.distribution.reduce((sum, item) => sum + item.count, 0) || 1;
     return `<div class="lo-detail-inner">
-      <header class="lo-detail-head"><div><h2>第 ${diagnosis.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || '题目')}</h2><p>${h(assignmentLabel(diagnosis.assignment))}${question.knowledge ? ` · ${h(question.knowledge)}` : ''}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
+      <header class="lo-detail-head"><div><h2>第 ${h(/^\d+$/.test(question.id)?question.id:diagnosis.questions.indexOf(question)+1)} 题 · ${h(TYPES[question.type] || '题目')}</h2><p>${h(assignmentLabel(diagnosis.assignment))}${question.knowledge ? ` · ${h(question.knowledge)}` : ''}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
       <div class="lo-detail-score"><strong>${accuracyBadge(rate)}</strong><span class="lo-chip">${choice ? '首次正确率' : '首次得分率'}</span><span class="lo-chip">${question.graded} 份</span></div>
       ${question.corrected||question.recoveredPoints?`<p>订正后达标率 ${accuracyBadge(question.afterRate)} · 补回 ${question.recoveredPoints} 分</p>`:''}
+      ${question.correctedStudents?.length ? '<p class="lo-pass-names"><strong>订正通过</strong> '+question.correctedStudents.map(id=>h(context.rows.find(r=>r.student.id===id)?.student.name||'学生')).join('、')+'</p>' : ''}
       ${originalQuestion(diagnosis.assignment,question)}
       <div class="lo-qstats">
         <div><span>${choice ? '班级正确率' : '平均得分'}</span><strong>${choice ? accuracyBadge(question.rate) : `${question.average}/${question.maxPoints}`}</strong><small>${question.correct}/${question.graded} 份${choice ? '完全正确' : '达到满分'}</small></div>
@@ -881,8 +884,9 @@ function renderDetail() {
     detailHost.innerHTML = markup;
     if (sheet.open) {
       sheetBody.innerHTML = markup;
+      if(selected?.questionId)mountOriginals(sheetBody);
       $('#lo-sheet-title').textContent = found ? `${found.row.student.name} · ${(found.cell.assignment.title || assignmentLabel(found.cell.assignment))}` : '成绩详情';
-    }
+    }else if(wide.matches&&selected?.questionId)mountOriginals(detailHost);
   }
 
   function emptyDetailMarkup() {
@@ -935,12 +939,12 @@ function renderDetail() {
       <section class="lo-detail-section">
         <div class="lo-section-head"><h3>题目与本班数据</h3><small>${(assignment.offline||assignment.format==='score')&&!summary.questions.length?'线下总分':summary.graded ? `${summary.graded} 份已发布` : grade?'已公布总分':'尚无已发布成绩'}</small></div>
         ${summary.questions.length ? `<ul class="lo-qlist">
-          <li class="lo-qlist-head" aria-hidden="true"><span>题</span><span>题目</span><span>本人</span><span>正确率</span></li>
+          <li class="lo-qlist-head" aria-hidden="true"><span>题</span><span>作答状态</span><span>首答</span><span>正确率</span></li>
           ${summary.questions.map((question, index) => {
             const hit = own.find(item => item.id === question.id);
             return `<li><button type="button" data-question data-s="${h(row.student.id)}" data-a="${h(assignment.id)}" data-q="${h(question.id)}" title="查看第 ${index + 1} 题原题与选项分布">
-              <span class="lo-q-index">${index + 1}</span>
-              <span class="lo-q-prompt">${h(trim(question.prompt, 54))}</span>
+              <span class="lo-q-index">${h(/^\d+$/.test(question.id)?question.id:index+1)}</span>
+              <span class="lo-q-prompt">${correctionBadge(hit,grade,record?.effective,question) || h(trim(question.prompt,54))}</span>
               <span class="lo-q-own">${hit ? `${hit.score}/${hit.maxPoints}` : '—'}</span>
               <span class="lo-q-rate">${accuracyBadge(question.type==='choice'?question.rate:question.scoreRate)}</span>
             </button></li>`;
@@ -955,6 +959,14 @@ function renderDetail() {
     return list.length ? round(list.reduce((sum, rate) => sum + rate, 0) / list.length) : null;
   }
 
+  function correctionBadge(hit,grade,submission,question) {
+    if(!Number.isFinite(hit?.score))return '';
+    const note=correctionsBySubmission(data.mistakes).get(submission?.id)?.get(String(question.id));
+    const correction=questionCorrection(grade,hit,note);
+    if(correction)return '<span data-cr-state="'+h(correction.status)+'">'+h(correction.label)+(correction.credit?' · +'+h(correction.credit)+' 分':'')+'</span>';
+    return hit.score>=hit.maxPoints?'<span data-cr-state="first">首次答对</span>':'<span data-cr-state="todo">首答失分</span>';
+  }
+
   function questionMarkup(row, cell, summary, question) {
     const own = cell.record?.grade?.questions?.find(item => item.id === question.id);
     const submission = cell.record?.effective || cell.record?.latest;
@@ -964,9 +976,9 @@ function renderDetail() {
     const optionText = new Map(options.map(option => [option.label, option.text || '']));
     return `<div class="lo-detail-inner">
       <button type="button" class="lo-back" data-back-question>← 返回全部题目</button>
-      <header class="lo-detail-head"><div><h2>第 ${summary.questions.indexOf(question) + 1} 题 · ${h(TYPES[question.type] || question.type || '题目')}</h2><p>${h(row.student.name)} · ${h((cell.assignment.title || assignmentLabel(cell.assignment)))}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
-      <div class="lo-detail-score"><strong>${own ? `${own.score}<small>/${own.maxPoints}</small>` : '—'}</strong>${currentChoiceChip(choice, own)}</div>
-      ${question.type==='choice'&&own?`<p class="lo-note">学生答案 <strong>${h(choice||'未作答')}</strong>　参考答案 <strong>${h(submission?.version && cell.assignment.version && submission.version!==cell.assignment.version?'请查看该次作答快照':question.correctOptions?.join('、')||'待核对')}</strong>　${own.score==null?'待评分':own.score===own.maxPoints?'✓ 正确':'× 错误'}</p>`:''}
+      <header class="lo-detail-head"><div><h2>第 ${h(/^\d+$/.test(question.id)?question.id:summary.questions.indexOf(question)+1)} 题 · ${h(TYPES[question.type] || question.type || '题目')}</h2><p>${h(row.student.name)} · ${h((cell.assignment.title || assignmentLabel(cell.assignment)))}</p></div><button type="button" class="lo-btn lo-icon" data-close-detail aria-label="关闭详情"><span aria-hidden="true">×</span></button></header>
+      <div class="lo-detail-score"><strong>${own ? `${own.score}<small>/${own.maxPoints}</small>` : '—'}</strong><span>首次得分</span>${correctionBadge(own,cell.record?.grade,submission,question)}</div>
+      ${question.type==='choice'&&own?`<p class="lo-note">首次作答 <strong>${h(choice||'未作答')}</strong>　参考答案 <strong>${h(submission?.version && cell.assignment.version && submission.version!==cell.assignment.version?'请查看该次作答快照':question.correctOptions?.join('、')||'待核对')}</strong>　</p>`:''}
       ${originalQuestion(cell.assignment,question)}
       <div class="lo-qstats">
         <div><span>班级正确率</span><strong>${accuracyBadge(question.rate)}</strong><small>${question.correct}/${question.graded} 份</small></div>
@@ -977,11 +989,6 @@ function renderDetail() {
       </div>
       <p class="lo-note">选项分布只统计与当前发布版本一致的作答；未记录选项或版本不同的作答不计入，也不用于推断学生是否理解。</p>
     </div>`;
-  }
-
-  function currentChoiceChip(choice, own) {
-    if (!choice) return own ? '<span class="lo-chip" data-tone="good">已评分</span>' : '';
-    return `<span class="lo-chip">选择 ${h(choice)}</span>${own ? `<span class="lo-chip" data-tone="${own.score >= own.maxPoints ? 'good' : 'warn'}">${own.score}/${own.maxPoints}</span>` : ''}`;
   }
 
   // ---------- empty and interactions ----------
@@ -1322,7 +1329,7 @@ function renderDetail() {
     const question = target.closest('[data-question]');
     if (question) { selectCell(question.dataset.s, question.dataset.a, question.dataset.q); return; }
     const openQuestion = target.closest('[data-open-question]');
-    if (openQuestion) { selectCell(openQuestion.dataset.s, openQuestion.dataset.a, openQuestion.dataset.q); setTab('matrix', false); return; }
+    if (openQuestion) { setTab('matrix', false); selectCell(openQuestion.dataset.s, openQuestion.dataset.a, openQuestion.dataset.q); return; }
     const back = target.closest('[data-back-question]');
     if (back) {
       const found = findSelection();
@@ -1334,7 +1341,7 @@ function renderDetail() {
       mobileView = mobile.dataset.mview === 'grid' ? 'grid' : 'list';
       memory.set({mobileView});
       root.dataset.mview = mobileView;
-      $$('[data-mview]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mview === mobileView)));
+      $$('.lo-switch button[data-mview]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mview === mobileView)));
       return;
     }
     if (target.closest('[data-close-detail]')) {

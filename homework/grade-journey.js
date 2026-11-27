@@ -1,3 +1,4 @@
+import {correctionProgress,studentRecoveryMarkup} from './correction-progress.js';
 import {mountLessonLinks} from './lesson-panel.js';
 import {receiptCorrections} from "./learning-model.js";
 import {receiptActions,receiptEvidence,scoreSources,performanceMarkup,teacherEvidenceReader,showTeacherEvidence} from './learning-evidence.js';
@@ -8,6 +9,7 @@ import {highlightText} from './search-text.js';
 import {rateOf,latestPublishedCell,cellsFor,cellSummary,progressChange,timeRange,inRange,visibleAssignments} from './grade-journey-model.js';
 export const gradeBadge=(n,course)=>scoreBadge(n,course).replace('平均得分率','得分率');
 export const statusMarkup=(c,h)=>c.rate!==null?gradeBadge(c.rate,assignmentCourse(c.assignment)):`<span class="gj-status" data-status="${c.status}">${h(c.label)}</span>`;
+
 export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountCorrection,mountPaper}={}){
  const {main,state,h,head,link,date,toast}=ctx,memory=viewMemory(state.user.id+':journey:'+student.id),$=s=>main.querySelector(s),small=matchMedia('(max-width:767px)');
  let destroyed=false,child=null,opening=null,searchTimer,visible=[],selected=null,mode=memory.get('view','timeline'),focused=null,sequence=0;
@@ -21,6 +23,7 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
  if (!teacher) {
    $('.gj-journey').dataset.studentResults='';
    $('[data-performance]').before($('.gj-detail'),$('.gj-inline-correction'));
+   main.querySelector('.course-scope').insertAdjacentHTML('afterend','<div data-student-recovery></div>');
  }
  $('#journey-search').value=filter.query;$('#journey-period').value=filter.period;$('#journey-from').value=filter.from;$('#journey-to').value=filter.to;
  const scroll=$('.gj-timeline'),filters=$('.gj-filters');const setFilters=()=>{filters.open=!small.matches||memory.get('filtersOpen',false);};setFilters();filters.addEventListener('toggle',()=>{if(small.matches)memory.set({filtersOpen:filters.open});});small.addEventListener('change',setFilters);const smooth=()=>matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth';
@@ -81,6 +84,7 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
   }
   const range=timeRange(filter.period,filter.from,filter.to);$('.gj-dates').hidden=filter.period!=='custom';const term=filter.query.trim().toLocaleLowerCase();visible=all.filter(c=>assignmentCourse(c.assignment,data.classes||[])===subject&&inRange(c.assignment,range)&&[c.assignment.title,...(c.assignment.questions||[]).map(q=>q.prompt)].some(v=>(v||'').toLocaleLowerCase().includes(term)));
   selected=visible.find(c=>c.assignment.id===(selected?.assignment.id||(teacher?memory.get('selected',''):returnSelection)))||(!teacher&&latestPublishedCell(visible))||[...visible].reverse().find(c=>c.rate!==null)||visible.at(-1);const summary=cellSummary(visible),change=progressChange(visible);
+  if(!teacher)$('[data-student-recovery]').innerHTML=studentRecoveryMarkup(correctionProgress(visible.map(c=>c.record),data.mistakes),h);
   $('.gj-summary').innerHTML=`<span>${courseLabel(subject)}平均 ${scoreBadge(summary.average,subject)}</span><span>已出分 <strong>${summary.count} / ${visible.length}</strong> 次</span>${change===null?'':`<span>近3次较前3次 <strong>${change>0?'+':''}${change}</strong> 个百分点</span>`}`;
   $('.gj-range-hint').textContent=range.from||range.to?`${range.from||'最早'} 至 ${range.to||'最新'}`:'';$('.gj-filter-state').textContent=term||filter.period!=='all'?'已筛选':'';const layout=$('.gj-focus-layout');layout.dataset.density=!visible.length?'empty':visible.length===1?'single':visible.length<=3?'sparse':'full';layout.style.setProperty('--gj-sparse-width',(visible.length*180+48)+'px');layout.dataset.journeyView=mode;layout.dataset.count=visible.length;
   const node=c=>`<button type="button" class="gj-node" data-assignment="${h(c.assignment.id)}" aria-pressed="false" title="${h(c.assignment.title)}"><strong>${highlightText(c.assignment.title||'历史作业',filter.query)}</strong>${statusMarkup(c,h)}${c.pendingUpdate?'<small>新版本待更新</small>':c.late?'<small>迟交</small>':''}</button>`;
@@ -139,6 +143,7 @@ export function mountGradeJourney(ctx,data,student,{teacher=false,back='',mountC
    if(destroyed||request!==receiptRequest||!submission.publishedGrade)return;
    effective.publishedGrade=cell.record.grade=submission.publishedGrade;
    effective.correctionSummary=submission.correctionSummary;
+   if(submission.correctionRows)data.mistakes=[...(data.mistakes||[]).filter(m=>m.submissionId!==effective.id),...submission.correctionRows];
    cell.rate=rateOf(cell.record.grade);
    if(selected===cell)draw(true);
  }

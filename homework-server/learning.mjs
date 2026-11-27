@@ -61,8 +61,9 @@ export function mistakeRows(submissions, assignments, notes=[], bindings=[], {pr
       const feedback=sameSubmission ? correctionFeedback(raw||fallback,last) : null;
       const submitted=Boolean(sameSubmission && (last.text?.trim() || last.choice || last.files?.length));
       const progressStatus=!submitted || feedback?.state==='incorrect' ? 'todo' : meta.status==='mastered' ? 'mastered' : 'review';
-      if(progressOnly){rows.push({submissionId:record.effective.id,questionId:q.id,progressStatus});continue;}
-      rows.push({progressStatus,choiceMode:raw?.choiceMode||fallback?.choiceMode||'single',
+      const lastCorrectionAt=submitted ? last.createdAt : undefined;
+      if(progressOnly){rows.push({submissionId:record.effective.id,questionId:q.id,progressStatus,lastCorrectionAt,...(feedback?{correctionFeedback:{state:feedback.state}}:{})});continue;}
+      rows.push({progressStatus,lastCorrectionAt,choiceMode:raw?.choiceMode||fallback?.choiceMode||'single',
         correctionFeedback:feedback,assignmentId:record.assignmentId,assignmentTitle:record.assignment.title||'作业',course:record.assignment.course||'',studentId:record.studentId,
         libraryQuestionId:raw?.libraryQuestionId||fallback?.libraryQuestionId||null,source:'assignment',
         libraryUnit:record.assignment.libraryUnit||null,submissionId:record.effective.id,questionId:q.id,questionNumber:index+1,prompt:ref.prompt||'',type:ref.type||'short',knowledge:ref.knowledge||'',

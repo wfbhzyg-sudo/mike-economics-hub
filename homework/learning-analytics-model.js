@@ -2,6 +2,7 @@
 // Score, audience and neutral-status rules stay in grade-journey-model.js so the
 // overview can never disagree with the existing gradebook.
 import {visibleAssignments, cellsFor, cellSummary, progressChange, timeRange, inRange, workDate} from './grade-journey-model.js';
+import {correctionsBySubmission,questionCorrection} from './correction-progress.js';
 import {correctionCounts} from './learning-model.js';
 import {scoreBand} from './score-bands.js';
 
@@ -129,7 +130,9 @@ export function questionStats(data, assignmentId) {
     if (!previous || stampOf(submission) > stampOf(previous) || (stampOf(submission) === stampOf(previous) && submission.id > previous.id)) latest.set(submission.studentId, submission);
   }
   const graded = [...latest.values()].filter(submission => submission.publishedGrade && Number.isFinite(submission.publishedGrade.total));
+  const corrections=correctionsBySubmission(data.mistakes);
   const questions = (assignment.questions || []).map(question => {
+    const correctedStudents=[];
     let gradedCount = 0, correct = 0, answered = 0, scoreSum = 0, corrected = 0, recoveredPoints = 0;
     const counts = new Map();
     for (const submission of graded) {
@@ -140,8 +143,12 @@ export function questionStats(data, assignmentId) {
       if (hit.score >= hit.maxPoints) correct += 1;
       const added=submission.publishedGrade.scoreSources?.byQuestion?.[question.id]||0;
       recoveredPoints+=added;
-      const verified=submission.publishedGrade.verifiedQuestionIds;
-      if(hit.score<hit.maxPoints && (verified?verified.includes(question.id):added&&hit.score+added>=hit.maxPoints))corrected++;
+      if(hit.score<hit.maxPoints){
+        const evidence=questionCorrection(submission.publishedGrade,hit,corrections.get(submission.id)?.get(String(question.id)));
+        if(evidence?.status==='passed' || (evidence?.status==='credited' && hit.score+added>=hit.maxPoints)){
+          corrected++;correctedStudents.push(submission.studentId);
+        }
+      }
       const sameVersion = assignment.version == null || submission.version === assignment.version;
       const choice = sameVersion ? submission.choices?.[question.id] : null;
       if (choice) { counts.set(choice, (counts.get(choice) || 0) + 1); answered += 1; }
@@ -156,7 +163,7 @@ export function questionStats(data, assignmentId) {
       maxPoints: question.maxPoints, knowledge: question.knowledge || '',
       graded: gradedCount, correct, scoreSum: round1(scoreSum),
       rate: gradedCount ? round1(correct / gradedCount * 100) : null,
-      corrected,recoveredPoints,afterRate:gradedCount?round1((correct+corrected)/gradedCount*100):null,
+      corrected,correctedStudents,recoveredPoints,afterRate:gradedCount?round1((correct+corrected)/gradedCount*100):null,
       average: gradedCount ? round1(scoreSum / gradedCount) : null,
       scoreRate: gradedCount && question.maxPoints ? round1(scoreSum / (gradedCount * question.maxPoints) * 100) : null,
       options: question.options || [], answered,
@@ -197,7 +204,7 @@ export function studentProfile(data, student, assignments) {
   const scope = new Set(assignments.map(assignment => assignment.id));
   const mistakes = (data.mistakes || []).filter(item => item.studentId === student.id && scope.has(item.assignmentId));
   const weak = mistakes
-    .filter(item => item.maxPoints > 0)
+    .filter(item => item.maxPoints > 0 && (item.progressStatus || item.status)!=='verified')
     .sort((a, b) => (a.score / a.maxPoints) - (b.score / b.maxPoints) || String(a.questionId).localeCompare(String(b.questionId)))
     .slice(0, 6);
   return {

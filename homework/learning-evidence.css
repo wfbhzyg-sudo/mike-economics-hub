@@ -133,3 +133,26 @@ body :is(.mcq-work,.sp-run) .answer-pair .strike-dot[aria-pressed=true] {backgro
 @media(pointer:coarse){.evidence-course-pick button,.profile-evidence-wait button{min-height:44px}}
 @media(max-width:700px){body .sp-create-actions{gap:8px}}
 .evidence-course-pick+[data-evidence-body] .evidence-progress h2 small{display:none}
+
+.cr-panel{margin-block:10px;padding:12px 14px;background:#f5f9f8;border:1px solid #cddfdb;border-radius:10px;color:#193b45;min-width:0}
+.cr-heading,.cr-metrics{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.cr-panel .cr-heading :is(h2,h3){margin:0;font:700 15px/1.4 system-ui}
+.cr-heading>span,.cr-empty,.cr-change,.cr-meta time{color:#48656a;font-size:12px}
+.cr-empty,.cr-change{margin:6px 0 0}
+.cr-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:8px}
+.cr-metrics>div{min-width:0;display:grid;gap:2px}
+.cr-metrics strong{font:700 clamp(16px,2vw,22px)/1.3 system-ui;color:#195d53;font-variant-numeric:tabular-nums}
+.cr-metrics small{font:500 12px/1.4 system-ui}
+.cr-list{list-style:none;padding:0;margin:6px 0 0}
+.cr-list li{border-top:1px solid #d6e4e1;padding:5px 0;font-size:13px}
+.cr-list li>button{display:block;padding:3px 0;min-height:36px;width:100%;color:inherit;text-align:left;border:0;background:transparent;cursor:pointer}
+.cr-work{display:block;overflow-wrap:anywhere;color:#163c49}
+.cr-meta{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap;color:#315d56;font-size:12px}
+.cr-more>summary{cursor:pointer;padding:8px 0 2px;font-size:13px;color:#254f59}
+[data-cr-state]{font-size:11px;font-weight:650;color:#465f6c}
+[data-cr-state="passed"],[data-cr-state="matched"],[data-cr-state="credited"]{color:#126147}
+[data-cr-state="revise"],[data-cr-state="incorrect"]{color:#973e34}
+[data-cr-state="manual"],[data-cr-state="queued"],[data-cr-state="saved"]{color:#805009}
+.lo-qrow-index small{display:block;line-height:1.15;white-space:nowrap}
+.lo-pass-names{overflow-wrap:anywhere}
+@media(max-width:767px){.cr-panel{padding:10px}.cr-heading>span,.cr-metrics small{font-size:11px}.cr-list li>button{min-height:44px}}
